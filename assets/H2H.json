@@ -8961,6 +8961,17 @@
     "week": 14
   },
   {
+    "season": 2020,
+    "date": "2020-12-13",
+    "teamA": "Plot",
+    "teamB": "Shap",
+    "scoreA": 135.2,
+    "scoreB": 129.1,
+    "week": 14,
+    "round": "Wild Card",
+    "type": "Playoff"
+  },
+  {
     "season": 2025,
     "date": "2025-09-07",
     "teamA": "Connor",
@@ -9973,14 +9984,25 @@
     "type": "Playoff"
   },
   {
-    "season": 2020,
-    "date": "2020-12-13",
-    "teamA": "Plot",
-    "teamB": "Shap",
-    "scoreA": 135.2,
-    "scoreB": 129.1,
-    "week": 14,
-    "round": "Wild Card",
+    "season": 2025,
+    "date": "2025-12-28",
+    "teamA": "Shemer",
+    "teamB": "Connor",
+    "scoreA": 100.38,
+    "scoreB": 85.12,
+    "week": 17,
+    "round": "Saunders Final",
+    "type": "Saunders"
+  },
+  {
+    "season": 2025,
+    "date": "2025-12-28",
+    "teamA": "Zook",
+    "teamB": "Singer",
+    "scoreA": 153.74,
+    "scoreB": 91.78,
+    "week": 17,
+    "round": "Championship",
     "type": "Playoff"
   }
 ]

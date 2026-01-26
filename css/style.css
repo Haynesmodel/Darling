@@ -223,9 +223,6 @@ tbody tr:nth-child(even){background:var(--row-alt)}
   color: #333;
 }
 
-#seasonRecapTable td:last-child::before {
-  content: "📜 ";
-}
 
 @media (max-width: 1200px){
   #funFacts{ grid-template-columns: repeat(4, minmax(120px,1fr)); }

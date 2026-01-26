@@ -47,6 +47,13 @@ function nfmt(x, d=2){
   return Number.isFinite(+x) ? (+x).toFixed(d) : "—";
 }
 
+function avgFinishForTeam(team){
+  const rows = seasonSummaries.filter(r=>r.owner===team && Number.isFinite(+r.finish));
+  if (!rows.length) return null;
+  const sum = rows.reduce((a,b)=> a + (+b.finish), 0);
+  return sum / rows.length;
+}
+
 /* ---------- League-wide computed helpers (added) ---------- */
 
 // Count sub-65 point games per team (regular season only)
@@ -676,6 +683,8 @@ function renderTopHighlights(team){
   const champYears = rows.filter(r => r.champion).map(r => r.season).sort((a,b)=>b-a);
   const sauYears   = rows.filter(r => r.saunders===true).map(r => r.season).sort((a,b)=>b-a);
   const regYears   = computeRegularSeasonChampYears(team, seasonSummaries).sort((a,b)=>b-a);
+  const avgFinish = avgFinishForTeam(team);
+  const avgFinishSeasons = rows.filter(r=>Number.isFinite(+r.finish)).length;
 
   const champsDisplay = champYears.map(y => champNote(team, y) ? `${y}*` : `${y}`);
   const sauDisplay    = sauYears.map(y => saundersNote(team, y) ? `${y}*` : `${y}`);
@@ -696,6 +705,7 @@ function renderTopHighlights(team){
     chip("Darlings", `${champYears.length}`, champYears.length ? `Years: ${champsDisplay.join(", ")}` : "—", "champs"),
     chip("Saunders", `${sauYears.length}`, sauYears.length ? `Years: ${sauDisplay.join(", ")}` : "—", "sau"),
     chip("Regular-Season Titles", `${regYears.length}`, regYears.length ? `Years: ${regYears.join(", ")}` : "—", "regs"),
+    chip("Avg Finish", nfmt(avgFinish, 2), avgFinishSeasons ? `Seasons: ${avgFinishSeasons}` : "—", "avg-finish"),
     notes.length ? `<div class="overview-chip"><h4>Notes</h4><div class="sub">* ${notes.join(" • ")}</div></div>` : ""
   ].join("");
 }
@@ -781,12 +791,14 @@ function renderSeasonCallout(team){
     if(rec.saunders_wins||rec.saunders_losses||rec.saunders_ties) bits.push(`Saunders: ${(rec.saunders_wins||0)}-${(rec.saunders_losses||0)}-${(rec.saunders_ties||0)}`);
     const record=`${rec.wins}-${rec.losses}-${rec.ties||0}`;
     const pct=fmtPct(rec.wins, rec.losses, rec.ties||0);
+    const finish = Number.isFinite(+rec.finish) ? `${rec.finish}` : "—";
     const notes=[];
     const cN=champNote(team, onlySeason); if(cN) notes.push(`${onlySeason} — ${cN}`);
     const sN=saundersNote(team, onlySeason); if(sN) notes.push(`${onlySeason} — ${sN}`);
     callout.innerHTML = `<div class="callout">
       <div>${team} in <strong>${onlySeason}</strong></div>
       <div>Record: <strong>${record}</strong> (${pct})</div>
+      <div>Finish: <strong>${finish}</strong></div>
       <div>${bits.join(" • ")||"—"}</div>
       ${notes.length ? `<div class="muted" style="margin-top:6px;font-size:12px">* ${notes.join(" • ")}</div>` : ""}
     </div>`;
@@ -1079,7 +1091,32 @@ function renderLeagueSummaryTablesAllTeams(){
       </div>
     </div>`;
 
-  box.innerHTML = regTable + postTable;
+  const finishByTeam = new Map();
+  for (const r of ss){
+    if (!Number.isFinite(+r.finish)) continue;
+    const cur = finishByTeam.get(r.owner) || { team:r.owner, sum:0, n:0 };
+    cur.sum += +r.finish; cur.n += 1;
+    finishByTeam.set(r.owner, cur);
+  }
+  const finishRows = Array.from(finishByTeam.values())
+    .map(r=>({ team:r.team, avg: r.n ? (r.sum/r.n) : null, n:r.n }))
+    .sort((a,b)=> (a.avg ?? Infinity) - (b.avg ?? Infinity) || b.n - a.n || a.team.localeCompare(b.team));
+
+  const finishTable = `
+    <div class="mini">
+      <div class="mini-title">Average Finish (All-Time)</div>
+      <div class="table-wrap mini-table">
+        <table>
+          <thead><tr><th>Team</th><th>Avg Finish</th><th>Seasons</th></tr></thead>
+          <tbody>${
+            finishRows.map(r => `<tr><td>${r.team}</td><td>${n(r.avg,2)}</td><td>${r.n}</td></tr>`).join("")
+            || '<tr><td colspan="3" class="muted">—</td></tr>'
+          }</tbody>
+        </table>
+      </div>
+    </div>`;
+
+  box.innerHTML = regTable + postTable + finishTable;
 }
 function renderFunFactsAllTeams(){
   const el = document.getElementById('funFacts');
@@ -1710,6 +1747,33 @@ function renderFunFacts(team, games){
     if(meScore === minScore) turds++;
   }
 
+  let closeW=0, closeL=0, closeT=0, blowouts=0;
+  for(const g of orderedAsc){
+    const s = sidesForTeam(g, team); if(!s) continue;
+    const margin = Math.abs(s.pf - s.pa);
+    if(margin < 5){
+      if(s.result==='W') closeW++;
+      else if(s.result==='L') closeL++;
+      else closeT++;
+    }
+    if(s.result==='W' && (s.pf - s.pa) >= 29) blowouts++;
+  }
+
+  const teamSeasons = seasonAggregatesAllTeams().filter(r=>r.team===team && r.n>0 && +r.season !== 2014);
+  const bestPPG = teamSeasons.slice().sort((a,b)=> b.ppg - a.ppg || b.season - a.season)[0] || null;
+  const bestOPPG = teamSeasons.slice().sort((a,b)=> a.oppg - b.oppg || b.season - a.season)[0] || null;
+
+  let blowoutLosses=0;
+  let high150=0;
+  for(const g of orderedAsc){
+    const s = sidesForTeam(g, team); if(!s) continue;
+    if(s.result==='L' && (s.pa - s.pf) >= 29) blowoutLosses++;
+    if(s.pf >= 150) high150++;
+  }
+
+  const byeYears = seasonSummaries.filter(r=>r.owner===team && r.bye).map(r=>r.season).sort((a,b)=>b-a);
+  const antiByeYears = seasonSummaries.filter(r=>r.owner===team && r.saunders_bye).map(r=>r.season).sort((a,b)=>b-a);
+
   const tile=(label,val,sub="")=>`<div class="stat"><div class="label">${label}</div><div class="value">${val}</div>${sub?`<div class="label" style="margin-top:4px">${sub}</div>`:""}</div>`;
   const lwSub = lwLen>0 && lwStart && lwEnd ? `${lwStart.date} → ${lwEnd.date} (${weekLabelFor(team,lwStart)} → ${weekLabelFor(team,lwEnd)})` : "";
   const llSub = llLen>0 && llStart && llEnd ? `${llStart.date} → ${llEnd.date} (${weekLabelFor(team,llStart)} → ${weekLabelFor(team,llEnd)})` : "";
@@ -1722,8 +1786,16 @@ function renderFunFacts(team, games){
     tile("Longest Losing Streak", llLen || 0, llSub || "—"),
     tile("Top-Week Crowns", crowns || 0, crowns? "Led league in points on those dates":""),
     tile("Bottom-Week Turds", turds || 0, turds? "Lowest score league-wide on those dates":""),
+    tile("Close Games Record (<5)", `${closeW}-${closeL}${closeT?`-${closeT}`:""}`, (closeW+closeL+closeT) ? `${closeW+closeL+closeT} games` : "—"),
+    tile("Most PPG Season", bestPPG ? nfmt(bestPPG.ppg, 2) : "—", bestPPG ? `${bestPPG.season}` : "—"),
+    tile("Lowest OPPG Season", bestOPPG ? nfmt(bestOPPG.oppg, 2) : "—", bestOPPG ? `${bestOPPG.season}` : "—"),
+    tile("Blowout Wins (29+)", blowouts, blowouts ? "Wins by 29+ points" : "—"),
+    tile("Blowout Losses (29+)", blowoutLosses, blowoutLosses ? "Losses by 29+ points" : "—"),
+    tile("150+ Point Games", high150, high150 ? "Single-team scores ≥150" : "—"),
     tile("Luck (Actual − Expected)", luck ? (luck>0?`+${luck.toFixed(2)}`:luck.toFixed(2)) : (luck===0 ? "0.00" : "—"),
-         (Number.isFinite(exp) ? `Actual: ${act.toFixed(2)} • Expected: ${exp.toFixed(2)} (regular season only)` : "—"))
+         (Number.isFinite(exp) ? `Actual: ${act.toFixed(2)} • Expected: ${exp.toFixed(2)} (regular season only)` : "—")),
+    tile("Byes", byeYears.length, byeYears.length ? `Years: ${byeYears.join(", ")}` : "—"),
+    tile("Anti-Byes", antiByeYears.length, antiByeYears.length ? `Years: ${antiByeYears.join(", ")}` : "—")
   ].join("");
 
   const row = (r)=>`<tr>
@@ -1958,32 +2030,38 @@ function aggregateVsOpps(team, games, members){
 
 function renderSeasonRecap(team){
   const tb=document.querySelector('#seasonRecapTable tbody'); if(!tb) return;
-  if(team===ALL_TEAMS){ tb.innerHTML=`<tr><td colspan="4" class="muted">Select a team to see season recap.</td></tr>`; return; }
+  if(team===ALL_TEAMS){ tb.innerHTML=`<tr><td colspan="5" class="muted">Select a team to see season recap.</td></tr>`; return; }
 
   let rows=seasonSummaries.filter(r=>r.owner===team);
   if(isRestrictive(selectedSeasons, universe.seasons)) rows = rows.filter(r=>selectedSeasons.has(+r.season));
   rows.sort((a,b)=>b.season-a.season);
 
-  function playoffNarrative(season){
-    const games = leagueGames.filter(g=>+g.season===+season && (g.teamA===team||g.teamB===team) && isPlayoffGame(g)).sort((a,b)=>roundOrder(a.round)-roundOrder(b.round));
+  function narrativeForGames(games, roundPrefix=""){
+    if(!games.length) return "";
+    const ordered = games
+      .slice()
+      .sort((a,b)=> new Date(a.date) - new Date(b.date) || roundOrder(a.round) - roundOrder(b.round));
     if(!games.length) return "";
     let narrative=[];
-    for(const g of games){
+    for(const g of ordered){
       const s=sidesForTeam(g,team); if(!s) continue;
-      const opp=s.opp; const round=normRound(g.round)||"Playoff";
+      const opp=s.opp;
+      let round=normRound(g.round) || (roundPrefix ? `${roundPrefix} Round` : "Playoffs");
+      if(roundPrefix) round = round.replace(/^saunders\\s+/i,'').trim();
       if(s.result==='W') narrative.push(`Defeated ${opp} in ${round}`);
       else if(s.result==='L') narrative.push(`Lost in ${round} to ${opp}`);
+      else narrative.push(`Tied ${opp} in ${round}`);
     }
     return narrative.join(", ");
   }
 
   const mkOutcome = (r)=>{
-    if (r.champion) return `Champion${champNote(team, +r.season) ? "*" : ""}`;
-    const narr=playoffNarrative(r.season);
-    if(narr) return narr;
-    const pW=r.playoff_wins||0, pL=r.playoff_losses||0, pT=r.playoff_ties||0;
-    const sW=r.saunders_wins||0, sL=r.saunders_losses||0, sT=r.saunders_ties||0;
-    if (r.saunders===true || (sW+sL+sT)>0) return `Saunders${saundersNote(team, +r.season) ? "*" : ""} (${sW}-${sL}-${sT})`;
+    const playoffGames = leagueGames.filter(g=>+g.season===+r.season && (g.teamA===team||g.teamB===team) && isPlayoffGame(g));
+    const saundersGames = leagueGames.filter(g=>+g.season===+r.season && (g.teamA===team||g.teamB===team) && isSaundersGame(g));
+    const playoffNarr = narrativeForGames(playoffGames);
+    if(playoffNarr) return playoffNarr;
+    const saundersNarr = narrativeForGames(saundersGames, "Saunders");
+    if(saundersNarr) return saundersNarr;
     if (r.bye) return "Top-2 Seed";
     return "—";
   };
@@ -1993,7 +2071,8 @@ function renderSeasonRecap(team){
       <td>${r.season}</td>
       <td>${r.wins}-${r.losses}-${r.ties||0}</td>
       <td>${fmtPct(r.wins,r.losses,r.ties||0)}</td>
-      <td>${mkOutcome(r)}</td>
+      <td>${Number.isFinite(+r.finish) ? r.finish : "—"}</td>
+      <td>${r.champion ? "👑 " : r.saunders ? "💩 " : ""}${mkOutcome(r)}</td>
     </tr>
   `).join("");
 }

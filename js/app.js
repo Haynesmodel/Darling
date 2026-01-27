@@ -54,6 +54,70 @@ function avgFinishForTeam(team){
   return sum / rows.length;
 }
 
+let isApplyingUrlState = false;
+
+function parseUrlState(){
+  const params = new URLSearchParams(window.location.search);
+  const parseList = (key)=> {
+    const v = params.get(key);
+    if(!v) return null;
+    return v.split(',').map(s=>decodeURIComponent(s)).filter(Boolean);
+  };
+  const seasons = parseList('seasons')?.map(n=>+n).filter(n=>Number.isFinite(n));
+  const weeks = parseList('weeks')?.map(n=>+n).filter(n=>Number.isFinite(n));
+  const opps = parseList('opps');
+  const types = parseList('types');
+  const rounds = parseList('rounds');
+  const team = params.get('team') || null;
+  const hasAny = !!(team || (seasons&&seasons.length) || (weeks&&weeks.length) || (opps&&opps.length) || (types&&types.length) || (rounds&&rounds.length));
+  return {
+    team,
+    seasons: seasons ? new Set(seasons) : null,
+    weeks: weeks ? new Set(weeks) : null,
+    opps: opps ? new Set(opps) : null,
+    types: types ? new Set(types) : null,
+    rounds: rounds ? new Set(rounds) : null,
+    hasAny
+  };
+}
+
+function setFacetSelections(containerId, prefix, valuesSet){
+  const container = document.getElementById(containerId); if(!container) return;
+  const all = container.querySelector(`.${prefix}-all`);
+  const cbs = [...container.querySelectorAll(`.${prefix}-cb`)];
+  if(!valuesSet || valuesSet.size===0){
+    if(all) all.checked = true;
+    cbs.forEach(cb=>cb.checked=false);
+    return;
+  }
+  let any=false;
+  cbs.forEach(cb=>{
+    const raw = decodeURIComponent(cb.dataset.value);
+    const val = (prefix==='season' || prefix==='week') ? +raw : raw;
+    if(valuesSet.has(val)){
+      cb.checked = true; any=true;
+    }else{
+      cb.checked = false;
+    }
+  });
+  if(all) all.checked = !any;
+}
+
+function updateUrlFromState(){
+  if(isApplyingUrlState) return;
+  const params = new URLSearchParams();
+  if(selectedTeam && selectedTeam!==ALL_TEAMS) params.set('team', selectedTeam);
+  const setIf = (key, set, uni)=>{ if(isRestrictive(set, uni)) params.set(key, [...set].join(',')); };
+  setIf('seasons', selectedSeasons, universe.seasons);
+  setIf('weeks', selectedWeeks, universe.weeks);
+  setIf('opps', selectedOpponents, universe.opponents);
+  setIf('types', selectedTypes, universe.types);
+  setIf('rounds', selectedRounds, universe.rounds);
+  const qs = params.toString();
+  const next = `${window.location.pathname}${qs ? `?${qs}` : ''}`;
+  window.history.replaceState(null, '', next);
+}
+
 /* ---------- League-wide computed helpers (added) ---------- */
 
 // Count sub-65 point games per team (regular season only)
@@ -482,12 +546,15 @@ function roundOptionsOrdered(){
 
 /* ---------- Build History Controls ---------- */
 function buildHistoryControls(){
+  const urlState = parseUrlState();
+
   // Team select (with All Teams)
   const teamSelect=document.getElementById('teamSelect');
   const teams=teamOptions();
   teamSelect.innerHTML=teams.map(t=>`<option value="${t.value}">${t.label}</option>`).join("");
   const defaultTeam = teams.find(t=>t.value==="Joe") ? "Joe" : teams[0].value;
-  teamSelect.value = defaultTeam;
+  const urlTeam = (urlState.team && teams.some(t=>t.value===urlState.team)) ? urlState.team : null;
+  teamSelect.value = urlTeam || defaultTeam;
   selectedTeam = teamSelect.value;
   updateHeaderForTeam(selectedTeam);
   teamSelect.addEventListener('change', ()=>{
@@ -496,6 +563,7 @@ function buildHistoryControls(){
   updateHeaderForTeam(selectedTeam);
     buildFacet('oppFilters', opponentOptions(selectedTeam), {prefix:'opp'});
     readFacetSelections(); updateFacetCountTexts(); renderHistory();
+    updateUrlFromState();
   });
 
   // Facets
@@ -512,8 +580,19 @@ function buildHistoryControls(){
   universe.types = typeOptions();
   universe.rounds = roundOptionsOrdered();
 
-  resetAllFacetsToAll(); // All by default
-  updateFacetCountTexts();
+  if(urlState.hasAny){
+    isApplyingUrlState = true;
+    setFacetSelections('seasonFilters','season', urlState.seasons);
+    setFacetSelections('weekFilters','week', urlState.weeks);
+    setFacetSelections('oppFilters','opp', urlState.opps);
+    setFacetSelections('typeFilters','type', urlState.types);
+    setFacetSelections('roundFilters','round', urlState.rounds);
+    readFacetSelections(); updateFacetCountTexts(); renderHistory();
+    isApplyingUrlState = false;
+  } else {
+    resetAllFacetsToAll(); // All by default
+    updateFacetCountTexts();
+  }
 }
 
 /* ---------- Generic Facet Builder ---------- */
@@ -544,6 +623,7 @@ function buildFacet(containerId, values, opts={}){
       const cbs = container.querySelectorAll(`input.${prefix}-cb`);
       if(allChecked){ cbs.forEach(cb=>cb.checked=false); }
       readFacetSelections(); updateFacetCountTexts(); renderHistory();
+      updateUrlFromState();
       return;
     }
     if(e.target && e.target.matches(`input.${prefix}-cb`)){
@@ -551,6 +631,7 @@ function buildFacet(containerId, values, opts={}){
       const anySpecificChecked = [...container.querySelectorAll(`input.${prefix}-cb`)].some(cb=>cb.checked);
       all.checked = !anySpecificChecked; // none selected -> All
       readFacetSelections(); updateFacetCountTexts(); renderHistory();
+      updateUrlFromState();
     }
   });
 }
@@ -568,6 +649,7 @@ function resetAllFacetsToAll(){
     cbs.forEach(cb=>cb.checked=false);
   });
   readFacetSelections(); updateFacetCountTexts(); renderHistory();
+  updateUrlFromState();
 }
 
 /* Read selections from DOM into sets */

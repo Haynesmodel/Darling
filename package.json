@@ -1,0 +1,8 @@
+{
+  "name": "darling-history",
+  "private": true,
+  "scripts": {
+    "test": "node test/data.test.js",
+    "test:ci": "node scripts/run_tests_with_coverage.js && node scripts/v8_coverage_report.js && node scripts/check_coverage.js"
+  }
+}

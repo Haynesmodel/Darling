@@ -1116,6 +1116,14 @@ function renderLeagueSummaryTablesAllTeams(){
       postByTeam.set(g.teamB, rec);
     }
   }
+  const bagelsByTeam = new Map();
+  for (const r of ss){
+    if (!Number.isFinite(+r.bagels_earned)) continue;
+    const cur = bagelsByTeam.get(r.owner) || { team: r.owner, total: 0 };
+    cur.total += +r.bagels_earned;
+    bagelsByTeam.set(r.owner, cur);
+  }
+
   const postRows = Array.from(postByTeam.values()).map(r=>{
     const dPPG = r.dN ? (r.dPF/r.dN) : 0;
     const dOPPG = r.dN ? (r.dPA/r.dN) : 0;
@@ -1126,6 +1134,7 @@ function renderLeagueSummaryTablesAllTeams(){
       darlingRec: `${r.dW}-${r.dL}`,
       byes: r.byes,
       champs: r.champs,
+      bagels: (bagelsByTeam.get(r.team)?.total) || 0,
       dPPG, dOPPG,
       saundersRec: `${r.sW}-${r.sL}`,
       saundersTitles: r.saundersTitles,
@@ -1156,18 +1165,18 @@ function renderLeagueSummaryTablesAllTeams(){
         <table>
           <thead>
             <tr>
-              <th>Team</th><th>Darling Record</th><th>Byes</th><th>Championships</th>
+              <th>Team</th><th>Darling Record</th><th>Byes</th><th>Championships</th><th>Bagels</th>
               <th>Darling PPG</th><th>Darling Opp PPG</th>
               <th>Saunders Record</th><th>Saunders</th><th>Saunders PPG</th><th>Saunders Opp PPG</th>
             </tr>
           </thead>
           <tbody>${
             postRows.map(r => `<tr>
-              <td>${r.team}</td><td>${r.darlingRec}</td><td>${r.byes}</td><td>${r.champs}</td>
+              <td>${r.team}</td><td>${r.darlingRec}</td><td>${r.byes}</td><td>${r.champs}</td><td>${r.bagels}</td>
               <td>${n(r.dPPG,2)}</td><td>${n(r.dOPPG,2)}</td>
               <td>${r.saundersRec}</td><td>${r.saundersTitles}</td>
               <td>${n(r.sPPG,2)}</td><td>${n(r.sOPPG,2)}</td>
-            </tr>`).join("") || '<tr><td colspan="10" class="muted">—</td></tr>'
+            </tr>`).join("") || '<tr><td colspan="11" class="muted">—</td></tr>'
           }</tbody>
         </table>
       </div>
@@ -2140,11 +2149,13 @@ function renderSeasonRecap(team){
   const mkOutcome = (r)=>{
     const playoffGames = leagueGames.filter(g=>+g.season===+r.season && (g.teamA===team||g.teamB===team) && isPlayoffGame(g));
     const saundersGames = leagueGames.filter(g=>+g.season===+r.season && (g.teamA===team||g.teamB===team) && isSaundersGame(g));
+    const bagelNote = (r.bagels_earned === null || r.bagels_earned === undefined) ? "" : ` • Bagels earned 🥯: ${r.bagels_earned}`;
     const playoffNarr = narrativeForGames(playoffGames);
-    if(playoffNarr) return playoffNarr;
+    if(playoffNarr) return `${playoffNarr}${bagelNote}`;
     const saundersNarr = narrativeForGames(saundersGames, "Saunders");
-    if(saundersNarr) return saundersNarr;
-    if (r.bye) return "Top-2 Seed";
+    if(saundersNarr) return `${saundersNarr}${bagelNote}`;
+    if (r.bye) return `Top-2 Seed${bagelNote}`;
+    if (bagelNote) return `Bagels earned 🥯: ${r.bagels_earned}`;
     return "—";
   };
 

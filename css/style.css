@@ -79,24 +79,7 @@ tbody tr:nth-child(even){background:var(--row-alt)}
 .postseason{position:relative;box-shadow:inset 4px 0 0 0 var(--sau-accent)}
 .postseason td{font-weight:600}
 
-/* Draft page */
-.sidebar{display:flex;flex-direction:column;gap:12px}
-.sidebar-scroll{display:flex;flex-direction:column;gap:12px;overflow:auto;max-height:calc(100vh - 220px)}
-.kpi{display:flex;gap:8px;flex-wrap:wrap}
-.pill{background:#f1f5f9;border:1px solid var(--border);color:#0f172a;padding:6px 10px;border-radius:999px;font-size:12px}
 .muted{color:var(--muted)}
-.slot{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px dashed var(--border)}
-.slot:first-child{border-top:none}
-.empty{color:var(--muted);font-style:italic}
-.badge{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;font-size:11px;border:1px solid var(--border);background:#fff}
-.badge.fire{border-color:#ffedd5;background:#fff7ed}
-.QB{color:#0ea5e9;font-weight:600}.RB{color:#22c55e;font-weight:600}.WR{color:#fb923c;font-weight:600}
-.TE{color:#a78bfa;font-weight:600}.DST{color:#ef4444;font-weight:600}.K{color:#6b7280;font-weight:600}
-
-/* Needs pills */
-.needs{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
-.needs .need{border:1px solid var(--border);background:#fff;padding:4px 8px;border-radius:8px;font-size:12px}
-.needs .need.ok{opacity:.5}
 
 /* Stats, callouts */
 .stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}

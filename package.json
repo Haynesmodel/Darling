@@ -1,0 +1,8 @@
+{
+  "name": "darling-history",
+  "private": true,
+  "scripts": {
+    "test": "node --test --coverage",
+    "test:ci": "node --test --coverage --coverage-summary=json && node scripts/check_coverage.js"
+  }
+}

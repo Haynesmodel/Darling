@@ -63,10 +63,11 @@ test('assets JSON loads', () => {
 
 test('H2H rows have required shape', () => {
   const h2h = readJson(h2hPath);
+  const dateRe = /^\d{4}-\d{2}-\d{2}$/;
   for (const [i, g] of h2h.entries()){
     assert.ok(g && typeof g === 'object');
     assert.ok(isNum(g.season), `row ${i} missing season`);
-    assert.ok(typeof g.date === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(g.date), `row ${i} invalid date`);
+    assert.ok(typeof g.date === 'string' && dateRe.test(g.date), `row ${i} invalid date`);
     assert.ok(typeof g.teamA === 'string' && g.teamA, `row ${i} missing teamA`);
     assert.ok(typeof g.teamB === 'string' && g.teamB, `row ${i} missing teamB`);
     assert.ok(isNum(g.scoreA), `row ${i} missing scoreA`);

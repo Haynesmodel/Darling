@@ -1,6 +1,6 @@
-/* Enforce minimum line coverage from Node's coverage summary. */
-const fs = require('fs');
-const path = require('path');
+/* Enforce minimum line coverage from summary. */
+const fs = require('node:fs');
+const path = require('node:path');
 
 const summaryPath = path.join(process.cwd(), 'coverage', 'coverage-summary.json');
 if (!fs.existsSync(summaryPath)) {

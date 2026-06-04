@@ -152,12 +152,57 @@
     });
   }
 
+  function buildHistoryCsvText(games, opts = {}) {
+    const allTeams = opts.allTeams || '__ALL__';
+    const selectedTeam = Object.prototype.hasOwnProperty.call(opts, 'selectedTeam') ? opts.selectedTeam : allTeams;
+    const selectedWeeks = asSet(opts.selectedWeeks);
+    const universeWeeks = opts.universeWeeks || [];
+    const normTypeFn = opts.normTypeFn || coreFn('normType', (t) => (t && t.trim()) ? t : 'Regular');
+    const normRoundFn = opts.normRoundFn || coreFn('normRound', (r) => r || '');
+    const sidesForTeamFn = opts.sidesForTeamFn || coreFn('sidesForTeam');
+    const isRestrictiveFn = opts.isRestrictiveFn || coreFn('isRestrictive', defaultIsRestrictive);
+    const isRegularGameFn = opts.isRegularGameFn || coreFn('isRegularGame');
+    const csvEscapeFn = opts.csvEscapeFn || coreFn('csvEscape');
+    const expectedWinForGameFn = opts.expectedWinForGameFn || (() => null);
+
+    const header = ['date', 'season', 'team', 'opponent', 'result', 'pf', 'pa', 'type', 'round', 'week', 'xw'];
+    const quoteRow = (values) => values.map(csvEscapeFn).map(v => `"${v}"`).join(',');
+    const lines = [header.join(',')];
+
+    if (selectedTeam === allTeams) {
+      const useWeek = isRestrictiveFn(selectedWeeks, universeWeeks);
+      for (const g of games) {
+        const sides = [
+          { team: g.teamA, opp: g.teamB, pf: g.scoreA, pa: g.scoreB, res: g.scoreA > g.scoreB ? 'W' : g.scoreA < g.scoreB ? 'L' : 'T' },
+          { team: g.teamB, opp: g.teamA, pf: g.scoreB, pa: g.scoreA, res: g.scoreB > g.scoreA ? 'W' : g.scoreB < g.scoreA ? 'L' : 'T' },
+        ];
+        for (const s of sides) {
+          const w = (g._weekByTeam && g._weekByTeam[s.team]) || null;
+          if (useWeek && (!w || !selectedWeeks.has(w))) continue;
+          const xw = isRegularGameFn(g) ? expectedWinForGameFn(s.team, g) : null;
+          lines.push(quoteRow([g.date, g.season, s.team, s.opp, s.res, s.pf.toFixed(2), s.pa.toFixed(2), normTypeFn(g.type), normRoundFn(g.round), w ?? '', xw ?? '']));
+        }
+      }
+      return lines.join('\n');
+    }
+
+    for (const g of games) {
+      const s = sidesForTeamFn(g, selectedTeam);
+      if (!s) continue;
+      const w = (g._weekByTeam && g._weekByTeam[selectedTeam]) || '';
+      const xw = isRegularGameFn(g) ? expectedWinForGameFn(selectedTeam, g) : null;
+      lines.push(quoteRow([g.date, g.season, selectedTeam, s.opp, s.result, s.pf.toFixed(2), s.pa.toFixed(2), normTypeFn(g.type), normRoundFn(g.round), w, xw ?? '']));
+    }
+    return lines.join('\n');
+  }
+
   const api = {
     parseUrlState,
     setFacetSelections,
     buildUrlFromState,
     updateUrlFromState,
     applyFacetFilters,
+    buildHistoryCsvText,
   };
 
   if (typeof module !== 'undefined' && module.exports) {

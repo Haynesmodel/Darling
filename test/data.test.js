@@ -10,6 +10,7 @@ const data = require(path.join(root, 'js', 'data-helpers.js'));
 const stats = require(path.join(root, 'js', 'stats-helpers.js'));
 const render = require(path.join(root, 'js', 'render-helpers.js'));
 const historyRenderers = require(path.join(root, 'js', 'history-renderers.js'));
+const leagueRenderers = require(path.join(root, 'js', 'league-renderers.js'));
 const facets = require(path.join(root, 'js', 'facet-helpers.js'));
 const state = require(path.join(root, 'js', 'state-helpers.js'));
 const h2hPath = path.join(assets, 'H2H.json');
@@ -47,6 +48,7 @@ const {
   parseUrlState,
   buildUrlFromState,
   applyFacetFilters,
+  buildHistoryCsvText,
 } = state;
 const {
   loadLeagueAssets,
@@ -75,6 +77,12 @@ const {
   facetControlHtml,
 } = render;
 const {
+  leagueSummaryTablesHtml,
+  leagueFunFactsAllTeamsHtml,
+  leagueFunListsAllTeamsHtml,
+  teamFunFactsView,
+} = leagueRenderers;
+const {
   historyGamesTableRowHtml,
   historyGamesTableHtml,
   weekByWeekRows,
@@ -82,6 +90,17 @@ const {
   seasonRecapOutcome,
   seasonRecapRows,
   seasonRecapTableHtml,
+  avgFinishForTeam,
+  topHighlightsHtml,
+  seasonSummaryLookup,
+  seasonCalloutView,
+  groupMatched,
+  exactSetMatch,
+  isFxEligible,
+  aggregateVsOpps,
+  opponentBreakdownRows,
+  opponentBreakdownTableHtml,
+  opponentBreakdownView,
 } = historyRenderers;
 
 function readJson(p){
@@ -447,6 +466,201 @@ test('render helpers format text and build stable markup', () => {
   assert.match(facet, /Semi Final/);
 });
 
+test('league renderer builds all-teams summary tables', () => {
+  const seasonAggregates = [
+    { team: 'Joe', w: 10, l: 4, t: 0, n: 14, pf: 1400, pa: 1260 },
+    { team: 'Shap', w: 7, l: 7, t: 0, n: 14, pf: 1330, pa: 1320 },
+    { team: 'Joe', w: 8, l: 6, t: 0, n: 14, pf: 1330, pa: 1290 },
+  ];
+  const summaries = [
+    {
+      owner: 'Joe',
+      playoff_wins: 2,
+      playoff_losses: 0,
+      bye: true,
+      champion: true,
+      saunders_wins: 0,
+      saunders_losses: 0,
+      saunders: false,
+      bagels_earned: 2,
+      finish: 1,
+    },
+    {
+      owner: 'Shap',
+      playoff_wins: 0,
+      playoff_losses: 1,
+      bye: false,
+      champion: false,
+      saunders_wins: 1,
+      saunders_losses: 0,
+      saunders: true,
+      bagels_earned: 1,
+      finish: 3,
+    },
+  ];
+  const games = [
+    { teamA: 'Joe', teamB: 'Shap', scoreA: 120, scoreB: 100, type: 'Playoff' },
+    { teamA: 'Shap', teamB: 'Joe', scoreA: 90, scoreB: 80, type: 'Saunders' },
+  ];
+
+  const html = leagueSummaryTablesHtml({
+    leagueGames: games,
+    seasonSummaries: summaries,
+    seasonAggregates,
+  });
+
+  assert.match(html, /Regular Season \(All-Time\)/);
+  assert.match(html, /<td>Joe<\/td><td>18-10<\/td><td>64\.3%<\/td><td>97\.50<\/td><td>91\.07<\/td>/);
+  assert.match(html, /Post Season \(All-Time\)/);
+  assert.match(html, /<td>Joe<\/td><td>2-0<\/td><td>1<\/td><td>1<\/td><td>2<\/td>/);
+  assert.match(html, /<td>Shap<\/td><td>0-1<\/td><td>0<\/td><td>0<\/td><td>1<\/td>/);
+  assert.match(html, /<td>1-0<\/td><td>1<\/td>/);
+  assert.match(html, /Average Finish \(All-Time\)/);
+  assert.match(html, /<td>Joe<\/td><td>1\.00<\/td><td>1<\/td>/);
+});
+
+test('league renderer builds all-teams fun fact tiles', () => {
+  const html = leagueFunFactsAllTeamsHtml({
+    seasonAggregates: [
+      { team: 'Joe', season: 2025, w: 10, l: 4, t: 0, n: 14, pct: 10 / 14, pf: 1400, pa: 1200, diff: 200 },
+      { team: 'Shap', season: 2025, w: 3, l: 11, t: 0, n: 14, pct: 3 / 14, pf: 1050, pa: 1300, diff: -250 },
+    ],
+    winStreak: { team: 'Joe', len: 6, start: '2025-09-07', end: '2025-10-12' },
+    lossStreak: { team: 'Shap', len: 5, start: '2025-09-14', end: '2025-10-12' },
+    headToHeadPairs: [
+      { team: 'Joe', opp: 'Shap', w: 7, l: 1, t: 0, g: 8, pct: 7 / 8 },
+    ],
+    topWeeklyScores: [
+      { team: 'Joe', opp: 'Shap', pf: 180.25, date: '2025-09-07' },
+    ],
+  });
+
+  assert.match(html, /Best Single-Season Record/);
+  assert.match(html, /<div class="value">10-4<\/div>/);
+  assert.match(html, /Joe \u2022 2025 \u2022 71\.4%/);
+  assert.match(html, /Worst Season Point Diff/);
+  assert.match(html, /-250/);
+  assert.match(html, /Joe \(2025-09-07 \u2192 2025-10-12\)/);
+  assert.match(html, /87\.5%/);
+  assert.match(html, /180\.25/);
+});
+
+test('league renderer builds all-teams fun list tables', () => {
+  const seasonAggregates = [
+    { team: 'Joe', season: 2025, w: 10, l: 4, t: 0, n: 14, pct: 10 / 14, ppg: 100, oppg: 85, luck: 1.25 },
+    { team: 'Shap', season: 2025, w: 4, l: 10, t: 0, n: 14, pct: 4 / 14, ppg: 80, oppg: 105, luck: -1.5 },
+  ];
+  const leagueGames = [
+    { season: 2025, date: '2025-09-07', teamA: 'Joe', teamB: 'Shap', scoreA: 120, scoreB: 90, type: 'Regular', round: '' },
+    { season: 2025, date: '2025-09-14', teamA: 'Joe', teamB: 'Shap', scoreA: 75, scoreB: 82, type: 'Regular', round: '' },
+    { season: 2025, date: '2025-12-14', teamA: 'Joe', teamB: 'Shap', scoreA: 130, scoreB: 100, type: 'Playoff', round: 'Final' },
+  ];
+  const html = leagueFunListsAllTeamsHtml({
+    leagueGames,
+    seasonSummaries: [{ owner: 'Joe', season: 2025, champion: true }],
+    seasonAggregates,
+    highs: [{ team: 'Joe', opp: 'Shap', pf: 120, pa: 90, date: '2025-09-07' }],
+    lows: [{ team: 'Joe', opp: 'Shap', pf: 75, pa: 82, date: '2025-09-14' }],
+    streaks: [{ team: 'Joe', len: 3, start: '2025-09-07', end: '2025-09-21' }],
+    streaksLoss: [{ team: 'Shap', len: 2, start: '2025-09-07', end: '2025-09-14' }],
+    weeklyAwards: {
+      top: [{ team: 'Joe', count: 2 }],
+      low: [{ team: 'Shap', count: 2 }],
+      high150: [{ team: 'Joe', count: 1 }],
+    },
+    sub70: [{ team: 'Shap', count: 1 }],
+    headToHeadPairs: [{ team: 'Joe', opp: 'Shap', w: 2, l: 1, t: 0, g: 3, pct: 2 / 3 }],
+    limit: 10,
+  });
+
+  assert.match(html, /Best Regular Seasons/);
+  assert.match(html, /<td>Joe<\/td><td>2025<\/td><td>10-4<\/td>/);
+  assert.match(html, /Most Dominant Playoff Runs/);
+  assert.match(html, /<td>Joe<\/td><td>2025<\/td><td>30\.00<\/td><td>1<\/td>/);
+  assert.match(html, /Highest Scoring Performances/);
+  assert.match(html, /120\.\u201390\./);
+  assert.match(html, /Most Dominant Rivalries/);
+  assert.match(html, /66\.7%/);
+  assert.match(html, /Lowest Scoring Wins/);
+  assert.match(html, /82\.\u201375\./);
+  assert.match(html, /Most Consecutive Weeks Not Lowest/);
+  assert.match(html, /Most Rival Wins/);
+});
+
+test('league renderer builds team-specific fun fact view', () => {
+  const games = [
+    {
+      season: 2025,
+      date: '2025-09-07',
+      teamA: 'Joe',
+      teamB: 'Shap',
+      scoreA: 160,
+      scoreB: 100,
+      type: 'Regular',
+      round: '',
+      _weekByTeam: { Joe: 1, Shap: 1 },
+    },
+    {
+      season: 2025,
+      date: '2025-09-14',
+      teamA: 'Joe',
+      teamB: 'Nuss',
+      scoreA: 80,
+      scoreB: 100,
+      type: 'Regular',
+      round: '',
+      _weekByTeam: { Joe: 2, Nuss: 2 },
+    },
+    {
+      season: 2025,
+      date: '2025-09-21',
+      teamA: 'Joe',
+      teamB: 'Shap',
+      scoreA: 120,
+      scoreB: 118,
+      type: 'Regular',
+      round: '',
+      _weekByTeam: { Joe: 3, Shap: 3 },
+    },
+  ];
+  const view = teamFunFactsView('Joe', games, {
+    leagueGames: games,
+    seasonSummaries: [
+      { owner: 'Joe', season: 2025, bye: true, saunders_bye: true },
+    ],
+    seasonAggregates: [
+      { team: 'Joe', season: 2025, n: 14, ppg: 100, oppg: 90 },
+      { team: 'Joe', season: 2014, n: 14, ppg: 120, oppg: 80 },
+    ],
+    winStreak: { len: 2, start: games[0], end: games[2] },
+    lossStreak: { len: 1, start: games[1], end: games[1] },
+    luckSummary: { exp: 1.5, act: 2, luck: 0.5 },
+    blowoutMargin: 29,
+    highScoreThreshold: 150,
+    closeGameMargin: 5,
+  });
+
+  assert.match(view.factsHtml, /Highest Score/);
+  assert.match(view.factsHtml, /160\.00/);
+  assert.match(view.factsHtml, /Biggest Blowout/);
+  assert.match(view.factsHtml, /\+60\.00/);
+  assert.match(view.factsHtml, /Biggest Loss/);
+  assert.match(view.factsHtml, /-20\.00/);
+  assert.match(view.factsHtml, /Wk 1 2025 \u2192 Wk 3 2025/);
+  assert.match(view.factsHtml, /Top-Week Crowns/);
+  assert.match(view.factsHtml, /Bottom-Week Turds/);
+  assert.match(view.factsHtml, /Close Games Record \(&lt;5\)|Close Games Record \(<5\)/);
+  assert.match(view.factsHtml, /Most PPG Season/);
+  assert.match(view.factsHtml, /2025/);
+  assert.match(view.factsHtml, /Luck \(Actual \u2212 Expected\)/);
+  assert.match(view.factsHtml, /\+0\.50/);
+  assert.match(view.factsHtml, /Years: 2025/);
+  assert.match(view.listsHtml, /Top 5 Highest Scoring Games/);
+  assert.match(view.listsHtml, /160\.00 \u2013 100\.00/);
+  assert.match(view.listsHtml, /Bottom 5 Lowest Scoring Games/);
+  assert.match(view.listsHtml, /80\.00 \u2013 100\.00/);
+});
+
 test('history renderer builds all-games table html for selected team', () => {
   const games = [
     { season: 2025, date: '2025-09-07', teamA: 'Joe', teamB: 'Shap', scoreA: 100, scoreB: 90, type: 'Regular', round: '' },
@@ -530,6 +744,181 @@ test('history renderer builds season recap html and narratives', () => {
   assert.match(allHtml, /Select a team to see season recap/);
 });
 
+test('history renderer builds top highlight chips', () => {
+  const summaries = [
+    { owner: 'Joe', season: 2025, champion: true, saunders: false, wins: 11, finish: 1 },
+    { owner: 'Joe', season: 2024, champion: false, saunders: true, wins: 7, finish: 8 },
+    { owner: 'Shap', season: 2025, champion: false, saunders: false, wins: 9, finish: 3 },
+    { owner: 'Shap', season: 2024, champion: true, saunders: false, wins: 7, finish: 1 },
+  ];
+
+  assert.equal(avgFinishForTeam('Joe', summaries), 4.5);
+
+  const html = topHighlightsHtml('Joe', {
+    seasonSummaries: summaries,
+    allTeams: '__ALL__',
+    champNoteFn: (owner, season) => owner === 'Joe' && season === 2025 ? 'note' : null,
+    saundersNoteFn: (owner, season) => owner === 'Joe' && season === 2024 ? 'bad bracket' : null,
+  });
+  assert.match(html, /Darlings/);
+  assert.match(html, /Years: 2025\*/);
+  assert.match(html, /Saunders/);
+  assert.match(html, /Years: 2024\*/);
+  assert.match(html, /Regular-Season Titles/);
+  assert.match(html, /Years: 2025/);
+  assert.match(html, /Avg Finish/);
+  assert.match(html, /4\.50/);
+  assert.match(html, /2025 \u2014 note/);
+  assert.match(html, /2024 \u2014 bad bracket/);
+
+  const allHtml = topHighlightsHtml('__ALL__', { allTeams: '__ALL__', seasonSummaries: summaries });
+  assert.match(allHtml, /League view/);
+});
+
+test('history renderer builds season callout view and effect metadata', () => {
+  const summaries = [
+    {
+      owner: 'Joe',
+      season: 2025,
+      wins: 10,
+      losses: 4,
+      ties: 0,
+      finish: 1,
+      champion: true,
+      bye: true,
+      saunders: false,
+      playoff_wins: 2,
+      playoff_losses: 0,
+    },
+  ];
+
+  assert.equal(seasonSummaryLookup('Joe', 2025, summaries), summaries[0]);
+  const view = seasonCalloutView('Joe', {
+    seasonSummaries: summaries,
+    selectedSeasons: new Set([2025]),
+    allTeams: '__ALL__',
+    champNoteFn: () => 'COVID season',
+    saundersNoteFn: () => null,
+  });
+  assert.match(view.html, /Joe in <strong>2025<\/strong>/);
+  assert.match(view.html, /Record: <strong>10-4-0<\/strong> \(71\.4%\)/);
+  assert.match(view.html, /Champion\*/);
+  assert.match(view.html, /Top-2 Seed/);
+  assert.match(view.html, /Playoffs: 2-0-0/);
+  assert.match(view.html, /2025 \u2014 COVID season/);
+  assert.equal(view.effectKey, 'Joe|2025|C');
+  assert.equal(view.effectType, 'champion');
+  assert.equal(view.resetEffect, false);
+
+  const reset = seasonCalloutView('Joe', {
+    seasonSummaries: summaries,
+    selectedSeasons: new Set([2024, 2025]),
+    allTeams: '__ALL__',
+  });
+  assert.equal(reset.html, '');
+  assert.equal(reset.resetEffect, true);
+
+  const allView = seasonCalloutView('__ALL__', {
+    seasonSummaries: summaries,
+    selectedSeasons: new Set([2025]),
+    allTeams: '__ALL__',
+  });
+  assert.equal(allView.html, '');
+  assert.equal(allView.resetEffect, false);
+});
+
+test('history renderer builds opponent breakdown rows and rivalry metadata', () => {
+  const games = [
+    {
+      season: 2025,
+      date: '2025-09-07',
+      teamA: 'Joe',
+      teamB: 'Shap',
+      scoreA: 100,
+      scoreB: 90,
+      type: 'Regular',
+      round: '',
+      _weekByTeam: { Joe: 1, Shap: 1 },
+    },
+    {
+      season: 2025,
+      date: '2025-09-14',
+      teamA: 'Joe',
+      teamB: 'Nuss',
+      scoreA: 80,
+      scoreB: 70,
+      type: 'Regular',
+      round: '',
+      _weekByTeam: { Joe: 2, Nuss: 2 },
+    },
+    {
+      season: 2025,
+      date: '2025-09-21',
+      teamA: 'Shap',
+      teamB: 'Nuss',
+      scoreA: 75,
+      scoreB: 85,
+      type: 'Regular',
+      round: '',
+      _weekByTeam: { Shap: 2, Nuss: 3 },
+    },
+  ];
+  const rivalries = [
+    { name: 'Rivals', type: 'group', members: ['Joe', 'Shap', 'Nuss'], slug: 'rivals' },
+    { name: 'Pair', type: 'pair', members: ['Singer', 'Nuss'], slug: 'singer-nuss' },
+  ];
+  const selectedOpponents = new Set(['Shap', 'Nuss']);
+
+  assert.equal(groupMatched(['Joe', 'Shap', 'Nuss'], selectedOpponents, 'Joe'), true);
+  assert.equal(exactSetMatch(['Joe', 'Shap', 'Nuss'], selectedOpponents, 'Joe'), true);
+  assert.equal(isFxEligible(rivalries[0]), true);
+  assert.equal(isFxEligible(rivalries[1]), true);
+
+  const agg = aggregateVsOpps('Joe', games, ['Shap', 'Nuss']);
+  assert.deepEqual(agg, { w: 2, l: 0, t: 0, n: 2, ppg: 90, oppg: 80 });
+
+  const rows = opponentBreakdownRows('Joe', games, { allTeams: '__ALL__' });
+  assert.deepEqual(rows.map(r => r.label), ['Nuss', 'Shap']);
+  assert.equal(rows[0].w, 1);
+  assert.equal(rows[0].ppg, 80);
+
+  const html = opponentBreakdownTableHtml('Joe', games, { allTeams: '__ALL__' });
+  assert.match(html, /Nuss/);
+  assert.match(html, /1-0-0/);
+  assert.match(html, /100\.0%/);
+
+  const view = opponentBreakdownView('Joe', games, {
+    allTeams: '__ALL__',
+    rivalries,
+    selectedOpponents,
+    universeOpponents: ['Shap', 'Nuss', 'Singer'],
+  });
+  assert.equal(view.title, 'Opponent Breakdown');
+  assert.equal(view.firstCol, 'Opponent');
+  assert.match(view.calloutsHtml, /Rivals/);
+  assert.match(view.calloutsHtml, /2-0-0/);
+  assert.equal(view.triggerSlug, 'rivals');
+  assert.equal(view.backdropSlug, 'rivals');
+
+  const allView = opponentBreakdownView('__ALL__', games, {
+    allTeams: '__ALL__',
+    rivalries,
+    selectedOpponents: new Set(['Joe', 'Shap', 'Nuss']),
+    universeOpponents: ['Joe', 'Shap', 'Nuss', 'Rishi'],
+  });
+  assert.equal(allView.title, 'Team Breakdown');
+  assert.equal(allView.firstCol, 'Team');
+  assert.match(allView.calloutsHtml, /Rivals/);
+  assert.equal(allView.triggerSlug, 'rivals');
+
+  const weekRows = opponentBreakdownRows('__ALL__', games, {
+    allTeams: '__ALL__',
+    selectedWeeks: new Set([1]),
+    universeWeeks: [1, 2, 3],
+  });
+  assert.deepEqual(weekRows.map(r => r.label), ['Joe', 'Shap']);
+});
+
 test('facet helpers build predictable option lists', () => {
   const games = [
     { season: 2025, teamA: 'Joe', teamB: 'Shap', type: 'Regular', round: '', date: '2025-09-07' },
@@ -608,6 +997,53 @@ test('applyFacetFilters honors team and facet selections', () => {
   });
   assert.equal(filtered.length, 1);
   assert.equal(filtered[0].teamB, 'Shap');
+});
+
+test('buildHistoryCsvText exports single-team and all-team rows', () => {
+  const games = [
+    {
+      season: 2025,
+      date: '2025-09-07',
+      teamA: 'Joe',
+      teamB: 'Shap',
+      scoreA: 100,
+      scoreB: 90,
+      type: 'Regular',
+      round: '',
+      _weekByTeam: { Joe: 1, Shap: 1 },
+    },
+    {
+      season: 2025,
+      date: '2025-09-14',
+      teamA: 'Nuss',
+      teamB: 'Joe',
+      scoreA: 80,
+      scoreB: 70,
+      type: 'Playoff',
+      round: 'Final',
+      _weekByTeam: { Nuss: 2, Joe: 2 },
+    },
+  ];
+
+  const single = buildHistoryCsvText(games, {
+    allTeams: '__ALL__',
+    selectedTeam: 'Joe',
+    expectedWinForGameFn: () => 0.5,
+  }).split('\n');
+  assert.equal(single[0], 'date,season,team,opponent,result,pf,pa,type,round,week,xw');
+  assert.equal(single[1], '"2025-09-07","2025","Joe","Shap","W","100.00","90.00","Regular","","1","0.5"');
+  assert.equal(single[2], '"2025-09-14","2025","Joe","Nuss","L","70.00","80.00","Playoff","Final","2",""');
+
+  const allTeams = buildHistoryCsvText(games, {
+    allTeams: '__ALL__',
+    selectedTeam: '__ALL__',
+    selectedWeeks: new Set([1]),
+    universeWeeks: [1, 2],
+    expectedWinForGameFn: (team) => team === 'Joe' ? 0.75 : 0.25,
+  }).split('\n');
+  assert.equal(allTeams.length, 3);
+  assert.equal(allTeams[1], '"2025-09-07","2025","Joe","Shap","W","100.00","90.00","Regular","","1","0.75"');
+  assert.equal(allTeams[2], '"2025-09-07","2025","Shap","Joe","L","90.00","100.00","Regular","","1","0.25"');
 });
 
 test('Playoff wins per season are within bracket limits', () => {

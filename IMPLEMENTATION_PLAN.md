@@ -80,7 +80,7 @@ Verification:
 
 ## 3. Split `js/app.js` by concern
 
-Status: in progress.
+Status: complete for the current non-bundled split.
 
 Purpose: make the browser code navigable without adding a bundler.
 
@@ -91,6 +91,7 @@ Target structure:
 - `js/stats-helpers.js` for derived aggregates and scoring helpers
 - `js/render-helpers.js` for low-risk rendering utilities, status/header helpers, and generic facet control rendering
 - `js/history-renderers.js` for extracted History page table renderers
+- `js/league-renderers.js` for extracted league-wide summary/fun table renderers
 - `js/render.js` for any remaining larger DOM rendering functions after their dependencies are explicit
 - `js/app.js` as the thin bootstrapping layer
 
@@ -113,7 +114,15 @@ Current next extraction targets:
 - move All Games table rendering into `js/history-renderers.js`: done
 - move Week-by-Week table rendering into `js/history-renderers.js`: done
 - move Season Recap table rendering into `js/history-renderers.js`: done
-- continue moving render functions one at a time after their data dependencies are explicit
+- move Top Highlights rendering into `js/history-renderers.js`: done
+- move Season Callout view rendering into `js/history-renderers.js`: done
+- move Opponent Breakdown table and rivalry callout rendering into `js/history-renderers.js`: done
+- move All Teams league summary tables into `js/league-renderers.js`: done
+- move All Teams Fun Facts tiles into `js/league-renderers.js`: done
+- move All Teams Fun Lists tables into `js/league-renderers.js`: done
+- move team-specific Fun Facts tiles and top/bottom game lists into `js/league-renderers.js`: done
+- move CSV text generation into `js/state-helpers.js`: done
+- continue moving render functions one at a time after their data dependencies are explicit: complete for the current pass
 - keep ordered scripts for now; reassess native modules only after the split is stable
 
 Verification:
@@ -123,12 +132,16 @@ Verification:
 
 ## 4. Reduce unnecessary rerender work
 
+Status: complete for the first section-cache pass.
+
 Purpose: make filter changes cheaper after the code is modular enough to change safely.
 
 Implementation:
-- compute the filtered game set once per state change
-- pass the filtered set into render functions instead of recomputing inside each section
-- add section-level render guards for inputs that did not change
+- compute the filtered game set once per state change: done
+- cache the filtered game set by facet state so no-op renders do not refilter: done
+- pass the filtered set into render functions instead of recomputing inside each section: done
+- add section-level render guards for inputs that did not change: done
+- avoid rebuilding all-teams Fun Facts for filters that do not affect that content: done
 - keep aggregate caches explicit and invalidated only when source data changes
 
 Acceptance criteria:

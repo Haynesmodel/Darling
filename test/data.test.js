@@ -14,6 +14,8 @@ const {
   dedupeGames,
   deriveWeeksInPlace,
   computeRegularSeasonChampYears,
+  unique,
+  isRestrictive,
 } = core;
 
 function readJson(p){
@@ -159,6 +161,17 @@ test('computeRegularSeasonChampYears returns seasons where owner tied for most w
   ];
   assert.deepEqual(computeRegularSeasonChampYears('Joe', summaries), [2024, 2025]);
   assert.deepEqual(computeRegularSeasonChampYears('Nuss', summaries), []);
+});
+
+test('unique preserves first-seen order without duplicates', () => {
+  assert.deepEqual(unique(['Joe', 'Shap', 'Joe', 'Nuss', 'Shap']), ['Joe', 'Shap', 'Nuss']);
+});
+
+test('isRestrictive only flags partial selections', () => {
+  assert.equal(isRestrictive(new Set(), ['A', 'B']), false);
+  assert.equal(isRestrictive(new Set(['A', 'B']), ['A', 'B']), false);
+  assert.equal(isRestrictive(new Set(['A']), ['A', 'B']), true);
+  assert.equal(isRestrictive(new Set(['A']), []), false);
 });
 
 test('Playoff wins per season are within bracket limits', () => {

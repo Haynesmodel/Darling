@@ -1,0 +1,171 @@
+# Implementation Plan
+
+This plan orders the remaining technical improvements from highest leverage to lowest.
+Each phase should be merged only after its verification commands pass.
+
+## 1. Add browser coverage first
+
+Purpose: create an automated guardrail for the current UI before moving code around.
+
+Implementation:
+- add `@playwright/test` as a dev dependency
+- add `playwright.config.js`
+- use Playwright's `webServer` option to start the static site during UI tests
+- add `test/ui/app.spec.js`
+- add package scripts:
+  - `test:data` for the existing Node data tests
+  - `test:coverage` for the existing V8 coverage flow
+  - `test:ui` for Playwright
+  - `test:ci` for coverage and browser tests
+- keep `npm test` as the short alias for `npm run test:data`
+- update `.github/workflows/ci.yml` to install Playwright browsers before `npm run test:ci`
+- add `.gitignore` entries for generated output such as `coverage/`, `test-results/`, and `playwright-report/`
+- remove already-tracked generated coverage files from the index so future test runs do not create normal working-tree churn
+
+Initial UI tests:
+- page load: `index.html` loads from a local static server
+- success state: `#appStatus` becomes hidden after JSON fetches complete
+- render state: season recap, week-by-week, and all-games tables render expected row counts
+- filter state: changing team or season filters updates visible rows
+- failure state: a mocked JSON failure displays the error banner instead of a blank page
+
+Acceptance criteria:
+- CI runs the browser tests automatically
+- a broken render path fails the build
+- manual smoke checks are optional confirmation, not the only UI coverage
+- `git status --short` stays clean after a local `npm run test:ci`
+
+Verification:
+- `npm run test:data`
+- `npm run test:ui`
+- `npm run test:ci`
+
+## 2. Prepare `js/app.js` for extraction
+
+Purpose: reduce risk before splitting the large file.
+
+Implementation:
+- identify the current globals used across files:
+  - helpers exposed by `js/core-helpers.js`
+  - `window.triggerGroupEgg`
+  - `window.setGroupBackdrop`
+- document the intended module boundary for each cluster before moving code
+- move only pure functions first, leaving DOM behavior unchanged
+- avoid changing `index.html` to `type="module"` until the extraction path is clear
+
+Recommended first extraction targets:
+- URL state parsing and serialization
+- normalization helpers such as game type and round handling
+- filter predicate helpers
+- aggregate/stat helpers that do not touch the DOM
+
+Acceptance criteria:
+- no user-facing behavior changes
+- browser tests from phase 1 still pass
+- extracted modules can be tested directly from Node
+
+Verification:
+- `npm run test:data`
+- `npm run test:ui`
+
+## 3. Split `js/app.js` by concern
+
+Purpose: make the browser code navigable without adding a bundler.
+
+Target structure:
+- `js/data.js` for fetch/load/normalize behavior
+- `js/state.js` for selected team, selected filters, and URL state
+- `js/filters.js` for option generation and filtering predicates
+- `js/stats.js` for derived aggregates and scoring helpers
+- `js/render.js` for DOM rendering
+- `js/app.js` as the thin bootstrapping layer
+
+Constraints:
+- keep the static-site deployment model
+- decide at the start of this phase whether scripts stay ordered globals or move to native modules
+- use native browser modules only if the whole page still works on GitHub Pages
+- preserve the existing DOM ids and CSS hooks
+- keep `js/easter-eggs.js` compatible until it is intentionally migrated
+
+Acceptance criteria:
+- `js/app.js` is materially smaller and mostly orchestration
+- module boundaries match real responsibilities
+- browser tests and data tests pass without fixture rewrites
+
+Verification:
+- `npm run test:ci`
+- one manual smoke check in a local browser after the split lands
+- verify the deployed-script model still works from a static HTTP server, not only from Node tests
+
+## 4. Reduce unnecessary rerender work
+
+Purpose: make filter changes cheaper after the code is modular enough to change safely.
+
+Implementation:
+- compute the filtered game set once per state change
+- pass the filtered set into render functions instead of recomputing inside each section
+- add section-level render guards for inputs that did not change
+- keep aggregate caches explicit and invalidated only when source data changes
+
+Acceptance criteria:
+- filter changes do less work than the current full rebuild
+- the DOM output remains equivalent for the same selected state
+- browser tests continue to pass
+
+Verification:
+- `npm run test:ui`
+- compare visible row counts before and after representative filter changes
+
+## 5. Clean up the data pipeline and generated artifacts
+
+Purpose: make the update workflow clearer and reduce accidental repo churn.
+
+Implementation:
+- keep `scripts/sleeper_to_h2h.py` season-anchor validation explicit
+- keep `scripts/update_2025.sh` and `scripts/transactions.py` driven by `SEASON` and `LEAGUE_ID`
+- decide whether `assets/H2H.xlsx` stays web-served or moves to a non-served reference location
+- remove tracked generated artifacts that do not need to be source controlled
+- document which generated files are safe to delete and regenerate
+
+Acceptance criteria:
+- update scripts fail fast with useful messages
+- source data and generated output are easy to distinguish
+- coverage, cache, and local metadata files do not appear as normal working-tree changes
+
+Verification:
+- `bash -n scripts/update_2025.sh`
+- `python3 -m py_compile scripts/transactions.py scripts/sleeper_to_h2h.py`
+- `git status --short` shows only intentional source changes
+
+## 6. Expand regression coverage for edge cases
+
+Purpose: protect behavior that tends to break during refactors.
+
+Implementation:
+- test loading and error states at the browser level
+- test URL state restoration for selected team and filters
+- test CSV export shape without depending on browser download prompts
+- add direct tests for newly extracted pure modules
+- retire or wire up `scripts/ci_smoke.js` so there is no dormant test script
+
+Acceptance criteria:
+- failures point to specific broken behavior
+- core rendering and state behavior are covered before further UI changes
+- obsolete test scripts are removed or part of CI
+
+Verification:
+- `npm run test:ci`
+
+## 7. Refresh docs and release notes
+
+Purpose: keep the written record aligned with the implemented code.
+
+Implementation:
+- update `CHANGELOG.md` after each completed phase
+- keep `README.md` short and factual
+- update any tech-debt notes only after the code state changes
+- keep `IMPLEMENTATION_PLAN.md` current as phases complete
+
+Acceptance criteria:
+- docs describe the current repo, not a past snapshot
+- future cleanup work is easy to resume from the written record

@@ -7,6 +7,10 @@
     return String(b).localeCompare(String(a));
   }
 
+  function unique(values) {
+    return [...new Set(values)];
+  }
+
   function canonicalGameKey(g) {
     const t1 = g.teamA;
     const t2 = g.teamB;
@@ -73,13 +77,22 @@
     return out.sort((a, b) => a - b);
   }
 
+  function isRestrictive(selSet, uniArr) {
+    if (!uniArr.length) return false;
+    if (selSet.size === 0) return false;
+    if (selSet.size === uniArr.length) return false;
+    return true;
+  }
+
   const api = {
     compareIsoDateAsc,
     compareIsoDateDesc,
+    unique,
     canonicalGameKey,
     dedupeGames,
     deriveWeeksInPlace,
     computeRegularSeasonChampYears,
+    isRestrictive,
   };
 
   if (typeof module !== 'undefined' && module.exports) {

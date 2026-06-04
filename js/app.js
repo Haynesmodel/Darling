@@ -334,7 +334,6 @@ function weeklyAwards(){
 }
 
 function sum(a){return a.reduce((x,y)=>x+y,0);}
-function unique(a){return [...new Set(a)];}
 function byDateAsc(a,b){return a.date.localeCompare(b.date);}
 function byDateDesc(a,b){return b.date.localeCompare(a.date);}
 function fmtPct(w,l,t){const g=w+l+t; return g?(((w+0.5*t)/g)*100).toFixed(1)+'%':'0.0%';}
@@ -646,14 +645,6 @@ function readFacetSelections(){
   universe.opponents = opponentOptions(selectedTeam);
   universe.types = typeOptions();
   universe.rounds = roundOptionsOrdered();
-}
-
-/* Is a facet restrictive? (“All” => not restrictive) */
-function isRestrictive(selSet, uniArr){
-  if(!uniArr.length) return false;
-  if(selSet.size===0) return false;
-  if(selSet.size===uniArr.length) return false;
-  return true;
 }
 
 /* Button texts */

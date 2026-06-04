@@ -8,6 +8,8 @@ const assets = path.join(root, 'assets');
 const core = require(path.join(root, 'js', 'core-helpers.js'));
 const data = require(path.join(root, 'js', 'data-helpers.js'));
 const stats = require(path.join(root, 'js', 'stats-helpers.js'));
+const render = require(path.join(root, 'js', 'render-helpers.js'));
+const historyRenderers = require(path.join(root, 'js', 'history-renderers.js'));
 const facets = require(path.join(root, 'js', 'facet-helpers.js'));
 const state = require(path.join(root, 'js', 'state-helpers.js'));
 const h2hPath = path.join(assets, 'H2H.json');
@@ -65,6 +67,22 @@ const {
   computeLongestStreaksGlobal,
   computeLuckSummary,
 } = stats;
+const {
+  nfmt,
+  fmtTrimmed,
+  escapeHtml,
+  headerBannerHtml,
+  facetControlHtml,
+} = render;
+const {
+  historyGamesTableRowHtml,
+  historyGamesTableHtml,
+  weekByWeekRows,
+  weekByWeekTableHtml,
+  seasonRecapOutcome,
+  seasonRecapRows,
+  seasonRecapTableHtml,
+} = historyRenderers;
 
 function readJson(p){
   return JSON.parse(fs.readFileSync(p, 'utf8'));
@@ -404,6 +422,112 @@ test('stats helpers compute league lists and streaks', () => {
   assert.equal(bestStreakForTeam(games, 'Joe', 'L').len, 2);
   assert.equal(computeLongestTeamStreaks(games, ['Joe', 'Shap'], 'L', 1)[0].team, 'Joe');
   assert.equal(computeLongestStreaksGlobal(games, ['Joe', 'Shap'], 'L', 1)[0].team, 'Joe');
+});
+
+test('render helpers format text and build stable markup', () => {
+  assert.equal(nfmt(12.345, 1), '12.3');
+  assert.equal(nfmt(undefined, 1), '\u2014');
+  assert.equal(fmtTrimmed(12), '12.');
+  assert.equal(fmtTrimmed(12.3), '12.3');
+  assert.equal(escapeHtml('Joe & <Shap> "Nuss"'), 'Joe &amp; &lt;Shap&gt; &quot;Nuss&quot;');
+
+  const banners = headerBannerHtml('Joe', [
+    { owner: 'Joe', season: 2024, champion: true, wins: 10 },
+    { owner: 'Joe', season: 2025, champion: false, wins: 11 },
+    { owner: 'Shap', season: 2025, champion: false, wins: 9 },
+  ]);
+  assert.match(banners, /banner champ/);
+  assert.match(banners, /&#x1f3c6; 2024/);
+  assert.match(banners, /&#x1f947; 2025/);
+
+  const facet = facetControlHtml(['A&B', 'Semi Final'], { prefix: 'round' });
+  assert.match(facet, /class="round-all"/);
+  assert.match(facet, /class="round-cb"/);
+  assert.match(facet, /data-value="A%26B"/);
+  assert.match(facet, /Semi Final/);
+});
+
+test('history renderer builds all-games table html for selected team', () => {
+  const games = [
+    { season: 2025, date: '2025-09-07', teamA: 'Joe', teamB: 'Shap', scoreA: 100, scoreB: 90, type: 'Regular', round: '' },
+    { season: 2025, date: '2025-09-14', teamA: 'Nuss', teamB: 'Joe', scoreA: 80, scoreB: 70, type: 'Playoff', round: 'Semi Final' },
+  ];
+
+  const row = historyGamesTableRowHtml(games[0], 'Joe');
+  assert.match(row, /result-win/);
+  assert.match(row, /100\.00 - 90\.00/);
+  assert.match(row, /<td>Shap<\/td>/);
+
+  const html = historyGamesTableHtml('Joe', games, { allTeams: '__ALL__' });
+  assert.ok(html.indexOf('2025-09-14') < html.indexOf('2025-09-07'));
+  assert.match(html, /result-loss postseason/);
+  assert.match(html, /Semi Final/);
+
+  const allHtml = historyGamesTableHtml('__ALL__', games, { allTeams: '__ALL__' });
+  assert.match(allHtml, /Select a team to see full game list/);
+});
+
+test('history renderer builds week-by-week table html for selected team', () => {
+  const allGames = [
+    { season: 2025, date: '2025-09-07', teamA: 'Joe', teamB: 'Shap', scoreA: 100, scoreB: 90, type: 'Regular', round: '', _weekByTeam: { Joe: 1, Shap: 1 } },
+    { season: 2025, date: '2025-09-07', teamA: 'Nuss', teamB: 'Singer', scoreA: 60, scoreB: 95, type: 'Regular', round: '', _weekByTeam: { Nuss: 1, Singer: 1 } },
+    { season: 2025, date: '2025-09-14', teamA: 'Shap', teamB: 'Joe', scoreA: 85, scoreB: 70, type: 'Playoff', round: 'Semi Final', _weekByTeam: { Shap: 2, Joe: 2 } },
+  ];
+  const filtered = [allGames[0], allGames[2]];
+
+  const rows = weekByWeekRows('Joe', filtered, { allGames });
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].date, '2025-09-14');
+  assert.equal(rows[0].result, 'L');
+  assert.equal(rows[1].isCrown, true);
+  assert.equal(rows[1].isTurd, false);
+  assert.equal(rows[1].xw, 1);
+
+  const html = weekByWeekTableHtml('Joe', filtered, { allGames, allTeams: '__ALL__' });
+  assert.match(html, /result-loss postseason/);
+  assert.match(html, /Semi Final/);
+  assert.match(html, /&#x1f451;/);
+  assert.match(html, /1\.00/);
+
+  const allHtml = weekByWeekTableHtml('__ALL__', filtered, { allGames, allTeams: '__ALL__' });
+  assert.match(allHtml, /Select a team to see week-by-week games/);
+});
+
+test('history renderer builds season recap html and narratives', () => {
+  const summaries = [
+    { owner: 'Joe', season: 2025, wins: 10, losses: 4, ties: 0, finish: 1, champion: true, saunders: false, bagels_earned: 2 },
+    { owner: 'Joe', season: 2024, wins: 7, losses: 7, ties: 0, finish: 5, champion: false, saunders: false, bye: true },
+    { owner: 'Shap', season: 2025, wins: 8, losses: 6, ties: 0, finish: 3, champion: false, saunders: false },
+  ];
+  const games = [
+    { season: 2025, date: '2025-12-14', teamA: 'Joe', teamB: 'Shap', scoreA: 120, scoreB: 100, type: 'Playoff', round: 'Semi Final' },
+    { season: 2025, date: '2025-12-21', teamA: 'Nuss', teamB: 'Joe', scoreA: 90, scoreB: 110, type: 'Playoff', round: 'Final' },
+  ];
+
+  assert.equal(
+    seasonRecapOutcome('Joe', summaries[0], games),
+    'Defeated Shap in Semi Final, Defeated Nuss in Final \u2022 Bagels earned \ud83e\udd6f: 2'
+  );
+  assert.equal(seasonRecapOutcome('Joe', summaries[1], games), 'Top-2 Seed');
+
+  const rows = seasonRecapRows('Joe', summaries, {
+    selectedSeasons: new Set([2025]),
+    universeSeasons: [2024, 2025],
+  });
+  assert.deepEqual(rows.map(r => r.season), [2025]);
+
+  const html = seasonRecapTableHtml('Joe', summaries, {
+    allGames: games,
+    selectedSeasons: new Set([2025]),
+    universeSeasons: [2024, 2025],
+    allTeams: '__ALL__',
+  });
+  assert.match(html, /10-4-0/);
+  assert.match(html, /71\.4%/);
+  assert.match(html, /\ud83d\udc51 Defeated Shap in Semi Final/);
+
+  const allHtml = seasonRecapTableHtml('__ALL__', summaries, { allTeams: '__ALL__' });
+  assert.match(allHtml, /Select a team to see season recap/);
 });
 
 test('facet helpers build predictable option lists', () => {

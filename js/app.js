@@ -50,44 +50,11 @@ const saundersNote = (owner, season) => SPECIAL_TITLE_NOTES[owner]?.saunders?.[s
 
 /* ---------- Utils ---------- */
 
-// Safe number formatter: returns "—" if not finite
-function nfmt(x, d=2){
-  return Number.isFinite(+x) ? (+x).toFixed(d) : "—";
-}
-
-function fmtTrimmed(x){
-  const s = (+x).toFixed(2);
-  const t = s.replace(/\.0+$/, '').replace(/(\.\d*[1-9])0$/, '$1');
-  return t.includes('.') ? t : t + '.';
-}
-
-function escapeHtml(s){
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
 function avgFinishForTeam(team){
   const rows = seasonSummaries.filter(r=>r.owner===team && Number.isFinite(+r.finish));
   if (!rows.length) return null;
   const sum = rows.reduce((a,b)=> a + (+b.finish), 0);
   return sum / rows.length;
-}
-
-function setAppStatus(kind, message){
-  const el = document.getElementById('appStatus');
-  if(!el) return;
-  el.hidden = false;
-  el.className = `status-banner status-${kind}`;
-  el.textContent = message;
-}
-
-function clearAppStatus(){
-  const el = document.getElementById('appStatus');
-  if(!el) return;
-  el.hidden = true;
 }
 
 function currentFacetState(){
@@ -160,36 +127,14 @@ async function loadLeagueJSON(){
     return false;
   }
 }
-function showPage(id){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('visible'));
-  const histBtn = document.getElementById('tabHistoryBtn');
-  const histPage = document.getElementById('page-history');
-  if(histBtn) histBtn.classList.add('active');
-  if(histPage) histPage.classList.add('visible');
-}
-
 /* ---------- Header banners row ---------- */
 function renderHeaderBannersForOwner(owner){
-  const el=document.getElementById('headerBanners'); if(!el) return;
-  const rows = seasonSummaries.filter(r=>r.owner===owner);
-  const champYears = rows.filter(r=>r.champion).map(r=>r.season).sort((a,b)=>a-b);
-  const regYears = computeRegularSeasonChampYears(owner, seasonSummaries);
-  const chips = [
-    ...champYears.map(y=>`<div class="banner champ">🏆 ${y}</div>`),
-    ...regYears.map(y=>`<div class="banner reg">🥇 ${y}</div>`)
-  ];
-  el.innerHTML = chips.join("");
+  renderHeaderBanners(owner, seasonSummaries);
 }
 
 // Update header (team name + accomplishment chips)
 function updateHeaderForTeam(team){
-  try {
-    const h2 = document.querySelector('header h2');
-    if (h2) h2.textContent = team;
-    renderHeaderBannersForOwner(team);
-    document.title = team + ' — League History';
-  } catch (_) {}
+  updateTeamHeader(team, seasonSummaries);
 }
 
 /* ---------- Init ---------- */
@@ -294,42 +239,13 @@ function buildHistoryControls(){
 
 /* ---------- Generic Facet Builder ---------- */
 function buildFacet(containerId, values, opts={}){
-  const container=document.getElementById(containerId); if(!container) return;
   const { prefix='f' } = opts;
-
-  container.innerHTML = `
-    <div class="all-row">
-      <label>
-        <input type="checkbox" class="${prefix}-all" checked />
-        <span>All</span>
-      </label>
-    </div>
-    <div class="grid">
-      ${values.map(v=>`
-        <label>
-          <input type="checkbox" class="${prefix}-cb" data-value="${encodeURIComponent(v)}" />
-          <span>${escapeHtml(v)}</span>
-        </label>
-      `).join("")}
-    </div>
-  `;
-
-  container.addEventListener('change',(e)=>{
-    if(e.target && e.target.matches(`input.${prefix}-all`)){
-      const allChecked = e.target.checked;
-      const cbs = container.querySelectorAll(`input.${prefix}-cb`);
-      if(allChecked){ cbs.forEach(cb=>cb.checked=false); }
+  buildFacetControl(containerId, values, {
+    prefix,
+    onChange: () => {
       readFacetSelections(); updateFacetCountTexts(); renderHistory();
       updateUrlFromState({ ...currentFacetState(), isApplyingUrlState });
-      return;
-    }
-    if(e.target && e.target.matches(`input.${prefix}-cb`)){
-      const all = container.querySelector(`input.${prefix}-all`);
-      const anySpecificChecked = [...container.querySelectorAll(`input.${prefix}-cb`)].some(cb=>cb.checked);
-      all.checked = !anySpecificChecked; // none selected -> All
-      readFacetSelections(); updateFacetCountTexts(); renderHistory();
-      updateUrlFromState({ ...currentFacetState(), isApplyingUrlState });
-    }
+    },
   });
 }
 
@@ -404,8 +320,13 @@ function renderHistory(){
   // removed: Stats Overview
   renderFunFacts(selectedTeam, filtered);
   renderOppBreakdown(selectedTeam, filtered);
-  renderSeasonRecap(selectedTeam);
-  renderWeekByWeek(selectedTeam, filtered);
+  renderSeasonRecap(selectedTeam, seasonSummaries, {
+    allTeams: ALL_TEAMS,
+    allGames: leagueGames,
+    selectedSeasons,
+    universeSeasons: universe.seasons,
+  });
+  renderWeekByWeek(selectedTeam, filtered, { allTeams: ALL_TEAMS, allGames: leagueGames });
   renderGamesTable(selectedTeam, filtered);
 }
 
@@ -1585,136 +1506,6 @@ function aggregateVsOpps(team, games, members){
     pf+=s.pf; pa+=s.pa; n++;
   }
   return { w,l,t,n, ppg: n?pf/n:0, oppg: n?pa/n:0 };
-}
-
-/* ---- Season Recap (team only) ---- */
-
-function renderSeasonRecap(team){
-  const tb=document.querySelector('#seasonRecapTable tbody'); if(!tb) return;
-  if(team===ALL_TEAMS){ tb.innerHTML=`<tr><td colspan="5" class="muted">Select a team to see season recap.</td></tr>`; return; }
-
-  let rows=seasonSummaries.filter(r=>r.owner===team);
-  if(isRestrictive(selectedSeasons, universe.seasons)) rows = rows.filter(r=>selectedSeasons.has(+r.season));
-  rows.sort((a,b)=>b.season-a.season);
-
-  function narrativeForGames(games, roundPrefix=""){
-    if(!games.length) return "";
-    const ordered = games
-      .slice()
-      .sort((a,b)=> a.date.localeCompare(b.date) || roundOrder(a.round) - roundOrder(b.round));
-    if(!games.length) return "";
-    let narrative=[];
-    for(const g of ordered){
-      const s=sidesForTeam(g,team); if(!s) continue;
-      const opp=s.opp;
-      let round=normRound(g.round) || (roundPrefix ? `${roundPrefix} Round` : "Playoffs");
-      if(roundPrefix) round = round.replace(/^saunders\\s+/i,'').trim();
-      if(s.result==='W') narrative.push(`Defeated ${opp} in ${round}`);
-      else if(s.result==='L') narrative.push(`Lost in ${round} to ${opp}`);
-      else narrative.push(`Tied ${opp} in ${round}`);
-    }
-    return narrative.join(", ");
-  }
-
-  const mkOutcome = (r)=>{
-    const playoffGames = leagueGames.filter(g=>+g.season===+r.season && (g.teamA===team||g.teamB===team) && isPlayoffGame(g));
-    const saundersGames = leagueGames.filter(g=>+g.season===+r.season && (g.teamA===team||g.teamB===team) && isSaundersGame(g));
-    const bagelNote = (r.bagels_earned === null || r.bagels_earned === undefined) ? "" : ` • Bagels earned 🥯: ${r.bagels_earned}`;
-    const playoffNarr = narrativeForGames(playoffGames);
-    if(playoffNarr) return `${playoffNarr}${bagelNote}`;
-    const saundersNarr = narrativeForGames(saundersGames, "Saunders");
-    if(saundersNarr) return `${saundersNarr}${bagelNote}`;
-    if (r.bye) return `Top-2 Seed${bagelNote}`;
-    if (bagelNote) return `Bagels earned 🥯: ${r.bagels_earned}`;
-    return "—";
-  };
-
-  tb.innerHTML = rows.map(r=>`
-    <tr>
-      <td>${r.season}</td>
-      <td>${r.wins}-${r.losses}-${r.ties||0}</td>
-      <td>${fmtPct(r.wins,r.losses,r.ties||0)}</td>
-      <td>${Number.isFinite(+r.finish) ? r.finish : "—"}</td>
-      <td>${r.champion ? "👑 " : r.saunders ? "💩 " : ""}${mkOutcome(r)}</td>
-    </tr>
-  `).join("");
-}
-
-/* ---- Week-by-Week (newest → oldest) with crowns/turds + XW ---- */
-function renderWeekByWeek(team, games){
-  const tb=document.querySelector('#weekTable tbody'); if(!tb) return;
-  if(team===ALL_TEAMS){ tb.innerHTML=`<tr><td colspan="9" class="muted">Select a team to see week-by-week games.</td></tr>`; return; }
-
-  const bySeason=new Map();
-  for(const g of games){ const arr=bySeason.get(g.season)||[]; arr.push(g); bySeason.set(g.season, arr); }
-
-  const rows=[];
-  for(const [season, arr] of [...bySeason.entries()].sort((a,b)=>b[0]-a[0])){
-    for(const g of arr.sort(byDateDesc)){
-      const s=sidesForTeam(g, team); if(!s) continue;
-      const type=normType(g.type);
-      const week=(g._weekByTeam && g._weekByTeam[team]) || '';
-
-      // Crown/Turd calculation for this date (use ALL league games that date)
-      const dayGames = leagueGames.filter(x => +x.season===+g.season && x.date===g.date);
-      const allScores = dayGames.flatMap(x => [x.scoreA, x.scoreB]);
-      const maxScore = Math.max(...allScores);
-      const minScore = Math.min(...allScores);
-      const myScore = (g.teamA===team) ? g.scoreA : g.scoreB;
-      const isCrown = myScore===maxScore;
-      const isTurd  = myScore===minScore;
-
-      // Expected win (regular season only)
-      const xw = expectedWinForGame(team, g);
-
-      rows.push({
-        season, week, date:g.date, opp:s.opp, result:s.result, pf:s.pf, pa:s.pa, type, round:normRound(g.round),
-        isCrown, isTurd, xw
-      });
-    }
-  }
-  tb.innerHTML = rows.map(r=>{
-    const resClass = r.result==='W'?'result-win': r.result==='L'?'result-loss':'result-tie';
-    const postClass = (r.type!=="Regular") ? 'postseason' : '';
-    const badges = `
-      ${r.isCrown ? `<span class="badge-emoji" title="Top score league-wide this week">👑</span>` : ""}
-      ${r.isTurd  ? `<span class="badge-emoji big" title="Lowest score league-wide this week">💩</span>` : ""}
-    `;
-    return `<tr class="${resClass} ${postClass}">
-      <td>${r.season}</td>
-      <td>${r.week||''}</td>
-      <td>${r.date}</td>
-      <td>${r.opp}</td>
-      <td>${r.result}</td>
-      <td class="score-cell">${nfmt(r?.pf, 2)} - ${r.pa.toFixed(2)} ${badges}</td>
-      <td>${(r.xw===null || r.xw===undefined) ? '—' : r.xw.toFixed(2)}</td>
-      <td>${r.type}</td>
-      <td>${r.round||''}</td>
-    </tr>`;
-  }).join("");
-}
-
-/* ---- All Games (newest → oldest) ---- */
-function renderGamesTable(team, games){
-  const tbody=document.querySelector("#historyGamesTable tbody"); if(!tbody) return;
-  if(team===ALL_TEAMS){ tbody.innerHTML=`<tr><td colspan="7" class="muted">Select a team to see full game list.</td></tr>`; return; }
-
-  const rows=games.slice().sort(byDateDesc).map(g=>{
-    const s=sidesForTeam(g, team); if(!s) return null;
-    const type=normType(g.type);
-    const resClass = s.result==='W'?'result-win': s.result==='L'?'result-loss':'result-tie';
-    const postClass = (type!=="Regular") ? 'postseason' : '';
-    return `<tr class="${resClass} ${postClass}">
-      <td>${g.date}</td>
-      <td>${s.opp}</td>
-      <td>${s.result}</td>
-      <td>${s.pf.toFixed(2)} - ${s.pa.toFixed(2)}</td>
-      <td>${type}</td>
-      <td>${normRound(g.round)}</td>
-      <td>${g.season}</td>
-    </tr>`;
-  }).filter(Boolean).join("");
-  tbody.innerHTML = rows;
 }
 
 /* ---------- Export ---------- */

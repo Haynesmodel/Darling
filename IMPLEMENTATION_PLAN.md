@@ -53,6 +53,7 @@ Implementation:
   - helpers exposed by `js/core-helpers.js`
   - helpers exposed by `js/data-helpers.js`
   - helpers exposed by `js/stats-helpers.js`
+  - helpers exposed by `js/render-helpers.js`
   - helpers exposed by `js/facet-helpers.js`
   - helpers exposed by `js/state-helpers.js`
   - `window.triggerGroupEgg`
@@ -88,7 +89,9 @@ Target structure:
 - `js/state-helpers.js` for URL state parsing, URL serialization, selected filter application, and DOM checkbox restoration
 - `js/facet-helpers.js` for option generation
 - `js/stats-helpers.js` for derived aggregates and scoring helpers
-- `js/render.js` for DOM rendering
+- `js/render-helpers.js` for low-risk rendering utilities, status/header helpers, and generic facet control rendering
+- `js/history-renderers.js` for extracted History page table renderers
+- `js/render.js` for any remaining larger DOM rendering functions after their dependencies are explicit
 - `js/app.js` as the thin bootstrapping layer
 
 Constraints:
@@ -106,7 +109,11 @@ Acceptance criteria:
 Current next extraction targets:
 - move fetch/load/normalize behavior into `js/data-helpers.js`: done
 - move remaining pure stat builders into `js/stats-helpers.js`: done
-- move render functions into `js/render.js` only after their data dependencies are explicit
+- move low-risk rendering utilities into `js/render-helpers.js`: done
+- move All Games table rendering into `js/history-renderers.js`: done
+- move Week-by-Week table rendering into `js/history-renderers.js`: done
+- move Season Recap table rendering into `js/history-renderers.js`: done
+- continue moving render functions one at a time after their data dependencies are explicit
 - keep ordered scripts for now; reassess native modules only after the split is stable
 
 Verification:

@@ -9,6 +9,7 @@
 - Updated `scripts/transactions.py` report headings to follow the configured `SEASON`.
 - Added browser regressions for URL state restoration and CSV export output.
 - Removed the obsolete `scripts/ci_smoke.js` after replacing its coverage with `test:data`.
+- Refreshed `README.md` and `IMPLEMENTATION_PLAN.md` to match the implemented cleanup work.
 - Added a simple project changelog.
 
 ## 2025 season

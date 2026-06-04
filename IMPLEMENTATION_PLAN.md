@@ -1,7 +1,9 @@
 # Implementation Plan
 
-This plan orders the remaining technical improvements from highest leverage to lowest.
-Each phase should be merged only after its verification commands pass.
+Status: complete.
+
+This plan records the technical improvement pass completed for this repo.
+Each phase was verified before moving to the next one.
 
 ## 1. Add browser coverage first
 
@@ -199,14 +201,20 @@ Verification:
 
 ## 7. Refresh docs and release notes
 
+Status: complete.
+
 Purpose: keep the written record aligned with the implemented code.
 
 Implementation:
-- update `CHANGELOG.md` after each completed phase
-- keep `README.md` short and factual
-- update any tech-debt notes only after the code state changes
-- keep `IMPLEMENTATION_PLAN.md` current as phases complete
+- update `CHANGELOG.md` after each completed phase: done
+- keep `README.md` short and factual: done
+- update any tech-debt notes only after the code state changes: done
+- keep `IMPLEMENTATION_PLAN.md` current as phases complete: done
 
 Acceptance criteria:
 - docs describe the current repo, not a past snapshot
 - future cleanup work is easy to resume from the written record
+
+Verification:
+- `npm run test:ci`
+- `git diff --check`

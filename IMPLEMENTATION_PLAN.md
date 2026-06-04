@@ -5,6 +5,8 @@ Each phase should be merged only after its verification commands pass.
 
 ## 1. Add browser coverage first
 
+Status: complete.
+
 Purpose: create an automated guardrail for the current UI before moving code around.
 
 Implementation:
@@ -42,11 +44,17 @@ Verification:
 
 ## 2. Prepare `js/app.js` for extraction
 
+Status: complete for the first extraction pass; keep using this phase's rules for later moves.
+
 Purpose: reduce risk before splitting the large file.
 
 Implementation:
 - identify the current globals used across files:
   - helpers exposed by `js/core-helpers.js`
+  - helpers exposed by `js/data-helpers.js`
+  - helpers exposed by `js/stats-helpers.js`
+  - helpers exposed by `js/facet-helpers.js`
+  - helpers exposed by `js/state-helpers.js`
   - `window.triggerGroupEgg`
   - `window.setGroupBackdrop`
 - document the intended module boundary for each cluster before moving code
@@ -54,10 +62,11 @@ Implementation:
 - avoid changing `index.html` to `type="module"` until the extraction path is clear
 
 Recommended first extraction targets:
-- URL state parsing and serialization
-- normalization helpers such as game type and round handling
-- filter predicate helpers
-- aggregate/stat helpers that do not touch the DOM
+- URL state parsing and serialization: done in `js/state-helpers.js`
+- normalization helpers such as game type and round handling: done in `js/core-helpers.js`
+- filter predicate helpers: started in `js/state-helpers.js`
+- aggregate/stat helpers that do not touch the DOM: started in `js/core-helpers.js`
+- facet option generation: done in `js/facet-helpers.js`
 
 Acceptance criteria:
 - no user-facing behavior changes
@@ -70,13 +79,15 @@ Verification:
 
 ## 3. Split `js/app.js` by concern
 
+Status: in progress.
+
 Purpose: make the browser code navigable without adding a bundler.
 
 Target structure:
-- `js/data.js` for fetch/load/normalize behavior
-- `js/state.js` for selected team, selected filters, and URL state
-- `js/filters.js` for option generation and filtering predicates
-- `js/stats.js` for derived aggregates and scoring helpers
+- `js/data-helpers.js` for fetch/load/normalize behavior
+- `js/state-helpers.js` for URL state parsing, URL serialization, selected filter application, and DOM checkbox restoration
+- `js/facet-helpers.js` for option generation
+- `js/stats-helpers.js` for derived aggregates and scoring helpers
 - `js/render.js` for DOM rendering
 - `js/app.js` as the thin bootstrapping layer
 
@@ -91,6 +102,12 @@ Acceptance criteria:
 - `js/app.js` is materially smaller and mostly orchestration
 - module boundaries match real responsibilities
 - browser tests and data tests pass without fixture rewrites
+
+Current next extraction targets:
+- move fetch/load/normalize behavior into `js/data-helpers.js`: done
+- move remaining pure stat builders into `js/stats-helpers.js`: done
+- move render functions into `js/render.js` only after their data dependencies are explicit
+- keep ordered scripts for now; reassess native modules only after the split is stable
 
 Verification:
 - `npm run test:ci`

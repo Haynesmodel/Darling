@@ -7,8 +7,82 @@
     return String(b).localeCompare(String(a));
   }
 
+  function sum(values) {
+    return values.reduce((a, b) => a + b, 0);
+  }
+
   function unique(values) {
     return [...new Set(values)];
+  }
+
+  function byDateAsc(a, b) {
+    return String(a.date).localeCompare(String(b.date));
+  }
+
+  function byDateDesc(a, b) {
+    return String(b.date).localeCompare(String(a.date));
+  }
+
+  function fmtPct(w, l, t) {
+    const g = w + l + t;
+    return g ? (((w + 0.5 * t) / g) * 100).toFixed(1) + '%' : '0.0%';
+  }
+
+  function csvEscape(s) {
+    return String(s).replace(/"/g, '""');
+  }
+
+  function normType(t) {
+    return (t && t.trim()) ? t : 'Regular';
+  }
+
+  function normRound(r) {
+    return r || '';
+  }
+
+  function sidesForTeam(g, team) {
+    let pf, pa, opp;
+    if (g.teamA === team) { pf = g.scoreA; pa = g.scoreB; opp = g.teamB; }
+    else if (g.teamB === team) { pf = g.scoreB; pa = g.scoreA; opp = g.teamA; }
+    else return null;
+    let result = 'T';
+    if (pf > pa) result = 'W';
+    else if (pf < pa) result = 'L';
+    return { pf, pa, opp, result };
+  }
+
+  function isSaundersGame(g) {
+    const t = normType(g.type).toLowerCase();
+    const r = normRound(g.round).toLowerCase();
+    return t === 'saunders' || r.includes('saunders');
+  }
+
+  function isRegularGame(g) {
+    return normType(g.type) === 'Regular';
+  }
+
+  function isPlayoffGame(g) {
+    return !isRegularGame(g) && !isSaundersGame(g);
+  }
+
+  function roundOrder(roundStr = '') {
+    const r = (roundStr || '').toLowerCase().trim();
+    const sau = r.includes('saunders');
+    const ply = !sau && (r.includes('wild') || r.includes('quarter') || r.includes('semi') || r.includes('final') || r.includes('champ'));
+    if (ply) {
+      if (r.includes('wild')) return 1;
+      if (r.includes('quarter')) return 2;
+      if (r.includes('semi')) return 3;
+      if (r.includes('champ') || r === 'final' || r.endsWith('final')) return 4;
+      return 90;
+    }
+    if (sau) {
+      if (r.includes('round 1')) return 1;
+      if (r.includes('final')) return 2;
+      return 95;
+    }
+    if (r.includes('third')) return 80;
+    return 99;
   }
 
   function canonicalGameKey(g) {
@@ -87,7 +161,19 @@
   const api = {
     compareIsoDateAsc,
     compareIsoDateDesc,
+    sum,
     unique,
+    byDateAsc,
+    byDateDesc,
+    fmtPct,
+    csvEscape,
+    normType,
+    normRound,
+    sidesForTeam,
+    isSaundersGame,
+    isRegularGame,
+    isPlayoffGame,
+    roundOrder,
     canonicalGameKey,
     dedupeGames,
     deriveWeeksInPlace,

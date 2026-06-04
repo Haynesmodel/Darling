@@ -6,6 +6,10 @@ const path = require('node:path');
 const root = process.cwd();
 const assets = path.join(root, 'assets');
 const core = require(path.join(root, 'js', 'core-helpers.js'));
+const data = require(path.join(root, 'js', 'data-helpers.js'));
+const stats = require(path.join(root, 'js', 'stats-helpers.js'));
+const facets = require(path.join(root, 'js', 'facet-helpers.js'));
+const state = require(path.join(root, 'js', 'state-helpers.js'));
 const h2hPath = path.join(assets, 'H2H.json');
 const seasonPath = path.join(assets, 'SeasonSummary.json');
 const rivalPath = path.join(assets, 'Rivalries.json');
@@ -14,9 +18,53 @@ const {
   dedupeGames,
   deriveWeeksInPlace,
   computeRegularSeasonChampYears,
+  sum,
   unique,
+  byDateAsc,
+  byDateDesc,
+  fmtPct,
+  csvEscape,
+  normType,
+  normRound,
+  sidesForTeam,
+  isSaundersGame,
+  isRegularGame,
+  isPlayoffGame,
+  roundOrder,
   isRestrictive,
 } = core;
+const {
+  teamOptions,
+  seasonOptions,
+  weekOptions,
+  opponentOptions,
+  typeOptions,
+  roundOptionsOrdered,
+} = facets;
+const {
+  parseUrlState,
+  buildUrlFromState,
+  applyFacetFilters,
+} = state;
+const {
+  loadLeagueAssets,
+} = data;
+const {
+  computeSubThresholdGamesPerTeam,
+  collectStreakRunsForTeam,
+  bestStreakForTeam,
+  computeLongestTeamStreaks,
+  computeExpectedWinForGame,
+  computeSeasonAggregatesAllTeams,
+  computeHeadToHeadPairs,
+  computeWeeklyAwards,
+  computeTeamsFromLeagueGames,
+  computeLeagueRowsSingleWeeks,
+  computeTopNWeeklyScoresAllTeams,
+  computeBottomNWeeklyScoresAllTeams,
+  computeLongestStreaksGlobal,
+  computeLuckSummary,
+} = stats;
 
 function readJson(p){
   return JSON.parse(fs.readFileSync(p, 'utf8'));
@@ -43,6 +91,17 @@ function isPlayoff(g){
 
 function isRegular(g){
   return String(g.type || '').toLowerCase() === 'regular';
+}
+
+function mockJsonResponse(body, opts = {}) {
+  return {
+    ok: opts.ok ?? true,
+    status: opts.status || 200,
+    async json() {
+      if (opts.rejectJson) throw new Error('bad json');
+      return body;
+    },
+  };
 }
 
 test('assets JSON loads', () => {
@@ -151,6 +210,78 @@ test('deriveWeeksInPlace assigns per-team week numbers', () => {
   assert.equal(games[1]._weekByTeam.Nuss, 1);
 });
 
+test('loadLeagueAssets fetches, dedupes, and derives weeks', async () => {
+  const game = {
+    season: 2025,
+    date: '2025-09-07',
+    teamA: 'Joe',
+    teamB: 'Shap',
+    scoreA: 100,
+    scoreB: 90,
+    type: 'Regular',
+    round: '',
+  };
+  const responses = new Map([
+    ['assets/H2H.json', mockJsonResponse([game, { ...game }])],
+    ['assets/SeasonSummary.json', mockJsonResponse([{ season: 2025, owner: 'Joe' }])],
+    ['assets/Rivalries.json', mockJsonResponse([{ group: 'Originals' }])],
+  ]);
+  const loaded = await loadLeagueAssets({
+    fetchFn: async (url) => responses.get(url),
+    logger: { warn() {} },
+  });
+
+  assert.equal(loaded.rawGames.length, 2);
+  assert.equal(loaded.leagueGames.length, 1);
+  assert.deepEqual([...loaded.derivedWeeksSet], [1]);
+  assert.equal(loaded.leagueGames[0]._weekByTeam.Joe, 1);
+  assert.deepEqual(loaded.seasonSummaries, [{ season: 2025, owner: 'Joe' }]);
+  assert.deepEqual(loaded.rivalries, [{ group: 'Originals' }]);
+});
+
+test('loadLeagueAssets treats rivalry data as optional', async () => {
+  const game = {
+    season: 2025,
+    date: '2025-09-07',
+    teamA: 'Joe',
+    teamB: 'Shap',
+    scoreA: 100,
+    scoreB: 90,
+    type: 'Regular',
+    round: '',
+  };
+  const warnings = [];
+  const responses = new Map([
+    ['assets/H2H.json', mockJsonResponse([game])],
+    ['assets/SeasonSummary.json', mockJsonResponse([{ season: 2025, owner: 'Joe' }])],
+    ['assets/Rivalries.json', mockJsonResponse([], { ok: false, status: 404 })],
+  ]);
+  const loaded = await loadLeagueAssets({
+    fetchFn: async (url) => responses.get(url),
+    logger: { warn(msg) { warnings.push(msg); } },
+  });
+
+  assert.deepEqual(loaded.rivalries, []);
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /Rivalries\.json missing/);
+});
+
+test('loadLeagueAssets fails clearly when required data is unavailable', async () => {
+  const responses = new Map([
+    ['assets/H2H.json', mockJsonResponse([], { ok: false, status: 500 })],
+    ['assets/SeasonSummary.json', mockJsonResponse([])],
+    ['assets/Rivalries.json', mockJsonResponse([])],
+  ]);
+
+  await assert.rejects(
+    loadLeagueAssets({
+      fetchFn: async (url) => responses.get(url),
+      logger: { warn() {} },
+    }),
+    /Could not load assets\/H2H\.json: HTTP 500/
+  );
+});
+
 test('computeRegularSeasonChampYears returns seasons where owner tied for most wins', () => {
   const summaries = [
     { season: 2024, owner: 'Joe', wins: 9 },
@@ -167,11 +298,192 @@ test('unique preserves first-seen order without duplicates', () => {
   assert.deepEqual(unique(['Joe', 'Shap', 'Joe', 'Nuss', 'Shap']), ['Joe', 'Shap', 'Nuss']);
 });
 
+test('basic shared helpers behave consistently', () => {
+  assert.equal(sum([1, 2, 3, 4]), 10);
+  assert.deepEqual(
+    [{ date: '2025-10-12' }, { date: '2025-09-07' }].sort(byDateAsc),
+    [{ date: '2025-09-07' }, { date: '2025-10-12' }]
+  );
+  assert.deepEqual(
+    [{ date: '2025-09-07' }, { date: '2025-10-12' }].sort(byDateDesc),
+    [{ date: '2025-10-12' }, { date: '2025-09-07' }]
+  );
+  assert.equal(fmtPct(7, 2, 1), '75.0%');
+  assert.equal(csvEscape('Joe "The Boss"'), 'Joe ""The Boss""');
+  assert.equal(normType(''), 'Regular');
+  assert.equal(normRound(null), '');
+  assert.equal(roundOrder('Saunders Final'), 2);
+});
+
 test('isRestrictive only flags partial selections', () => {
   assert.equal(isRestrictive(new Set(), ['A', 'B']), false);
   assert.equal(isRestrictive(new Set(['A', 'B']), ['A', 'B']), false);
   assert.equal(isRestrictive(new Set(['A']), ['A', 'B']), true);
   assert.equal(isRestrictive(new Set(['A']), []), false);
+});
+
+test('game helpers classify and orient matchups consistently', () => {
+  const game = {
+    teamA: 'Joe',
+    teamB: 'Shap',
+    scoreA: 101,
+    scoreB: 97,
+    type: 'Regular',
+    round: '',
+  };
+
+  assert.deepEqual(sidesForTeam(game, 'Joe'), { pf: 101, pa: 97, opp: 'Shap', result: 'W' });
+  assert.deepEqual(sidesForTeam(game, 'Shap'), { pf: 97, pa: 101, opp: 'Joe', result: 'L' });
+  assert.equal(sidesForTeam(game, 'Nuss'), null);
+  assert.equal(isRegularGame(game), true);
+  assert.equal(isPlayoffGame(game), false);
+  assert.equal(isSaundersGame({ ...game, type: 'Saunders' }), true);
+  assert.equal(isPlayoffGame({ ...game, type: 'Playoff' }), true);
+});
+
+test('stats helpers compute expected wins and season aggregates', () => {
+  const games = [
+    { season: 2025, date: '2025-09-07', teamA: 'Joe', teamB: 'Shap', scoreA: 100, scoreB: 90, type: 'Regular', round: '' },
+    { season: 2025, date: '2025-09-07', teamA: 'Nuss', teamB: 'Singer', scoreA: 80, scoreB: 100, type: 'Regular', round: '' },
+    { season: 2025, date: '2025-09-14', teamA: 'Joe', teamB: 'Shap', scoreA: 70, scoreB: 75, type: 'Regular', round: '' },
+    { season: 2025, date: '2025-09-21', teamA: 'Joe', teamB: 'Nuss', scoreA: 65, scoreB: 80, type: 'Regular', round: '' },
+  ];
+  const summaries = [
+    { season: 2025, owner: 'Joe' },
+    { season: 2025, owner: 'Shap' },
+  ];
+
+  assert.equal(computeExpectedWinForGame(games, 'Joe', games[0]), 2.5 / 3);
+  assert.equal(computeExpectedWinForGame(games, 'Nuss', games[1]), 0);
+
+  const rows = computeSeasonAggregatesAllTeams(games, summaries);
+  const joe = rows.find(r => r.team === 'Joe' && r.season === 2025);
+  assert.equal(joe.w, 1);
+  assert.equal(joe.l, 2);
+  assert.equal(joe.n, 3);
+  assert.equal(joe.pf, 235);
+  assert.equal(joe.pa, 245);
+  assert.equal(joe.ppg, 235 / 3);
+  assert.equal(joe.pct, 1 / 3);
+
+  const luck = computeLuckSummary(games, 'Joe', games);
+  assert.equal(luck.act, 1);
+  assert.equal(luck.exp, 2.5 / 3);
+  assert.equal(luck.luck, 1 - (2.5 / 3));
+});
+
+test('stats helpers compute league lists and streaks', () => {
+  const games = [
+    { season: 2025, date: '2025-09-07', teamA: 'Joe', teamB: 'Shap', scoreA: 100, scoreB: 90, type: 'Regular', round: '' },
+    { season: 2025, date: '2025-09-07', teamA: 'Nuss', teamB: 'Singer', scoreA: 80, scoreB: 100, type: 'Regular', round: '' },
+    { season: 2025, date: '2025-09-14', teamA: 'Joe', teamB: 'Shap', scoreA: 70, scoreB: 75, type: 'Regular', round: '' },
+    { season: 2025, date: '2025-09-21', teamA: 'Joe', teamB: 'Nuss', scoreA: 65, scoreB: 80, type: 'Regular', round: '' },
+    { season: 2014, date: '2014-12-21', teamA: 'Joe', teamB: 'Shap', scoreA: 200, scoreB: 180, type: 'Playoff', round: 'Final' },
+  ];
+
+  assert.deepEqual(computeTeamsFromLeagueGames(games), ['Joe', 'Nuss', 'Shap', 'Singer']);
+  assert.deepEqual(computeSubThresholdGamesPerTeam(games, 70), [{ team: 'Joe', count: 1 }]);
+  assert.equal(computeLeagueRowsSingleWeeks(games).length, 8);
+  assert.equal(computeTopNWeeklyScoresAllTeams(games, 1)[0].team, 'Joe');
+  assert.equal(computeBottomNWeeklyScoresAllTeams(games, 1)[0].team, 'Joe');
+
+  const h2h = computeHeadToHeadPairs(games, 1).find(r => r.team === 'Joe' && r.opp === 'Shap');
+  assert.equal(h2h.g, 3);
+  assert.equal(h2h.w, 2);
+  assert.equal(h2h.l, 1);
+  assert.equal(h2h.pct, 2 / 3);
+
+  const awards = computeWeeklyAwards(games, 100);
+  assert.deepEqual(awards.high150.sort((a, b) => a.team.localeCompare(b.team)), [
+    { team: 'Joe', count: 1 },
+    { team: 'Singer', count: 1 },
+  ]);
+
+  const joeLosses = collectStreakRunsForTeam(games, 'Joe', 'L');
+  assert.equal(joeLosses[0].len, 2);
+  assert.equal(bestStreakForTeam(games, 'Joe', 'L').len, 2);
+  assert.equal(computeLongestTeamStreaks(games, ['Joe', 'Shap'], 'L', 1)[0].team, 'Joe');
+  assert.equal(computeLongestStreaksGlobal(games, ['Joe', 'Shap'], 'L', 1)[0].team, 'Joe');
+});
+
+test('facet helpers build predictable option lists', () => {
+  const games = [
+    { season: 2025, teamA: 'Joe', teamB: 'Shap', type: 'Regular', round: '', date: '2025-09-07' },
+    { season: 2024, teamA: 'Nuss', teamB: 'Joe', type: 'Saunders', round: 'Saunders Final', date: '2024-12-15' },
+  ];
+  const summaries = [
+    { owner: 'Joe' },
+    { owner: 'Shap' },
+  ];
+  const weeks = new Set([1, 3, 2]);
+
+  assert.deepEqual(teamOptions(summaries, games, '__ALL__'), [
+    { value: '__ALL__', label: 'All Teams (League)' },
+    { value: 'Joe', label: 'Joe' },
+    { value: 'Nuss', label: 'Nuss' },
+    { value: 'Shap', label: 'Shap' },
+  ]);
+  assert.deepEqual(seasonOptions(games), [2025, 2024]);
+  assert.deepEqual(weekOptions(weeks), [1, 2, 3]);
+  assert.deepEqual(opponentOptions(games, 'Joe', '__ALL__'), ['Nuss', 'Shap']);
+  assert.deepEqual(typeOptions(games), ['Regular', 'Saunders']);
+  assert.deepEqual(roundOptionsOrdered(games), ['Saunders Final']);
+});
+
+test('url helpers parse and rebuild facet state', () => {
+  const parsed = parseUrlState('?team=Joe&seasons=2024,2025&weeks=1,3&opps=Shap&types=Regular&rounds=Semi%20Final');
+  assert.equal(parsed.team, 'Joe');
+  assert.deepEqual([...parsed.seasons], [2024, 2025]);
+  assert.deepEqual([...parsed.weeks], [1, 3]);
+  assert.deepEqual([...parsed.opps], ['Shap']);
+  assert.deepEqual([...parsed.types], ['Regular']);
+  assert.deepEqual([...parsed.rounds], ['Semi Final']);
+  assert.equal(parsed.hasAny, true);
+
+  const next = buildUrlFromState({
+    selectedTeam: 'Joe',
+    selectedSeasons: new Set([2024, 2025]),
+    selectedWeeks: new Set([1]),
+    selectedOpponents: new Set(['Shap']),
+    selectedTypes: new Set(['Regular']),
+    selectedRounds: new Set(['Semi Final']),
+    universe: {
+      seasons: [2023, 2024, 2025],
+      weeks: [1, 2],
+      opponents: ['Shap', 'Nuss'],
+      types: ['Regular'],
+      rounds: ['Semi Final', 'Final'],
+    },
+    pathname: '/index.html',
+    allTeams: '__ALL__',
+  });
+  assert.equal(next, '/index.html?team=Joe&seasons=2024%2C2025&weeks=1&opps=Shap&rounds=Semi+Final');
+});
+
+test('applyFacetFilters honors team and facet selections', () => {
+  const games = [
+    { teamA: 'Joe', teamB: 'Shap', season: 2025, type: 'Regular', round: '', date: '2025-09-07', scoreA: 100, scoreB: 90, _weekByTeam: { Joe: 1, Shap: 1 } },
+    { teamA: 'Joe', teamB: 'Nuss', season: 2025, type: 'Regular', round: '', date: '2025-09-14', scoreA: 80, scoreB: 70, _weekByTeam: { Joe: 2, Nuss: 2 } },
+    { teamA: 'Shap', teamB: 'Nuss', season: 2024, type: 'Regular', round: '', date: '2024-09-07', scoreA: 77, scoreB: 88, _weekByTeam: { Shap: 1, Nuss: 1 } },
+  ];
+  const filtered = applyFacetFilters(games, {
+    selectedTeam: 'Joe',
+    selectedSeasons: new Set([2025]),
+    selectedWeeks: new Set([1]),
+    selectedOpponents: new Set(['Shap']),
+    selectedTypes: new Set(['Regular']),
+    selectedRounds: new Set(),
+    universe: {
+      seasons: [2024, 2025],
+      weeks: [1, 2],
+      opponents: ['Shap', 'Nuss'],
+      types: ['Regular'],
+      rounds: [],
+    },
+    allTeams: '__ALL__',
+  });
+  assert.equal(filtered.length, 1);
+  assert.equal(filtered[0].teamB, 'Shap');
 });
 
 test('Playoff wins per season are within bracket limits', () => {

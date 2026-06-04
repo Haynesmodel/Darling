@@ -155,14 +155,16 @@ Verification:
 
 ## 5. Clean up the data pipeline and generated artifacts
 
+Status: complete.
+
 Purpose: make the update workflow clearer and reduce accidental repo churn.
 
 Implementation:
-- keep `scripts/sleeper_to_h2h.py` season-anchor validation explicit
-- keep `scripts/update_2025.sh` and `scripts/transactions.py` driven by `SEASON` and `LEAGUE_ID`
-- decide whether `assets/H2H.xlsx` stays web-served or moves to a non-served reference location
-- remove tracked generated artifacts that do not need to be source controlled
-- document which generated files are safe to delete and regenerate
+- keep `scripts/sleeper_to_h2h.py` season-anchor validation explicit: done
+- keep `scripts/update_2025.sh` and `scripts/transactions.py` driven by `SEASON` and `LEAGUE_ID`: done
+- move `assets/H2H.xlsx` to a non-served reference location: done in `data/reference/H2H.xlsx`
+- remove tracked generated artifacts that do not need to be source controlled: done
+- document which generated files are safe to delete and regenerate: done in `README.md`
 
 Acceptance criteria:
 - update scripts fail fast with useful messages
@@ -176,14 +178,16 @@ Verification:
 
 ## 6. Expand regression coverage for edge cases
 
+Status: complete.
+
 Purpose: protect behavior that tends to break during refactors.
 
 Implementation:
-- test loading and error states at the browser level
-- test URL state restoration for selected team and filters
-- test CSV export shape without depending on browser download prompts
-- add direct tests for newly extracted pure modules
-- retire or wire up `scripts/ci_smoke.js` so there is no dormant test script
+- test loading and error states at the browser level: done
+- test URL state restoration for selected team and filters: done
+- test CSV export shape without depending on browser download prompts: done
+- add direct tests for newly extracted pure modules: done
+- retire or wire up `scripts/ci_smoke.js` so there is no dormant test script: done by removing duplicate script
 
 Acceptance criteria:
 - failures point to specific broken behavior

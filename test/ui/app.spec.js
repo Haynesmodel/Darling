@@ -1,5 +1,12 @@
 const { test, expect } = require('@playwright/test');
 
+async function downloadText(download) {
+  const stream = await download.createReadStream();
+  const chunks = [];
+  for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+  return Buffer.concat(chunks).toString('utf8');
+}
+
 test('page loads and renders the history tables', async ({ page }) => {
   await page.goto('/');
   await page.waitForLoadState('networkidle');
@@ -40,6 +47,42 @@ test('changing the team updates the rendered rows and url state', async ({ page 
   expect(page.url()).toContain(`team=${encodeURIComponent(nextTeam)}`);
   expect(nextWeekCount).toBe(nextHistoryCount);
   expect(nextWeekCount).not.toBe(originalWeekCount);
+});
+
+test('url state restores selected team and facet filters on load', async ({ page }) => {
+  await page.goto('/?team=Joe&seasons=2025&weeks=1&opps=Shemer&types=Regular');
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#appStatus')).toBeHidden();
+  await expect(page.locator('#teamSelect')).toHaveValue('Joe');
+  await expect(page.locator('#seasonFilters .season-cb[data-value="2025"]')).toBeChecked();
+  await expect(page.locator('#weekFilters .week-cb[data-value="1"]')).toBeChecked();
+  await expect(page.locator('#oppFilters .opp-cb[data-value="Shemer"]')).toBeChecked();
+  await expect(page.locator('#typeFilters .type-cb[data-value="Regular"]')).toBeChecked();
+  await expect(page.locator('#seasonCountText')).toHaveText('1 selected');
+  await expect(page.locator('#weekCountText')).toHaveText('1 selected');
+  await expect(page.locator('#oppCountText')).toHaveText('1 selected');
+  await expect(page.locator('#typeCountText')).toHaveText('1 selected');
+
+  await expect(page.locator('#historyGamesTable tbody tr')).toHaveCount(1);
+  await expect(page.locator('#historyGamesTable tbody tr').first()).toContainText('Shemer');
+  await expect(page.locator('#historyGamesTable tbody tr').first()).toContainText('2025-09-07');
+});
+
+test('csv export downloads the currently filtered history rows', async ({ page }) => {
+  await page.goto('/?team=Joe&seasons=2025&weeks=1&opps=Shemer&types=Regular');
+  await page.waitForLoadState('networkidle');
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('#exportCsv').click();
+  const download = await downloadPromise;
+  const csv = await downloadText(download);
+  const lines = csv.split('\n');
+
+  expect(download.suggestedFilename()).toBe('history_Joe.csv');
+  expect(lines).toHaveLength(2);
+  expect(lines[0]).toBe('date,season,team,opponent,result,pf,pa,type,round,week,xw');
+  expect(lines[1]).toContain('"2025-09-07","2025","Joe","Shemer","L","81.32","94.56","Regular","","1"');
 });
 
 test('unchanged history state does not rebuild rendered table rows', async ({ page }) => {

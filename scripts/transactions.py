@@ -111,13 +111,13 @@ def chain_str(pid, seq):
 most_teams = sorted(((pid, len(owned_by_sets[pid])) for pid in owned_by_sets),
                     key=lambda x: (-x[1], pname(x[0])))[:10]
 
-print("\n== Top 10: Most different teams (2025) ==")
+print(f"\n== Top 10: Most different teams ({SEASON}) ==")
 for pid, cnt in most_teams:
     print(f"{pname(pid)} — {cnt} teams ({chain_str(pid, owned_by_order[pid])})")
 
 # --- Top 10: most pickups (waiver/FA only) ---
 most_pickups = pickups.most_common(10)
-print("\n== Top 10: Most pickups (waiver/FA only, 2025) ==")
+print(f"\n== Top 10: Most pickups (waiver/FA only, {SEASON}) ==")
 # For the pickups chain, show the teams that successfully ADDED the player in order.
 adds_history = defaultdict(list)  # player_id -> [roster_id of successful WAIVER/FA adds]
 for tx in all_txs:
@@ -132,7 +132,7 @@ for pid, c in most_pickups:
 
 # --- Top 10: most drops (waiver/FA only) ---
 most_drops = drops.most_common(10)
-print("\n== Top 10: Most drops (waiver/FA only, 2025) ==")
+print(f"\n== Top 10: Most drops (waiver/FA only, {SEASON}) ==")
 drops_history = defaultdict(list)  # player_id -> [roster_id of successful WAIVER/FA drops]
 for tx in all_txs:
     if tx.get("status") == "complete" and tx.get("type") in WAIVER_FA:

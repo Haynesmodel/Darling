@@ -5,9 +5,16 @@ const path = require('node:path');
 
 const root = process.cwd();
 const assets = path.join(root, 'assets');
+const core = require(path.join(root, 'js', 'core-helpers.js'));
 const h2hPath = path.join(assets, 'H2H.json');
 const seasonPath = path.join(assets, 'SeasonSummary.json');
 const rivalPath = path.join(assets, 'Rivalries.json');
+const {
+  canonicalGameKey,
+  dedupeGames,
+  deriveWeeksInPlace,
+  computeRegularSeasonChampYears,
+} = core;
 
 function readJson(p){
   return JSON.parse(fs.readFileSync(p, 'utf8'));
@@ -34,17 +41,6 @@ function isPlayoff(g){
 
 function isRegular(g){
   return String(g.type || '').toLowerCase() === 'regular';
-}
-
-function canonicalGameKey(g){
-  const t1 = g.teamA;
-  const t2 = g.teamB;
-  const s1 = +g.scoreA;
-  const s2 = +g.scoreB;
-  const type = String(g.type || '').trim().toLowerCase();
-  const round = String(g.round || '').trim().toLowerCase();
-  if (t1 < t2) return `${g.season}|${g.date}|${type}|${round}|${t1}|${s1.toFixed(3)}|${t2}|${s2.toFixed(3)}`;
-  return `${g.season}|${g.date}|${type}|${round}|${t2}|${s2.toFixed(3)}|${t1}|${s1.toFixed(3)}`;
 }
 
 test('assets JSON loads', () => {
@@ -105,6 +101,64 @@ test('H2H has no duplicate games (canonical key)', () => {
     assert.ok(!seen.has(key), `duplicate game: ${key}`);
     seen.add(key);
   }
+});
+
+test('dedupeGames removes canonical duplicates', () => {
+  const a = {
+    season: 2025,
+    date: '2025-10-05',
+    type: 'Regular',
+    round: null,
+    teamA: 'Joe',
+    teamB: 'Shap',
+    scoreA: 111.2,
+    scoreB: 98.4,
+  };
+  const b = { ...a };
+  const c = { ...a, date: '2025-10-12', scoreA: 120.1 };
+  const out = dedupeGames([a, b, c]);
+  assert.equal(out.length, 2);
+  assert.equal(out[0], a);
+  assert.equal(out[1], c);
+});
+
+test('deriveWeeksInPlace assigns per-team week numbers', () => {
+  const games = [
+    {
+      season: 2025,
+      date: '2025-09-07',
+      teamA: 'Joe',
+      teamB: 'Shap',
+      scoreA: 100,
+      scoreB: 90,
+    },
+    {
+      season: 2025,
+      date: '2025-09-14',
+      teamA: 'Joe',
+      teamB: 'Nuss',
+      scoreA: 110,
+      scoreB: 80,
+    },
+  ];
+  const weeks = deriveWeeksInPlace(games);
+  assert.deepEqual([...weeks], [1, 2]);
+  assert.equal(games[0]._weekByTeam.Joe, 1);
+  assert.equal(games[1]._weekByTeam.Joe, 2);
+  assert.equal(games[0]._weekByTeam.Shap, 1);
+  assert.equal(games[1]._weekByTeam.Nuss, 1);
+});
+
+test('computeRegularSeasonChampYears returns seasons where owner tied for most wins', () => {
+  const summaries = [
+    { season: 2024, owner: 'Joe', wins: 9 },
+    { season: 2024, owner: 'Shap', wins: 8 },
+    { season: 2025, owner: 'Joe', wins: 7 },
+    { season: 2025, owner: 'Shap', wins: 7 },
+    { season: 2025, owner: 'Nuss', wins: 5 },
+  ];
+  assert.deepEqual(computeRegularSeasonChampYears('Joe', summaries), [2024, 2025]);
+  assert.deepEqual(computeRegularSeasonChampYears('Nuss', summaries), []);
 });
 
 test('Playoff wins per season are within bracket limits', () => {

@@ -28,6 +28,9 @@ from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
 
 API_BASE = "https://api.sleeper.app/v1"
+WEEK1_ANCHORS = {
+    2025: date(2025, 9, 7),  # Week 1 Sunday
+}
 
 # ---------------- HTTP helpers ----------------
 def http_get_json(url: str):
@@ -82,12 +85,12 @@ def list_teams(league_id: str):
 
 # ---------------- Date helpers ----------------
 def sunday_for_week(season: int, week: int) -> date:
-    anchors = {
-        2025: date(2025, 9, 7),  # Week 1 Sunday
-    }
-    if season not in anchors:
-        raise ValueError(f"No week-1 anchor configured for season {season}. Add it to anchors in sunday_for_week().")
-    return anchors[season] + timedelta(days=7 * (week - 1))
+    if season not in WEEK1_ANCHORS:
+        raise ValueError(
+            f"No week-1 anchor configured for season {season}. "
+            f"Add it to WEEK1_ANCHORS in sleeper_to_h2h.py and retry."
+        )
+    return WEEK1_ANCHORS[season] + timedelta(days=7 * (week - 1))
 
 # ---------------- Matchup pairing ----------------
 def pair_matchups(matchups):
@@ -194,6 +197,15 @@ def main():
                         help="Sort mode: none|season|global (default: season)")
 
     args = parser.parse_args()
+
+    if args.season not in WEEK1_ANCHORS:
+        known = ", ".join(str(season) for season in sorted(WEEK1_ANCHORS)) or "none"
+        print(
+            f"Error: no week-1 anchor configured for season {args.season}. "
+            f"Known seasons: {known}. Add the anchor to WEEK1_ANCHORS in sleeper_to_h2h.py and retry.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
 
     if args.list_teams:
         teams = list_teams(args.league)

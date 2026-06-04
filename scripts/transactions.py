@@ -1,10 +1,11 @@
 # sleeper_turnstile_2025.py
 # Stdlib-only (no requests/jq). Works on macOS/Homebrew Python.
 import json, urllib.request, urllib.error, time
+import os
 from collections import defaultdict, Counter
 
-LEAGUE_ID = "1257071385973362690"
-SEASON = "2025"
+LEAGUE_ID = os.environ.get("LEAGUE_ID", "1257071385973362690")
+SEASON = os.environ.get("SEASON", "2025")
 BASE = "https://api.sleeper.app/v1"
 
 def get(url):

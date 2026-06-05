@@ -123,6 +123,50 @@ test('changing the team updates the rendered rows and url state', async ({ page 
   expect(nextWeekCount).not.toBe(originalWeekCount);
 });
 
+test('rivalry tab renders a tale of the tape and saved rivalry selection', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+
+  await page.locator('#tabRivalryBtn').click();
+  await expect(page.locator('#tabRivalryBtn')).toHaveClass(/active/);
+  await expect(page.locator('#rivalryTeamA')).toBeVisible();
+  await expect(page.locator('#rivalryTeamB')).toBeVisible();
+  await expect(page.locator('#page-rivalry')).toContainText('Head to Head');
+
+  await page.locator('#rivalryTeamA').selectOption('Joe');
+  await expect(page.locator('#rivalryTeamA')).toHaveValue('Joe');
+  await expect(page.locator('#rivalryTeamB')).toHaveValue('Joel');
+  await expect(page.locator('#rivalryTeamB option[value="Joe"]')).toHaveCount(0);
+  await expect(page.locator('#rivalryHeadline')).toContainText('Joe vs Joel');
+  await expect(page.locator('#rivalryHeadline')).toContainText('Current streak:');
+  await expect.poll(async () => page.evaluate(() => {
+    const params = new URL(location.href).searchParams;
+    return [params.get('tab'), params.get('rivalryTeamA'), params.get('rivalryTeamB')].join('|');
+  })).toBe('rivalry|Joe|Joel');
+
+  const tapeCount = await page.locator('#rivalryTapeGrid .stat').count();
+  const gameCount = await page.locator('#rivalryGameTable tbody tr').count();
+  const seasonCount = await page.locator('#rivalrySeasonTable tbody tr').count();
+
+  expect(tapeCount).toBeGreaterThan(0);
+  expect(gameCount).toBeGreaterThan(0);
+  expect(seasonCount).toBeGreaterThan(0);
+});
+
+test('head to head url restores the rivalry page and selected teams', async ({ page }) => {
+  await page.goto('/?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel');
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#tabRivalryBtn')).toHaveClass(/active/);
+  await expect(page.locator('#rivalryTeamA')).toHaveValue('Joe');
+  await expect(page.locator('#rivalryTeamB')).toHaveValue('Joel');
+  await expect(page.locator('#rivalryHeadline')).toContainText('Joe vs Joel');
+  await expect.poll(async () => page.evaluate(() => {
+    const params = new URL(location.href).searchParams;
+    return [params.get('tab'), params.get('rivalryTeamA'), params.get('rivalryTeamB')].join('|');
+  })).toBe('rivalry|Joe|Joel');
+});
+
 test('url state restores selected team and facet filters on load', async ({ page }) => {
   await page.goto('/?team=Joe&seasons=2025&weeks=1&opps=Shemer&types=Regular');
   await page.waitForLoadState('networkidle');

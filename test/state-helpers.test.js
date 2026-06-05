@@ -38,6 +38,24 @@ test('url helpers parse and rebuild facet state', () => {
   assert.equal(next, '/index.html?team=Joe&seasons=2024%2C2025&weeks=1&opps=Shap&rounds=Semi+Final');
 });
 
+test('url helpers parse and rebuild rivalry state', () => {
+  const parsed = parseUrlState('?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel');
+  assert.equal(parsed.tab, 'rivalry');
+  assert.equal(parsed.rivalryTeamA, 'Joe');
+  assert.equal(parsed.rivalryTeamB, 'Joel');
+  assert.equal(parsed.hasRivalry, true);
+  assert.equal(parsed.hasAny, false);
+
+  const next = buildUrlFromState({
+    tab: 'rivalry',
+    selectedRivalryTeamA: 'Joe',
+    selectedRivalryTeamB: 'Joel',
+    pathname: '/index.html',
+    allTeams: '__ALL__',
+  });
+  assert.equal(next, '/index.html?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel');
+});
+
 test('url helpers preserve opponent selections with spaces and punctuation', () => {
   const next = buildUrlFromState({
     selectedTeam: 'Joe',

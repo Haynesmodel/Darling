@@ -37,6 +37,7 @@ main{padding:16px}
 .page{display:none}
 .page.visible{display:grid;grid-template-columns:3fr 1fr;gap:16px}
 #page-history.page.visible{grid-template-columns:1fr}
+#page-rivalry.page.visible{grid-template-columns:1fr}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:16px}
 .card h3{margin:4px 0 10px;font-size:16px}
 .status-banner{
@@ -62,6 +63,9 @@ main{padding:16px}
 /* Controls */
 .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .controls input,.controls select{padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px}
+.rivalry-controls{align-items:center}
+.rivalry-controls select{min-width:180px}
+.rivalry-vs{font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
 .btn{border:1px solid var(--border);background:#fff;padding:6px 10px;border-radius:999px;font-size:13px;cursor:pointer}
 .btn:hover{background:#f3f4f6}
 .btn.primary{background:#16a34a;color:#fff;border-color:transparent}
@@ -105,7 +109,14 @@ tbody tr:nth-child(even){background:var(--row-alt)}
 .stat{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center}
 .stat .label{font-size:12px;color:var(--muted)}
 .stat .value{font-size:16px;font-weight:700}
+.stat .sub{font-size:12px;color:var(--muted);margin-top:4px}
 .callout{margin-top:12px;padding:12px;border-radius:12px;background:#eef2ff;border:1px solid #c7d2fe;font-size:14px;font-weight:600}
+
+.rivalry-headline{display:grid;gap:8px}
+.rivalry-title{font-size:24px;font-weight:800;line-height:1.1}
+.rivalry-subtitle{font-size:16px;font-weight:700;color:var(--header)}
+.rivalry-line{font-size:14px;color:var(--muted)}
+.rivalry-tape .stat{background:#fdfdfd}
 
 /* Callouts container */
 .callouts{display:flex;flex-direction:column;gap:8px;margin:8px 0 10px}

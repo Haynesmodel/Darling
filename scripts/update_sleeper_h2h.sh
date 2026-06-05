@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # === Sleeper -> H2H update (Regular + Postseason) ===
-# League settings (edit once per year)
+# League settings (override per season)
 LEAGUE_ID="${LEAGUE_ID:-1257071385973362690}"
 SEASON="${SEASON:-2025}"
 UPDATE_LIVE="${UPDATE_LIVE:-0}"

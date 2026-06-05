@@ -15,7 +15,7 @@ header{
   padding:48px 16px 72px;
   min-height: var(--header-min-h);
   color:#fff;
-  background:url('../assets/LeagePic.jpeg') center var(--header-focus-y) / cover no-repeat;
+  background:url('../assets/LeaguePic.jpeg') center var(--header-focus-y) / cover no-repeat;
   position:relative;
 }
 header::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,.35)}

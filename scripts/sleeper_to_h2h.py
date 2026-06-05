@@ -22,15 +22,44 @@ Usage (unchanged from your scripts):
 
 import argparse
 import json
+import os
 import sys
 from datetime import date, timedelta, datetime
+from pathlib import Path
 from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
 
 API_BASE = "https://api.sleeper.app/v1"
-WEEK1_ANCHORS = {
-    2025: date(2025, 9, 7),  # Week 1 Sunday
-}
+SCRIPT_DIR = Path(__file__).resolve().parent
+WEEK1_ANCHORS_PATH = Path(
+    os.environ.get(
+        "SLEEPER_WEEK1_ANCHORS_FILE",
+        str(SCRIPT_DIR / "sleeper_week1_anchors.json"),
+    )
+)
+
+
+def load_week1_anchors(path: Path):
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            raw = json.load(f)
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"Week 1 anchors config not found: {path}") from e
+
+    if not isinstance(raw, dict):
+        raise ValueError(f"Week 1 anchors config must be a JSON object: {path}")
+
+    anchors = {}
+    for season_key, value in raw.items():
+        try:
+            season = int(season_key)
+            anchors[season] = date.fromisoformat(str(value))
+        except Exception as e:
+            raise ValueError(f"Invalid week 1 anchor entry for season {season_key!r} in {path}") from e
+    return anchors
+
+
+WEEK1_ANCHORS = load_week1_anchors(WEEK1_ANCHORS_PATH)
 
 # ---------------- HTTP helpers ----------------
 def http_get_json(url: str):
@@ -88,7 +117,7 @@ def sunday_for_week(season: int, week: int) -> date:
     if season not in WEEK1_ANCHORS:
         raise ValueError(
             f"No week-1 anchor configured for season {season}. "
-            f"Add it to WEEK1_ANCHORS in sleeper_to_h2h.py and retry."
+            f"Add it to {WEEK1_ANCHORS_PATH.name} and retry."
         )
     return WEEK1_ANCHORS[season] + timedelta(days=7 * (week - 1))
 
@@ -229,7 +258,7 @@ def main():
         known = ", ".join(str(season) for season in sorted(WEEK1_ANCHORS)) or "none"
         print(
             f"Error: no week-1 anchor configured for season {args.season}. "
-            f"Known seasons: {known}. Add the anchor to WEEK1_ANCHORS in sleeper_to_h2h.py and retry.",
+            f"Known seasons: {known}. Add the anchor to {WEEK1_ANCHORS_PATH.name} and retry.",
             file=sys.stderr,
         )
         sys.exit(2)

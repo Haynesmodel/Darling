@@ -159,7 +159,7 @@ Avoid overly decorative shelves in the first version. Use clean cards with stron
 
 ## 5. App State
 
-In `js/app.js`:
+Create `js/trophy-controller.js` for trophy-specific state, control wiring, and render orchestration, with `js/app.js` staying as the bootstrap/import surface only:
 
 ```js
 let selectedTrophyOwner = DEFAULT_TEAM;
@@ -168,13 +168,7 @@ let selectedTrophyOwner = DEFAULT_TEAM;
 Add tab behavior:
 
 ```js
-const trophyTab = document.getElementById('tabTrophyBtn');
-
-trophyTab.addEventListener('click', () => {
-  showPage('trophy');
-  buildTrophyControlsOnce();
-  renderTrophyCase();
-});
+// handled inside js/trophy-controller.js
 ```
 
 Owner selector should reuse existing `teamOptions(...)`, excluding `ALL_TEAMS`.
@@ -491,8 +485,8 @@ Add UI tests:
 ## 18. Implementation Order
 
 1. Add Trophy Case tab and page markup.
-2. Extend `showPage()` behavior if needed.
-3. Add trophy owner state and control builder.
+2. Extend shared page/tab behavior if needed.
+3. Add trophy owner state and control builder in `js/trophy-controller.js` and, if needed, `js/trophy-controls.js`.
 4. Create `js/trophy-renderers.js`.
 5. Build and render hero section.
 6. Build and render hardware grid.

@@ -56,6 +56,7 @@ import {
   buildRivalryViewModel,
   renderRivalryHighlightBoard,
   renderRivalryLeadMeter,
+  renderRivalryLeadTrend,
   renderRivalryGameTable,
   renderRivalryHeadline,
   renderRivalrySeasonTable,
@@ -214,11 +215,13 @@ function renderRivalry() {
   const view = buildRivalryViewModel(selectedRivalryTeamA, selectedRivalryTeamB, leagueGames);
   const signature = `${selectedRivalryTeamA}|${selectedRivalryTeamB}|${view.summary.overall.g}`;
   renderIfChanged('rivalry', signature, () => {
+    updateHeaderForTeam(selectedRivalryTeamA);
     renderRivalryHeadline(view, { doc: document });
     renderRivalryLeadMeter(view, { doc: document });
     renderRivalryHighlightBoard(view, { doc: document });
-    renderRivalryTimeline(view, { doc: document });
     renderRivalryTape(view, { doc: document });
+    renderRivalryLeadTrend(view, { doc: document });
+    renderRivalryTimeline(view, { doc: document });
     renderRivalrySeasonTable(view, { doc: document });
     renderRivalryGameTable(view, { doc: document });
     if (document.title !== undefined) {

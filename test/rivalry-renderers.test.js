@@ -6,6 +6,7 @@ import {
   rivalryHeadlineHtml,
   rivalryHighlightBoardHtml,
   rivalryLeadMeterHtml,
+  rivalryLeadTrendHtml,
   rivalrySeasonTableHtml,
   rivalryGameTableHtml,
   rivalryTimelineHtml,
@@ -78,8 +79,9 @@ test('rivalry renderer summarizes games and tape from team A perspective', () =>
   assert.equal(vm.seasonRows.length, 2);
   assert.equal(vm.seasonRows[0].season, 2025);
   assert.equal(vm.seasonRows[0].recordText, '1-2');
-  assert.match(vm.seasonRows[0].notes.join(' • '), /Playoff meeting/);
-  assert.match(vm.seasonRows[1].notes.join(' • '), /Saunders meeting/);
+  assert.match(vm.seasonRows[0].notes.join(' • '), /Playoff meeting \(Championship\)/);
+  assert.match(vm.seasonRows[0].notes.join(' • '), /Playoff meeting \(Championship\) winner: Joel/);
+  assert.match(vm.seasonRows[1].notes.join(' • '), /Saunders meeting \(Saunders Final\)/);
 
   assert.equal(vm.gameRows[0].date, '2025-12-14');
   assert.equal(vm.gameRows[0].winner, 'Joel');
@@ -100,6 +102,15 @@ test('rivalry renderer summarizes games and tape from team A perspective', () =>
   assert.match(leadMeter, /Joel leads 2-1-1/);
   assert.match(leadMeter, /4 games tracked/);
 
+  const leadTrend = rivalryLeadTrendHtml(vm);
+  assert.match(leadTrend, /Series lead relative to \.500/);
+  assert.match(leadTrend, /\.500/);
+  assert.match(leadTrend, /G1/);
+  assert.match(leadTrend, /09\/01\/2024/);
+  assert.match(leadTrend, /Series spread: Joel \+ 1/);
+  assert.match(leadTrend, /series lead over time/i);
+  assert.match(leadTrend, /rivalry-trend-dot/);
+
   const highlights = rivalryHighlightBoardHtml(vm);
   assert.match(highlights, /Biggest Blowout/);
   assert.match(highlights, /Highest Combined/);
@@ -110,6 +121,7 @@ test('rivalry renderer summarizes games and tape from team A perspective', () =>
   assert.match(timeline, /rivalry-timeline-item/);
   assert.match(timeline, /2024-09-01/);
   assert.match(timeline, /2025-12-14/);
+  assert.match(timeline, /rivalry-timeline-badge/);
 
   const headline = rivalryHeadlineHtml(vm);
   assert.match(headline, /Joe vs Joel/);
@@ -121,8 +133,8 @@ test('rivalry renderer summarizes games and tape from team A perspective', () =>
   const seasonHtml = rivalrySeasonTableHtml(vm);
   assert.match(seasonHtml, /2025/);
   assert.match(seasonHtml, /1-2/);
-  assert.match(seasonHtml, /Playoff meeting/);
-  assert.match(seasonHtml, /Postseason winner: Joel/);
+  assert.match(seasonHtml, /Playoff meeting \(Championship\)/);
+  assert.match(seasonHtml, /Playoff meeting \(Championship\) winner: Joel/);
 
   const gameHtml = rivalryGameTableHtml(vm);
   assert.match(gameHtml, /2025-12-14/);

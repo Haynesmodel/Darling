@@ -127,11 +127,15 @@ test('rivalry tab renders a tale of the tape and saved rivalry selection', async
   await page.goto('/');
   await page.waitForLoadState('networkidle');
 
+  await page.locator('#teamSelect').selectOption('Joel');
+  await expect(page.locator('header h2')).toHaveText('Joel');
+
   await page.locator('#tabRivalryBtn').click();
   await expect(page.locator('#tabRivalryBtn')).toHaveClass(/active/);
   await expect(page.locator('#rivalryTeamA')).toBeVisible();
   await expect(page.locator('#rivalryTeamB')).toBeVisible();
   await expect(page.locator('#page-rivalry')).toContainText('Head to Head');
+  await expect(page.locator('header h2')).toHaveText('Joe');
 
   await page.locator('#rivalryTeamA').selectOption('Joe');
   await expect(page.locator('#rivalryTeamA')).toHaveValue('Joe');
@@ -142,6 +146,12 @@ test('rivalry tab renders a tale of the tape and saved rivalry selection', async
   await expect(page.locator('#rivalryLeadMeter')).toContainText('Joe');
   await expect(page.locator('#rivalryHighlightBoard .rivalry-highlight')).toHaveCount(4);
   expect(await page.locator('#rivalryTapeGrid .stat').count()).toBeGreaterThan(0);
+  await expect(page.locator('#rivalryLeadTrend svg')).toBeVisible();
+  await expect(page.locator('#rivalryLeadTrend')).toContainText('.500');
+  await expect(page.locator('#rivalryLeadTrend')).toContainText('G1');
+  await expect(page.locator('#rivalryLeadTrend')).toContainText(/\d{2}\/\d{2}\/2024/);
+  await expect(page.locator('#rivalryLeadTrend svg title').last()).toContainText('Series spread:');
+  expect(await page.locator('#rivalryTimeline .rivalry-timeline-badge').count()).toBeGreaterThan(0);
   expect(await page.locator('#rivalryTimeline .rivalry-timeline-item').count()).toBeGreaterThan(0);
   expect(await page.locator('#rivalryTimeline').evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
   await expect.poll(async () => page.evaluate(() => {

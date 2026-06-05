@@ -48,6 +48,13 @@ function formatLeaderText(teamA, teamB, result, len) {
   return `${result === 'W' ? teamA : teamB} W${len}`;
 }
 
+function displayRoundName(round) {
+  const value = String(round || '').trim();
+  if (!value) return '';
+  if (/^final$/i.test(value)) return 'Championship';
+  return value;
+}
+
 function summarizeMargins(games, teamA, teamB) {
   const sidesForTeamFn = coreFn('sidesForTeam');
   const margins = [];
@@ -336,6 +343,8 @@ function rivalrySeasonBreakdown(teamA, teamB, games) {
       diff: 0,
       notes: [],
       postseasonWinner: null,
+      postseasonRounds: [],
+      round: '',
     };
     row.games += 1;
     row.pf += s.pf;
@@ -347,9 +356,19 @@ function rivalrySeasonBreakdown(teamA, teamB, games) {
     if (isPlayoffGameFn(g)) {
       const winner = s.result === 'T' ? 'Tie' : (s.result === 'W' ? teamA : teamB);
       row.postseasonWinner = winner;
+      const roundName = displayRoundName(coreFn('normRound')(g.round));
+      if (roundName && !row.postseasonRounds.includes(roundName)) {
+        row.postseasonRounds.push(roundName);
+      }
       if (!row.notes.includes('Playoff meeting')) row.notes.push('Playoff meeting');
     }
-    if (isSaundersGameFn(g) && !row.notes.includes('Saunders meeting')) row.notes.push('Saunders meeting');
+    if (isSaundersGameFn(g)) {
+      const roundName = displayRoundName(coreFn('normRound')(g.round));
+      if (roundName && !row.postseasonRounds.includes(roundName)) {
+        row.postseasonRounds.push(roundName);
+      }
+      if (!row.notes.includes('Saunders meeting')) row.notes.push('Saunders meeting');
+    }
     if (isRegularGameFn(g) && !row.notes.includes('Regular season')) row.notes.push('Regular season');
 
     bySeason.set(season, row);
@@ -362,7 +381,14 @@ function rivalrySeasonBreakdown(teamA, teamB, games) {
       if (row.games && row.w === row.games) notes.unshift('🧹 Sweep');
       else if (row.games && row.l === row.games) notes.unshift('🧹 Swept');
       else if (row.w > 0 && row.l > 0) notes.unshift('Split');
-      if (row.postseasonWinner) notes.push(`Postseason winner: ${row.postseasonWinner}`);
+      const playoffRounds = [...new Set(row.postseasonRounds)].filter(Boolean);
+      if (playoffRounds.length && notes.some(note => note === 'Playoff meeting' || note === 'Saunders meeting')) {
+        const roundsText = playoffRounds.join(', ');
+        const playoffIdx = notes.findIndex(note => note === 'Playoff meeting');
+        if (playoffIdx !== -1) notes[playoffIdx] = `Playoff meeting (${roundsText}) winner: ${row.postseasonWinner}`;
+        const saundersIdx = notes.findIndex(note => note === 'Saunders meeting');
+        if (saundersIdx !== -1) notes[saundersIdx] = `Saunders meeting (${roundsText})`;
+      }
       if (row.t) notes.push(`${row.t} tie${row.t === 1 ? '' : 's'}`);
       return {
         ...row,
@@ -488,6 +514,46 @@ function rivalryTapeHtml(view) {
   `).join('');
 }
 
+function buildLeadTrendPoints(view) {
+  const sidesForTeamFn = coreFn('sidesForTeam');
+  const ordered = view.summary.games.slice().sort(coreFn('byDateAsc'));
+  const points = [];
+  let lead = 0;
+
+  for (const g of ordered) {
+    const s = sidesForTeamFn(g, view.teamA);
+    if (!s) continue;
+    if (s.result === 'W') lead += 1;
+    else if (s.result === 'L') lead -= 1;
+    points.push({
+      date: g.date,
+      season: +g.season,
+      lead,
+      result: s.result,
+      winner: s.result === 'T' ? 'Tie' : (s.result === 'W' ? view.teamA : view.teamB),
+      score: formatScoreline(s.pf, s.pa),
+      type: coreFn('normType')(g.type),
+      round: coreFn('normRound')(g.round),
+    });
+  }
+
+  return points;
+}
+
+function formatAxisDate(date) {
+  const str = String(date || '');
+  if (!str) return '';
+  const parts = str.split('-');
+  if (parts.length === 3) return `${parts[1]}/${parts[2]}/${parts[0]}`;
+  return str;
+}
+
+function formatSeriesSpread(lead, teamA, teamB) {
+  if (lead > 0) return `${teamA} + ${lead}`;
+  if (lead < 0) return `${teamB} + ${Math.abs(lead)}`;
+  return 'Tied';
+}
+
 function rivalryLeadMeterHtml(view) {
   const overall = view.summary.overall;
   if (!overall.g) {
@@ -515,6 +581,90 @@ function rivalryLeadMeterHtml(view) {
         <span class="rivalry-meter-a" style="flex:${leftFlex}"><span>${esc(view.teamA)} ${overall.w}</span></span>
         <span class="rivalry-meter-b" style="flex:${rightFlex}"><span>${esc(view.teamB)} ${overall.l}</span></span>
       </div>
+    </div>
+  `;
+}
+
+function rivalryLeadTrendHtml(view) {
+  const points = buildLeadTrendPoints(view);
+  if (!points.length) {
+    return '<div class="muted">No recorded games between these teams.</div>';
+  }
+
+  const width = 1000;
+  const height = 250;
+  const padLeft = 140;
+  const padRight = 24;
+  const padTop = 28;
+  const padBottom = 74;
+  const innerW = width - padLeft - padRight;
+  const innerH = height - padTop - padBottom;
+  const maxAbsLead = Math.max(1, ...points.map(p => Math.abs(p.lead)));
+  const stepX = points.length === 1 ? 0 : innerW / (points.length - 1);
+  const xFor = (idx) => padLeft + (stepX * idx);
+  const midY = padTop + (innerH / 2);
+  const yFor = (lead) => midY - ((lead / maxAbsLead) * (innerH / 2));
+  const path = points.map((p, idx) => `${idx === 0 ? 'M' : 'L'}${xFor(idx).toFixed(2)} ${yFor(p.lead).toFixed(2)}`).join(' ');
+  const current = points[points.length - 1];
+  const leaderText = current.lead > 0
+    ? `${esc(view.teamA)} leads +${current.lead}`
+    : current.lead < 0
+      ? `${esc(view.teamB)} leads +${Math.abs(current.lead)}`
+      : 'Series tied';
+  const ticks = [];
+  for (let idx = 0; idx < points.length; idx += 1) {
+    const gameNumber = idx + 1;
+    if (gameNumber === 1 || gameNumber % 5 === 0) ticks.push(idx);
+  }
+  const yLabels = [
+    { y: yFor(maxAbsLead), text: `${view.teamA} +${maxAbsLead}` },
+    { y: midY, text: '.500' },
+    { y: yFor(-maxAbsLead), text: `${view.teamB} +${maxAbsLead}` },
+  ];
+
+  return `
+    <div class="rivalry-trend">
+      <div class="rivalry-trend-top">
+        <div>
+          <div class="rivalry-trend-label">Series lead relative to .500</div>
+          <div class="rivalry-trend-sub">${leaderText} after ${points.length} game${points.length === 1 ? '' : 's'}</div>
+        </div>
+        <div class="rivalry-trend-sub">Game index across the rivalry</div>
+      </div>
+      <svg class="rivalry-trend-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Series lead over time relative to .500">
+        <line x1="${padLeft}" y1="${midY.toFixed(2)}" x2="${width - padRight}" y2="${midY.toFixed(2)}" class="rivalry-trend-zero" />
+        <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${height - padBottom}" class="rivalry-trend-axis" />
+        <line x1="${padLeft}" y1="${height - padBottom}" x2="${width - padRight}" y2="${height - padBottom}" class="rivalry-trend-axis" />
+        ${yLabels.map(label => `
+          <text x="${padLeft - 12}" y="${label.y.toFixed(2)}" class="rivalry-trend-y-label" text-anchor="end" dominant-baseline="middle">${esc(label.text)}</text>
+        `).join('')}
+        <path d="${path}" class="rivalry-trend-path" />
+        ${points.map((p, idx) => {
+          const cx = xFor(idx);
+          const cy = yFor(p.lead);
+          const spread = formatSeriesSpread(p.lead, view.teamA, view.teamB);
+          return `
+            <g>
+              <circle cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="6" class="rivalry-trend-dot ${p.result === 'W' ? 'lead-win' : p.result === 'L' ? 'lead-loss' : 'lead-tie'}" />
+              <title>${esc(`${p.date} • ${p.type}${p.round && p.round !== '—' ? ` • ${p.round}` : ''} • ${p.winner} ${p.score} • Series spread: ${spread}`)}</title>
+            </g>
+          `;
+        }).join('')}
+        ${ticks.map(idx => {
+          const p = points[idx];
+          const cx = xFor(idx);
+          return `
+            <g>
+              <line x1="${cx.toFixed(2)}" y1="${height - padBottom}" x2="${cx.toFixed(2)}" y2="${height - padBottom + 8}" class="rivalry-trend-tick" />
+              <text x="${cx.toFixed(2)}" y="${height - padBottom + 24}" class="rivalry-trend-x-label" text-anchor="middle">
+                <tspan x="${cx.toFixed(2)}" dy="0">G${idx + 1}</tspan>
+                <tspan x="${cx.toFixed(2)}" dy="14">${esc(formatAxisDate(p.date))}</tspan>
+              </text>
+            </g>
+          `;
+        }).join('')}
+      </svg>
+      <div class="rivalry-trend-note">Each point is the running series lead after that matchup, centered on .500. Positive values favor ${esc(view.teamA)}; negative values favor ${esc(view.teamB)}.</div>
     </div>
   `;
 }
@@ -597,12 +747,20 @@ function rivalryTimelineHtml(view) {
   if (!rows.length) {
     return '<div class="muted">No recorded games between these teams.</div>';
   }
+  const badgeForRow = (row) => {
+    const badges = [];
+    if (row.type !== 'Regular') badges.push(row.type);
+    const roundName = displayRoundName(row.round);
+    if (roundName) badges.push(roundName);
+    return badges;
+  };
   return rows.map(row => `
     <div class="rivalry-timeline-item ${row.rowClass} ${row.postseasonClass}" title="${esc(`${row.date} • ${row.type}${row.round && row.round !== '—' ? ` • ${row.round}` : ''} • ${row.winner} ${row.score}`)}">
       <div class="rivalry-timeline-top">
         <span>${esc(row.season)}</span>
         <span>${esc(row.type)}</span>
       </div>
+      ${badgeForRow(row).length ? `<div class="rivalry-timeline-badges">${badgeForRow(row).map(badge => `<span class="rivalry-timeline-badge">${esc(badge)}</span>`).join('')}</div>` : ''}
       <div class="rivalry-timeline-result">${esc(row.winner === 'Tie' ? 'T' : row.result)}</div>
       <div class="rivalry-timeline-score">${esc(row.score)}</div>
       <div class="rivalry-timeline-date">${esc(row.date)}</div>
@@ -668,6 +826,14 @@ function renderRivalryLeadMeter(view, opts = {}) {
   el.innerHTML = rivalryLeadMeterHtml(view);
 }
 
+function renderRivalryLeadTrend(view, opts = {}) {
+  const doc = docOrDefault(opts.doc);
+  if (!doc) return;
+  const el = doc.getElementById('rivalryLeadTrend');
+  if (!el) return;
+  el.innerHTML = rivalryLeadTrendHtml(view);
+}
+
 function renderRivalryHighlightBoard(view, opts = {}) {
   const doc = docOrDefault(opts.doc);
   if (!doc) return;
@@ -714,6 +880,7 @@ export {
   rivalryHeadlineHtml,
   rivalryHighlightBoardHtml,
   rivalryLeadMeterHtml,
+  rivalryLeadTrendHtml,
   rivalryTimelineHtml,
   rivalrySeasonBreakdown,
   rivalrySeasonTableHtml,
@@ -721,6 +888,7 @@ export {
   rivalryTapeHtml,
   renderRivalryHighlightBoard,
   renderRivalryLeadMeter,
+  renderRivalryLeadTrend,
   renderRivalryGameTable,
   renderRivalryHeadline,
   renderRivalrySeasonTable,

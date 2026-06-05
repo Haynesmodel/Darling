@@ -69,6 +69,16 @@ test('url state restores selected team and facet filters on load', async ({ page
   await expect(page.locator('#historyGamesTable tbody tr').first()).toContainText('2025-09-07');
 });
 
+test('single-season filters render the season callout', async ({ page }) => {
+  await page.goto('/?team=Joe&seasons=2025');
+  await page.waitForLoadState('networkidle');
+
+  const callout = page.locator('#seasonCallout .callout');
+  await expect(callout).toBeVisible();
+  await expect(callout).toContainText('Joe in 2025');
+  await expect(callout).toContainText('Record:');
+});
+
 test('csv export downloads the currently filtered history rows', async ({ page }) => {
   await page.goto('/?team=Joe&seasons=2025&weeks=1&opps=Shemer&types=Regular');
   await page.waitForLoadState('networkidle');
@@ -136,6 +146,18 @@ test('all-teams fun facts do not rebuild for unrelated filter changes', async ({
 
   const afterSeasonFilter = await page.evaluate(() => window.__funFactsMutationCount());
   expect(afterSeasonFilter).toBe(0);
+});
+
+test('league summary is removed after returning from all-teams view', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+
+  await page.locator('#teamSelect').selectOption('__ALL__');
+  await expect(page.locator('#leagueSummary')).toBeVisible();
+
+  await page.locator('#teamSelect').selectOption('Joe');
+  await expect(page.locator('#leagueSummary')).toHaveCount(0);
+  await expect(page.locator('header h2')).toHaveText('Joe');
 });
 
 test('fetch failure surfaces an error banner instead of a blank page', async ({ page }) => {

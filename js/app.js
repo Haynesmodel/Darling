@@ -387,6 +387,9 @@ function renderHistory(){
       universeSeasons: universe.seasons,
     });
   });
+  renderIfChanged('seasonCallout', `${selectedTeam}|seasons:${seasonFilterKey}`, () => {
+    renderSeasonCallout(selectedTeam);
+  });
   renderIfChanged('weekByWeek', `${selectedTeam}|${filteredKey}`, () => {
     renderWeekByWeek(selectedTeam, filtered, { allTeams: ALL_TEAMS, allGames: leagueGames });
   });
@@ -512,6 +515,7 @@ function renderFunListsAllTeams(){
 }
 function renderFunFacts(team, games){
   if (team === ALL_TEAMS) { renderFunFactsAllTeams(); renderLeagueSummaryTablesAllTeams(); renderFunListsAllTeams(); return; }
+  document.getElementById('leagueSummary')?.remove();
   const box = document.getElementById('funFacts');
   const lists = document.getElementById('funLists');
   if(!box || !lists) return;

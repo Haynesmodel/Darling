@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+import { test, expect } from '@playwright/test';
 
 async function downloadText(download) {
   const stream = await download.createReadStream();
@@ -7,12 +7,52 @@ async function downloadText(download) {
   return Buffer.concat(chunks).toString('utf8');
 }
 
+test.beforeEach(async ({ page }, testInfo) => {
+  const browserErrors = [];
+  const expectedFailureTest = testInfo.title.includes('fetch failure');
+
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      browserErrors.push(`console.error: ${msg.text()}`);
+    }
+  });
+  page.on('pageerror', (err) => {
+    browserErrors.push(`pageerror: ${err.message}`);
+  });
+  page.on('response', (response) => {
+    const url = response.url();
+    if (response.status() >= 400 && /\.(json|js|css|jpeg|jpg|png)$/.test(url)) {
+      browserErrors.push(`asset ${response.status()}: ${url}`);
+    }
+  });
+
+  page.__browserErrors = browserErrors;
+  page.__allowExpectedFailure = expectedFailureTest;
+});
+
+test.afterEach(async ({ page }) => {
+  const errors = page.__browserErrors || [];
+  if (page.__allowExpectedFailure) {
+    const unexpected = errors.filter(error =>
+      !error.includes('Failed to load league JSON') &&
+      !error.includes('Failed to load resource: the server responded with a status of 500') &&
+      !error.includes('asset 500:') &&
+      !error.includes('/assets/H2H.json')
+    );
+    expect(unexpected).toEqual([]);
+    return;
+  }
+  expect(errors).toEqual([]);
+});
+
 test('page loads and renders the history tables', async ({ page }) => {
   await page.goto('/');
   await page.waitForLoadState('networkidle');
 
   await expect(page.locator('#appStatus')).toBeHidden();
   await expect(page.locator('header h2')).toHaveText('Joe');
+  expect(await page.evaluate(() => typeof window.triggerGroupEgg)).toBe('undefined');
+  expect(await page.evaluate(() => typeof window.setGroupBackdrop)).toBe('undefined');
 
   const seasonCount = await page.locator('#seasonRecapTable tbody tr').count();
   const weekCount = await page.locator('#weekTable tbody tr').count();
@@ -67,6 +107,71 @@ test('url state restores selected team and facet filters on load', async ({ page
   await expect(page.locator('#historyGamesTable tbody tr')).toHaveCount(1);
   await expect(page.locator('#historyGamesTable tbody tr').first()).toContainText('Shemer');
   await expect(page.locator('#historyGamesTable tbody tr').first()).toContainText('2025-09-07');
+});
+
+test('facet dropdowns keep expanded state in sync and close with escape', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+
+  const seasonButton = page.locator('.dropdown-toggle[data-target="seasonFilters"]');
+  const weekButton = page.locator('.dropdown-toggle[data-target="weekFilters"]');
+
+  await expect(seasonButton).toHaveAttribute('aria-controls', 'seasonFilters');
+  await expect(seasonButton).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#seasonFilters')).toHaveAttribute('aria-hidden', 'true');
+
+  await seasonButton.click();
+  await expect(seasonButton).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#seasonFilters')).toHaveAttribute('aria-hidden', 'false');
+  await expect(page.locator('#seasonFilters')).toBeVisible();
+
+  await weekButton.click();
+  await expect(seasonButton).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#seasonFilters')).toHaveAttribute('aria-hidden', 'true');
+  await expect(weekButton).toHaveAttribute('aria-expanded', 'true');
+
+  await page.keyboard.press('Escape');
+  await expect(weekButton).toHaveAttribute('aria-expanded', 'false');
+  await expect(weekButton).toBeFocused();
+});
+
+test('facet dropdowns support keyboard navigation and checkbox toggling', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+
+  const seasonButton = page.locator('.dropdown-toggle[data-target="seasonFilters"]');
+  await seasonButton.focus();
+  await page.keyboard.press('Enter');
+  await expect(seasonButton).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#seasonFilters')).toHaveAttribute('aria-hidden', 'false');
+
+  await page.keyboard.press('Tab');
+  await expect(page.locator('#season-all-option')).toBeFocused();
+
+  await page.keyboard.press('Tab');
+  const firstSeason = page.locator('#seasonFilters .season-cb').first();
+  await expect(firstSeason).toBeFocused();
+  await expect(firstSeason).not.toBeChecked();
+
+  await page.keyboard.press('Space');
+  await expect(firstSeason).toBeChecked();
+  await expect(page.locator('#seasonFilters .season-all')).not.toBeChecked();
+  await expect(page.locator('#seasonCountText')).toHaveText('1 selected');
+
+  await page.keyboard.press('Escape');
+  await expect(seasonButton).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#seasonFilters')).toHaveAttribute('aria-hidden', 'true');
+  await expect(seasonButton).toBeFocused();
+});
+
+test('single-season filters render the season callout', async ({ page }) => {
+  await page.goto('/?team=Joe&seasons=2025');
+  await page.waitForLoadState('networkidle');
+
+  const callout = page.locator('#seasonCallout .callout');
+  await expect(callout).toBeVisible();
+  await expect(callout).toContainText('Joe in 2025');
+  await expect(callout).toContainText('Record:');
 });
 
 test('csv export downloads the currently filtered history rows', async ({ page }) => {
@@ -136,6 +241,18 @@ test('all-teams fun facts do not rebuild for unrelated filter changes', async ({
 
   const afterSeasonFilter = await page.evaluate(() => window.__funFactsMutationCount());
   expect(afterSeasonFilter).toBe(0);
+});
+
+test('league summary is removed after returning from all-teams view', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+
+  await page.locator('#teamSelect').selectOption('__ALL__');
+  await expect(page.locator('#leagueSummary')).toBeVisible();
+
+  await page.locator('#teamSelect').selectOption('Joe');
+  await expect(page.locator('#leagueSummary')).toHaveCount(0);
+  await expect(page.locator('header h2')).toHaveText('Joe');
 });
 
 test('fetch failure surfaces an error banner instead of a blank page', async ({ page }) => {

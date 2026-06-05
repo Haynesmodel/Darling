@@ -30,43 +30,43 @@
           </label>
 
           <div class="dropdown">
-            <button class="btn dropdown-toggle" data-target="seasonFilters">
+            <button type="button" class="btn dropdown-toggle" data-target="seasonFilters" aria-haspopup="true" aria-expanded="false" aria-controls="seasonFilters">
               Seasons <span class="count-text" id="seasonCountText">All</span> ▼
             </button>
-            <div class="dropdown-menu" id="seasonFilters"></div>
+            <div class="dropdown-menu" id="seasonFilters" role="group" aria-label="Season filters" aria-hidden="true"></div>
           </div>
 
           <div class="dropdown">
-            <button class="btn dropdown-toggle" data-target="weekFilters">
+            <button type="button" class="btn dropdown-toggle" data-target="weekFilters" aria-haspopup="true" aria-expanded="false" aria-controls="weekFilters">
               Weeks <span class="count-text" id="weekCountText">All</span> ▼
             </button>
-            <div class="dropdown-menu" id="weekFilters"></div>
+            <div class="dropdown-menu" id="weekFilters" role="group" aria-label="Week filters" aria-hidden="true"></div>
           </div>
 
           <div class="dropdown">
-            <button class="btn dropdown-toggle" data-target="oppFilters">
+            <button type="button" class="btn dropdown-toggle" data-target="oppFilters" aria-haspopup="true" aria-expanded="false" aria-controls="oppFilters">
               Opponents <span class="count-text" id="oppCountText">All</span> ▼
             </button>
-            <div class="dropdown-menu" id="oppFilters"></div>
+            <div class="dropdown-menu" id="oppFilters" role="group" aria-label="Opponent filters" aria-hidden="true"></div>
           </div>
 
           <div class="dropdown">
-            <button class="btn dropdown-toggle" data-target="typeFilters">
+            <button type="button" class="btn dropdown-toggle" data-target="typeFilters" aria-haspopup="true" aria-expanded="false" aria-controls="typeFilters">
               Types <span class="count-text" id="typeCountText">All</span> ▼
             </button>
-            <div class="dropdown-menu" id="typeFilters"></div>
+            <div class="dropdown-menu" id="typeFilters" role="group" aria-label="Type filters" aria-hidden="true"></div>
           </div>
 
           <div class="dropdown">
-            <button class="btn dropdown-toggle" data-target="roundFilters">
+            <button type="button" class="btn dropdown-toggle" data-target="roundFilters" aria-haspopup="true" aria-expanded="false" aria-controls="roundFilters">
               Rounds <span class="count-text" id="roundCountText">All</span> ▼
             </button>
-            <div class="dropdown-menu" id="roundFilters"></div>
+            <div class="dropdown-menu" id="roundFilters" role="group" aria-label="Round filters" aria-hidden="true"></div>
           </div>
 
           <span style="flex:1"></span>
-          <button id="exportCsv" class="btn">Export CSV</button>
-          <button id="clearFilters" class="btn">Clear</button>
+          <button type="button" id="exportCsv" class="btn">Export CSV</button>
+          <button type="button" id="clearFilters" class="btn">Clear</button>
         </div>
       </div>
 
@@ -167,15 +167,6 @@
   <div id="fxSaunders" class="fx-layer"></div>
   <div id="fxGroup" class="fx-layer"></div>
 
-  <script src="js/core-helpers.js"></script>
-  <script src="js/data-helpers.js"></script>
-  <script src="js/stats-helpers.js"></script>
-  <script src="js/render-helpers.js"></script>
-  <script src="js/history-renderers.js"></script>
-  <script src="js/league-renderers.js"></script>
-  <script src="js/facet-helpers.js"></script>
-  <script src="js/state-helpers.js"></script>
-  <script src="js/app.js"></script>
-  <script src="js/easter-eggs.js"></script>
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>

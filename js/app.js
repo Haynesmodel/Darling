@@ -6,6 +6,66 @@
    + 👑 crowns + 💩 turds per week; Luck (Expected Wins)
 ========================================================= */
 
+import { byDateDesc, canonicalGameKey } from './core-helpers.js';
+import { loadLeagueAssets } from './data-helpers.js';
+import {
+  bestStreakForTeam,
+  computeBottomNWeeklyScoresAllTeams,
+  computeExpectedWinForGame,
+  computeHeadToHeadPairs,
+  computeLeagueRowsSingleWeeks,
+  computeLongestStreaksGlobal,
+  computeLongestTeamStreaks,
+  computeLuckSummary,
+  computeSeasonAggregatesAllTeams,
+  computeSubThresholdGamesPerTeam,
+  computeTeamsFromLeagueGames,
+  computeTopNWeeklyScoresAllTeams,
+  computeWeeklyAwards,
+} from './stats-helpers.js';
+import {
+  buildFacetControl,
+  clearAppStatus,
+  escapeHtml,
+  renderHeaderBanners,
+  setAppStatus,
+  showPage,
+  updateTeamHeader,
+} from './render-helpers.js';
+import {
+  opponentOptions,
+  roundOptionsOrdered,
+  seasonOptions,
+  teamOptions,
+  typeOptions,
+  weekOptions,
+} from './facet-helpers.js';
+import {
+  applyFacetFilters,
+  buildHistoryCsvText,
+  parseUrlState,
+  setFacetSelections,
+  updateUrlFromState,
+} from './state-helpers.js';
+import {
+  opponentBreakdownView,
+  renderGamesTable,
+  renderSeasonRecap,
+  renderTopHighlights,
+  renderWeekByWeek,
+  seasonCalloutView,
+} from './history-renderers.js';
+import {
+  leagueFunFactsAllTeamsHtml,
+  leagueFunListsAllTeamsHtml,
+  leagueSummaryTablesHtml,
+  teamFunFactsView,
+} from './league-renderers.js';
+import {
+  setGroupBackdrop,
+  triggerGroupEgg,
+} from './easter-eggs.js';
+
 /* ---------- Global State ---------- */
 
 const DEFAULT_TEAM = "Joe";
@@ -102,6 +162,20 @@ function renderIfChanged(section, signature, renderFn){
   if(renderSectionCache.get(section) === signature) return;
   renderFn();
   renderSectionCache.set(section, signature);
+}
+
+function setDropdownOpen(dropdown, isOpen){
+  dropdown.classList.toggle('open', isOpen);
+  const btn = dropdown.querySelector('.dropdown-toggle');
+  if(btn) btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  const menu = dropdown.querySelector('.dropdown-menu');
+  if(menu) menu.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+}
+
+function closeDropdowns(except = null){
+  document.querySelectorAll('.dropdown').forEach((dropdown)=>{
+    if(dropdown !== except) setDropdownOpen(dropdown, false);
+  });
 }
 
 if(typeof window !== 'undefined'){
@@ -201,11 +275,22 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 
   // Dropdown toggling
   document.addEventListener('click', (e)=>{
-    document.querySelectorAll('.dropdown').forEach((dd)=>{
-      const btn = dd.querySelector('.dropdown-toggle');
-      if (btn && btn.contains(e.target)) dd.classList.toggle('open');
-      else if (!dd.contains(e.target)) dd.classList.remove('open');
-    });
+    const toggle = e.target.closest('.dropdown-toggle');
+    if(toggle){
+      const dropdown = toggle.closest('.dropdown');
+      const shouldOpen = !dropdown.classList.contains('open');
+      closeDropdowns(dropdown);
+      setDropdownOpen(dropdown, shouldOpen);
+      return;
+    }
+    if(!e.target.closest('.dropdown')) closeDropdowns();
+  });
+
+  document.addEventListener('keydown', (e)=>{
+    if(e.key !== 'Escape') return;
+    const openToggle = document.querySelector('.dropdown.open .dropdown-toggle');
+    closeDropdowns();
+    if(openToggle) openToggle.focus();
   });
 
   // Clear / Export
@@ -387,6 +472,9 @@ function renderHistory(){
       universeSeasons: universe.seasons,
     });
   });
+  renderIfChanged('seasonCallout', `${selectedTeam}|seasons:${seasonFilterKey}`, () => {
+    renderSeasonCallout(selectedTeam);
+  });
   renderIfChanged('weekByWeek', `${selectedTeam}|${filteredKey}`, () => {
     renderWeekByWeek(selectedTeam, filtered, { allTeams: ALL_TEAMS, allGames: leagueGames });
   });
@@ -512,6 +600,7 @@ function renderFunListsAllTeams(){
 }
 function renderFunFacts(team, games){
   if (team === ALL_TEAMS) { renderFunFactsAllTeams(); renderLeagueSummaryTablesAllTeams(); renderFunListsAllTeams(); return; }
+  document.getElementById('leagueSummary')?.remove();
   const box = document.getElementById('funFacts');
   const lists = document.getElementById('funLists');
   if(!box || !lists) return;
@@ -556,12 +645,8 @@ function renderOppBreakdown(team, games){
   if(calloutsBox){
     calloutsBox.innerHTML = view.calloutsHtml;
     if(view.shouldUpdateBackdrop){
-      if(view.triggerSlug && window.triggerGroupEgg){
-        try{ window.triggerGroupEgg(view.triggerSlug); }catch(e){}
-      }
-      if(window.setGroupBackdrop){
-        try{ window.setGroupBackdrop(view.backdropSlug || null); }catch(e){}
-      }
+      if(view.triggerSlug) triggerGroupEgg(view.triggerSlug);
+      setGroupBackdrop(view.backdropSlug || null);
     }
   }
 }

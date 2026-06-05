@@ -1,18 +1,18 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import * as core from '../js/core-helpers.js';
+import * as data from '../js/data-helpers.js';
+import * as stats from '../js/stats-helpers.js';
+import * as render from '../js/render-helpers.js';
+import * as historyRenderers from '../js/history-renderers.js';
+import * as leagueRenderers from '../js/league-renderers.js';
+import * as facets from '../js/facet-helpers.js';
+import * as state from '../js/state-helpers.js';
 
 const root = process.cwd();
 const assets = path.join(root, 'assets');
-const core = require(path.join(root, 'js', 'core-helpers.js'));
-const data = require(path.join(root, 'js', 'data-helpers.js'));
-const stats = require(path.join(root, 'js', 'stats-helpers.js'));
-const render = require(path.join(root, 'js', 'render-helpers.js'));
-const historyRenderers = require(path.join(root, 'js', 'history-renderers.js'));
-const leagueRenderers = require(path.join(root, 'js', 'league-renderers.js'));
-const facets = require(path.join(root, 'js', 'facet-helpers.js'));
-const state = require(path.join(root, 'js', 'state-helpers.js'));
 const h2hPath = path.join(assets, 'H2H.json');
 const seasonPath = path.join(assets, 'SeasonSummary.json');
 const rivalPath = path.join(assets, 'Rivalries.json');
@@ -51,6 +51,12 @@ const {
   buildHistoryCsvText,
 } = state;
 const {
+  normalizeLeagueGame,
+  normalizeSeasonSummary,
+  normalizeRivalry,
+  validateLeagueGames,
+  validateSeasonSummaries,
+  validateRivalries,
   loadLeagueAssets,
 } = data;
 const {
@@ -58,6 +64,7 @@ const {
   collectStreakRunsForTeam,
   bestStreakForTeam,
   computeLongestTeamStreaks,
+  expectedWinScoreIndex,
   computeExpectedWinForGame,
   computeSeasonAggregatesAllTeams,
   computeHeadToHeadPairs,
@@ -138,6 +145,22 @@ function mockJsonResponse(body, opts = {}) {
       if (opts.rejectJson) throw new Error('bad json');
       return body;
     },
+  };
+}
+
+function validSeasonRow(overrides = {}) {
+  return {
+    season: 2025,
+    owner: 'Joe',
+    wins: 10,
+    losses: 4,
+    ties: 0,
+    finish: 1,
+    playoff_wins: 2,
+    playoff_losses: 0,
+    saunders_wins: 0,
+    saunders_losses: 0,
+    ...overrides,
   };
 }
 
@@ -249,19 +272,20 @@ test('deriveWeeksInPlace assigns per-team week numbers', () => {
 
 test('loadLeagueAssets fetches, dedupes, and derives weeks', async () => {
   const game = {
-    season: 2025,
+    season: '2025',
     date: '2025-09-07',
-    teamA: 'Joe',
-    teamB: 'Shap',
-    scoreA: 100,
-    scoreB: 90,
-    type: 'Regular',
-    round: '',
+    teamA: ' Joe ',
+    teamB: ' Shap ',
+    scoreA: '100',
+    scoreB: '90',
+    week: '1',
+    type: ' Regular ',
+    round: null,
   };
   const responses = new Map([
     ['assets/H2H.json', mockJsonResponse([game, { ...game }])],
-    ['assets/SeasonSummary.json', mockJsonResponse([{ season: 2025, owner: 'Joe' }])],
-    ['assets/Rivalries.json', mockJsonResponse([{ group: 'Originals' }])],
+    ['assets/SeasonSummary.json', mockJsonResponse([validSeasonRow({ season: '2025', owner: ' Joe ', wins: '10', finish: '1' })])],
+    ['assets/Rivalries.json', mockJsonResponse([{ name: ' Originals ', members: [' Joe ', ' Shap '], note: ' Founders ' }])],
   ]);
   const loaded = await loadLeagueAssets({
     fetchFn: async (url) => responses.get(url),
@@ -272,8 +296,75 @@ test('loadLeagueAssets fetches, dedupes, and derives weeks', async () => {
   assert.equal(loaded.leagueGames.length, 1);
   assert.deepEqual([...loaded.derivedWeeksSet], [1]);
   assert.equal(loaded.leagueGames[0]._weekByTeam.Joe, 1);
-  assert.deepEqual(loaded.seasonSummaries, [{ season: 2025, owner: 'Joe' }]);
-  assert.deepEqual(loaded.rivalries, [{ group: 'Originals' }]);
+  assert.equal(loaded.rawGames[0].season, 2025);
+  assert.equal(loaded.rawGames[0].teamA, 'Joe');
+  assert.equal(loaded.rawGames[0].scoreA, 100);
+  assert.equal(loaded.rawGames[0].round, '');
+  assert.equal(loaded.rawGames[0].week, 1);
+  assert.deepEqual(loaded.seasonSummaries, [validSeasonRow({ owner: 'Joe' })]);
+  assert.deepEqual(loaded.rivalries, [{ name: 'Originals', members: ['Joe', 'Shap'], note: 'Founders' }]);
+});
+
+test('asset normalizers coerce imported rows into canonical shapes', () => {
+  assert.deepEqual(
+    normalizeLeagueGame({
+      season: '2025',
+      date: ' 2025-09-07 ',
+      teamA: ' Joe ',
+      teamB: ' Shap ',
+      scoreA: '100.5',
+      scoreB: '90',
+      week: '',
+      type: ' Regular ',
+      round: null,
+    }),
+    {
+      season: 2025,
+      date: '2025-09-07',
+      teamA: 'Joe',
+      teamB: 'Shap',
+      scoreA: 100.5,
+      scoreB: 90,
+      week: null,
+      type: 'Regular',
+      round: '',
+    }
+  );
+  assert.deepEqual(
+    normalizeSeasonSummary(validSeasonRow({ season: '2025', owner: ' Joe ', wins: '10', finish: '', bagels_earned: '2' })),
+    validSeasonRow({ season: 2025, owner: 'Joe', wins: 10, finish: null, bagels_earned: 2 })
+  );
+  assert.deepEqual(
+    normalizeRivalry({ name: ' Rivals ', members: [' Joe ', ' Shap '], type: ' group ', slug: ' rivals ', note: ' Legacy ' }),
+    { name: 'Rivals', members: ['Joe', 'Shap'], type: 'group', slug: 'rivals', note: 'Legacy' }
+  );
+});
+
+test('loadLeagueAssets defaults to globalThis.fetch', async () => {
+  const game = {
+    season: 2025,
+    date: '2025-09-07',
+    teamA: 'Joe',
+    teamB: 'Shap',
+    scoreA: 100,
+    scoreB: 90,
+    type: 'Regular',
+    round: '',
+  };
+  const responses = new Map([
+    ['assets/H2H.json', mockJsonResponse([game])],
+    ['assets/SeasonSummary.json', mockJsonResponse([validSeasonRow()])],
+    ['assets/Rivalries.json', mockJsonResponse([{ name: 'Originals', members: ['Joe', 'Shap'] }])],
+  ]);
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => responses.get(url);
+  try {
+    const loaded = await loadLeagueAssets({ logger: { warn() {} } });
+    assert.equal(loaded.leagueGames.length, 1);
+    assert.equal(loaded.leagueGames[0]._weekByTeam.Joe, 1);
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
 });
 
 test('loadLeagueAssets treats rivalry data as optional', async () => {
@@ -290,7 +381,7 @@ test('loadLeagueAssets treats rivalry data as optional', async () => {
   const warnings = [];
   const responses = new Map([
     ['assets/H2H.json', mockJsonResponse([game])],
-    ['assets/SeasonSummary.json', mockJsonResponse([{ season: 2025, owner: 'Joe' }])],
+    ['assets/SeasonSummary.json', mockJsonResponse([validSeasonRow()])],
     ['assets/Rivalries.json', mockJsonResponse([], { ok: false, status: 404 })],
   ]);
   const loaded = await loadLeagueAssets({
@@ -316,6 +407,45 @@ test('loadLeagueAssets fails clearly when required data is unavailable', async (
       logger: { warn() {} },
     }),
     /Could not load assets\/H2H\.json: HTTP 500/
+  );
+});
+
+test('data validators reject invalid league asset rows', async () => {
+  assert.throws(
+    () => validateLeagueGames([{ season: 2025, date: 'not-a-date', teamA: 'Joe', teamB: 'Shap', scoreA: 1, scoreB: 2, type: 'Regular' }], 'H2H'),
+    /H2H row 0 invalid date/
+  );
+  assert.throws(
+    () => validateSeasonSummaries([{ ...validSeasonRow(), wins: 'ten' }], 'SeasonSummary'),
+    /SeasonSummary row 0 missing numeric wins/
+  );
+  assert.throws(
+    () => validateRivalries([{ name: 'Bad', members: ['Joe'] }], 'Rivalries'),
+    /Rivalries row 0 members must contain at least two team names/
+  );
+
+  const game = {
+    season: 2025,
+    date: '2025-09-07',
+    teamA: 'Joe',
+    teamB: 'Shap',
+    scoreA: 100,
+    scoreB: 90,
+    type: 'Regular',
+    round: '',
+  };
+  const responses = new Map([
+    ['assets/H2H.json', mockJsonResponse([game])],
+    ['assets/SeasonSummary.json', mockJsonResponse([validSeasonRow()])],
+    ['assets/Rivalries.json', mockJsonResponse([{ name: 'Bad', members: ['Joe'] }])],
+  ]);
+
+  await assert.rejects(
+    loadLeagueAssets({
+      fetchFn: async (url) => responses.get(url),
+      logger: { warn() {} },
+    }),
+    /assets\/Rivalries\.json row 0 members/
   );
 });
 
@@ -392,6 +522,8 @@ test('stats helpers compute expected wins and season aggregates', () => {
 
   assert.equal(computeExpectedWinForGame(games, 'Joe', games[0]), 2.5 / 3);
   assert.equal(computeExpectedWinForGame(games, 'Nuss', games[1]), 0);
+  assert.equal(expectedWinScoreIndex(games), expectedWinScoreIndex(games));
+  assert.equal(expectedWinScoreIndex(games).get('2025|2025-09-07').length, 4);
 
   const rows = computeSeasonAggregatesAllTeams(games, summaries);
   const joe = rows.find(r => r.team === 'Joe' && r.season === 2025);
@@ -461,9 +593,51 @@ test('render helpers format text and build stable markup', () => {
 
   const facet = facetControlHtml(['A&B', 'Semi Final'], { prefix: 'round' });
   assert.match(facet, /class="round-all"/);
+  assert.match(facet, /id="round-all-option"/);
+  assert.match(facet, /for="round-option-0"/);
   assert.match(facet, /class="round-cb"/);
   assert.match(facet, /data-value="A%26B"/);
   assert.match(facet, /Semi Final/);
+});
+
+test('renderers escape data-driven text before building html', () => {
+  const team = 'Joe <Owner>';
+  const opp = 'Shap & "Co"';
+  const game = {
+    season: 2025,
+    date: '2025-09-07',
+    teamA: team,
+    teamB: opp,
+    scoreA: 100,
+    scoreB: 90,
+    type: 'Regular <bad>',
+    round: 'Semi & Final',
+    _weekByTeam: { [team]: 1, [opp]: 1 },
+  };
+
+  const historyHtml = historyGamesTableRowHtml(game, team);
+  assert.match(historyHtml, /Shap &amp; &quot;Co&quot;/);
+  assert.match(historyHtml, /Regular &lt;bad&gt;/);
+  assert.doesNotMatch(historyHtml, /<bad>/);
+
+  const callout = seasonCalloutView(team, {
+    seasonSummaries: [{ ...validSeasonRow({ owner: team }) }],
+    selectedSeasons: new Set([2025]),
+    allTeams: '__ALL__',
+    champNoteFn: () => '<unsafe note>',
+    saundersNoteFn: () => null,
+  }).html;
+  assert.match(callout, /Joe &lt;Owner&gt;/);
+  assert.match(callout, /&lt;unsafe note&gt;/);
+  assert.doesNotMatch(callout, /<unsafe note>/);
+
+  const leagueHtml = leagueSummaryTablesHtml({
+    leagueGames: [game],
+    seasonSummaries: [{ ...validSeasonRow({ owner: team }) }],
+    seasonAggregates: [{ team, w: 1, l: 0, t: 0, n: 1, pf: 100, pa: 90 }],
+  });
+  assert.match(leagueHtml, /Joe &lt;Owner&gt;/);
+  assert.doesNotMatch(leagueHtml, /<Owner>/);
 });
 
 test('league renderer builds all-teams summary tables', () => {
@@ -512,8 +686,9 @@ test('league renderer builds all-teams summary tables', () => {
   assert.match(html, /Regular Season \(All-Time\)/);
   assert.match(html, /<td>Joe<\/td><td>18-10<\/td><td>64\.3%<\/td><td>97\.50<\/td><td>91\.07<\/td>/);
   assert.match(html, /Post Season \(All-Time\)/);
-  assert.match(html, /<td>Joe<\/td><td>2-0<\/td><td>1<\/td><td>1<\/td><td>2<\/td>/);
-  assert.match(html, /<td>Shap<\/td><td>0-1<\/td><td>0<\/td><td>0<\/td><td>1<\/td>/);
+  assert.doesNotMatch(html, /<th scope="col">Bagels<\/th>/);
+  assert.match(html, /<td>Joe<\/td><td>2-0<\/td><td>1<\/td><td>1<\/td>\s*<td>120\.00<\/td><td>100\.00<\/td>/);
+  assert.match(html, /<td>Shap<\/td><td>0-1<\/td><td>0<\/td><td>0<\/td>\s*<td>100\.00<\/td><td>120\.00<\/td>/);
   assert.match(html, /<td>1-0<\/td><td>1<\/td>/);
   assert.match(html, /Average Finish \(All-Time\)/);
   assert.match(html, /<td>Joe<\/td><td>1\.00<\/td><td>1<\/td>/);
@@ -525,8 +700,8 @@ test('league renderer builds all-teams fun fact tiles', () => {
       { team: 'Joe', season: 2025, w: 10, l: 4, t: 0, n: 14, pct: 10 / 14, pf: 1400, pa: 1200, diff: 200 },
       { team: 'Shap', season: 2025, w: 3, l: 11, t: 0, n: 14, pct: 3 / 14, pf: 1050, pa: 1300, diff: -250 },
     ],
-    winStreak: { team: 'Joe', len: 6, start: '2025-09-07', end: '2025-10-12' },
-    lossStreak: { team: 'Shap', len: 5, start: '2025-09-14', end: '2025-10-12' },
+    winStreak: { team: 'Joe', len: 6, start: { date: '2025-09-07' }, end: { date: '2025-10-12' } },
+    lossStreak: { team: 'Shap', len: 5, start: { date: '2025-09-14' }, end: { date: '2025-10-12' } },
     headToHeadPairs: [
       { team: 'Joe', opp: 'Shap', w: 7, l: 1, t: 0, g: 8, pct: 7 / 8 },
     ],
@@ -541,6 +716,8 @@ test('league renderer builds all-teams fun fact tiles', () => {
   assert.match(html, /Worst Season Point Diff/);
   assert.match(html, /-250/);
   assert.match(html, /Joe \(2025-09-07 \u2192 2025-10-12\)/);
+  assert.match(html, /Shap \(2025-09-14 \u2192 2025-10-12\)/);
+  assert.doesNotMatch(html, /\[object Object\]/);
   assert.match(html, /87\.5%/);
   assert.match(html, /180\.25/);
 });

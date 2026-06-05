@@ -1,12 +1,15 @@
 {
   "name": "darling-history",
   "private": true,
+  "type": "module",
   "scripts": {
-    "test": "npm run test:data",
+    "test": "npm run test:data && npm run test:scripts",
     "test:data": "node test/data.test.js",
-    "test:coverage": "node scripts/run_tests_with_coverage.js && node scripts/v8_coverage_report.js && node scripts/check_coverage.js",
+    "test:scripts": "node --test test/scripts.test.cjs",
+    "test:hygiene": "node scripts/check_repo_hygiene.cjs",
+    "test:coverage": "node scripts/run_tests_with_coverage.cjs && node scripts/v8_coverage_report.cjs && node scripts/check_coverage.cjs",
     "test:ui": "playwright test",
-    "test:ci": "npm run test:coverage && npm run test:ui"
+    "test:ci": "npm run test:hygiene && npm run test:coverage && npm run test:ui"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0"

@@ -3,8 +3,8 @@ set -euo pipefail
 
 # === Sleeper -> H2H update (Regular + Postseason) ===
 # League settings (edit once per year)
-LEAGUE_ID="1257071385973362690"
-SEASON="2025"
+LEAGUE_ID="${LEAGUE_ID:-1257071385973362690}"
+SEASON="${SEASON:-2025}"
 
 # Week settings
 REG_SEASON_WEEKS="1-14"
@@ -18,7 +18,7 @@ ASSETS_DIR="${SCRIPT_DIR}/../assets"
 
 IN_H2H="${ASSETS_DIR}/H2H.json"
 OUT_H2H="${ASSETS_DIR}/H2H.updated.json"
-MAP_FILE="${SCRIPT_DIR}/2025_team_mapping.json"
+MAP_FILE="${SCRIPT_DIR}/${SEASON}_team_mapping.json"
 
 PY="${PYTHON:-python3}"
 UPDATER="${SCRIPT_DIR}/sleeper_to_h2h.py"

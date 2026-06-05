@@ -39,6 +39,25 @@ main{padding:16px}
 #page-history.page.visible{grid-template-columns:1fr}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:16px}
 .card h3{margin:4px 0 10px;font-size:16px}
+.status-banner{
+  margin:0 0 16px;
+  padding:12px 14px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:#fff;
+  font-weight:600;
+}
+.status-banner.status-loading{
+  background:#eff6ff;
+  border-color:#bfdbfe;
+  color:#1d4ed8;
+}
+.status-banner.status-error{
+  background:#fef2f2;
+  border-color:#fecaca;
+  color:#b91c1c;
+}
+.status-banner[hidden]{display:none}
 
 /* Controls */
 .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center}

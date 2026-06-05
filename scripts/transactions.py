@@ -1,10 +1,11 @@
 # sleeper_turnstile_2025.py
 # Stdlib-only (no requests/jq). Works on macOS/Homebrew Python.
 import json, urllib.request, urllib.error, time
+import os
 from collections import defaultdict, Counter
 
-LEAGUE_ID = "1257071385973362690"
-SEASON = "2025"
+LEAGUE_ID = os.environ.get("LEAGUE_ID", "1257071385973362690")
+SEASON = os.environ.get("SEASON", "2025")
 BASE = "https://api.sleeper.app/v1"
 
 def get(url):
@@ -110,13 +111,13 @@ def chain_str(pid, seq):
 most_teams = sorted(((pid, len(owned_by_sets[pid])) for pid in owned_by_sets),
                     key=lambda x: (-x[1], pname(x[0])))[:10]
 
-print("\n== Top 10: Most different teams (2025) ==")
+print(f"\n== Top 10: Most different teams ({SEASON}) ==")
 for pid, cnt in most_teams:
     print(f"{pname(pid)} — {cnt} teams ({chain_str(pid, owned_by_order[pid])})")
 
 # --- Top 10: most pickups (waiver/FA only) ---
 most_pickups = pickups.most_common(10)
-print("\n== Top 10: Most pickups (waiver/FA only, 2025) ==")
+print(f"\n== Top 10: Most pickups (waiver/FA only, {SEASON}) ==")
 # For the pickups chain, show the teams that successfully ADDED the player in order.
 adds_history = defaultdict(list)  # player_id -> [roster_id of successful WAIVER/FA adds]
 for tx in all_txs:
@@ -131,7 +132,7 @@ for pid, c in most_pickups:
 
 # --- Top 10: most drops (waiver/FA only) ---
 most_drops = drops.most_common(10)
-print("\n== Top 10: Most drops (waiver/FA only, 2025) ==")
+print(f"\n== Top 10: Most drops (waiver/FA only, {SEASON}) ==")
 drops_history = defaultdict(list)  # player_id -> [roster_id of successful WAIVER/FA drops]
 for tx in all_txs:
     if tx.get("status") == "complete" and tx.get("type") in WAIVER_FA:

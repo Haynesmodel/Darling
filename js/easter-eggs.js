@@ -23,6 +23,11 @@
       return bg;
     }
   
+    // Contributor note: adding a new group usually takes three coordinated edits.
+    // 1) Add the group slug to assets/Rivalries.json.
+    // 2) Add the matching visual mapping here in GROUP_EGGS.
+    // 3) Add the styling in css/easter-eggs.css.
+    // Keep the slug identical across all three files.
     const GROUP_EGGS = {
       'the-jews':            { cls: 'egg-the-jews', label: 'The Jews ✡️', emoji: '✡️' },
       'churchill-baseball':  { cls: 'egg-churchill-baseball', label: 'Churchill Baseball ⚾', emoji: '⚾' },

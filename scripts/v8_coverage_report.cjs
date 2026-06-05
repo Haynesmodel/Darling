@@ -25,12 +25,59 @@ function offsetToLine(starts, offset){
   return Math.max(0, lo-1); // 0-based
 }
 
+function collectSourceFiles(root = defaultRoot) {
+  const files = [];
+  const ignoredDirs = new Set(['test', 'node_modules', '__pycache__', 'venv', '.venv', 'env', 'ENV']);
+  for (const dir of sourceDirs) {
+    const dirPath = path.join(root, dir);
+    if (!fs.existsSync(dirPath)) continue;
+    const stack = [dirPath];
+    while (stack.length) {
+      const current = stack.pop();
+      for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+        const absPath = path.join(current, entry.name);
+        if (entry.isDirectory()) {
+          if (ignoredDirs.has(entry.name)) continue;
+          stack.push(absPath);
+          continue;
+        }
+        if (sourceExts.has(path.extname(entry.name))) {
+          files.push(absPath);
+        }
+      }
+    }
+  }
+  return files.sort();
+}
+
 function isSourceFile(root, filePath) {
   const relPath = path.relative(root, filePath);
   if (relPath.startsWith('..' + path.sep) || path.isAbsolute(relPath)) return false;
   if (relPath.split(path.sep).includes('test')) return false;
   if (!sourceDirs.has(relPath.split(path.sep)[0])) return false;
   return sourceExts.has(path.extname(filePath));
+}
+
+function resolveCoverageUrl(root, url) {
+  if (!url) return null;
+  if (url.startsWith('file://')) {
+    return fileURLToPath(url);
+  }
+
+  try {
+    const parsed = new URL(url);
+    if (
+      (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+      (parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost' || parsed.hostname === '::1')
+    ) {
+      const filePath = path.normalize(path.join(root, decodeURIComponent(parsed.pathname.replace(/^\/+/, ''))));
+      if (isSourceFile(root, filePath)) return filePath;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }
 
 function buildCoverageSummary(root = defaultRoot) {
@@ -45,8 +92,8 @@ function buildCoverageSummary(root = defaultRoot) {
     const data = JSON.parse(fs.readFileSync(path.join(v8Dir, f), 'utf8'));
     const results = data.result || [];
     for (const r of results){
-      if (!r.url || !r.url.startsWith('file://')) continue;
-      const filePath = fileURLToPath(r.url);
+      const filePath = resolveCoverageUrl(root, r.url);
+      if (!filePath) continue;
       if (!isSourceFile(root, filePath)) continue;
 
       const entry = fileData.get(filePath) || { ranges: [] };
@@ -59,11 +106,18 @@ function buildCoverageSummary(root = defaultRoot) {
     }
   }
 
+  const sourceFiles = collectSourceFiles(root);
+  const missingFiles = sourceFiles.filter(filePath => !fileData.has(filePath));
+  if (missingFiles.length) {
+    throw new Error(`Missing coverage for source files: ${missingFiles.map(filePath => path.relative(root, filePath)).join(', ')}`);
+  }
+
   let totalLines = 0;
   let coveredLines = 0;
   const perFile = [];
 
-  for (const [filePath, info] of fileData.entries()){
+  for (const filePath of sourceFiles){
+    const info = fileData.get(filePath);
     const src = fs.readFileSync(filePath, 'utf8');
     const starts = getLineStarts(src);
     const lines = src.split('\n');
@@ -134,7 +188,9 @@ if (require.main === module) {
 
 module.exports = {
   buildCoverageSummary,
+  collectSourceFiles,
   isSourceFile,
   runCli,
+  resolveCoverageUrl,
   writeCoverageReport,
 };

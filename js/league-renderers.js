@@ -39,6 +39,199 @@ function emptyPostRow(team) {
   };
 }
 
+function formatRunDate(value) {
+  return (value && typeof value === 'object') ? value.date : value;
+}
+
+function formatRecord(row) {
+  return row ? `${row.w}-${row.l}${row.t ? '-' + row.t : ''}` : '\u2014';
+}
+
+function buildLeagueFunFactsAllTeamsViewModel(opts = {}) {
+  const nfmt = renderFn('nfmt');
+  const seasons = Array.isArray(opts.seasonAggregates) ? opts.seasonAggregates : [];
+  const minGames = opts.minGames || 8;
+  const winStreak = opts.winStreak || null;
+  const lossStreak = opts.lossStreak || null;
+  const headToHeadPairs = Array.isArray(opts.headToHeadPairs) ? opts.headToHeadPairs : [];
+  const topWeeklyScores = Array.isArray(opts.topWeeklyScores) ? opts.topWeeklyScores : [];
+
+  const valid = seasons.filter(r => r.n >= minGames);
+  const bestRec = valid.slice().sort((a, b) => b.pct - a.pct || b.w - a.w)[0] || null;
+  const worstRec = valid.slice().sort((a, b) => a.pct - b.pct || a.w - b.w)[0] || null;
+  const bestDiff = valid.slice().sort((a, b) => (b.diff - a.diff) || b.season - a.season)[0] || null;
+  const worstDiff = valid.slice().sort((a, b) => (a.diff - b.diff) || a.season - b.season)[0] || null;
+  const bestVs = headToHeadPairs.slice().sort((a, b) => b.pct - a.pct || b.g - a.g)[0] || null;
+  const top = topWeeklyScores[0] || null;
+
+  const tile = (label, value, sub = '') => ({
+    label: String(label),
+    value: String(value),
+    sub: sub ? String(sub) : '',
+  });
+
+  return {
+    tiles: [
+      tile('Best Single-Season Record', bestRec ? formatRecord(bestRec) : '\u2014', bestRec ? `${bestRec.team} \u2022 ${bestRec.season} \u2022 ${nfmt(bestRec.pct * 100, 1)}%` : ''),
+      tile('Worst Single-Season Record', worstRec ? formatRecord(worstRec) : '\u2014', worstRec ? `${worstRec.team} \u2022 ${worstRec.season} \u2022 ${nfmt(worstRec.pct * 100, 1)}%` : ''),
+      tile(
+        'Best Season Point Diff',
+        bestDiff ? `${(+bestDiff.diff >= 0 ? '+' : '')}${nfmt(bestDiff.diff, 0)}` : '\u2014',
+        bestDiff ? `${bestDiff.team} \u2022 ${bestDiff.season} \u2022 PF ${nfmt(bestDiff.pf, 0)} / PA ${nfmt(bestDiff.pa, 0)}` : ''
+      ),
+      tile(
+        'Worst Season Point Diff',
+        worstDiff ? `${(+worstDiff.diff >= 0 ? '+' : '')}${nfmt(worstDiff.diff, 0)}` : '\u2014',
+        worstDiff ? `${worstDiff.team} \u2022 ${worstDiff.season} \u2022 PF ${nfmt(worstDiff.pf, 0)} / PA ${nfmt(worstDiff.pa, 0)}` : ''
+      ),
+      tile('Longest Winning Streak', winStreak ? `${winStreak.len}` : '\u2014', winStreak ? `${winStreak.team} (${formatRunDate(winStreak.start)} \u2192 ${formatRunDate(winStreak.end)})` : ''),
+      tile('Longest Losing Streak', lossStreak ? `${lossStreak.len}` : '\u2014', lossStreak ? `${lossStreak.team} (${formatRunDate(lossStreak.start)} \u2192 ${formatRunDate(lossStreak.end)})` : ''),
+      tile(
+        'Best Record vs Single Opponent',
+        bestVs ? `${nfmt(bestVs.pct * 100, 1)}%` : '\u2014',
+        bestVs ? `${bestVs.team} vs ${bestVs.opp} \u2022 ${bestVs.w}-${bestVs.l}${bestVs.t ? '-' + bestVs.t : ''} (${bestVs.g} gms)` : ''
+      ),
+      tile('Highest Scoring Single Game', top ? `${nfmt(top.pf, 2)}` : '\u2014', top ? `${top.team} vs ${top.opp} (${top.date})` : ''),
+    ],
+  };
+}
+
+function buildTeamFunFactsViewModel(team, games, opts = {}) {
+  const nfmt = renderFn('nfmt');
+  const sidesForTeam = coreFn('sidesForTeam');
+  const normType = coreFn('normType');
+  const byDateAsc = coreFn('byDateAsc');
+  const unique = coreFn('unique');
+  const isRegularGame = coreFn('isRegularGame');
+  const leagueGames = opts.leagueGames || games;
+  const seasonSummaries = Array.isArray(opts.seasonSummaries) ? opts.seasonSummaries : [];
+  const seasonAggregates = Array.isArray(opts.seasonAggregates) ? opts.seasonAggregates : [];
+  const winStreak = opts.winStreak || null;
+  const lossStreak = opts.lossStreak || null;
+  const luckSummary = opts.luckSummary || {};
+  const blowoutMargin = opts.blowoutMargin || 29;
+  const highScoreThreshold = opts.highScoreThreshold || 150;
+  const closeGameMargin = opts.closeGameMargin || 5;
+
+  const isTwoWeek2014 = (g) => (+g.season === 2014) && !isRegularGame(g);
+  const weekLabelFor = (g) => {
+    const wk = g._weekByTeam && g._weekByTeam[team];
+    return wk ? `Wk ${wk} ${g.season}` : `${g.season}`;
+  };
+
+  let hi = null;
+  let blow = null;
+  let loss = null;
+  let crowns = 0, turds = 0;
+  let closeW = 0, closeL = 0, closeT = 0, blowouts = 0;
+  let blowoutLosses = 0;
+  let high150 = 0;
+  const perGame = [];
+  const orderedAsc = games.slice().sort(byDateAsc);
+
+  for (const g of orderedAsc) {
+    const s = sidesForTeam(g, team);
+    if (!s) continue;
+
+    if (!isTwoWeek2014(g) && (!hi || s.pf > hi.pf)) hi = { pf: s.pf, pa: s.pa, date: g.date, opp: s.opp };
+
+    if (s.result === 'W') {
+      const margin = s.pf - s.pa;
+      if (!blow || margin > blow.margin) blow = { margin, date: g.date, opp: s.opp, pf: s.pf, pa: s.pa };
+    }
+    if (s.result === 'L') {
+      const margin = s.pa - s.pf;
+      if (!loss || margin > loss.margin) loss = { margin, date: g.date, opp: s.opp, pf: s.pf, pa: s.pa };
+    }
+
+    if (!isTwoWeek2014(g)) {
+      perGame.push({
+        pf: s.pf,
+        pa: s.pa,
+        date: g.date,
+        opp: s.opp,
+        season: +g.season,
+        type: normType(g.type),
+        g,
+      });
+    }
+  }
+
+  const hi5 = perGame.slice().sort((a, b) => b.pf - a.pf || b.date.localeCompare(a.date)).slice(0, 5);
+  const lo5 = perGame.slice().sort((a, b) => a.pf - b.pf || a.date.localeCompare(b.date)).slice(0, 5);
+
+  const datesPlayed = unique(orderedAsc.map(g => (sidesForTeam(g, team) ? g.date : null)).filter(Boolean));
+  for (const d of datesPlayed) {
+    const dayGames = leagueGames.filter(x => x.date === d);
+    if (dayGames.some(isTwoWeek2014)) continue;
+    const maxScore = Math.max(...dayGames.flatMap(x => [x.scoreA, x.scoreB]));
+    const minScore = Math.min(...dayGames.flatMap(x => [x.scoreA, x.scoreB]));
+    const meGame = orderedAsc.find(x => x.date === d && sidesForTeam(x, team));
+    const meScore = meGame ? (meGame.teamA === team ? meGame.scoreA : meGame.scoreB) : -Infinity;
+    if (meScore === maxScore) crowns++;
+    if (meScore === minScore) turds++;
+  }
+
+  for (const g of orderedAsc) {
+    const s = sidesForTeam(g, team);
+    if (!s) continue;
+    const margin = Math.abs(s.pf - s.pa);
+    if (margin < closeGameMargin) {
+      if (s.result === 'W') closeW++;
+      else if (s.result === 'L') closeL++;
+      else closeT++;
+    }
+    if (s.result === 'W' && (s.pf - s.pa) >= blowoutMargin) blowouts++;
+    if (s.result === 'L' && (s.pa - s.pf) >= blowoutMargin) blowoutLosses++;
+    if (s.pf >= highScoreThreshold) high150++;
+  }
+
+  const teamSeasons = seasonAggregates.filter(r => r.team === team && r.n > 0 && +r.season !== 2014);
+  const bestPPG = teamSeasons.slice().sort((a, b) => b.ppg - a.ppg || b.season - a.season)[0] || null;
+  const bestOPPG = teamSeasons.slice().sort((a, b) => a.oppg - b.oppg || b.season - a.season)[0] || null;
+  const byeYears = seasonSummaries.filter(r => r.owner === team && r.bye).map(r => r.season).sort((a, b) => b - a);
+  const antiByeYears = seasonSummaries.filter(r => r.owner === team && r.saunders_bye).map(r => r.season).sort((a, b) => b - a);
+  const lwSub = winStreak && winStreak.start && winStreak.end ? `${winStreak.start.date} \u2192 ${winStreak.end.date} (${weekLabelFor(winStreak.start)} \u2192 ${weekLabelFor(winStreak.end)})` : '';
+  const llSub = lossStreak && lossStreak.start && lossStreak.end ? `${lossStreak.start.date} \u2192 ${lossStreak.end.date} (${weekLabelFor(lossStreak.start)} \u2192 ${weekLabelFor(lossStreak.end)})` : '';
+  const { exp, act, luck } = luckSummary;
+
+  const tile = (label, value, sub = '') => ({
+    label: String(label),
+    value: String(value),
+    sub: sub ? String(sub) : '',
+  });
+
+  const row = (r) => ({
+    score: `${nfmt(r?.pf, 2)} \u2013 ${r.pa.toFixed(2)}`,
+    opponent: String(r.opp),
+    date: String(r.date),
+  });
+
+  return {
+    facts: [
+      tile('Highest Score', hi ? hi.pf.toFixed(2) : '\u2014', hi ? `${hi.date} vs ${hi.opp} (${hi.pa.toFixed(2)} allowed)` : ''),
+      tile('Biggest Blowout', blow ? `+${blow.margin.toFixed(2)}` : '\u2014', blow ? `${blow.date} vs ${blow.opp} (${blow.pf.toFixed(2)}\u2013${blow.pa.toFixed(2)})` : ''),
+      tile('Biggest Loss', loss ? `-${loss.margin.toFixed(2)}` : '\u2014', loss ? `${loss.date} vs ${loss.opp} (${loss.pf.toFixed(2)}\u2013${loss.pa.toFixed(2)})` : ''),
+      tile('Longest Win Streak', winStreak ? winStreak.len : 0, lwSub || '\u2014'),
+      tile('Longest Losing Streak', lossStreak ? lossStreak.len : 0, llSub || '\u2014'),
+      tile('Top-Week Crowns', crowns || 0, crowns ? 'Led league in points on those dates' : ''),
+      tile('Bottom-Week Turds', turds || 0, turds ? 'Lowest score league-wide on those dates' : ''),
+      tile('Close Games Record (<5)', `${closeW}-${closeL}${closeT ? `-${closeT}` : ''}`, (closeW + closeL + closeT) ? `${closeW + closeL + closeT} games` : '\u2014'),
+      tile('Most PPG Season', bestPPG ? nfmt(bestPPG.ppg, 2) : '\u2014', bestPPG ? `${bestPPG.season}` : '\u2014'),
+      tile('Lowest OPPG Season', bestOPPG ? nfmt(bestOPPG.oppg, 2) : '\u2014', bestOPPG ? `${bestOPPG.season}` : '\u2014'),
+      tile('Blowout Wins (29+)', blowouts, blowouts ? 'Wins by 29+ points' : '\u2014'),
+      tile('Blowout Losses (29+)', blowoutLosses, blowoutLosses ? 'Losses by 29+ points' : '\u2014'),
+      tile('150+ Point Games', high150, high150 ? 'Single-team scores \u2265150' : '\u2014'),
+      tile('Luck (Actual \u2212 Expected)', luck ? (luck > 0 ? `+${luck.toFixed(2)}` : luck.toFixed(2)) : (luck === 0 ? '0.00' : '\u2014'),
+        (Number.isFinite(exp) ? `Actual: ${act.toFixed(2)} \u2022 Expected: ${exp.toFixed(2)} (regular season only)` : '\u2014')),
+      tile('Byes', byeYears.length, byeYears.length ? `Years: ${byeYears.join(', ')}` : '\u2014'),
+      tile('Anti-Byes', antiByeYears.length, antiByeYears.length ? `Years: ${antiByeYears.join(', ')}` : '\u2014'),
+    ],
+    highestGames: hi5.map(row),
+    lowestGames: lo5.map(row),
+  };
+}
+
 function leagueSummaryTablesHtml(opts = {}) {
   const nfmt = renderFn('nfmt');
   const leagueGames = opts.leagueGames || [];
@@ -197,24 +390,7 @@ function leagueSummaryTablesHtml(opts = {}) {
 }
 
 function leagueFunFactsAllTeamsHtml(opts = {}) {
-  const nfmt = renderFn('nfmt');
-  const seasons = Array.isArray(opts.seasonAggregates) ? opts.seasonAggregates : [];
-  const minGames = opts.minGames || 8;
-  const winStreak = opts.winStreak || null;
-  const lossStreak = opts.lossStreak || null;
-  const headToHeadPairs = Array.isArray(opts.headToHeadPairs) ? opts.headToHeadPairs : [];
-  const topWeeklyScores = Array.isArray(opts.topWeeklyScores) ? opts.topWeeklyScores : [];
-
-  const valid = seasons.filter(r => r.n >= minGames);
-  const bestRec = valid.slice().sort((a, b) => b.pct - a.pct || b.w - a.w)[0] || null;
-  const worstRec = valid.slice().sort((a, b) => a.pct - b.pct || a.w - b.w)[0] || null;
-  const bestDiff = valid.slice().sort((a, b) => (b.diff - a.diff) || b.season - a.season)[0] || null;
-  const worstDiff = valid.slice().sort((a, b) => (a.diff - b.diff) || a.season - b.season)[0] || null;
-  const bestVs = headToHeadPairs.slice().sort((a, b) => b.pct - a.pct || b.g - a.g)[0] || null;
-  const top = topWeeklyScores[0] || null;
-  const fmtRec = (r) => r ? `${r.w}-${r.l}${r.t ? '-' + r.t : ''}` : '\u2014';
-  const runDate = (v) => (v && typeof v === 'object') ? v.date : v;
-
+  const vm = buildLeagueFunFactsAllTeamsViewModel(opts);
   const tile = (label, val, sub = '') => `
   <div class="stat">
     <div class="label">${esc(label)}</div>
@@ -223,28 +399,7 @@ function leagueFunFactsAllTeamsHtml(opts = {}) {
   </div>
 `;
 
-  return [
-    tile('Best Single-Season Record', bestRec ? `${fmtRec(bestRec)}` : '\u2014', bestRec ? `${bestRec.team} \u2022 ${bestRec.season} \u2022 ${nfmt(bestRec.pct * 100, 1)}%` : ''),
-    tile('Worst Single-Season Record', worstRec ? `${fmtRec(worstRec)}` : '\u2014', worstRec ? `${worstRec.team} \u2022 ${worstRec.season} \u2022 ${nfmt(worstRec.pct * 100, 1)}%` : ''),
-    tile(
-      'Best Season Point Diff',
-      bestDiff ? `${(+bestDiff.diff >= 0 ? '+' : '')}${nfmt(bestDiff.diff, 0)}` : '\u2014',
-      bestDiff ? `${bestDiff.team} \u2022 ${bestDiff.season} \u2022 PF ${nfmt(bestDiff.pf, 0)} / PA ${nfmt(bestDiff.pa, 0)}` : ''
-    ),
-    tile(
-      'Worst Season Point Diff',
-      worstDiff ? `${(+worstDiff.diff >= 0 ? '+' : '')}${nfmt(worstDiff.diff, 0)}` : '\u2014',
-      worstDiff ? `${worstDiff.team} \u2022 ${worstDiff.season} \u2022 PF ${nfmt(worstDiff.pf, 0)} / PA ${nfmt(worstDiff.pa, 0)}` : ''
-    ),
-    tile('Longest Winning Streak', winStreak ? `${winStreak.len}` : '\u2014', winStreak ? `${winStreak.team} (${runDate(winStreak.start)} \u2192 ${runDate(winStreak.end)})` : ''),
-    tile('Longest Losing Streak', lossStreak ? `${lossStreak.len}` : '\u2014', lossStreak ? `${lossStreak.team} (${runDate(lossStreak.start)} \u2192 ${runDate(lossStreak.end)})` : ''),
-    tile(
-      'Best Record vs Single Opponent',
-      bestVs ? `${nfmt(bestVs.pct * 100, 1)}%` : '\u2014',
-      bestVs ? `${bestVs.team} vs ${bestVs.opp} \u2022 ${bestVs.w}-${bestVs.l}${bestVs.t ? '-' + bestVs.t : ''} (${bestVs.g} gms)` : ''
-    ),
-    tile('Highest Scoring Single Game', top ? `${nfmt(top.pf, 2)}` : '\u2014', top ? `${top.team} vs ${top.opp} (${top.date})` : ''),
-  ].join('');
+  return vm.tiles.map(t => tile(t.label, t.value, t.sub)).join('');
 }
 
 function leagueFunListsAllTeamsHtml(opts = {}) {
@@ -499,137 +654,18 @@ function leagueFunListsAllTeamsHtml(opts = {}) {
 }
 
 function teamFunFactsView(team, games, opts = {}) {
-  const nfmt = renderFn('nfmt');
-  const sidesForTeam = coreFn('sidesForTeam');
-  const normType = coreFn('normType');
-  const byDateAsc = coreFn('byDateAsc');
-  const unique = coreFn('unique');
-  const isRegularGame = coreFn('isRegularGame');
-  const leagueGames = opts.leagueGames || games;
-  const seasonSummaries = Array.isArray(opts.seasonSummaries) ? opts.seasonSummaries : [];
-  const seasonAggregates = Array.isArray(opts.seasonAggregates) ? opts.seasonAggregates : [];
-  const winStreak = opts.winStreak || null;
-  const lossStreak = opts.lossStreak || null;
-  const luckSummary = opts.luckSummary || {};
-  const blowoutMargin = opts.blowoutMargin || 29;
-  const highScoreThreshold = opts.highScoreThreshold || 150;
-  const closeGameMargin = opts.closeGameMargin || 5;
-
-  const isTwoWeek2014 = (g) => (+g.season === 2014) && !isRegularGame(g);
-  const weekLabelFor = (g) => {
-    const wk = g._weekByTeam && g._weekByTeam[team];
-    return wk ? `Wk ${wk} ${g.season}` : `${g.season}`;
-  };
-
-  let hi = null;
-  let blow = null;
-  let loss = null;
-  let crowns = 0, turds = 0;
-  let closeW = 0, closeL = 0, closeT = 0, blowouts = 0;
-  let blowoutLosses = 0;
-  let high150 = 0;
-  const perGame = [];
-  const orderedAsc = games.slice().sort(byDateAsc);
-
-  for (const g of orderedAsc) {
-    const s = sidesForTeam(g, team);
-    if (!s) continue;
-
-    if (!isTwoWeek2014(g) && (!hi || s.pf > hi.pf)) hi = { pf: s.pf, pa: s.pa, date: g.date, opp: s.opp };
-
-    if (s.result === 'W') {
-      const margin = s.pf - s.pa;
-      if (!blow || margin > blow.margin) blow = { margin, date: g.date, opp: s.opp, pf: s.pf, pa: s.pa };
-    }
-    if (s.result === 'L') {
-      const margin = s.pa - s.pf;
-      if (!loss || margin > loss.margin) loss = { margin, date: g.date, opp: s.opp, pf: s.pf, pa: s.pa };
-    }
-
-    if (!isTwoWeek2014(g)) {
-      perGame.push({
-        pf: s.pf,
-        pa: s.pa,
-        date: g.date,
-        opp: s.opp,
-        season: +g.season,
-        type: normType(g.type),
-        g,
-      });
-    }
-  }
-
-  const hi5 = perGame.slice().sort((a, b) => b.pf - a.pf || b.date.localeCompare(a.date)).slice(0, 5);
-  const lo5 = perGame.slice().sort((a, b) => a.pf - b.pf || a.date.localeCompare(b.date)).slice(0, 5);
-
-  const datesPlayed = unique(orderedAsc.map(g => (sidesForTeam(g, team) ? g.date : null)).filter(Boolean));
-  for (const d of datesPlayed) {
-    const dayGames = leagueGames.filter(x => x.date === d);
-    if (dayGames.some(isTwoWeek2014)) continue;
-    const maxScore = Math.max(...dayGames.flatMap(x => [x.scoreA, x.scoreB]));
-    const minScore = Math.min(...dayGames.flatMap(x => [x.scoreA, x.scoreB]));
-    const meGame = orderedAsc.find(x => x.date === d && sidesForTeam(x, team));
-    const meScore = meGame ? (meGame.teamA === team ? meGame.scoreA : meGame.scoreB) : -Infinity;
-    if (meScore === maxScore) crowns++;
-    if (meScore === minScore) turds++;
-  }
-
-  for (const g of orderedAsc) {
-    const s = sidesForTeam(g, team);
-    if (!s) continue;
-    const margin = Math.abs(s.pf - s.pa);
-    if (margin < closeGameMargin) {
-      if (s.result === 'W') closeW++;
-      else if (s.result === 'L') closeL++;
-      else closeT++;
-    }
-    if (s.result === 'W' && (s.pf - s.pa) >= blowoutMargin) blowouts++;
-    if (s.result === 'L' && (s.pa - s.pf) >= blowoutMargin) blowoutLosses++;
-    if (s.pf >= highScoreThreshold) high150++;
-  }
-
-  const teamSeasons = seasonAggregates.filter(r => r.team === team && r.n > 0 && +r.season !== 2014);
-  const bestPPG = teamSeasons.slice().sort((a, b) => b.ppg - a.ppg || b.season - a.season)[0] || null;
-  const bestOPPG = teamSeasons.slice().sort((a, b) => a.oppg - b.oppg || b.season - a.season)[0] || null;
-  const byeYears = seasonSummaries.filter(r => r.owner === team && r.bye).map(r => r.season).sort((a, b) => b - a);
-  const antiByeYears = seasonSummaries.filter(r => r.owner === team && r.saunders_bye).map(r => r.season).sort((a, b) => b - a);
-  const lwSub = winStreak && winStreak.start && winStreak.end ? `${winStreak.start.date} \u2192 ${winStreak.end.date} (${weekLabelFor(winStreak.start)} \u2192 ${weekLabelFor(winStreak.end)})` : '';
-  const llSub = lossStreak && lossStreak.start && lossStreak.end ? `${lossStreak.start.date} \u2192 ${lossStreak.end.date} (${weekLabelFor(lossStreak.start)} \u2192 ${weekLabelFor(lossStreak.end)})` : '';
-  const { exp, act, luck } = luckSummary;
+  const vm = buildTeamFunFactsViewModel(team, games, opts);
 
   const tile = (label, val, sub = '') => `<div class="stat"><div class="label">${esc(label)}</div><div class="value">${esc(val)}</div>${sub ? `<div class="label" style="margin-top:4px">${esc(sub)}</div>` : ''}</div>`;
-  const factsHtml = [
-    tile('Highest Score', hi ? hi.pf.toFixed(2) : '\u2014', hi ? `${hi.date} vs ${hi.opp} (${hi.pa.toFixed(2)} allowed)` : ''),
-    tile('Biggest Blowout', blow ? `+${blow.margin.toFixed(2)}` : '\u2014', blow ? `${blow.date} vs ${blow.opp} (${blow.pf.toFixed(2)}\u2013${blow.pa.toFixed(2)})` : ''),
-    tile('Biggest Loss', loss ? `-${loss.margin.toFixed(2)}` : '\u2014', loss ? `${loss.date} vs ${loss.opp} (${loss.pf.toFixed(2)}\u2013${loss.pa.toFixed(2)})` : ''),
-    tile('Longest Win Streak', winStreak ? winStreak.len : 0, lwSub || '\u2014'),
-    tile('Longest Losing Streak', lossStreak ? lossStreak.len : 0, llSub || '\u2014'),
-    tile('Top-Week Crowns', crowns || 0, crowns ? 'Led league in points on those dates' : ''),
-    tile('Bottom-Week Turds', turds || 0, turds ? 'Lowest score league-wide on those dates' : ''),
-    tile('Close Games Record (<5)', `${closeW}-${closeL}${closeT ? `-${closeT}` : ''}`, (closeW + closeL + closeT) ? `${closeW + closeL + closeT} games` : '\u2014'),
-    tile('Most PPG Season', bestPPG ? nfmt(bestPPG.ppg, 2) : '\u2014', bestPPG ? `${bestPPG.season}` : '\u2014'),
-    tile('Lowest OPPG Season', bestOPPG ? nfmt(bestOPPG.oppg, 2) : '\u2014', bestOPPG ? `${bestOPPG.season}` : '\u2014'),
-    tile('Blowout Wins (29+)', blowouts, blowouts ? 'Wins by 29+ points' : '\u2014'),
-    tile('Blowout Losses (29+)', blowoutLosses, blowoutLosses ? 'Losses by 29+ points' : '\u2014'),
-    tile('150+ Point Games', high150, high150 ? 'Single-team scores \u2265150' : '\u2014'),
-    tile('Luck (Actual \u2212 Expected)', luck ? (luck > 0 ? `+${luck.toFixed(2)}` : luck.toFixed(2)) : (luck === 0 ? '0.00' : '\u2014'),
-      (Number.isFinite(exp) ? `Actual: ${act.toFixed(2)} \u2022 Expected: ${exp.toFixed(2)} (regular season only)` : '\u2014')),
-    tile('Byes', byeYears.length, byeYears.length ? `Years: ${byeYears.join(', ')}` : '\u2014'),
-    tile('Anti-Byes', antiByeYears.length, antiByeYears.length ? `Years: ${antiByeYears.join(', ')}` : '\u2014'),
-  ].join('');
+  const factsHtml = vm.facts.map(f => tile(f.label, f.value, f.sub)).join('');
 
-  const row = (r) => `<tr>
-  <td>${nfmt(r?.pf, 2)} \u2013 ${r.pa.toFixed(2)}</td>
-  <td>${esc(r.opp)}</td>
-  <td>${esc(r.date)}</td>
-</tr>`;
   const listsHtml = `
   <div class="mini">
     <div class="mini-title">Top 5 Highest Scoring Games</div>
     <div class="table-wrap mini-table">
       <table>
         <thead><tr><th scope="col">Score</th><th scope="col">Opponent</th><th scope="col">Date</th></tr></thead>
-        <tbody>${hi5.map(row).join('') || '<tr><td colspan="3" class="muted">\u2014</td></tr>'}</tbody>
+        <tbody>${vm.highestGames.map(r => `<tr><td>${esc(r.score)}</td><td>${esc(r.opponent)}</td><td>${esc(r.date)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">\u2014</td></tr>'}</tbody>
       </table>
     </div>
   </div>
@@ -638,7 +674,7 @@ function teamFunFactsView(team, games, opts = {}) {
     <div class="table-wrap mini-table">
       <table>
         <thead><tr><th scope="col">Score</th><th scope="col">Opponent</th><th scope="col">Date</th></tr></thead>
-        <tbody>${lo5.map(row).join('') || '<tr><td colspan="3" class="muted">\u2014</td></tr>'}</tbody>
+        <tbody>${vm.lowestGames.map(r => `<tr><td>${esc(r.score)}</td><td>${esc(r.opponent)}</td><td>${esc(r.date)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">\u2014</td></tr>'}</tbody>
       </table>
     </div>
   </div>
@@ -647,6 +683,8 @@ function teamFunFactsView(team, games, opts = {}) {
   return { factsHtml, listsHtml };
 }
 export {
+  buildLeagueFunFactsAllTeamsViewModel,
+  buildTeamFunFactsViewModel,
   leagueSummaryTablesHtml,
   leagueFunFactsAllTeamsHtml,
   leagueFunListsAllTeamsHtml,

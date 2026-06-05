@@ -1,4 +1,35 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { test, expect } from '@playwright/test';
+
+function slugifyTitle(title) {
+  return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+async function startBrowserCoverage(page, browserName) {
+  if (browserName !== 'chromium') return null;
+  const session = await page.context().newCDPSession(page);
+  await session.send('Profiler.enable');
+  await session.send('Profiler.startPreciseCoverage', {
+    callCount: true,
+    detailed: true,
+  });
+  return session;
+}
+
+async function stopBrowserCoverage(session, title) {
+  if (!session) return;
+  const coverage = await session.send('Profiler.takePreciseCoverage');
+  await session.send('Profiler.stopPreciseCoverage');
+  await session.send('Profiler.disable');
+
+  const outDir = path.join(process.cwd(), 'coverage', '.v8');
+  fs.mkdirSync(outDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(outDir, `ui-${slugifyTitle(title)}.json`),
+    JSON.stringify({ result: coverage.result }, null, 2),
+  );
+}
 
 async function downloadText(download) {
   const stream = await download.createReadStream();
@@ -7,7 +38,7 @@ async function downloadText(download) {
   return Buffer.concat(chunks).toString('utf8');
 }
 
-test.beforeEach(async ({ page }, testInfo) => {
+test.beforeEach(async ({ page, browserName }, testInfo) => {
   const browserErrors = [];
   const expectedFailureTest = testInfo.title.includes('fetch failure');
 
@@ -28,9 +59,12 @@ test.beforeEach(async ({ page }, testInfo) => {
 
   page.__browserErrors = browserErrors;
   page.__allowExpectedFailure = expectedFailureTest;
+  page.__browserCoverageSession = await startBrowserCoverage(page, browserName);
 });
 
-test.afterEach(async ({ page }) => {
+test.afterEach(async ({ page }, testInfo) => {
+  await stopBrowserCoverage(page.__browserCoverageSession, testInfo.title);
+
   const errors = page.__browserErrors || [];
   if (page.__allowExpectedFailure) {
     const unexpected = errors.filter(error =>
@@ -253,6 +287,64 @@ test('league summary is removed after returning from all-teams view', async ({ p
   await page.locator('#teamSelect').selectOption('Joe');
   await expect(page.locator('#leagueSummary')).toHaveCount(0);
   await expect(page.locator('header h2')).toHaveText('Joe');
+});
+
+test('switching between all-teams and single-team modes preserves active filters', async ({ page }) => {
+  await page.goto('/?team=Joe&seasons=2025&weeks=1&opps=Shemer&types=Regular');
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#seasonCountText')).toHaveText('1 selected');
+  await expect(page.locator('#weekCountText')).toHaveText('1 selected');
+  await expect(page.locator('#oppCountText')).toHaveText('1 selected');
+  await expect(page.locator('#typeCountText')).toHaveText('1 selected');
+
+  await page.locator('#teamSelect').selectOption('__ALL__');
+  await expect(page.locator('#oppTableTitle')).toHaveText('Team Breakdown');
+  await expect(page.locator('#leagueSummary')).toBeVisible();
+  await expect(page.locator('#seasonCountText')).toHaveText('1 selected');
+  await expect(page.locator('#weekCountText')).toHaveText('1 selected');
+  await expect(page.locator('#oppCountText')).toHaveText('1 selected');
+  await expect(page.locator('#typeCountText')).toHaveText('1 selected');
+
+  await page.locator('#teamSelect').selectOption('Joe');
+  await expect(page.locator('#leagueSummary')).toHaveCount(0);
+  await expect(page.locator('header h2')).toHaveText('Joe');
+  await expect(page.locator('#historyGamesTable tbody tr')).toHaveCount(1);
+  await expect(page.locator('#seasonCountText')).toHaveText('1 selected');
+  await expect(page.locator('#weekCountText')).toHaveText('1 selected');
+  await expect(page.locator('#oppCountText')).toHaveText('1 selected');
+  await expect(page.locator('#typeCountText')).toHaveText('1 selected');
+});
+
+test('empty-result filters leave the tables empty without breaking the page', async ({ page }) => {
+  await page.goto('/?team=Connor&seasons=2014&weeks=1&types=Regular');
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('header h2')).toHaveText('Connor');
+  await expect(page.locator('#seasonCountText')).toHaveText('1 selected');
+  await expect(page.locator('#weekCountText')).toHaveText('1 selected');
+  await expect(page.locator('#typeCountText')).toHaveText('1 selected');
+  await expect(page.locator('#historyGamesTable tbody tr')).toHaveCount(0);
+  await expect(page.locator('#weekTable tbody tr')).toHaveCount(0);
+  await expect(page.locator('#oppTable tbody tr')).toHaveCount(0);
+});
+
+test('all-teams export uses the ALL filename and includes both sides of a game', async ({ page }) => {
+  await page.goto('/?team=Joe&seasons=2025&types=Regular');
+  await page.waitForLoadState('networkidle');
+
+  await page.locator('#teamSelect').selectOption('__ALL__');
+  await expect(page.locator('#leagueSummary')).toBeVisible();
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('#exportCsv').click();
+  const download = await downloadPromise;
+  const csv = await downloadText(download);
+
+  expect(download.suggestedFilename()).toBe('history_ALL.csv');
+  expect(csv.split('\n')[0]).toBe('date,season,team,opponent,result,pf,pa,type,round,week,xw');
+  expect(csv).toContain('"2025-09-07","2025","Joe"');
+  expect(csv).toContain('"2025-09-07","2025","Shemer"');
 });
 
 test('fetch failure surfaces an error banner instead of a blank page', async ({ page }) => {

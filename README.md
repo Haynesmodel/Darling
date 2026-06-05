@@ -3,15 +3,21 @@
 Live site: https://haynesmodel.github.io/Darling/
 
 The live site is a static page backed by JSON assets in `assets/`.
+Requires Node 20.x. Use [`.nvmrc`](./.nvmrc) or `nvm use` to match the supported runtime.
 
 Run locally:
-- `python3 -m http.server 8000`
+- `npm run serve`
+- or `node scripts/serve_static.cjs 8000 127.0.0.1`
 - open `http://127.0.0.1:8000/`
 
 Test locally:
 - `npm test` runs the data and helper tests.
+- `npm run test:assets` validates `assets/H2H.json`, `assets/SeasonSummary.json`, and `assets/Rivalries.json`.
+- `npm run test:scripts` runs the script helper tests, including the Python update helpers.
 - `npm run test:ui` runs the Playwright browser tests.
-- `npm run test:ci` runs coverage and browser tests, matching CI.
+- `npm run test:coverage` runs the Node tests, browser tests, and coverage check.
+- `npm run test:ci` runs hygiene, script, and coverage checks, matching CI.
+- GitHub branch protection should require the `CI / test` check.
 
 Primary web-served data:
 - `assets/H2H.json`
@@ -26,8 +32,9 @@ Generated or local-only files:
 - `assets/H2H_backup.json`, `coverage/`, `test-results/`, `playwright-report/`, `.nyc_output/`, `scripts/__pycache__/`, and `.DS_Store` files are local artifacts and should not be committed.
 
 Season update flow:
-- Set `SEASON` and `LEAGUE_ID` when needed, then run `scripts/update_2025.sh`.
-- Review `assets/H2H.updated.json` before copying it over `assets/H2H.json`.
-- Add a Week 1 Sunday anchor in `scripts/sleeper_to_h2h.py` before running a new season.
+- Set `SEASON` and `LEAGUE_ID` when needed, then confirm the Week 1 Sunday anchor exists in `scripts/sleeper_to_h2h.py`.
+- Dry run with `UPDATE_LIVE=1 VALIDATE_ONLY=1 scripts/update_2025.sh` to generate and validate a temporary bundle without touching `assets/`.
+- Run `UPDATE_LIVE=1 scripts/update_2025.sh` to write `assets/H2H.updated.json` for review.
+- Review `assets/H2H.updated.json`, copy it into `assets/H2H.json`, and rerun `npm run test:assets` and `npm run test:scripts` before committing.
 
 Season notes and cleanup history live in [CHANGELOG.md](./CHANGELOG.md).

@@ -124,8 +124,13 @@ def parse_weeks(weeks_str: str):
             for w in range(int(a), int(b) + 1):
                 weeks.add(w)
         else:
-            weeks.add(int(token))
+                weeks.add(int(token))
     return sorted(weeks)
+
+def game_key(game):
+    wk = game.get("week") or 0
+    teams = sorted([game.get("teamA", ""), game.get("teamB", "")])
+    return (int(game.get("season")), int(wk), teams[0], teams[1])
 
 # ---------------- Postseason helpers ----------------
 def build_bracket_roster_pairs(league_id: str):
@@ -175,6 +180,28 @@ def postseason_label_for_week(week: int, game_type: str) -> str:
         if week == 17:
             return "Saunders Final"
     return ""
+
+def classify_postseason_game(rid_a, rid_b, playoff_pairs, saunders_pairs, week: int):
+    rid_a = int(rid_a)
+    rid_b = int(rid_b)
+    pair_key = (rid_a, rid_b) if rid_a < rid_b else (rid_b, rid_a)
+    if pair_key in playoff_pairs:
+        game_type = "Playoff"
+    elif pair_key in saunders_pairs:
+        game_type = "Saunders"
+    else:
+        return None, ""
+    return game_type, postseason_label_for_week(week, game_type)
+
+def sort_h2h_rows(h2h, season: int, sort_mode: str):
+    if sort_mode == "none":
+        return h2h
+    if sort_mode == "season":
+        before = [g for g in h2h if g.get("season") != season]
+        target = [g for g in h2h if g.get("season") == season]
+        target_sorted = sorted(target, key=lambda g: (g.get("date", ""), g.get("week") or 0, g.get("teamA", ""), g.get("teamB", "")))
+        return before + target_sorted
+    return sorted(h2h, key=lambda g: (g.get("season", 0), g.get("date", ""), g.get("week") or 0, g.get("teamA", ""), g.get("teamB", "")))
 
 # ---------------- Main ----------------
 def main():
@@ -263,15 +290,10 @@ def main():
         print(f"[info] postseason bracket pairs loaded: playoff={len(playoff_pairs)}, saunders={len(saunders_pairs)}")
 
     # Existing game keying (avoid duplicates)
-    def key_of(game):
-        wk = game.get("week") or 0
-        teams = sorted([game.get("teamA", ""), game.get("teamB", "")])
-        return (int(game.get("season")), int(wk), teams[0], teams[1])
-
     existing_keys = set()
     for g in h2h:
         try:
-            existing_keys.add(key_of(g))
+            existing_keys.add(game_key(g))
         except Exception:
             continue
 
@@ -316,15 +338,8 @@ def main():
                 if not args.allow_postseason:
                     continue
 
-                pair_key = (ridA, ridB) if ridA < ridB else (ridB, ridA)
-
-                if pair_key in playoff_pairs:
-                    game_type = "Playoff"
-                    round_name = postseason_label_for_week(w, game_type)
-                elif pair_key in saunders_pairs:
-                    game_type = "Saunders"
-                    round_name = postseason_label_for_week(w, game_type)
-                else:
+                game_type, round_name = classify_postseason_game(ridA, ridB, playoff_pairs, saunders_pairs, w)
+                if not game_type:
                     # Not in playoff or saunders bracket => placement game (5-6, 7-8) or irrelevant
                     # Track a counter so you can see it happening.
                     skipped_unclassified += 1
@@ -353,15 +368,7 @@ def main():
             appended += 1
 
     # Sorting
-    if args.sort_mode == "none":
-        h2h_final = h2h
-    elif args.sort_mode == "season":
-        before = [g for g in h2h if g.get("season") != args.season]
-        target = [g for g in h2h if g.get("season") == args.season]
-        target_sorted = sorted(target, key=lambda g: (g.get("date", ""), g.get("week") or 0, g.get("teamA", ""), g.get("teamB", "")))
-        h2h_final = before + target_sorted
-    else:
-        h2h_final = sorted(h2h, key=lambda g: (g.get("season", 0), g.get("date", ""), g.get("week") or 0, g.get("teamA", ""), g.get("teamB", "")))
+    h2h_final = sort_h2h_rows(h2h, args.season, args.sort_mode)
 
     save_json(args.out, h2h_final)
     print(

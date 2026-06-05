@@ -25,6 +25,107 @@ function esc(value) {
   return renderFn('escapeHtml')(value);
 }
 
+function formatRunDate(value) {
+  return (value && typeof value === 'object') ? value.date : value;
+}
+
+function buildTopHighlightsViewModel(team, opts = {}) {
+  const allTeams = opts.allTeams || '__ALL__';
+  const seasonSummaries = opts.seasonSummaries || [];
+  const champNoteFn = opts.champNoteFn || (() => null);
+  const saundersNoteFn = opts.saundersNoteFn || (() => null);
+  const computeRegularSeasonChampYearsFn = coreFn('computeRegularSeasonChampYears');
+  const nfmtFn = renderFn('nfmt');
+
+  if (team === allTeams) {
+    return {
+      isLeagueView: true,
+      chips: [
+        {
+          title: 'League view',
+          main: 'Select a team to see Darlings & Saunders',
+          sub: 'Filters still work (e.g., Week 1). See Team Breakdown below.',
+        },
+      ],
+    };
+  }
+
+  const rows = seasonSummaries.filter(r => r.owner === team);
+  const champYears = rows.filter(r => r.champion).map(r => r.season).sort((a, b) => b - a);
+  const sauYears = rows.filter(r => r.saunders === true).map(r => r.season).sort((a, b) => b - a);
+  const regYears = computeRegularSeasonChampYearsFn(team, seasonSummaries).sort((a, b) => b - a);
+  const avgFinish = rows.filter(r => Number.isFinite(+r.finish));
+  const avgFinishValue = avgFinish.length ? avgFinish.reduce((sum, r) => sum + (+r.finish), 0) / avgFinish.length : null;
+  const champsDisplay = champYears.map(y => champNoteFn(team, y) ? `${y}*` : `${y}`);
+  const sauDisplay = sauYears.map(y => saundersNoteFn(team, y) ? `${y}*` : `${y}`);
+  const notes = [];
+  champYears.forEach(y => { const n = champNoteFn(team, y); if (n) notes.push(`${y} \u2014 ${n}`); });
+  sauYears.forEach(y => { const n = saundersNoteFn(team, y); if (n) notes.push(`${y} \u2014 ${n}`); });
+
+  return {
+    isLeagueView: false,
+    chips: [
+      { title: 'Darlings', main: `${champYears.length}`, sub: champYears.length ? `Years: ${champsDisplay.join(', ')}` : '\u2014' },
+      { title: 'Saunders', main: `${sauYears.length}`, sub: sauYears.length ? `Years: ${sauDisplay.join(', ')}` : '\u2014' },
+      { title: 'Regular-Season Titles', main: `${regYears.length}`, sub: regYears.length ? `Years: ${regYears.join(', ')}` : '\u2014' },
+      { title: 'Avg Finish', main: nfmtFn(avgFinishValue, 2), sub: avgFinish.length ? `Seasons: ${avgFinish.length}` : '\u2014' },
+      ...(notes.length ? [{ title: 'Notes', main: '', sub: `* ${notes.join(' \u2022 ')}`, kind: 'notes' }] : []),
+    ],
+  };
+}
+
+function buildSeasonCalloutViewModel(team, opts = {}) {
+  const allTeams = opts.allTeams || '__ALL__';
+  const selectedSeasons = opts.selectedSeasons instanceof Set ? opts.selectedSeasons : new Set(opts.selectedSeasons || []);
+  const seasonSummaries = opts.seasonSummaries || [];
+  const champNoteFn = opts.champNoteFn || (() => null);
+  const saundersNoteFn = opts.saundersNoteFn || (() => null);
+  const fmtPctFn = coreFn('fmtPct');
+
+  if (team === allTeams) return { show: false, html: '', effectKey: null, effectType: null, resetEffect: false };
+  if (selectedSeasons.size !== 1) return { show: false, html: '', effectKey: null, effectType: null, resetEffect: true };
+
+  const [onlySeason] = [...selectedSeasons];
+  const rec = seasonSummaryLookup(team, onlySeason, seasonSummaries);
+  if (!rec) return { show: false, html: '', effectKey: null, effectType: null, resetEffect: false };
+
+  const bits = [];
+  if (rec.champion) bits.push(`\ud83c\udfc6 Champion${champNoteFn(team, onlySeason) ? '*' : ''}`);
+  if (rec.bye) bits.push('\ud83d\udd25 Top-2 Seed');
+  if (rec.saunders) bits.push(`\ud83e\udea6 Saunders${saundersNoteFn(team, onlySeason) ? '*' : ''}`);
+  if (rec.playoff_wins || rec.playoff_losses || rec.playoff_ties) {
+    bits.push(`Playoffs: ${(rec.playoff_wins || 0)}-${(rec.playoff_losses || 0)}-${(rec.playoff_ties || 0)}`);
+  }
+  if (rec.saunders_wins || rec.saunders_losses || rec.saunders_ties) {
+    bits.push(`Saunders: ${(rec.saunders_wins || 0)}-${(rec.saunders_losses || 0)}-${(rec.saunders_ties || 0)}`);
+  }
+
+  const record = `${rec.wins}-${rec.losses}-${rec.ties || 0}`;
+  const pct = fmtPctFn(rec.wins, rec.losses, rec.ties || 0);
+  const finish = Number.isFinite(+rec.finish) ? `${rec.finish}` : '\u2014';
+  const notes = [];
+  const cN = champNoteFn(team, onlySeason);
+  if (cN) notes.push(`${onlySeason} \u2014 ${cN}`);
+  const sN = saundersNoteFn(team, onlySeason);
+  if (sN) notes.push(`${onlySeason} \u2014 ${sN}`);
+  const effectKey = `${team}|${onlySeason}|${rec.champion ? 'C' : ''}${rec.saunders ? 'S' : ''}`;
+  const effectType = rec.champion ? 'champion' : rec.saunders ? 'saunders' : null;
+
+  return {
+    show: true,
+    team,
+    season: onlySeason,
+    record,
+    pct,
+    finish,
+    bits,
+    notes,
+    effectKey,
+    effectType,
+    resetEffect: false,
+  };
+}
+
 function historyGamesTableRowHtml(game, team) {
   const sidesForTeamFn = coreFn('sidesForTeam');
   const normTypeFn = coreFn('normType');
@@ -246,47 +347,32 @@ function avgFinishForTeam(team, seasonSummaries) {
 }
 
 function topHighlightsHtml(team, opts = {}) {
-  const allTeams = opts.allTeams || '__ALL__';
-  const seasonSummaries = opts.seasonSummaries || [];
-  const champNoteFn = opts.champNoteFn || (() => null);
-  const saundersNoteFn = opts.saundersNoteFn || (() => null);
-  const computeRegularSeasonChampYearsFn = coreFn('computeRegularSeasonChampYears');
+  const vm = buildTopHighlightsViewModel(team, opts);
   const nfmtFn = renderFn('nfmt');
 
-  if (team === allTeams) {
+  if (vm.isLeagueView) {
     return `
     <div class="overview-chip">
       <h4>League view</h4>
-      <div class="big">Select a team to see Darlings & Saunders</div>
+      <div class="big">Select a team to see Darlings &amp; Saunders</div>
       <div class="sub">Filters still work (e.g., Week 1). See Team Breakdown below.</div>
     </div>`;
   }
-
-  const rows = seasonSummaries.filter(r => r.owner === team);
-  const champYears = rows.filter(r => r.champion).map(r => r.season).sort((a, b) => b - a);
-  const sauYears = rows.filter(r => r.saunders === true).map(r => r.season).sort((a, b) => b - a);
-  const regYears = computeRegularSeasonChampYearsFn(team, seasonSummaries).sort((a, b) => b - a);
-  const avgFinish = avgFinishForTeam(team, seasonSummaries);
-  const avgFinishSeasons = rows.filter(r => Number.isFinite(+r.finish)).length;
-  const champsDisplay = champYears.map(y => champNoteFn(team, y) ? `${y}*` : `${y}`);
-  const sauDisplay = sauYears.map(y => saundersNoteFn(team, y) ? `${y}*` : `${y}`);
-  const notes = [];
-  champYears.forEach(y => { const n = champNoteFn(team, y); if (n) notes.push(`${y} \u2014 ${n}`); });
-  sauYears.forEach(y => { const n = saundersNoteFn(team, y); if (n) notes.push(`${y} \u2014 ${n}`); });
   const chip = (title, main, sub = '', extraClass = '') => `
   <div class="overview-chip ${extraClass}">
     <h4>${esc(title)}</h4>
-    <div class="big">${esc(main)}</div>
+    ${main ? `<div class="big">${esc(main)}</div>` : ''}
     ${sub ? `<div class="sub">${esc(sub)}</div>` : ''}
   </div>
 `;
 
   return [
-    chip('Darlings', `${champYears.length}`, champYears.length ? `Years: ${champsDisplay.join(', ')}` : '\u2014', 'champs'),
-    chip('Saunders', `${sauYears.length}`, sauYears.length ? `Years: ${sauDisplay.join(', ')}` : '\u2014', 'sau'),
-    chip('Regular-Season Titles', `${regYears.length}`, regYears.length ? `Years: ${regYears.join(', ')}` : '\u2014', 'regs'),
-    chip('Avg Finish', nfmtFn(avgFinish, 2), avgFinishSeasons ? `Seasons: ${avgFinishSeasons}` : '\u2014', 'avg-finish'),
-    notes.length ? `<div class="overview-chip"><h4>Notes</h4><div class="sub">* ${esc(notes.join(' \u2022 '))}</div></div>` : '',
+    ...vm.chips.map(chipTile => chip(
+      chipTile.title,
+      chipTile.kind === 'notes' ? '' : (chipTile.main || '\u2014'),
+      chipTile.sub || '\u2014',
+      chipTile.title === 'Darlings' ? 'champs' : chipTile.title === 'Saunders' ? 'sau' : chipTile.title === 'Regular-Season Titles' ? 'regs' : chipTile.title === 'Avg Finish' ? 'avg-finish' : ''
+    )),
   ].join('');
 }
 
@@ -303,52 +389,19 @@ function seasonSummaryLookup(team, season, seasonSummaries) {
 }
 
 function seasonCalloutView(team, opts = {}) {
-  const allTeams = opts.allTeams || '__ALL__';
-  const selectedSeasons = opts.selectedSeasons instanceof Set ? opts.selectedSeasons : new Set(opts.selectedSeasons || []);
-  const seasonSummaries = opts.seasonSummaries || [];
-  const champNoteFn = opts.champNoteFn || (() => null);
-  const saundersNoteFn = opts.saundersNoteFn || (() => null);
-  const fmtPctFn = coreFn('fmtPct');
-
-  if (team === allTeams) return { html: '', effectKey: null, effectType: null, resetEffect: false };
-  if (selectedSeasons.size !== 1) return { html: '', effectKey: null, effectType: null, resetEffect: true };
-
-  const [onlySeason] = [...selectedSeasons];
-  const rec = seasonSummaryLookup(team, onlySeason, seasonSummaries);
-  if (!rec) return { html: '', effectKey: null, effectType: null, resetEffect: false };
-
-  const bits = [];
-  if (rec.champion) bits.push(`\ud83c\udfc6 Champion${champNoteFn(team, onlySeason) ? '*' : ''}`);
-  if (rec.bye) bits.push('\ud83d\udd25 Top-2 Seed');
-  if (rec.saunders) bits.push(`\ud83e\udea6 Saunders${saundersNoteFn(team, onlySeason) ? '*' : ''}`);
-  if (rec.playoff_wins || rec.playoff_losses || rec.playoff_ties) {
-    bits.push(`Playoffs: ${(rec.playoff_wins || 0)}-${(rec.playoff_losses || 0)}-${(rec.playoff_ties || 0)}`);
-  }
-  if (rec.saunders_wins || rec.saunders_losses || rec.saunders_ties) {
-    bits.push(`Saunders: ${(rec.saunders_wins || 0)}-${(rec.saunders_losses || 0)}-${(rec.saunders_ties || 0)}`);
-  }
-
-  const record = `${rec.wins}-${rec.losses}-${rec.ties || 0}`;
-  const pct = fmtPctFn(rec.wins, rec.losses, rec.ties || 0);
-  const finish = Number.isFinite(+rec.finish) ? `${rec.finish}` : '\u2014';
-  const notes = [];
-  const cN = champNoteFn(team, onlySeason);
-  if (cN) notes.push(`${onlySeason} \u2014 ${cN}`);
-  const sN = saundersNoteFn(team, onlySeason);
-  if (sN) notes.push(`${onlySeason} \u2014 ${sN}`);
-  const effectKey = `${team}|${onlySeason}|${rec.champion ? 'C' : ''}${rec.saunders ? 'S' : ''}`;
-  const effectType = rec.champion ? 'champion' : rec.saunders ? 'saunders' : null;
+  const vm = buildSeasonCalloutViewModel(team, opts);
+  if (!vm.show) return { html: '', effectKey: vm.effectKey, effectType: vm.effectType, resetEffect: vm.resetEffect };
 
   return {
     html: `<div class="callout">
-    <div>${esc(team)} in <strong>${esc(onlySeason)}</strong></div>
-    <div>Record: <strong>${record}</strong> (${pct})</div>
-    <div>Finish: <strong>${finish}</strong></div>
-    <div>${esc(bits.join(' \u2022 ') || '\u2014')}</div>
-    ${notes.length ? `<div class="muted" style="margin-top:6px;font-size:12px">* ${esc(notes.join(' \u2022 '))}</div>` : ''}
+    <div>${esc(vm.team)} in <strong>${esc(vm.season)}</strong></div>
+    <div>Record: <strong>${esc(vm.record)}</strong> (${esc(vm.pct)})</div>
+    <div>Finish: <strong>${esc(vm.finish)}</strong></div>
+    <div>${esc(vm.bits.join(' \u2022 ') || '\u2014')}</div>
+    ${vm.notes.length ? `<div class="muted" style="margin-top:6px;font-size:12px">* ${esc(vm.notes.join(' \u2022 '))}</div>` : ''}
   </div>`,
-    effectKey,
-    effectType,
+    effectKey: vm.effectKey,
+    effectType: vm.effectType,
     resetEffect: false,
   };
 }
@@ -555,6 +608,8 @@ function opponentBreakdownView(team, games, opts = {}) {
   return view;
 }
 export {
+  buildTopHighlightsViewModel,
+  buildSeasonCalloutViewModel,
   historyGamesTableRowHtml,
   historyGamesTableHtml,
   renderGamesTable,

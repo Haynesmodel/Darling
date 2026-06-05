@@ -301,10 +301,14 @@ test('buildTrophyCaseViewModel renders the visual profile sections', () => {
   assert.match(trophyCareerShapeHtml(vm), /Saunders/);
   assert.equal((trophyCareerShapeHtml(vm).match(/trophy-career-point-group/g) || []).length, 3);
   assert.match(trophyAchievementListHtml(vm), /Best regular season|Highest weekly score|Best win margin/);
-  assert.match(trophyScarListHtml(vm), /Most unlucky season|Worst weekly score|Biggest loss|Record 8-6-0/);
+  assert.match(trophyScarListHtml(vm), /Most unlucky season|Worst weekly score|Biggest loss|Record 11-3-0|Luck \+0\.00/);
   assert.equal(vm.seasonLedger.length, 3);
   assert.match(trophySeasonLedgerHtml(vm), /2025/);
-  assert.doesNotMatch(trophySeasonLedgerHtml(vm), /Champion|Regular-season title|Bye|Postseason|Bagels/);
+  assert.match(trophySeasonLedgerHtml(vm), /Champion/);
+  assert.match(trophySeasonLedgerHtml(vm), /Regular-season title/);
+  assert.match(trophySeasonLedgerHtml(vm), /Postseason 1-1/);
+  assert.match(trophySeasonLedgerHtml(vm), /Bye/);
+  assert.match(trophySeasonLedgerHtml(vm), /Bagels 2/);
 });
 
 test('trophy renderers escape owner names and support empty states', () => {

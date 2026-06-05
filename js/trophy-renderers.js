@@ -891,8 +891,9 @@ function achievementAndScarItems(ownerProfile) {
   const unluckyExpectedRecord = unluckyLuckRow
     ? `${fmtDecimal(unluckyLuckRow.expectedWins, 1)}-${fmtDecimal(Math.max(0, unluckyLuckRow.games - unluckyLuckRow.expectedWins), 1)}`
     : null;
+  const unluckyLuckValue = Number.isFinite(unluckyLuckRow?.luck) ? unluckyLuckRow.luck : mostUnluckySeason?.luck;
   const unluckySeasonDetail = mostUnluckySeason
-    ? `Record ${mostUnluckySeason.wins}-${mostUnluckySeason.losses}-${mostUnluckySeason.ties || 0} • Expected ${unluckyExpectedRecord || '—'} • Luck ${fmtSigned(mostUnluckySeason.luck, 2)}`
+    ? `Record ${mostUnluckySeason.wins}-${mostUnluckySeason.losses}-${mostUnluckySeason.ties || 0} • Expected ${unluckyExpectedRecord || '—'} • Luck ${fmtSigned(unluckyLuckValue, 2)}`
     : null;
 
   const achievements = [
@@ -1024,6 +1025,7 @@ function computeSeasonLedger(owner, seasonRows = [], opts = {}) {
     .slice()
     .sort(sortSeasonDesc)
     .map(row => {
+      const notes = formatLedgerNotes(row);
       const finish = Number.isFinite(+row.finish) ? `${row.finish}` : '—';
       const pf = Number.isFinite(+row.points_for) ? fmtDecimal(row.points_for, 1) : '—';
       const pa = Number.isFinite(+row.points_against) ? fmtDecimal(row.points_against, 1) : '—';
@@ -1037,7 +1039,7 @@ function computeSeasonLedger(owner, seasonRows = [], opts = {}) {
         pf,
         pa,
         diff,
-        notes: [],
+        notes,
       };
     });
 }

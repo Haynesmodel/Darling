@@ -6,6 +6,63 @@
    + 👑 crowns + 💩 turds per week; Luck (Expected Wins)
 ========================================================= */
 
+import { byDateDesc, canonicalGameKey } from './core-helpers.js';
+import { loadLeagueAssets } from './data-helpers.js';
+import {
+  bestStreakForTeam,
+  computeBottomNWeeklyScoresAllTeams,
+  computeExpectedWinForGame,
+  computeHeadToHeadPairs,
+  computeLeagueRowsSingleWeeks,
+  computeLongestStreaksGlobal,
+  computeLongestTeamStreaks,
+  computeLuckSummary,
+  computeSeasonAggregatesAllTeams,
+  computeSubThresholdGamesPerTeam,
+  computeTeamsFromLeagueGames,
+  computeTopNWeeklyScoresAllTeams,
+  computeWeeklyAwards,
+} from './stats-helpers.js';
+import {
+  buildFacetControl,
+  clearAppStatus,
+  escapeHtml,
+  renderHeaderBanners,
+  setAppStatus,
+  showPage,
+  updateTeamHeader,
+} from './render-helpers.js';
+import {
+  opponentOptions,
+  roundOptionsOrdered,
+  seasonOptions,
+  teamOptions,
+  typeOptions,
+  weekOptions,
+} from './facet-helpers.js';
+import {
+  applyFacetFilters,
+  buildHistoryCsvText,
+  parseUrlState,
+  setFacetSelections,
+  updateUrlFromState,
+} from './state-helpers.js';
+import {
+  opponentBreakdownView,
+  renderGamesTable,
+  renderSeasonRecap,
+  renderTopHighlights,
+  renderWeekByWeek,
+  seasonCalloutView,
+} from './history-renderers.js';
+import {
+  leagueFunFactsAllTeamsHtml,
+  leagueFunListsAllTeamsHtml,
+  leagueSummaryTablesHtml,
+  teamFunFactsView,
+} from './league-renderers.js';
+import './easter-eggs.js';
+
 /* ---------- Global State ---------- */
 
 const DEFAULT_TEAM = "Joe";
@@ -102,6 +159,18 @@ function renderIfChanged(section, signature, renderFn){
   if(renderSectionCache.get(section) === signature) return;
   renderFn();
   renderSectionCache.set(section, signature);
+}
+
+function setDropdownOpen(dropdown, isOpen){
+  dropdown.classList.toggle('open', isOpen);
+  const btn = dropdown.querySelector('.dropdown-toggle');
+  if(btn) btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+}
+
+function closeDropdowns(except = null){
+  document.querySelectorAll('.dropdown').forEach((dropdown)=>{
+    if(dropdown !== except) setDropdownOpen(dropdown, false);
+  });
 }
 
 if(typeof window !== 'undefined'){
@@ -201,11 +270,22 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 
   // Dropdown toggling
   document.addEventListener('click', (e)=>{
-    document.querySelectorAll('.dropdown').forEach((dd)=>{
-      const btn = dd.querySelector('.dropdown-toggle');
-      if (btn && btn.contains(e.target)) dd.classList.toggle('open');
-      else if (!dd.contains(e.target)) dd.classList.remove('open');
-    });
+    const toggle = e.target.closest('.dropdown-toggle');
+    if(toggle){
+      const dropdown = toggle.closest('.dropdown');
+      const shouldOpen = !dropdown.classList.contains('open');
+      closeDropdowns(dropdown);
+      setDropdownOpen(dropdown, shouldOpen);
+      return;
+    }
+    if(!e.target.closest('.dropdown')) closeDropdowns();
+  });
+
+  document.addEventListener('keydown', (e)=>{
+    if(e.key !== 'Escape') return;
+    const openToggle = document.querySelector('.dropdown.open .dropdown-toggle');
+    closeDropdowns();
+    if(openToggle) openToggle.focus();
   });
 
   // Clear / Export

@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+import { test, expect } from '@playwright/test';
 
 async function downloadText(download) {
   const stream = await download.createReadStream();
@@ -6,6 +6,44 @@ async function downloadText(download) {
   for await (const chunk of stream) chunks.push(Buffer.from(chunk));
   return Buffer.concat(chunks).toString('utf8');
 }
+
+test.beforeEach(async ({ page }, testInfo) => {
+  const browserErrors = [];
+  const expectedFailureTest = testInfo.title.includes('fetch failure');
+
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      browserErrors.push(`console.error: ${msg.text()}`);
+    }
+  });
+  page.on('pageerror', (err) => {
+    browserErrors.push(`pageerror: ${err.message}`);
+  });
+  page.on('response', (response) => {
+    const url = response.url();
+    if (response.status() >= 400 && /\.(json|js|css|jpeg|jpg|png)$/.test(url)) {
+      browserErrors.push(`asset ${response.status()}: ${url}`);
+    }
+  });
+
+  page.__browserErrors = browserErrors;
+  page.__allowExpectedFailure = expectedFailureTest;
+});
+
+test.afterEach(async ({ page }) => {
+  const errors = page.__browserErrors || [];
+  if (page.__allowExpectedFailure) {
+    const unexpected = errors.filter(error =>
+      !error.includes('Failed to load league JSON') &&
+      !error.includes('Failed to load resource: the server responded with a status of 500') &&
+      !error.includes('asset 500:') &&
+      !error.includes('/assets/H2H.json')
+    );
+    expect(unexpected).toEqual([]);
+    return;
+  }
+  expect(errors).toEqual([]);
+});
 
 test('page loads and renders the history tables', async ({ page }) => {
   await page.goto('/');
@@ -67,6 +105,29 @@ test('url state restores selected team and facet filters on load', async ({ page
   await expect(page.locator('#historyGamesTable tbody tr')).toHaveCount(1);
   await expect(page.locator('#historyGamesTable tbody tr').first()).toContainText('Shemer');
   await expect(page.locator('#historyGamesTable tbody tr').first()).toContainText('2025-09-07');
+});
+
+test('facet dropdowns keep expanded state in sync and close with escape', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+
+  const seasonButton = page.locator('.dropdown-toggle[data-target="seasonFilters"]');
+  const weekButton = page.locator('.dropdown-toggle[data-target="weekFilters"]');
+
+  await expect(seasonButton).toHaveAttribute('aria-controls', 'seasonFilters');
+  await expect(seasonButton).toHaveAttribute('aria-expanded', 'false');
+
+  await seasonButton.click();
+  await expect(seasonButton).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#seasonFilters')).toBeVisible();
+
+  await weekButton.click();
+  await expect(seasonButton).toHaveAttribute('aria-expanded', 'false');
+  await expect(weekButton).toHaveAttribute('aria-expanded', 'true');
+
+  await page.keyboard.press('Escape');
+  await expect(weekButton).toHaveAttribute('aria-expanded', 'false');
+  await expect(weekButton).toBeFocused();
 });
 
 test('single-season filters render the season callout', async ({ page }) => {

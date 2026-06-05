@@ -72,6 +72,32 @@ test('url helpers parse and rebuild trophy state', () => {
   assert.equal(next, '/index.html?tab=trophy&trophyOwner=Joe');
 });
 
+test('url helpers parse and rebuild dynasty state', () => {
+  const parsed = parseUrlState('?tab=dynasty&dynastyMode=calculator&dynastyOwner=Joe&dynastyStart=2021&dynastyEnd=2023&dynastyMinSeasons=2&dynastySaunders=1');
+  assert.equal(parsed.tab, 'dynasty');
+  assert.equal(parsed.dynastyMode, 'calculator');
+  assert.equal(parsed.dynastyOwner, 'Joe');
+  assert.equal(parsed.dynastyStart, 2021);
+  assert.equal(parsed.dynastyEnd, 2023);
+  assert.equal(parsed.dynastyMinSeasons, 2);
+  assert.equal(parsed.dynastySaunders, true);
+  assert.equal(parsed.hasDynasty, true);
+  assert.equal(parsed.hasAny, true);
+
+  const next = buildUrlFromState({
+    tab: 'dynasty',
+    selectedDynastyMode: 'calculator',
+    selectedDynastyOwner: 'Joe',
+    selectedDynastyStartSeason: 2021,
+    selectedDynastyEndSeason: 2023,
+    selectedDynastyMinSeasons: 2,
+    selectedDynastySaunders: true,
+    pathname: '/index.html',
+    allTeams: '__ALL__',
+  });
+  assert.equal(next, '/index.html?tab=dynasty&dynastyMode=calculator&dynastyOwner=Joe&dynastyStart=2021&dynastyEnd=2023&dynastyMinSeasons=2&dynastySaunders=1');
+});
+
 test('url helpers preserve opponent selections with spaces and punctuation', () => {
   const next = buildUrlFromState({
     selectedTeam: 'Joe',

@@ -24,6 +24,10 @@ Primary web-served data:
 - `assets/SeasonSummary.json`
 - `assets/Rivalries.json`
 
+Shareable Dynasty URLs:
+- Open `http://127.0.0.1:8000/?tab=dynasty&dynastyMode=calculator&dynastyOwner=Joe&dynastyStart=2021&dynastyEnd=2023&dynastyMinSeasons=2&dynastySaunders=1` to land directly on Joe's 2021-2023 Dynasty Score.
+- The same URL shape works on the deployed site, so users can share a specific owner and range without additional setup.
+
 Reference data:
 - `data/reference/H2H.xlsx` is the historical source spreadsheet kept for reference. The site and update scripts read the JSON assets instead.
 

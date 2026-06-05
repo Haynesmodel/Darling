@@ -14,6 +14,10 @@ function defaultIsRestrictive(selSet, uniArr) {
   return true;
 }
 
+function isFiniteInput(value) {
+  return value !== null && value !== '' && Number.isFinite(Number(value));
+}
+
 function coreFn(name, fallback) {
   const fn = core[name];
   if (typeof fn === 'function') return fn;
@@ -41,7 +45,18 @@ function parseUrlState(search) {
   const rivalryTeamA = params.get('rivalryTeamA') || null;
   const rivalryTeamB = params.get('rivalryTeamB') || null;
   const trophyOwner = params.get('trophyOwner') || null;
-  const hasAny = !!(team || trophyOwner || (seasons && seasons.length) || (weeks && weeks.length) || (opps && opps.length) || (types && types.length) || (rounds && rounds.length));
+  const dynastyMode = params.get('dynastyMode') || null;
+  const dynastyOwner = params.get('dynastyOwner') || null;
+  const dynastyStart = params.get('dynastyStart');
+  const dynastyEnd = params.get('dynastyEnd');
+  const dynastyMinSeasons = params.get('dynastyMinSeasons');
+  const dynastySaunders = params.get('dynastySaunders');
+  const parsedDynastyStart = isFiniteInput(dynastyStart) ? +dynastyStart : null;
+  const parsedDynastyEnd = isFiniteInput(dynastyEnd) ? +dynastyEnd : null;
+  const parsedDynastyMinSeasons = isFiniteInput(dynastyMinSeasons) ? +dynastyMinSeasons : null;
+  const parsedDynastySaunders = dynastySaunders === null ? null : dynastySaunders !== '0';
+  const hasDynasty = !!(tab === 'dynasty' || dynastyMode || dynastyOwner || parsedDynastyStart !== null || parsedDynastyEnd !== null || parsedDynastyMinSeasons !== null || parsedDynastySaunders !== null);
+  const hasAny = !!(team || trophyOwner || hasDynasty || (seasons && seasons.length) || (weeks && weeks.length) || (opps && opps.length) || (types && types.length) || (rounds && rounds.length));
   return {
     team,
     seasons: seasons ? new Set(seasons) : null,
@@ -53,8 +68,15 @@ function parseUrlState(search) {
     rivalryTeamA,
     rivalryTeamB,
     trophyOwner,
+    dynastyMode,
+    dynastyOwner,
+    dynastyStart: parsedDynastyStart,
+    dynastyEnd: parsedDynastyEnd,
+    dynastyMinSeasons: parsedDynastyMinSeasons,
+    dynastySaunders: parsedDynastySaunders,
     hasRivalry: tab === 'rivalry' || !!rivalryTeamA || !!rivalryTeamB,
     hasTrophy: tab === 'trophy' || !!trophyOwner,
+    hasDynasty,
     hasAny,
   };
 }
@@ -91,6 +113,12 @@ function buildUrlFromState(opts = {}) {
   const tab = Object.prototype.hasOwnProperty.call(opts, 'tab') ? opts.tab : null;
   const selectedRivalryTeamA = Object.prototype.hasOwnProperty.call(opts, 'selectedRivalryTeamA') ? opts.selectedRivalryTeamA : null;
   const selectedRivalryTeamB = Object.prototype.hasOwnProperty.call(opts, 'selectedRivalryTeamB') ? opts.selectedRivalryTeamB : null;
+  const selectedDynastyMode = Object.prototype.hasOwnProperty.call(opts, 'selectedDynastyMode') ? opts.selectedDynastyMode : null;
+  const selectedDynastyOwner = Object.prototype.hasOwnProperty.call(opts, 'selectedDynastyOwner') ? opts.selectedDynastyOwner : null;
+  const selectedDynastyStartSeason = Object.prototype.hasOwnProperty.call(opts, 'selectedDynastyStartSeason') ? opts.selectedDynastyStartSeason : null;
+  const selectedDynastyEndSeason = Object.prototype.hasOwnProperty.call(opts, 'selectedDynastyEndSeason') ? opts.selectedDynastyEndSeason : null;
+  const selectedDynastyMinSeasons = Object.prototype.hasOwnProperty.call(opts, 'selectedDynastyMinSeasons') ? opts.selectedDynastyMinSeasons : null;
+  const selectedDynastySaunders = Object.prototype.hasOwnProperty.call(opts, 'selectedDynastySaunders') ? opts.selectedDynastySaunders : null;
   const selectedSeasons = asSet(opts.selectedSeasons);
   const selectedWeeks = asSet(opts.selectedWeeks);
   const selectedOpponents = asSet(opts.selectedOpponents);
@@ -102,7 +130,7 @@ function buildUrlFromState(opts = {}) {
 
   const params = new URLSearchParams();
   if (tab) params.set('tab', tab);
-  if (tab !== 'trophy' && selectedTeam && selectedTeam !== allTeams) params.set('team', selectedTeam);
+  if (tab !== 'trophy' && tab !== 'dynasty' && selectedTeam && selectedTeam !== allTeams) params.set('team', selectedTeam);
   if (tab === 'rivalry') {
     if (selectedRivalryTeamA) params.set('rivalryTeamA', selectedRivalryTeamA);
     if (selectedRivalryTeamB) params.set('rivalryTeamB', selectedRivalryTeamB);
@@ -112,6 +140,15 @@ function buildUrlFromState(opts = {}) {
       ? opts.selectedTrophyOwner
       : (selectedTeam && selectedTeam !== allTeams ? selectedTeam : null);
     if (selectedTrophyOwner) params.set('trophyOwner', selectedTrophyOwner);
+  }
+  if (tab === 'dynasty') {
+    if (selectedDynastyMode) params.set('dynastyMode', selectedDynastyMode);
+    if (selectedDynastyOwner) params.set('dynastyOwner', selectedDynastyOwner);
+    if (isFiniteInput(selectedDynastyStartSeason)) params.set('dynastyStart', `${selectedDynastyStartSeason}`);
+    if (isFiniteInput(selectedDynastyEndSeason)) params.set('dynastyEnd', `${selectedDynastyEndSeason}`);
+    if (isFiniteInput(selectedDynastyMinSeasons)) params.set('dynastyMinSeasons', `${selectedDynastyMinSeasons}`);
+    if (selectedDynastySaunders === true) params.set('dynastySaunders', '1');
+    if (selectedDynastySaunders === false) params.set('dynastySaunders', '0');
   }
   const setIf = (key, set, uni) => { if (isRestrictiveFn(set, uni)) params.set(key, [...set].join(',')); };
   setIf('seasons', selectedSeasons, universe.seasons || []);

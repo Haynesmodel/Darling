@@ -49,6 +49,20 @@ import {
   leagueSummaryTablesHtml,
   teamFunFactsView,
 } from './league-renderers.js';
+import {
+  buildRivalryControls,
+} from './rivalry-controls.js';
+import {
+  buildRivalryViewModel,
+  renderRivalryHighlightBoard,
+  renderRivalryLeadMeter,
+  renderRivalryLeadTrend,
+  renderRivalryGameTable,
+  renderRivalryHeadline,
+  renderRivalrySeasonTable,
+  renderRivalryTimeline,
+  renderRivalryTape,
+} from './rivalry-renderers.js';
 import { setGroupBackdrop, triggerGroupEgg } from './easter-eggs.js';
 import {
   buildHistoryControls,
@@ -78,6 +92,8 @@ let selectedWeeks = new Set();
 let selectedOpponents = new Set();
 let selectedTypes = new Set();
 let selectedRounds = new Set();
+let selectedRivalryTeamA = DEFAULT_TEAM;
+let selectedRivalryTeamB = null;
 let universe = { seasons: [], weeks: [], opponents: [], types: [], rounds: [] };
 let isApplyingUrlState = false;
 let derivedWeeksSet = new Set();
@@ -161,6 +177,63 @@ function weeklyAwards() {
   if (weeklyAwardsCache) return weeklyAwardsCache;
   weeklyAwardsCache = computeWeeklyAwards(leagueGames, HIGH_SCORE_THRESHOLD);
   return weeklyAwardsCache;
+}
+
+function handleRivalryChange(next) {
+  selectedRivalryTeamA = next.selectedTeamA;
+  selectedRivalryTeamB = next.selectedTeamB;
+  renderRivalry();
+}
+
+function ensureRivalryControls(initialState = {}) {
+  const teamASelect = document.getElementById('rivalryTeamA');
+  if (!teamASelect) return null;
+
+  if (!teamASelect.dataset.ready) {
+    const urlState = parseUrlState();
+    const built = buildRivalryControls({
+      doc: document,
+      leagueGames,
+      seasonSummaries,
+      rivalries,
+      selectedTeamA: initialState.selectedTeamA || urlState.rivalryTeamA || selectedRivalryTeamA || selectedTeam,
+      selectedTeamB: initialState.selectedTeamB || urlState.rivalryTeamB || selectedRivalryTeamB,
+      allTeams: ALL_TEAMS,
+      onChange: handleRivalryChange,
+    });
+    selectedRivalryTeamA = built.selectedTeamA;
+    selectedRivalryTeamB = built.selectedTeamB;
+    teamASelect.dataset.ready = '1';
+  }
+
+  return teamASelect;
+}
+
+function renderRivalry() {
+  if (!selectedRivalryTeamA || !selectedRivalryTeamB) return;
+
+  const view = buildRivalryViewModel(selectedRivalryTeamA, selectedRivalryTeamB, leagueGames);
+  const signature = `${selectedRivalryTeamA}|${selectedRivalryTeamB}|${view.summary.overall.g}`;
+  renderIfChanged('rivalry', signature, () => {
+    updateHeaderForTeam(selectedRivalryTeamA);
+    renderRivalryHeadline(view, { doc: document });
+    renderRivalryLeadMeter(view, { doc: document });
+    renderRivalryHighlightBoard(view, { doc: document });
+    renderRivalryTape(view, { doc: document });
+    renderRivalryLeadTrend(view, { doc: document });
+    renderRivalryTimeline(view, { doc: document });
+    renderRivalrySeasonTable(view, { doc: document });
+    renderRivalryGameTable(view, { doc: document });
+    if (document.title !== undefined) {
+      document.title = `${selectedRivalryTeamA} vs ${selectedRivalryTeamB} \u2014 Head to Head`;
+    }
+  });
+  updateUrlFromState({
+    tab: 'rivalry',
+    selectedRivalryTeamA,
+    selectedRivalryTeamB,
+    isApplyingUrlState,
+  });
 }
 
 async function loadLeagueJSON() {
@@ -463,6 +536,7 @@ function renderOppBreakdown(team, games) {
 function renderHistory() {
   const teamSel = document.getElementById('teamSelect');
   if (teamSel && selectedTeam !== teamSel.value) selectedTeam = teamSel.value;
+  updateHeaderForTeam(selectedTeam);
 
   const filtered = filteredGamesForCurrentState();
   const renderKeys = buildHistoryRenderKeys(currentFacetState(), filtered, {
@@ -590,6 +664,16 @@ function bindListeners() {
       showPage('history');
       ensureHistoryControls();
       renderHistory();
+      updateUrlFromState({ ...currentFacetState(), isApplyingUrlState });
+    });
+  }
+
+  const rivalryTab = document.getElementById('tabRivalryBtn');
+  if (rivalryTab) {
+    rivalryTab.addEventListener('click', () => {
+      showPage('rivalry');
+      ensureRivalryControls();
+      renderRivalry();
     });
   }
 
@@ -603,10 +687,19 @@ function bindListeners() {
 }
 
 async function bootstrapHistoryApp() {
-  showPage('history');
+  const urlState = parseUrlState();
+  showPage(urlState.tab === 'rivalry' ? 'rivalry' : 'history');
   const loaded = await loadLeagueJSON();
   if (!loaded) return;
   bindListeners();
+  if (urlState.tab === 'rivalry') {
+    ensureRivalryControls({
+      selectedTeamA: urlState.rivalryTeamA || selectedRivalryTeamA,
+      selectedTeamB: urlState.rivalryTeamB || selectedRivalryTeamB,
+    });
+    renderRivalry();
+    return;
+  }
   ensureHistoryControls();
   renderHistory();
 }

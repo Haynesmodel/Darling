@@ -37,6 +37,9 @@ function parseUrlState(search) {
   const types = parseList('types');
   const rounds = parseList('rounds');
   const team = params.get('team') || null;
+  const tab = params.get('tab') || null;
+  const rivalryTeamA = params.get('rivalryTeamA') || null;
+  const rivalryTeamB = params.get('rivalryTeamB') || null;
   const hasAny = !!(team || (seasons && seasons.length) || (weeks && weeks.length) || (opps && opps.length) || (types && types.length) || (rounds && rounds.length));
   return {
     team,
@@ -45,6 +48,10 @@ function parseUrlState(search) {
     opps: opps ? new Set(opps) : null,
     types: types ? new Set(types) : null,
     rounds: rounds ? new Set(rounds) : null,
+    tab,
+    rivalryTeamA,
+    rivalryTeamB,
+    hasRivalry: tab === 'rivalry' || !!rivalryTeamA || !!rivalryTeamB,
     hasAny,
   };
 }
@@ -78,6 +85,9 @@ function setFacetSelections(containerId, prefix, valuesSet, doc) {
 function buildUrlFromState(opts = {}) {
   const allTeams = opts.allTeams || '__ALL__';
   const selectedTeam = Object.prototype.hasOwnProperty.call(opts, 'selectedTeam') ? opts.selectedTeam : allTeams;
+  const tab = Object.prototype.hasOwnProperty.call(opts, 'tab') ? opts.tab : null;
+  const selectedRivalryTeamA = Object.prototype.hasOwnProperty.call(opts, 'selectedRivalryTeamA') ? opts.selectedRivalryTeamA : null;
+  const selectedRivalryTeamB = Object.prototype.hasOwnProperty.call(opts, 'selectedRivalryTeamB') ? opts.selectedRivalryTeamB : null;
   const selectedSeasons = asSet(opts.selectedSeasons);
   const selectedWeeks = asSet(opts.selectedWeeks);
   const selectedOpponents = asSet(opts.selectedOpponents);
@@ -88,7 +98,12 @@ function buildUrlFromState(opts = {}) {
   const pathname = opts.pathname || (typeof window !== 'undefined' ? window.location.pathname : '');
 
   const params = new URLSearchParams();
+  if (tab) params.set('tab', tab);
   if (selectedTeam && selectedTeam !== allTeams) params.set('team', selectedTeam);
+  if (tab === 'rivalry') {
+    if (selectedRivalryTeamA) params.set('rivalryTeamA', selectedRivalryTeamA);
+    if (selectedRivalryTeamB) params.set('rivalryTeamB', selectedRivalryTeamB);
+  }
   const setIf = (key, set, uni) => { if (isRestrictiveFn(set, uni)) params.set(key, [...set].join(',')); };
   setIf('seasons', selectedSeasons, universe.seasons || []);
   setIf('weeks', selectedWeeks, universe.weeks || []);

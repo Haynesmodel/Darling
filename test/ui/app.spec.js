@@ -123,6 +123,70 @@ test('changing the team updates the rendered rows and url state', async ({ page 
   expect(nextWeekCount).not.toBe(originalWeekCount);
 });
 
+test('rivalry tab renders a tale of the tape and saved rivalry selection', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+
+  await page.locator('#teamSelect').selectOption('Joel');
+  await expect(page.locator('header h2')).toHaveText('Joel');
+
+  await page.locator('#tabRivalryBtn').click();
+  await expect(page.locator('#tabRivalryBtn')).toHaveClass(/active/);
+  await expect(page.locator('#rivalryTeamA')).toBeVisible();
+  await expect(page.locator('#rivalryTeamB')).toBeVisible();
+  await expect(page.locator('#page-rivalry')).toContainText('Head to Head');
+  await expect(page.locator('header h2')).toHaveText('Joe');
+
+  await page.locator('#tabHistoryBtn').click();
+  await expect(page.locator('#tabHistoryBtn')).toHaveClass(/active/);
+  await expect(page.locator('header h2')).toHaveText('Joel');
+
+  await page.locator('#tabRivalryBtn').click();
+  await page.locator('#rivalryTeamA').selectOption('Joe');
+  await expect(page.locator('#rivalryTeamA')).toHaveValue('Joe');
+  await expect(page.locator('#rivalryTeamB')).toHaveValue('Joel');
+  await expect(page.locator('#rivalryTeamB option[value="Joe"]')).toHaveCount(0);
+  await expect(page.locator('#rivalryHeadline')).toContainText('Joe vs Joel');
+  await expect(page.locator('#rivalryHeadline')).toContainText('Current streak:');
+  await expect(page.locator('#rivalryLeadMeter')).toContainText('Joe');
+  await expect(page.locator('#rivalryHighlightBoard .rivalry-highlight')).toHaveCount(4);
+  expect(await page.locator('#rivalryTapeGrid .stat').count()).toBeGreaterThan(0);
+  await expect(page.locator('#rivalryLeadTrend svg')).toBeVisible();
+  await expect(page.locator('#rivalryLeadTrend')).toContainText('.500');
+  await expect(page.locator('#rivalryLeadTrend')).toContainText('G1');
+  await expect(page.locator('#rivalryLeadTrend')).toContainText(/\d{2}\/\d{2}\/2024/);
+  await expect(page.locator('#rivalryLeadTrend svg title').last()).toContainText('Series spread:');
+  expect(await page.locator('#rivalryTimeline .rivalry-timeline-badge').count()).toBeGreaterThan(0);
+  expect(await page.locator('#rivalryTimeline .rivalry-timeline-item').count()).toBeGreaterThan(0);
+  expect(await page.locator('#rivalryTimeline').evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+  await expect.poll(async () => page.evaluate(() => {
+    const params = new URL(location.href).searchParams;
+    return [params.get('tab'), params.get('rivalryTeamA'), params.get('rivalryTeamB')].join('|');
+  })).toBe('rivalry|Joe|Joel');
+
+  const tapeCount = await page.locator('#rivalryTapeGrid .stat').count();
+  const gameCount = await page.locator('#rivalryGameTable tbody tr').count();
+  const seasonCount = await page.locator('#rivalrySeasonTable tbody tr').count();
+
+  expect(tapeCount).toBeGreaterThan(0);
+  expect(gameCount).toBeGreaterThan(0);
+  expect(seasonCount).toBeGreaterThan(0);
+});
+
+test('head to head url restores the rivalry page and selected teams', async ({ page }) => {
+  await page.goto('/?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel');
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#tabRivalryBtn')).toHaveClass(/active/);
+  await expect(page.locator('#rivalryTeamA')).toHaveValue('Joe');
+  await expect(page.locator('#rivalryTeamB')).toHaveValue('Joel');
+  await expect(page.locator('#rivalryHeadline')).toContainText('Joe vs Joel');
+  await expect.poll(async () => page.evaluate(() => {
+    const params = new URL(location.href).searchParams;
+    return [params.get('tab'), params.get('rivalryTeamA'), params.get('rivalryTeamB')].join('|');
+  })).toBe('rivalry|Joe|Joel');
+});
+
 test('url state restores selected team and facet filters on load', async ({ page }) => {
   await page.goto('/?team=Joe&seasons=2025&weeks=1&opps=Shemer&types=Regular');
   await page.waitForLoadState('networkidle');

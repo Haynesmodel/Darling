@@ -18,6 +18,7 @@
 
   <nav class="tabs">
     <button class="tab active" id="tabHistoryBtn">League History</button>
+    <button class="tab" id="tabRivalryBtn">Head to Head</button>
   </nav>
 
   <main>
@@ -154,6 +155,83 @@
                 <th scope="col">Type</th>
                 <th scope="col">Round</th>
                 <th scope="col">Season</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="page-rivalry" class="page">
+      <div class="card">
+        <div class="controls filters rivalry-controls">
+          <select id="rivalryTeamA" aria-label="First team"></select>
+          <span class="rivalry-vs">vs</span>
+          <select id="rivalryTeamB" aria-label="Second team"></select>
+        </div>
+      </div>
+
+      <div class="card" id="rivalryHeadline"></div>
+
+      <div class="card">
+        <h3>Series Lead</h3>
+        <div id="rivalryLeadMeter"></div>
+      </div>
+
+      <div class="card">
+        <h3>Highlights</h3>
+        <div id="rivalryHighlightBoard" class="rivalry-highlight-board"></div>
+      </div>
+
+      <div class="card">
+        <h3>Head to Head</h3>
+        <div id="rivalryTapeGrid" class="stats-grid rivalry-tape"></div>
+      </div>
+
+      <div class="card">
+        <h3>Lead Trend</h3>
+        <div id="rivalryLeadTrend"></div>
+      </div>
+
+      <div class="card">
+        <h3>Timeline</h3>
+        <div id="rivalryTimeline" class="rivalry-timeline"></div>
+      </div>
+
+      <div class="card">
+        <h3>Season Breakdown</h3>
+        <div class="table-wrap">
+          <table id="rivalrySeasonTable">
+            <thead>
+              <tr>
+                <th scope="col">Season</th>
+                <th scope="col">Record</th>
+                <th scope="col">PF</th>
+                <th scope="col">PA</th>
+                <th scope="col">Diff</th>
+                <th scope="col">Notes</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Game Log</h3>
+        <div class="table-wrap">
+          <table id="rivalryGameTable">
+            <thead>
+              <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Season</th>
+                <th scope="col">Week</th>
+                <th scope="col">Type</th>
+                <th scope="col">Round</th>
+                <th scope="col">Winner</th>
+                <th scope="col">Score</th>
+                <th scope="col">Margin</th>
               </tr>
             </thead>
             <tbody></tbody>

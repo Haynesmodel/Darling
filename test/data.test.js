@@ -686,8 +686,9 @@ test('league renderer builds all-teams summary tables', () => {
   assert.match(html, /Regular Season \(All-Time\)/);
   assert.match(html, /<td>Joe<\/td><td>18-10<\/td><td>64\.3%<\/td><td>97\.50<\/td><td>91\.07<\/td>/);
   assert.match(html, /Post Season \(All-Time\)/);
-  assert.match(html, /<td>Joe<\/td><td>2-0<\/td><td>1<\/td><td>1<\/td><td>2<\/td>/);
-  assert.match(html, /<td>Shap<\/td><td>0-1<\/td><td>0<\/td><td>0<\/td><td>1<\/td>/);
+  assert.doesNotMatch(html, /<th scope="col">Bagels<\/th>/);
+  assert.match(html, /<td>Joe<\/td><td>2-0<\/td><td>1<\/td><td>1<\/td>\s*<td>120\.00<\/td><td>100\.00<\/td>/);
+  assert.match(html, /<td>Shap<\/td><td>0-1<\/td><td>0<\/td><td>0<\/td>\s*<td>100\.00<\/td><td>120\.00<\/td>/);
   assert.match(html, /<td>1-0<\/td><td>1<\/td>/);
   assert.match(html, /Average Finish \(All-Time\)/);
   assert.match(html, /<td>Joe<\/td><td>1\.00<\/td><td>1<\/td>/);
@@ -699,8 +700,8 @@ test('league renderer builds all-teams fun fact tiles', () => {
       { team: 'Joe', season: 2025, w: 10, l: 4, t: 0, n: 14, pct: 10 / 14, pf: 1400, pa: 1200, diff: 200 },
       { team: 'Shap', season: 2025, w: 3, l: 11, t: 0, n: 14, pct: 3 / 14, pf: 1050, pa: 1300, diff: -250 },
     ],
-    winStreak: { team: 'Joe', len: 6, start: '2025-09-07', end: '2025-10-12' },
-    lossStreak: { team: 'Shap', len: 5, start: '2025-09-14', end: '2025-10-12' },
+    winStreak: { team: 'Joe', len: 6, start: { date: '2025-09-07' }, end: { date: '2025-10-12' } },
+    lossStreak: { team: 'Shap', len: 5, start: { date: '2025-09-14' }, end: { date: '2025-10-12' } },
     headToHeadPairs: [
       { team: 'Joe', opp: 'Shap', w: 7, l: 1, t: 0, g: 8, pct: 7 / 8 },
     ],
@@ -715,6 +716,8 @@ test('league renderer builds all-teams fun fact tiles', () => {
   assert.match(html, /Worst Season Point Diff/);
   assert.match(html, /-250/);
   assert.match(html, /Joe \(2025-09-07 \u2192 2025-10-12\)/);
+  assert.match(html, /Shap \(2025-09-14 \u2192 2025-10-12\)/);
+  assert.doesNotMatch(html, /\[object Object\]/);
   assert.match(html, /87\.5%/);
   assert.match(html, /180\.25/);
 });

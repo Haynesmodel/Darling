@@ -110,14 +110,6 @@ function leagueSummaryTablesHtml(opts = {}) {
     postByTeam.set(g.teamB, recB);
   }
 
-  const bagelsByTeam = new Map();
-  for (const r of seasonSummaries) {
-    if (!Number.isFinite(+r.bagels_earned)) continue;
-    const cur = bagelsByTeam.get(r.owner) || { team: r.owner, total: 0 };
-    cur.total += +r.bagels_earned;
-    bagelsByTeam.set(r.owner, cur);
-  }
-
   const postRows = Array.from(postByTeam.values()).map(r => {
     const dPPG = r.dN ? (r.dPF / r.dN) : 0;
     const dOPPG = r.dN ? (r.dPA / r.dN) : 0;
@@ -128,7 +120,6 @@ function leagueSummaryTablesHtml(opts = {}) {
       darlingRec: `${r.dW}-${r.dL}`,
       byes: r.byes,
       champs: r.champs,
-      bagels: (bagelsByTeam.get(r.team)?.total) || 0,
       dPPG,
       dOPPG,
       saundersRec: `${r.sW}-${r.sL}`,
@@ -159,18 +150,18 @@ function leagueSummaryTablesHtml(opts = {}) {
       <table>
         <thead>
           <tr>
-            <th scope="col">Team</th><th scope="col">Darling Record</th><th scope="col">Byes</th><th scope="col">Championships</th><th scope="col">Bagels</th>
+            <th scope="col">Team</th><th scope="col">Darling Record</th><th scope="col">Byes</th><th scope="col">Championships</th>
             <th scope="col">Darling PPG</th><th scope="col">Darling Opp PPG</th>
             <th scope="col">Saunders Record</th><th scope="col">Saunders</th><th scope="col">Saunders PPG</th><th scope="col">Saunders Opp PPG</th>
           </tr>
         </thead>
         <tbody>${
           postRows.map(r => `<tr>
-            <td>${esc(r.team)}</td><td>${r.darlingRec}</td><td>${r.byes}</td><td>${r.champs}</td><td>${r.bagels}</td>
+            <td>${esc(r.team)}</td><td>${r.darlingRec}</td><td>${r.byes}</td><td>${r.champs}</td>
             <td>${nfmt(r.dPPG, 2)}</td><td>${nfmt(r.dOPPG, 2)}</td>
             <td>${r.saundersRec}</td><td>${r.saundersTitles}</td>
             <td>${nfmt(r.sPPG, 2)}</td><td>${nfmt(r.sOPPG, 2)}</td>
-          </tr>`).join('') || '<tr><td colspan="11" class="muted">\u2014</td></tr>'
+          </tr>`).join('') || '<tr><td colspan="10" class="muted">\u2014</td></tr>'
         }</tbody>
       </table>
     </div>
@@ -222,6 +213,7 @@ function leagueFunFactsAllTeamsHtml(opts = {}) {
   const bestVs = headToHeadPairs.slice().sort((a, b) => b.pct - a.pct || b.g - a.g)[0] || null;
   const top = topWeeklyScores[0] || null;
   const fmtRec = (r) => r ? `${r.w}-${r.l}${r.t ? '-' + r.t : ''}` : '\u2014';
+  const runDate = (v) => (v && typeof v === 'object') ? v.date : v;
 
   const tile = (label, val, sub = '') => `
   <div class="stat">
@@ -244,8 +236,8 @@ function leagueFunFactsAllTeamsHtml(opts = {}) {
       worstDiff ? `${(+worstDiff.diff >= 0 ? '+' : '')}${nfmt(worstDiff.diff, 0)}` : '\u2014',
       worstDiff ? `${worstDiff.team} \u2022 ${worstDiff.season} \u2022 PF ${nfmt(worstDiff.pf, 0)} / PA ${nfmt(worstDiff.pa, 0)}` : ''
     ),
-    tile('Longest Winning Streak', winStreak ? `${winStreak.len}` : '\u2014', winStreak ? `${winStreak.team} (${winStreak.start} \u2192 ${winStreak.end})` : ''),
-    tile('Longest Losing Streak', lossStreak ? `${lossStreak.len}` : '\u2014', lossStreak ? `${lossStreak.team} (${lossStreak.start} \u2192 ${lossStreak.end})` : ''),
+    tile('Longest Winning Streak', winStreak ? `${winStreak.len}` : '\u2014', winStreak ? `${winStreak.team} (${runDate(winStreak.start)} \u2192 ${runDate(winStreak.end)})` : ''),
+    tile('Longest Losing Streak', lossStreak ? `${lossStreak.len}` : '\u2014', lossStreak ? `${lossStreak.team} (${runDate(lossStreak.start)} \u2192 ${runDate(lossStreak.end)})` : ''),
     tile(
       'Best Record vs Single Opponent',
       bestVs ? `${nfmt(bestVs.pct * 100, 1)}%` : '\u2014',

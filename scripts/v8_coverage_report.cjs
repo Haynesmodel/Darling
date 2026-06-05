@@ -3,14 +3,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { fileURLToPath } = require('node:url');
 
-const root = process.cwd();
-const v8Dir = path.join(root, 'coverage', '.v8');
-const outDir = path.join(root, 'coverage');
-
-if (!fs.existsSync(v8Dir)) {
-  console.error('V8 coverage directory missing:', v8Dir);
-  process.exit(1);
-}
+const defaultRoot = process.cwd();
+const sourceDirs = new Set(['js', 'scripts']);
+const sourceExts = new Set(['.js', '.cjs']);
 
 function getLineStarts(src){
   const starts = [0];
@@ -30,75 +25,116 @@ function offsetToLine(starts, offset){
   return Math.max(0, lo-1); // 0-based
 }
 
-const fileData = new Map();
-const files = fs.readdirSync(v8Dir).filter(f=>f.endsWith('.json'));
-for (const f of files){
-  const data = JSON.parse(fs.readFileSync(path.join(v8Dir, f), 'utf8'));
-  const results = data.result || [];
-  for (const r of results){
-    if (!r.url || !r.url.startsWith('file://')) continue;
-    const filePath = fileURLToPath(r.url);
-    if (!filePath.includes(path.sep + 'test' + path.sep)) continue;
-    if (!filePath.endsWith('.js')) continue;
+function isSourceFile(root, filePath) {
+  const relPath = path.relative(root, filePath);
+  if (relPath.startsWith('..' + path.sep) || path.isAbsolute(relPath)) return false;
+  if (relPath.split(path.sep).includes('test')) return false;
+  if (!sourceDirs.has(relPath.split(path.sep)[0])) return false;
+  return sourceExts.has(path.extname(filePath));
+}
 
-    const entry = fileData.get(filePath) || { ranges: [] };
-    for (const fn of r.functions || []){
-      for (const range of fn.ranges || []){
-        if (range.count > 0) entry.ranges.push(range);
+function buildCoverageSummary(root = defaultRoot) {
+  const v8Dir = path.join(root, 'coverage', '.v8');
+  if (!fs.existsSync(v8Dir)) {
+    throw new Error(`V8 coverage directory missing: ${v8Dir}`);
+  }
+
+  const fileData = new Map();
+  const files = fs.readdirSync(v8Dir).filter(f=>f.endsWith('.json'));
+  for (const f of files){
+    const data = JSON.parse(fs.readFileSync(path.join(v8Dir, f), 'utf8'));
+    const results = data.result || [];
+    for (const r of results){
+      if (!r.url || !r.url.startsWith('file://')) continue;
+      const filePath = fileURLToPath(r.url);
+      if (!isSourceFile(root, filePath)) continue;
+
+      const entry = fileData.get(filePath) || { ranges: [] };
+      for (const fn of r.functions || []){
+        for (const range of fn.ranges || []){
+          if (range.count > 0) entry.ranges.push(range);
+        }
       }
+      fileData.set(filePath, entry);
     }
-    fileData.set(filePath, entry);
+  }
+
+  let totalLines = 0;
+  let coveredLines = 0;
+  const perFile = [];
+
+  for (const [filePath, info] of fileData.entries()){
+    const src = fs.readFileSync(filePath, 'utf8');
+    const starts = getLineStarts(src);
+    const lines = src.split('\n');
+
+    const codeLines = new Set();
+    lines.forEach((line, idx)=>{ if (line.trim().length > 0) codeLines.add(idx); });
+
+    const covered = new Set();
+    for (const range of info.ranges){
+      const startLine = offsetToLine(starts, range.startOffset);
+      const endLine = offsetToLine(starts, Math.max(range.endOffset-1, range.startOffset));
+      for (let i=startLine;i<=endLine;i++) covered.add(i);
+    }
+
+    let fileCovered = 0;
+    for (const ln of codeLines){ if (covered.has(ln)) fileCovered++; }
+
+    const fileTotal = codeLines.size;
+    const pct = fileTotal ? (fileCovered / fileTotal) * 100 : 100;
+
+    totalLines += fileTotal;
+    coveredLines += fileCovered;
+    perFile.push({ file: path.relative(root, filePath), total: fileTotal, covered: fileCovered, pct });
+  }
+
+  const totalPct = totalLines ? (coveredLines / totalLines) * 100 : 100;
+  return {
+    total: {
+      lines: {
+        total: totalLines,
+        covered: coveredLines,
+        skipped: 0,
+        pct: Number(totalPct.toFixed(2))
+      }
+    },
+    files: perFile
+  };
+}
+
+function writeCoverageReport(root = defaultRoot) {
+  const outDir = path.join(root, 'coverage');
+  const summary = buildCoverageSummary(root);
+  const lines = summary.total.lines;
+  const text = [
+    `Lines: ${lines.covered}/${lines.total} (${lines.pct.toFixed(2)}%)`,
+    ...summary.files.map(f=>`${f.file}: ${f.covered}/${f.total} (${f.pct.toFixed(2)}%)`)
+  ].join('\n');
+
+  fs.mkdirSync(outDir, { recursive: true });
+  fs.writeFileSync(path.join(outDir, 'coverage-summary.json'), JSON.stringify(summary, null, 2) + '\n');
+  fs.writeFileSync(path.join(outDir, 'coverage.txt'), text + '\n');
+  return summary;
+}
+
+function runCli(root = defaultRoot) {
+  try {
+    writeCoverageReport(root);
+    return 0;
+  } catch (err) {
+    console.error(err.message);
+    return 1;
   }
 }
 
-let totalLines = 0;
-let coveredLines = 0;
-const perFile = [];
-
-for (const [filePath, info] of fileData.entries()){
-  const src = fs.readFileSync(filePath, 'utf8');
-  const starts = getLineStarts(src);
-  const lines = src.split('\n');
-
-  const codeLines = new Set();
-  lines.forEach((line, idx)=>{ if (line.trim().length > 0) codeLines.add(idx); });
-
-  const covered = new Set();
-  for (const range of info.ranges){
-    const startLine = offsetToLine(starts, range.startOffset);
-    const endLine = offsetToLine(starts, Math.max(range.endOffset-1, range.startOffset));
-    for (let i=startLine;i<=endLine;i++) covered.add(i);
-  }
-
-  let fileCovered = 0;
-  for (const ln of codeLines){ if (covered.has(ln)) fileCovered++; }
-
-  const fileTotal = codeLines.size;
-  const pct = fileTotal ? (fileCovered / fileTotal) * 100 : 100;
-
-  totalLines += fileTotal;
-  coveredLines += fileCovered;
-  perFile.push({ file: path.relative(root, filePath), total: fileTotal, covered: fileCovered, pct });
+if (require.main === module) {
+  process.exit(runCli());
 }
 
-const totalPct = totalLines ? (coveredLines / totalLines) * 100 : 100;
-const summary = {
-  total: {
-    lines: {
-      total: totalLines,
-      covered: coveredLines,
-      skipped: 0,
-      pct: Number(totalPct.toFixed(2))
-    }
-  },
-  files: perFile
+module.exports = {
+  buildCoverageSummary,
+  isSourceFile,
+  runCli,
+  writeCoverageReport,
 };
-
-fs.mkdirSync(outDir, { recursive: true });
-fs.writeFileSync(path.join(outDir, 'coverage-summary.json'), JSON.stringify(summary, null, 2) + '\n');
-
-const text = [
-  `Lines: ${coveredLines}/${totalLines} (${totalPct.toFixed(2)}%)`,
-  ...perFile.map(f=>`${f.file}: ${f.covered}/${f.total} (${f.pct.toFixed(2)}%)`)
-].join('\n');
-fs.writeFileSync(path.join(outDir, 'coverage.txt'), text + '\n');

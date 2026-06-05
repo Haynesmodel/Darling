@@ -3,9 +3,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { pathToFileURL } = require('node:url');
 
 const { checkRepoHygiene } = require('../scripts/check_repo_hygiene.cjs');
 const { createStaticServer, resolvePath } = require('../scripts/serve_static.cjs');
+const { buildCoverageSummary } = require('../scripts/v8_coverage_report.cjs');
 
 async function withTempRepo(fn) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-hygiene-'));
@@ -77,5 +79,39 @@ test('static server serves files, no-store headers, and rejects unsupported meth
     } finally {
       await new Promise(resolve => server.close(resolve));
     }
+  });
+});
+
+test('coverage reporter measures source files and excludes tests', async () => {
+  await withTempRepo((root) => {
+    fs.mkdirSync(path.join(root, 'coverage', '.v8'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'test'), { recursive: true });
+
+    const appSource = 'const app = true;\nexport { app };\n';
+    const scriptSource = 'module.exports = { ok: true };\n';
+    const testSource = 'assert.equal(1, 1);\n';
+    const appPath = path.join(root, 'js', 'helpers.js');
+    const scriptPath = path.join(root, 'scripts', 'tool.cjs');
+    const testPath = path.join(root, 'test', 'data.test.js');
+    fs.writeFileSync(appPath, appSource);
+    fs.writeFileSync(scriptPath, scriptSource);
+    fs.writeFileSync(testPath, testSource);
+
+    fs.writeFileSync(path.join(root, 'coverage', '.v8', 'coverage.json'), JSON.stringify({
+      result: [appPath, scriptPath, testPath].map(filePath => ({
+        url: pathToFileURL(filePath).href,
+        functions: [{
+          ranges: [{ startOffset: 0, endOffset: fs.readFileSync(filePath, 'utf8').length, count: 1 }],
+        }],
+      })),
+    }));
+
+    const summary = buildCoverageSummary(root);
+    assert.deepEqual(
+      summary.files.map(file => file.file).sort(),
+      ['js/helpers.js', 'scripts/tool.cjs']
+    );
+    assert.equal(summary.total.lines.pct, 100);
   });
 });

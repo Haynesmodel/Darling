@@ -48,6 +48,14 @@ import {
   updateUrlFromState,
 } from './state-helpers.js';
 import {
+  buildHistoryRenderKeys,
+  facetStateKey as buildFacetStateKey,
+  resetFacetSelections as clearFacetSelections,
+  setLoadedLeagueData,
+  setTeamAndKeepOpponents,
+  snapshotFacetState,
+} from './app-state-controller.js';
+import {
   opponentBreakdownView,
   renderGamesTable,
   renderSeasonRecap,
@@ -113,7 +121,7 @@ const champNote    = (owner, season) => SPECIAL_TITLE_NOTES[owner]?.champs?.[sea
 const saundersNote = (owner, season) => SPECIAL_TITLE_NOTES[owner]?.saunders?.[season] || null;
 
 function currentFacetState(){
-  return {
+  return snapshotFacetState({
     selectedTeam,
     selectedSeasons,
     selectedWeeks,
@@ -122,35 +130,11 @@ function currentFacetState(){
     selectedRounds,
     universe,
     allTeams: ALL_TEAMS,
-  };
-}
-
-function setKey(set){
-  return [...set].map(v => `${v}`).sort().join(',');
-}
-
-function gamesKey(games){
-  return games.map(canonicalGameKey).join('|');
-}
-
-function facetStateKey(){
-  return [
-    selectedTeam,
-    `s:${setKey(selectedSeasons)}`,
-    `w:${setKey(selectedWeeks)}`,
-    `o:${setKey(selectedOpponents)}`,
-    `t:${setKey(selectedTypes)}`,
-    `r:${setKey(selectedRounds)}`,
-    `us:${universe.seasons.join(',')}`,
-    `uw:${universe.weeks.join(',')}`,
-    `uo:${universe.opponents.join(',')}`,
-    `ut:${universe.types.join(',')}`,
-    `ur:${universe.rounds.join(',')}`,
-  ].join('|');
+  });
 }
 
 function filteredGamesForCurrentState(){
-  const key = facetStateKey();
+  const key = buildFacetStateKey(currentFacetState());
   if(filteredGamesCacheKey === key) return filteredGamesCacheValue;
   filteredGamesCacheKey = key;
   filteredGamesCacheValue = applyFacetFilters(leagueGames, currentFacetState());
@@ -219,6 +203,13 @@ function weeklyAwards(){
 async function loadLeagueJSON(){
   setAppStatus('loading', 'Loading league data...');
   try{
+    const loaded = await loadLeagueAssets();
+    ({ leagueGames, derivedWeeksSet, seasonSummaries, rivalries } = setLoadedLeagueData({
+      leagueGames,
+      derivedWeeksSet,
+      seasonSummaries,
+      rivalries,
+    }, loaded));
     seasonAggregatesCache = null;
     weeklyAwardsCache = null;
     teamsFromLeagueGamesCache = null;
@@ -227,12 +218,7 @@ async function loadLeagueJSON(){
     filteredGamesCacheKey = null;
     filteredGamesCacheValue = [];
     renderMetrics.filterRuns = 0;
-
-    const loaded = await loadLeagueAssets();
-    leagueGames = loaded.leagueGames;
-    derivedWeeksSet = loaded.derivedWeeksSet;
-    seasonSummaries = loaded.seasonSummaries;
-    rivalries = loaded.rivalries;
+    lastEffectKey = null;
 
     renderHeaderBannersForOwner(DEFAULT_TEAM);
     clearAppStatus();
@@ -328,9 +314,11 @@ function buildHistoryControls(){
   selectedTeam = teamSelect.value;
   updateHeaderForTeam(selectedTeam);
   teamSelect.addEventListener('change', ()=>{
-    selectedTeam = teamSelect.value;
+    const nextState = setTeamAndKeepOpponents(currentFacetState(), teamSelect.value, opponentOptions(leagueGames, teamSelect.value, ALL_TEAMS));
+    selectedTeam = nextState.selectedTeam;
     updateHeaderForTeam(selectedTeam);
     buildFacet('oppFilters', opponentOptions(leagueGames, selectedTeam, ALL_TEAMS), {prefix:'opp'});
+    setFacetSelections('oppFilters', 'opp', nextState.selectedOpponents);
     readFacetSelections(); updateFacetCountTexts(); renderHistory();
     updateUrlFromState({ ...currentFacetState(), isApplyingUrlState });
   });
@@ -388,6 +376,13 @@ function resetAllFacetsToAll(){
     if(all) all.checked = true;
     cbs.forEach(cb=>cb.checked=false);
   });
+  ({ selectedSeasons, selectedWeeks, selectedOpponents, selectedTypes, selectedRounds } = clearFacetSelections({
+    selectedSeasons,
+    selectedWeeks,
+    selectedOpponents,
+    selectedTypes,
+    selectedRounds,
+  }));
   readFacetSelections(); updateFacetCountTexts(); renderHistory();
   updateUrlFromState({ ...currentFacetState(), isApplyingUrlState });
 }
@@ -442,12 +437,13 @@ function renderHistory(){
   if(teamSel && selectedTeam!==teamSel.value) selectedTeam=teamSel.value;
 
   const filtered = filteredGamesForCurrentState();
-  const filteredKey = gamesKey(filtered);
-  const seasonFilterKey = setKey(selectedSeasons);
-  const weekFilterKey = setKey(selectedWeeks);
-  const opponentFilterKey = setKey(selectedOpponents);
+  const renderKeys = buildHistoryRenderKeys(currentFacetState(), filtered, { allTeams: ALL_TEAMS, canonicalGameKeyFn: canonicalGameKey });
+  const filteredKey = renderKeys.filteredKey;
+  const seasonFilterKey = renderKeys.seasonFilterKey;
+  const weekFilterKey = renderKeys.weekFilterKey;
+  const opponentFilterKey = renderKeys.opponentFilterKey;
 
-  renderIfChanged('topHighlights', selectedTeam, () => {
+  renderIfChanged('topHighlights', renderKeys.topHighlights, () => {
     renderTopHighlights(selectedTeam, {
       allTeams: ALL_TEAMS,
       seasonSummaries,
@@ -457,14 +453,13 @@ function renderHistory(){
   });
 
   // removed: Stats Overview
-  const funFactsKey = selectedTeam === ALL_TEAMS ? selectedTeam : `${selectedTeam}|${filteredKey}`;
-  renderIfChanged('funFacts', funFactsKey, () => {
+  renderIfChanged('funFacts', renderKeys.funFacts, () => {
     renderFunFacts(selectedTeam, filtered);
   });
-  renderIfChanged('oppBreakdown', `${selectedTeam}|${filteredKey}|weeks:${weekFilterKey}|opps:${opponentFilterKey}`, () => {
+  renderIfChanged('oppBreakdown', renderKeys.oppBreakdown, () => {
     renderOppBreakdown(selectedTeam, filtered);
   });
-  renderIfChanged('seasonRecap', `${selectedTeam}|seasons:${seasonFilterKey}`, () => {
+  renderIfChanged('seasonRecap', renderKeys.seasonRecap, () => {
     renderSeasonRecap(selectedTeam, seasonSummaries, {
       allTeams: ALL_TEAMS,
       allGames: leagueGames,
@@ -472,13 +467,13 @@ function renderHistory(){
       universeSeasons: universe.seasons,
     });
   });
-  renderIfChanged('seasonCallout', `${selectedTeam}|seasons:${seasonFilterKey}`, () => {
+  renderIfChanged('seasonCallout', renderKeys.seasonCallout, () => {
     renderSeasonCallout(selectedTeam);
   });
-  renderIfChanged('weekByWeek', `${selectedTeam}|${filteredKey}`, () => {
+  renderIfChanged('weekByWeek', renderKeys.weekByWeek, () => {
     renderWeekByWeek(selectedTeam, filtered, { allTeams: ALL_TEAMS, allGames: leagueGames });
   });
-  renderIfChanged('gamesTable', `${selectedTeam}|${filteredKey}`, () => {
+  renderIfChanged('gamesTable', renderKeys.gamesTable, () => {
     renderGamesTable(selectedTeam, filtered);
   });
 }

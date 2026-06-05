@@ -57,6 +57,7 @@ const {
   validateLeagueGames,
   validateSeasonSummaries,
   validateRivalries,
+  validateLeagueAssetBundle,
   loadLeagueAssets,
 } = data;
 const {
@@ -84,12 +85,16 @@ const {
   facetControlHtml,
 } = render;
 const {
+  buildLeagueFunFactsAllTeamsViewModel,
+  buildTeamFunFactsViewModel,
   leagueSummaryTablesHtml,
   leagueFunFactsAllTeamsHtml,
   leagueFunListsAllTeamsHtml,
   teamFunFactsView,
 } = leagueRenderers;
 const {
+  buildTopHighlightsViewModel,
+  buildSeasonCalloutViewModel,
   historyGamesTableRowHtml,
   historyGamesTableHtml,
   weekByWeekRows,
@@ -337,6 +342,41 @@ test('asset normalizers coerce imported rows into canonical shapes', () => {
   assert.deepEqual(
     normalizeRivalry({ name: ' Rivals ', members: [' Joe ', ' Shap '], type: ' group ', slug: ' rivals ', note: ' Legacy ' }),
     { name: 'Rivals', members: ['Joe', 'Shap'], type: 'group', slug: 'rivals', note: 'Legacy' }
+  );
+});
+
+test('asset validation accepts optional fields and null-handling cases', () => {
+  assert.doesNotThrow(() =>
+    validateLeagueAssetBundle({
+      h2hRows: [{
+        season: 2025,
+        date: '2025-09-07',
+        teamA: 'Joe',
+        teamB: 'Shap',
+        scoreA: 100,
+        scoreB: 90,
+        week: null,
+        type: 'Regular',
+        round: null,
+      }],
+      seasonSummaryRows: [{
+        season: 2025,
+        owner: 'Joe',
+        wins: 10,
+        losses: 4,
+        ties: 0,
+        finish: null,
+        playoff_wins: 2,
+        playoff_losses: 0,
+        saunders_wins: 0,
+        saunders_losses: 0,
+      }],
+      rivalriesRows: [{
+        name: 'Founders',
+        members: ['Joe', 'Shap'],
+        note: '  Legacy  ',
+      }],
+    })
   );
 });
 
@@ -638,6 +678,54 @@ test('renderers escape data-driven text before building html', () => {
   });
   assert.match(leagueHtml, /Joe &lt;Owner&gt;/);
   assert.doesNotMatch(leagueHtml, /<Owner>/);
+});
+
+test('league renderer view models normalize all-teams fun fact text', () => {
+  const vm = buildLeagueFunFactsAllTeamsViewModel({
+    seasonAggregates: [
+      { team: 'Joe', season: 2025, w: 10, l: 4, t: 0, n: 14, pct: 10 / 14, pf: 1400, pa: 1200, diff: 200 },
+      { team: 'Shap', season: 2025, w: 3, l: 11, t: 0, n: 14, pct: 3 / 14, pf: 1050, pa: 1300, diff: -250 },
+    ],
+    winStreak: { team: 'Joe', len: 6, start: { date: '2025-09-07' }, end: { date: '2025-10-12' } },
+    lossStreak: { team: 'Shap', len: 5, start: { date: '2025-09-14' }, end: { date: '2025-10-12' } },
+    headToHeadPairs: [
+      { team: 'Joe', opp: 'Shap', w: 7, l: 1, t: 0, g: 8, pct: 7 / 8 },
+    ],
+    topWeeklyScores: [
+      { team: 'Joe', opp: 'Shap', pf: 180.25, date: '2025-09-07' },
+    ],
+  });
+
+  assert.equal(vm.tiles[0].label, 'Best Single-Season Record');
+  assert.equal(vm.tiles[0].value, '10-4');
+  assert.match(vm.tiles[0].sub, /Joe \u2022 2025 \u2022 71\.4%/);
+  assert.match(vm.tiles[4].sub, /Joe \(2025-09-07 \u2192 2025-10-12\)/);
+  assert.match(vm.tiles[5].sub, /Shap \(2025-09-14 \u2192 2025-10-12\)/);
+  assert.match(vm.tiles[6].sub, /Joe vs Shap/);
+  assert.equal(vm.tiles[7].value, '180.25');
+});
+
+test('league renderer view models normalize team fun fact text', () => {
+  const games = [
+    { season: 2025, date: '2025-09-07', teamA: 'Joe', teamB: 'Shap', scoreA: 120, scoreB: 100, type: 'Regular', round: '', _weekByTeam: { Joe: 1, Shap: 1 } },
+    { season: 2025, date: '2025-09-14', teamA: 'Joe', teamB: 'Nuss', scoreA: 75, scoreB: 82, type: 'Regular', round: '', _weekByTeam: { Joe: 2, Nuss: 2 } },
+  ];
+  const vm = buildTeamFunFactsViewModel('Joe', games, {
+    seasonSummaries: [{ owner: 'Joe', season: 2025, bye: true }],
+    seasonAggregates: [{ team: 'Joe', season: 2025, n: 2, ppg: 97.5, oppg: 91.0 }],
+    winStreak: { len: 1, start: { date: '2025-09-07' }, end: { date: '2025-09-07' } },
+    lossStreak: { len: 1, start: { date: '2025-09-14' }, end: { date: '2025-09-14' } },
+    luckSummary: { act: 1, exp: 1.5, luck: -0.5 },
+  });
+
+  assert.equal(vm.facts[0].label, 'Highest Score');
+  assert.equal(vm.facts[0].value, '120.00');
+  assert.match(vm.facts[0].sub, /2025-09-07 vs Shap/);
+  assert.match(vm.facts[3].sub, /2025-09-07 → 2025-09-07/);
+  assert.match(vm.facts[8].value, /97\.50/);
+  assert.equal(vm.highestGames[0].score, '120.00 – 100.00');
+  assert.equal(vm.highestGames[0].opponent, 'Shap');
+  assert.equal(vm.lowestGames[0].opponent, 'Nuss');
 });
 
 test('league renderer builds all-teams summary tables', () => {
@@ -952,6 +1040,30 @@ test('history renderer builds top highlight chips', () => {
   assert.match(allHtml, /League view/);
 });
 
+test('history renderer view models normalize headline text', () => {
+  const summaries = [
+    { owner: 'Joe', season: 2025, champion: true, saunders: false, wins: 11, finish: 1 },
+    { owner: 'Joe', season: 2024, champion: false, saunders: true, wins: 7, finish: 8 },
+  ];
+  const vm = buildTopHighlightsViewModel('Joe', {
+    seasonSummaries: summaries,
+    allTeams: '__ALL__',
+    champNoteFn: (owner, season) => owner === 'Joe' && season === 2025 ? 'note' : null,
+    saundersNoteFn: (owner, season) => owner === 'Joe' && season === 2024 ? 'bad bracket' : null,
+  });
+  assert.equal(vm.isLeagueView, false);
+  assert.equal(vm.chips[0].title, 'Darlings');
+  assert.equal(vm.chips[0].main, '1');
+  assert.match(vm.chips[0].sub, /Years: 2025\*/);
+  assert.equal(vm.chips[3].main, '4.50');
+  assert.match(vm.chips[4].sub, /2025 \u2014 note/);
+  assert.match(vm.chips[4].sub, /2024 \u2014 bad bracket/);
+
+  const leagueVm = buildTopHighlightsViewModel('__ALL__', { allTeams: '__ALL__', seasonSummaries: summaries });
+  assert.equal(leagueVm.isLeagueView, true);
+  assert.match(leagueVm.chips[0].main, /Select a team/);
+});
+
 test('history renderer builds season callout view and effect metadata', () => {
   const summaries = [
     {
@@ -1002,6 +1114,39 @@ test('history renderer builds season callout view and effect metadata', () => {
   });
   assert.equal(allView.html, '');
   assert.equal(allView.resetEffect, false);
+});
+
+test('history renderer view model normalizes season callout text', () => {
+  const summaries = [
+    {
+      owner: 'Joe',
+      season: 2025,
+      wins: 10,
+      losses: 4,
+      ties: 0,
+      finish: 1,
+      champion: true,
+      bye: true,
+      saunders: false,
+      playoff_wins: 2,
+      playoff_losses: 0,
+    },
+  ];
+  const vm = buildSeasonCalloutViewModel('Joe', {
+    seasonSummaries: summaries,
+    selectedSeasons: new Set([2025]),
+    allTeams: '__ALL__',
+    champNoteFn: () => 'COVID season',
+    saundersNoteFn: () => null,
+  });
+  assert.equal(vm.show, true);
+  assert.equal(vm.record, '10-4-0');
+  assert.equal(vm.pct, '71.4%');
+  assert.equal(vm.finish, '1');
+  assert.match(vm.bits.join(' \u2022 '), /Champion/);
+  assert.match(vm.notes.join(' \u2022 '), /2025 \u2014 COVID season/);
+  assert.equal(vm.effectKey, 'Joe|2025|C');
+  assert.equal(vm.effectType, 'champion');
 });
 
 test('history renderer builds opponent breakdown rows and rivalry metadata', () => {
@@ -1148,6 +1293,26 @@ test('url helpers parse and rebuild facet state', () => {
     allTeams: '__ALL__',
   });
   assert.equal(next, '/index.html?team=Joe&seasons=2024%2C2025&weeks=1&opps=Shap&rounds=Semi+Final');
+});
+
+test('url helpers preserve opponent selections with spaces and punctuation', () => {
+  const next = buildUrlFromState({
+    selectedTeam: 'Joe',
+    selectedOpponents: new Set(['The Boss', 'A&B / C+']),
+    universe: {
+      seasons: [],
+      weeks: [],
+      opponents: ['The Boss', 'A&B / C+', 'Other'],
+      types: [],
+      rounds: [],
+    },
+    pathname: '/index.html',
+    allTeams: '__ALL__',
+  });
+  assert.equal(next, '/index.html?team=Joe&opps=The+Boss%2CA%26B+%2F+C%2B');
+
+  const parsed = parseUrlState(next.slice(next.indexOf('?')));
+  assert.deepEqual([...parsed.opps], ['The Boss', 'A&B / C+']);
 });
 
 test('applyFacetFilters honors team and facet selections', () => {

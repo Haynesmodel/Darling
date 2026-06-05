@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -25,6 +26,24 @@ async function withTempRepo(fn) {
 
 function request(port, pathname, opts = {}) {
   return fetch(`http://127.0.0.1:${port}${pathname}`, opts);
+}
+
+function runNode(script, args, cwd) {
+  return spawnSync(process.execPath, [script, ...args], {
+    cwd,
+    encoding: 'utf8',
+  });
+}
+
+function runShell(script, env, cwd) {
+  return spawnSync('bash', [script], {
+    cwd,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      ...env,
+    },
+  });
 }
 
 test('repo hygiene accepts the expected ESM app shape', async () => {
@@ -114,4 +133,149 @@ test('coverage reporter measures source files and excludes tests', async () => {
     );
     assert.equal(summary.total.lines.pct, 100);
   });
+});
+
+test('asset validation cli accepts the canonical bundle', async () => {
+  await withTempRepo((root) => {
+    fs.mkdirSync(path.join(root, 'assets'));
+    fs.writeFileSync(path.join(root, 'assets', 'H2H.json'), JSON.stringify([{
+      season: 2025,
+      date: '2025-09-07',
+      teamA: 'Joe',
+      teamB: 'Shap',
+      scoreA: 100,
+      scoreB: 90,
+      type: 'Regular',
+      round: '',
+    }]));
+    fs.writeFileSync(path.join(root, 'assets', 'SeasonSummary.json'), JSON.stringify([{
+      season: 2025,
+      owner: 'Joe',
+      wins: 10,
+      losses: 4,
+      ties: 0,
+      finish: 1,
+      playoff_wins: 2,
+      playoff_losses: 0,
+      saunders_wins: 0,
+      saunders_losses: 0,
+    }]));
+    fs.writeFileSync(path.join(root, 'assets', 'Rivalries.json'), JSON.stringify([{
+      name: 'Founders',
+      members: ['Joe', 'Shap'],
+    }]));
+
+    const result = runNode(path.join(__dirname, '..', 'scripts', 'validate_assets.cjs'), [], root);
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Asset validation passed/);
+  });
+});
+
+test('asset validation cli reports row-level failures', async () => {
+  await withTempRepo((root) => {
+    fs.mkdirSync(path.join(root, 'assets'));
+    fs.writeFileSync(path.join(root, 'assets', 'H2H.json'), JSON.stringify([{
+      season: 2025,
+      date: 'not-a-date',
+      teamA: 'Joe',
+      teamB: 'Shap',
+      scoreA: 100,
+      scoreB: 90,
+      type: 'Regular',
+      round: '',
+    }]));
+    fs.writeFileSync(path.join(root, 'assets', 'SeasonSummary.json'), JSON.stringify([{
+      season: 2025,
+      owner: 'Joe',
+      wins: 10,
+      losses: 4,
+      ties: 0,
+      finish: 1,
+      playoff_wins: 2,
+      playoff_losses: 0,
+      saunders_wins: 0,
+      saunders_losses: 0,
+    }]));
+    fs.writeFileSync(path.join(root, 'assets', 'Rivalries.json'), JSON.stringify([{
+      name: 'Founders',
+      members: ['Joe', 'Shap'],
+    }]));
+
+    const result = runNode(path.join(__dirname, '..', 'scripts', 'validate_assets.cjs'), [], root);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /row 0 invalid date/);
+  });
+});
+
+test('update workflow refuses live Sleeper calls unless explicitly enabled', async () => {
+  const result = runShell(path.join(__dirname, '..', 'scripts', 'update_2025.sh'), {}, path.join(__dirname, '..'));
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /UPDATE_LIVE=1/);
+});
+
+test('update workflow validation-only mode runs with a stub updater and leaves assets untouched', async () => {
+  const repoRoot = path.join(__dirname, '..');
+  const stubDir = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-python-stub-'));
+  const stubPath = path.join(stubDir, 'python-stub.sh');
+  const updatedPath = path.join(repoRoot, 'assets', 'H2H.updated.json');
+  const before = fs.existsSync(updatedPath) ? fs.readFileSync(updatedPath, 'utf8') : null;
+
+  fs.writeFileSync(stubPath, `#!/usr/bin/env bash
+set -euo pipefail
+
+out=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --out)
+      out="$2"
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+mkdir -p "$(dirname "$out")"
+cat > "$out" <<'JSON'
+[
+  {
+    "season": 2025,
+    "date": "2025-09-07",
+    "teamA": "Joe",
+    "teamB": "Shap",
+    "scoreA": 100,
+    "scoreB": 90,
+    "week": 1,
+    "round": "",
+    "type": "Regular"
+  }
+]
+JSON
+`);
+  fs.chmodSync(stubPath, 0o755);
+
+  try {
+    const result = runShell(
+      path.join(repoRoot, 'scripts', 'update_2025.sh'),
+      {
+        UPDATE_LIVE: '1',
+        VALIDATE_ONLY: '1',
+        PYTHON: stubPath,
+      },
+      repoRoot,
+    );
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Validation-only mode enabled/);
+    assert.match(result.stdout, /Validation complete\. No files were written into assets\//);
+
+    if (before === null) {
+      assert.equal(fs.existsSync(updatedPath), false);
+    } else {
+      assert.equal(fs.readFileSync(updatedPath, 'utf8'), before);
+    }
+  } finally {
+    fs.rmSync(stubDir, { recursive: true, force: true });
+  }
 });

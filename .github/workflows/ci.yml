@@ -2,25 +2,55 @@ name: CI
 
 on:
   pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
+    name: test
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: true
+
     steps:
-      - name: Checkout
+      - name: Check out repository
         uses: actions/checkout@v4
-      - name: Setup Node
+
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 20
+          cache: npm
+
       - name: Install dependencies
         run: npm ci
+
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-      - name: Run tests with coverage
+        run: npx playwright install --with-deps
+
+      - name: Run CI test suite
         run: npm run test:ci
-      - name: Upload coverage artifact
+
+      - name: Upload Playwright report
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage
-          path: coverage
+          name: playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload Playwright test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7

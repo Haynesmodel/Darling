@@ -242,44 +242,47 @@
     </section>
 
     <section id="page-trophy" class="page">
-      <div class="card">
-        <div class="controls filters trophy-controls">
-          <select id="trophyOwnerSelect" aria-label="Trophy case owner"></select>
+      <div class="trophy-toolbar">
+        <select id="trophyOwnerSelect" aria-label="Trophy case owner"></select>
+      </div>
+
+      <section id="trophyHero" class="trophy-hero"></section>
+
+      <section class="card">
+        <h3>Hardware Shelf</h3>
+        <div id="trophyHardwareShelf" class="trophy-shelf"></div>
+      </section>
+
+      <section class="card">
+        <h3>League Rank</h3>
+        <div id="trophyRankStrip" class="trophy-rank-strip"></div>
+      </section>
+
+      <section class="card">
+        <h3>Career Shape</h3>
+        <div id="trophyCareerShape" class="trophy-career-shape"></div>
+      </section>
+
+      <section class="trophy-split">
+        <div class="card">
+          <h3>Highlights</h3>
+          <div id="trophyAchievementList"></div>
         </div>
-      </div>
+        <div class="card">
+          <h3>Low Points</h3>
+          <div id="trophyScarList"></div>
+        </div>
+      </section>
 
-      <div class="card" id="trophyHero"></div>
-
-      <div class="card">
-        <h3>Hardware</h3>
-        <div id="trophyHardwareGrid" class="trophy-grid"></div>
-      </div>
-
-      <div class="card">
-        <h3>Regular Season Resume</h3>
-        <div id="trophyRegularGrid" class="stats-grid"></div>
-      </div>
-
-      <div class="card">
-        <h3>Postseason Resume</h3>
-        <div id="trophyPostseasonGrid" class="stats-grid"></div>
-      </div>
-
-      <div class="card">
-        <h3>Weekly Awards</h3>
-        <div id="trophyWeeklyGrid" class="stats-grid"></div>
-      </div>
-
-      <div class="card">
-        <h3>Signature Seasons</h3>
-        <div class="table-wrap">
+      <section class="card">
+        <h3>Season Ledger</h3>
+        <div class="table-wrap trophy-ledger">
           <table id="trophySeasonTable">
             <thead>
               <tr>
                 <th scope="col">Season</th>
                 <th scope="col">Record</th>
                 <th scope="col">Finish</th>
-                <th scope="col">Outcome</th>
                 <th scope="col">PF</th>
                 <th scope="col">PA</th>
                 <th scope="col">Diff</th>
@@ -289,7 +292,7 @@
             <tbody></tbody>
           </table>
         </div>
-      </div>
+      </section>
     </section>
   </main>
 

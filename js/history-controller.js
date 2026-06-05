@@ -80,12 +80,13 @@ import {
 } from './trophy-controls.js';
 import {
   buildTrophyCaseViewModel,
-  renderTrophyHardware,
   renderTrophyHero,
-  renderTrophyPostseason,
-  renderTrophyRegularSeason,
-  renderTrophySeasonTable,
-  renderTrophyWeeklyAwards,
+  renderTrophyHardwareShelf,
+  renderTrophyRankStrip,
+  renderTrophyCareerShape,
+  renderTrophyAchievementList,
+  renderTrophyScarList,
+  renderTrophySeasonLedger,
 } from './trophy-renderers.js';
 
 const DEFAULT_TEAM = 'Joe';
@@ -288,17 +289,17 @@ function renderTrophy() {
     const view = buildTrophyCaseViewModel(selectedTrophyOwner, {
       leagueGames,
       seasonSummaries,
-      seasonAggregates: seasonAggregatesAllTeams(),
-      weeklyAwards: weeklyAwards(),
-      sub70: subThresholdGamesPerTeam(SUB_SCORE_THRESHOLD),
+      champNoteFn: champNote,
+      saundersNoteFn: saundersNote,
     });
 
     renderTrophyHero(view, { doc: document });
-    renderTrophyHardware(view, { doc: document });
-    renderTrophyRegularSeason(view, { doc: document });
-    renderTrophyPostseason(view, { doc: document });
-    renderTrophyWeeklyAwards(view, { doc: document });
-    renderTrophySeasonTable(view, { doc: document });
+    renderTrophyHardwareShelf(view, { doc: document });
+    renderTrophyRankStrip(view, { doc: document });
+    renderTrophyCareerShape(view, { doc: document });
+    renderTrophyAchievementList(view, { doc: document });
+    renderTrophyScarList(view, { doc: document });
+    renderTrophySeasonLedger(view, { doc: document });
   });
 
   updateUrlFromState({

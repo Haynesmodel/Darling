@@ -3,15 +3,170 @@ import assert from 'node:assert/strict';
 
 import {
   buildTrophyCaseViewModel,
+  computeLeagueRanks,
+  computeOwnerIdentity,
+  trophyAchievementListHtml,
+  trophyCareerShapeHtml,
+  trophyHardwareShelfHtml,
   trophyHeroHtml,
-  trophyHardwareHtml,
-  trophyRegularSeasonHtml,
-  trophyPostseasonHtml,
-  trophyWeeklyAwardsHtml,
-  trophySeasonTableHtml,
+  trophyRankStripHtml,
+  trophyScarListHtml,
+  trophySeasonLedgerHtml,
 } from '../js/trophy-renderers.js';
 
-test('trophy renderer builds the resume, hardware, and signature season output', () => {
+function makeProfile(owner, overrides = {}) {
+  return {
+    owner,
+    counts: {
+      championships: 0,
+      regularTitles: 0,
+      top2Seeds: 0,
+      wildCards: 0,
+      saundersTitles: 0,
+      saundersByes: 0,
+      weeklyCrowns: 0,
+      lowScores: 0,
+      highScores: 0,
+      sub70Games: 0,
+      bagels: 0,
+      ...(overrides.counts || {}),
+    },
+    rates: {
+      regularWinPct: null,
+      playoffWinPct: null,
+      saundersWinPct: null,
+      averageFinish: null,
+      finishStdDev: 0,
+      ...(overrides.rates || {}),
+    },
+    totals: {
+      regular: { wins: 0, losses: 0, ties: 0 },
+      playoffs: { wins: 0, losses: 0, ties: 0 },
+      saunders: { wins: 0, losses: 0, ties: 0 },
+      pointsFor: 0,
+      pointsAgainst: 0,
+      diff: 0,
+      ...(overrides.totals || {}),
+    },
+    years: {
+      champions: [],
+      regularTitles: [],
+      top2Seeds: [],
+      wildCards: [],
+      saundersTitles: [],
+      saundersByes: [],
+      ...(overrides.years || {}),
+    },
+    seasonRows: overrides.seasonRows || [],
+    seasonLuckRows: overrides.seasonLuckRows || [],
+    bestPFSeason: overrides.bestPFSeason || null,
+    bestDiffSeason: overrides.bestDiffSeason || null,
+    worstFinishSeason: overrides.worstFinishSeason || null,
+    mostUnluckySeason: overrides.mostUnluckySeason || null,
+    luckiestSeason: overrides.luckiestSeason || null,
+    bestGame: overrides.bestGame || null,
+    worstGame: overrides.worstGame || null,
+    biggestWin: overrides.biggestWin || null,
+    biggestLoss: overrides.biggestLoss || null,
+    bestLuckGame: overrides.bestLuckGame || null,
+    worstLuckGame: overrides.worstLuckGame || null,
+    bestPlayoffWin: overrides.bestPlayoffWin || null,
+    worstPlayoffLoss: overrides.worstPlayoffLoss || null,
+    bestSaundersWin: overrides.bestSaundersWin || null,
+    ownerGames: overrides.ownerGames || [],
+    regularGames: overrides.regularGames || [],
+    playoffGames: overrides.playoffGames || [],
+    saundersGames: overrides.saundersGames || [],
+  };
+}
+
+test('league ranks use competition ranking and identity labels are data driven', () => {
+  const profiles = [
+    makeProfile('Dyno', {
+      counts: { championships: 2, regularTitles: 2, top2Seeds: 4, weeklyCrowns: 18, sub70Games: 2, saundersTitles: 0 },
+      rates: { regularWinPct: 0.71, averageFinish: 2.0, finishStdDev: 1.2, playoffWinPct: 0.75 },
+      totals: { regular: { wins: 28, losses: 10, ties: 0 }, playoffs: { wins: 6, losses: 2, ties: 0 } },
+    }),
+    makeProfile('Rail', {
+      counts: { championships: 2, regularTitles: 1, top2Seeds: 2, weeklyCrowns: 11, sub70Games: 5, saundersTitles: 1 },
+      rates: { regularWinPct: 0.64, averageFinish: 3.0, finishStdDev: 3.5, playoffWinPct: 0.5 },
+      totals: { regular: { wins: 24, losses: 14, ties: 0 }, playoffs: { wins: 3, losses: 3, ties: 0 } },
+    }),
+    makeProfile('Shaky', {
+      counts: { championships: 0, regularTitles: 0, top2Seeds: 0, weeklyCrowns: 2, sub70Games: 8, saundersTitles: 3 },
+      rates: { regularWinPct: 0.43, averageFinish: 7.2, finishStdDev: 5.4, playoffWinPct: 0.1 },
+      totals: { regular: { wins: 10, losses: 18, ties: 0 }, playoffs: { wins: 0, losses: 4, ties: 0 } },
+    }),
+  ];
+  const ranks = computeLeagueRanks(profiles);
+
+  assert.equal(ranks.byOwner.get('Dyno').championships.rank, 1);
+  assert.equal(ranks.byOwner.get('Rail').championships.rank, 1);
+  assert.equal(ranks.byOwner.get('Shaky').championships.rank, 3);
+  assert.equal(ranks.byOwner.get('Dyno').sub70Games.rank, 1);
+  assert.equal(ranks.byOwner.get('Shaky').sub70Games.rank, 3);
+
+  const dynasty = computeOwnerIdentity(profiles[0], ranks);
+  assert.equal(dynasty.label, 'Dynasty Threat');
+
+  const merchant = computeOwnerIdentity(makeProfile('Merchant', {
+    counts: { championships: 0, regularTitles: 3, weeklyCrowns: 4, top2Seeds: 2, saundersTitles: 0 },
+    rates: { regularWinPct: 0.68, averageFinish: 2.4, finishStdDev: 1.3, playoffWinPct: 0.3 },
+    totals: { regular: { wins: 30, losses: 10, ties: 0 }, playoffs: { wins: 1, losses: 2, ties: 0 } },
+  }), computeLeagueRanks([
+    makeProfile('Merchant', {
+      counts: { championships: 0, regularTitles: 3, weeklyCrowns: 4, top2Seeds: 2, saundersTitles: 0 },
+      rates: { regularWinPct: 0.68, averageFinish: 2.4, finishStdDev: 1.3, playoffWinPct: 0.3 },
+      totals: { regular: { wins: 30, losses: 10, ties: 0 }, playoffs: { wins: 1, losses: 2, ties: 0 } },
+    }),
+    makeProfile('Other', {
+      counts: { championships: 1, regularTitles: 1, weeklyCrowns: 5, top2Seeds: 3, saundersTitles: 1 },
+      rates: { regularWinPct: 0.6, averageFinish: 3.2, finishStdDev: 2.2, playoffWinPct: 0.5 },
+      totals: { regular: { wins: 20, losses: 14, ties: 0 }, playoffs: { wins: 3, losses: 3, ties: 0 } },
+    }),
+  ]));
+  assert.equal(merchant.label, 'Regular Season Merchant');
+
+  const snakebitten = computeOwnerIdentity(makeProfile('Snake', {
+    counts: { championships: 0, regularTitles: 0, top2Seeds: 1, weeklyCrowns: 3, saundersTitles: 2 },
+    rates: { regularWinPct: 0.47, averageFinish: 6.8, finishStdDev: 2.6, playoffWinPct: 0.25 },
+    seasonLuckRows: [{ season: 2023, luck: -1.4, games: 5 }],
+    totals: { regular: { wins: 11, losses: 13, ties: 0 }, playoffs: { wins: 1, losses: 2, ties: 0 } },
+  }), computeLeagueRanks([
+    makeProfile('Snake', {
+      counts: { championships: 0, regularTitles: 0, top2Seeds: 1, weeklyCrowns: 3, saundersTitles: 2 },
+      rates: { regularWinPct: 0.47, averageFinish: 6.8, finishStdDev: 2.6, playoffWinPct: 0.25 },
+      seasonLuckRows: [{ season: 2023, luck: -1.4, games: 5 }],
+      totals: { regular: { wins: 11, losses: 13, ties: 0 }, playoffs: { wins: 1, losses: 2, ties: 0 } },
+    }),
+    makeProfile('Plain', {
+      counts: { championships: 1, regularTitles: 1, weeklyCrowns: 5, top2Seeds: 3, saundersTitles: 0 },
+      rates: { regularWinPct: 0.63, averageFinish: 3.1, finishStdDev: 2.0, playoffWinPct: 0.6 },
+      totals: { regular: { wins: 20, losses: 12, ties: 0 }, playoffs: { wins: 4, losses: 2, ties: 0 } },
+    }),
+  ]));
+  assert.equal(snakebitten.label, 'Snakebitten');
+
+  const boomBust = computeOwnerIdentity(makeProfile('Boom', {
+    counts: { championships: 0, regularTitles: 0, top2Seeds: 0, weeklyCrowns: 1, saundersTitles: 0 },
+    rates: { regularWinPct: 0.5, averageFinish: 5.0, finishStdDev: 6.2, playoffWinPct: 0.1 },
+    totals: { regular: { wins: 14, losses: 14, ties: 0 }, playoffs: { wins: 0, losses: 1, ties: 0 } },
+  }), computeLeagueRanks([
+    makeProfile('Boom', {
+      counts: { championships: 0, regularTitles: 0, top2Seeds: 0, weeklyCrowns: 1, saundersTitles: 0 },
+      rates: { regularWinPct: 0.5, averageFinish: 5.0, finishStdDev: 6.2, playoffWinPct: 0.1 },
+      totals: { regular: { wins: 14, losses: 14, ties: 0 }, playoffs: { wins: 0, losses: 1, ties: 0 } },
+    }),
+    makeProfile('Stable', {
+      counts: { championships: 1, regularTitles: 1, weeklyCrowns: 4, top2Seeds: 2, saundersTitles: 0 },
+      rates: { regularWinPct: 0.62, averageFinish: 3.0, finishStdDev: 1.2, playoffWinPct: 0.5 },
+      totals: { regular: { wins: 19, losses: 11, ties: 0 }, playoffs: { wins: 2, losses: 2, ties: 0 } },
+    }),
+  ]));
+  assert.equal(boomBust.label, 'Boom/Bust');
+});
+
+test('buildTrophyCaseViewModel renders the visual profile sections', () => {
   const seasonSummaries = [
     {
       season: 2025,
@@ -26,7 +181,7 @@ test('trophy renderer builds the resume, hardware, and signature season output',
       playoff_losses: 1,
       saunders_wins: 0,
       saunders_losses: 0,
-      champion: false,
+      champion: true,
       saunders: false,
       bye: true,
       wild_card: false,
@@ -46,12 +201,12 @@ test('trophy renderer builds the resume, hardware, and signature season output',
       playoff_losses: 0,
       saunders_wins: 0,
       saunders_losses: 0,
-      champion: true,
+      champion: false,
       saunders: false,
       bye: true,
       wild_card: false,
       saunders_bye: false,
-      bagels_earned: null,
+      bagels_earned: 1,
     },
     {
       season: 2023,
@@ -71,185 +226,113 @@ test('trophy renderer builds the resume, hardware, and signature season output',
       bye: false,
       wild_card: false,
       saunders_bye: true,
-      bagels_earned: 1,
+      bagels_earned: 0,
     },
     {
-      season: 2023,
-      owner: 'Shap',
-      wins: 9,
-      losses: 5,
+      season: 2025,
+      owner: 'Joel',
+      wins: 11,
+      losses: 3,
       ties: 0,
-      finish: 2,
-      points_for: 1310.0,
-      points_against: 1270.0,
-      playoff_wins: 0,
+      finish: 1,
+      points_for: 1490.0,
+      points_against: 1310.0,
+      playoff_wins: 2,
       playoff_losses: 0,
       saunders_wins: 0,
       saunders_losses: 0,
       champion: false,
       saunders: false,
-      bye: false,
+      bye: true,
       wild_card: false,
       saunders_bye: false,
-      bagels_earned: null,
-    },
-    {
-      season: 2025,
-      owner: 'Shap',
-      wins: 9,
-      losses: 5,
-      ties: 0,
-      finish: 3,
-      points_for: 1450.0,
-      points_against: 1370.0,
-      playoff_wins: 0,
-      playoff_losses: 1,
-      saunders_wins: 0,
-      saunders_losses: 0,
-      champion: false,
-      saunders: false,
-      bye: false,
-      wild_card: true,
-      saunders_bye: false,
-      bagels_earned: null,
+      bagels_earned: 0,
     },
     {
       season: 2024,
-      owner: 'Shap',
-      wins: 11,
-      losses: 3,
+      owner: 'Joel',
+      wins: 10,
+      losses: 4,
       ties: 0,
-      finish: 1,
+      finish: 2,
       points_for: 1420.0,
       points_against: 1180.0,
       playoff_wins: 1,
       playoff_losses: 1,
       saunders_wins: 0,
       saunders_losses: 0,
-      champion: false,
+      champion: true,
       saunders: false,
-      bye: false,
-      wild_card: true,
+      bye: true,
+      wild_card: false,
       saunders_bye: false,
-      bagels_earned: null,
+      bagels_earned: 0,
     },
   ];
 
-  const seasonAggregates = [
-    { team: 'Joe', season: 2025, w: 11, l: 3, t: 0, n: 14, pf: 1500.0, pa: 1300.0, pct: 11 / 14, ppg: 107.1, oppg: 92.9, luck: 3.0, diff: 200.0 },
-    { team: 'Joe', season: 2024, w: 10, l: 4, t: 0, n: 14, pf: 1400.0, pa: 1200.0, pct: 10 / 14, ppg: 100.0, oppg: 85.7, luck: 1.0, diff: 200.0 },
-    { team: 'Joe', season: 2023, w: 8, l: 6, t: 0, n: 14, pf: 1300.0, pa: 1250.0, pct: 8 / 14, ppg: 92.9, oppg: 89.3, luck: -2.0, diff: 50.0 },
-  ];
-
   const leagueGames = [
-    { season: 2025, date: '2025-09-07', teamA: 'Joe', teamB: 'Shap', scoreA: 160, scoreB: 100, type: 'Regular', round: '', _weekByTeam: { Joe: 1, Shap: 1 } },
-    { season: 2025, date: '2025-09-14', teamA: 'Joe', teamB: 'Zook', scoreA: 65, scoreB: 70, type: 'Regular', round: '', _weekByTeam: { Joe: 2, Zook: 2 } },
-    { season: 2025, date: '2025-09-21', teamA: 'Joe', teamB: 'Nuss', scoreA: 120, scoreB: 80, type: 'Regular', round: '', _weekByTeam: { Joe: 3, Nuss: 3 } },
-    { season: 2024, date: '2024-12-14', teamA: 'Joe', teamB: 'Shap', scoreA: 110, scoreB: 90, type: 'Playoff', round: 'Final', _weekByTeam: { Joe: 15, Shap: 15 } },
-    { season: 2023, date: '2023-11-12', teamA: 'Joe', teamB: 'Shap', scoreA: 82, scoreB: 96, type: 'Saunders', round: 'Saunders Final', _weekByTeam: { Joe: 10, Shap: 10 } },
+    { season: 2025, date: '2025-09-07', teamA: 'Joe', teamB: 'Joel', scoreA: 160, scoreB: 100, type: 'Regular', round: '', _weekByTeam: { Joe: 1, Joel: 1 } },
+    { season: 2025, date: '2025-09-14', teamA: 'Joe', teamB: 'Shap', scoreA: 65, scoreB: 70, type: 'Regular', round: '', _weekByTeam: { Joe: 2, Shap: 2 } },
+    { season: 2024, date: '2024-09-07', teamA: 'Joe', teamB: 'Joel', scoreA: 130, scoreB: 120, type: 'Regular', round: '', _weekByTeam: { Joe: 1, Joel: 1 } },
+    { season: 2024, date: '2024-11-30', teamA: 'Joe', teamB: 'Joel', scoreA: 110, scoreB: 90, type: 'Playoff', round: 'Final', _weekByTeam: { Joe: 15, Joel: 15 } },
+    { season: 2023, date: '2023-10-01', teamA: 'Joe', teamB: 'Shap', scoreA: 82, scoreB: 96, type: 'Saunders', round: 'Saunders Final', _weekByTeam: { Joe: 10, Shap: 10 } },
   ];
 
   const vm = buildTrophyCaseViewModel('Joe', {
     seasonSummaries,
-    seasonAggregates,
     leagueGames,
-    weeklyAwards: {
-      top: [{ team: 'Joe', count: 3 }],
-      low: [{ team: 'Joe', count: 1 }],
-      high150: [{ team: 'Joe', count: 2 }],
-    },
-    sub70: [{ team: 'Joe', count: 1 }],
+    champNoteFn: () => null,
+    saundersNoteFn: () => null,
   });
 
-  assert.equal(vm.hero.title, 'Joe Trophy Case');
-  assert.match(vm.hero.lines[0], /1 Darlings \| 1 Regular-Season Titles \| 2 Top-2 Seeds/);
-  assert.match(vm.hero.lines[1], /Career regular season: 29-13 \(69\.0%\)/);
-  assert.match(vm.hero.lines[2], /Best finish: 1st \| Average finish: 2\.7/);
-  assert.match(vm.hero.lines[3], /Best postseason: Champion \(2024\)/);
-
-  assert.equal(vm.hardware[0].value, '1');
-  assert.deepEqual(vm.hardware[0].chips, [2024]);
-  assert.equal(vm.hardware[2].value, '1');
-  assert.deepEqual(vm.hardware[2].chips, [2025]);
-  assert.equal(vm.hardware[6].value, '3');
-  assert.match(trophyHardwareHtml(vm), /2024/);
-  assert.match(trophyHardwareHtml(vm), /2025/);
-
-  assert.match(vm.regularSeason[0].value, /29-13/);
-  assert.match(vm.regularSeason[1].value, /69\.0%/);
-  assert.match(vm.regularSeason[2].sub, /Avg 1400\.0 per season/);
-  assert.match(vm.regularSeason[5].value, /1st/);
-  assert.match(vm.regularSeason[6].value, /1500\.0/);
-  assert.match(vm.regularSeason[8].value, /-2\.00/);
-  assert.match(trophyRegularSeasonHtml(vm), /Record/);
-  assert.match(trophyRegularSeasonHtml(vm), /Most Unlucky Season/);
-
-  assert.match(vm.postseason[0].value, /3-1/);
-  assert.match(vm.postseason[1].value, /1/);
-  assert.match(vm.postseason[2].value, /1/);
-  assert.match(vm.postseason[3].value, /Champion/);
-  assert.match(vm.postseason[4].value, /1-1/);
-  assert.match(vm.postseason[5].value, /1/);
-  assert.match(vm.postseason[6].value, /1/);
-  assert.match(vm.postseason[7].value, /2/);
-  assert.match(vm.postseason[8].value, /0/);
-  assert.match(vm.postseason[9].value, /1/);
-  assert.match(trophyPostseasonHtml(vm), /Saunders Scars/);
-
-  assert.match(vm.weeklyAwards[0].value, /3/);
-  assert.match(vm.weeklyAwards[4].value, /160\.00/);
-  assert.match(vm.weeklyAwards[5].value, /65\.00/);
-  assert.match(vm.weeklyAwards[6].value, /\+60\.00/);
-  assert.match(vm.weeklyAwards[7].value, /-14\.00/);
-  assert.match(trophyWeeklyAwardsHtml(vm), /Highest Single-Game Score/);
-
-  assert.equal(vm.signatureSeasons[0].season, 2025);
-  assert.match(vm.signatureSeasons[0].notes.join(' • '), /Regular-season title/);
-  assert.match(vm.signatureSeasons[0].notes.join(' • '), /Top-2 seed/);
-  assert.match(vm.signatureSeasons[0].notes.join(' • '), /Best scoring season/);
-  assert.match(vm.signatureSeasons[0].notes.join(' • '), /Best differential season/);
-  assert.match(vm.signatureSeasons[0].notes.join(' • '), /Bagels earned 2/);
-  assert.equal(vm.signatureSeasons[1].season, 2024);
-  assert.match(vm.signatureSeasons[1].notes.join(' • '), /Champion/);
-  assert.match(vm.signatureSeasons[1].notes.join(' • '), /Top-2 seed/);
-  assert.equal(vm.signatureSeasons[2].season, 2023);
-  assert.match(vm.signatureSeasons[2].notes.join(' • '), /Saunders/);
-  assert.match(vm.signatureSeasons[2].notes.join(' • '), /Most unlucky season/);
-
-  assert.match(trophySeasonTableHtml(vm), /Champion/);
-  assert.match(trophySeasonTableHtml(vm), /Bagels earned 2/);
-  assert.match(trophyHeroHtml(vm), /Joe Trophy Case/);
+  assert.equal(vm.hero.title, 'Joe');
+  assert.equal(vm.hero.identityLabel, vm.identity.label);
+  assert.match(trophyHeroHtml(vm), /Joe/);
+  assert.match(trophyHeroHtml(vm), /Contender|Dynasty|Merchant|Snakebitten|Boom\/Bust|Playoff Riser/);
+  assert.match(trophyHeroHtml(vm), /Darlings/);
+  assert.match(trophyHardwareShelfHtml(vm), /Darlings/);
+  assert.match(trophyHardwareShelfHtml(vm), /Byes/);
+  assert.match(trophyHardwareShelfHtml(vm), /#1|#2|#3/);
+  assert.doesNotMatch(trophyRankStripHtml(vm), /Actual:/);
+  assert.equal(vm.careerShape.rows.length, 3);
+  assert.match(trophyCareerShapeHtml(vm), /Season finish trend/);
+  assert.match(trophyCareerShapeHtml(vm), /Playoff cutoff is 6th/);
+  assert.match(trophyCareerShapeHtml(vm), /Champion/);
+  assert.match(trophyCareerShapeHtml(vm), /Saunders/);
+  assert.equal((trophyCareerShapeHtml(vm).match(/trophy-career-point-group/g) || []).length, 3);
+  assert.match(trophyAchievementListHtml(vm), /Best regular season|Highest weekly score|Best win margin/);
+  assert.match(trophyScarListHtml(vm), /Most unlucky season|Worst weekly score|Biggest loss|Record 8-6-0/);
+  assert.equal(vm.seasonLedger.length, 3);
+  assert.match(trophySeasonLedgerHtml(vm), /2025/);
+  assert.doesNotMatch(trophySeasonLedgerHtml(vm), /Champion|Regular-season title|Bye|Postseason|Bagels/);
 });
 
-test('trophy renderer escapes owner names and renders empty states', () => {
+test('trophy renderers escape owner names and support empty states', () => {
   const vm = buildTrophyCaseViewModel('Joe <Owner>', {
     seasonSummaries: [],
-    seasonAggregates: [],
     leagueGames: [],
-    weeklyAwards: { top: [], low: [], high150: [] },
-    sub70: [],
   });
 
-  assert.match(trophyHeroHtml(vm), /Joe &lt;Owner&gt; Trophy Case/);
-  assert.match(trophySeasonTableHtml(vm), /No seasons recorded for this owner/);
-  assert.match(trophyHardwareHtml(vm), /No championships yet/);
-  assert.match(trophyRegularSeasonHtml(vm), /No seasons recorded/);
-  assert.match(trophyPostseasonHtml(vm), /No playoff games recorded/);
-  assert.match(trophyWeeklyAwardsHtml(vm), /No weekly crowns/);
+  assert.match(trophyHeroHtml(vm), /Joe &lt;Owner&gt;/);
+  assert.equal((trophyHardwareShelfHtml(vm).match(/trophy-hardware-card/g) || []).length, 8);
+  assert.match(trophyHardwareShelfHtml(vm), /0/);
+  assert.match(trophyAchievementListHtml(vm), /No highlights yet/i);
+  assert.match(trophyScarListHtml(vm), /No low points yet/i);
+  assert.match(trophySeasonLedgerHtml(vm), /No seasons recorded/i);
+  assert.match(trophyRankStripHtml(vm), /#|—/);
 
-  const notesHtml = trophySeasonTableHtml({
-    signatureSeasons: [
+  const escapedLedger = trophySeasonLedgerHtml({
+    seasonLedger: [
       {
-        season: 2025,
-        record: '10-4',
-        finish: '1',
-        outcome: 'Champion',
-        pf: '1500.0',
-        pa: '1300.0',
-        diff: '+200.0',
-        notes: ['Champion & Friends'],
+      season: 2025,
+      record: '10-4',
+      finish: '1',
+      pf: '1500.0',
+      pa: '1300.0',
+      diff: '+200.0',
+      notes: ['Champion & Friends'],
       },
     ],
   });
-  assert.match(notesHtml, /Champion &amp; Friends/);
+  assert.match(escapedLedger, /Champion &amp; Friends/);
 });

@@ -1,59 +1,121 @@
-import * as core from './core-helpers.js';
-import * as render from './render-helpers.js';
-
-function coreFn(name) {
-  const fn = core[name];
-  if (typeof fn !== 'function') {
-    throw new Error(`trophy-renderers.js requires core-helpers.js before it (${name})`);
-  }
-  return fn;
-}
-
-function renderFn(name) {
-  const fn = render[name];
-  if (typeof fn !== 'function') {
-    throw new Error(`trophy-renderers.js requires render-helpers.js before it (${name})`);
-  }
-  return fn;
-}
+import {
+  byDateAsc,
+  byDateDesc,
+  computeRegularSeasonChampYears,
+  fmtPct,
+  isPlayoffGame,
+  isRegularGame,
+  isSaundersGame,
+  sidesForTeam,
+} from './core-helpers.js';
+import { escapeHtml, fmtTrimmed } from './render-helpers.js';
+import {
+  computeExpectedWinForGame,
+  computeLuckSummary,
+  computeWeeklyAwards,
+} from './stats-helpers.js';
 
 function docOrDefault(doc) {
   return doc || (typeof document !== 'undefined' ? document : null);
 }
 
 function esc(value) {
-  return renderFn('escapeHtml')(value);
+  return escapeHtml(value ?? '');
 }
 
-function nfmt(value, digits = 2) {
-  return renderFn('nfmt')(value, digits);
+function toNumber(value, fallback = null) {
+  const n = +value;
+  return Number.isFinite(n) ? n : fallback;
 }
 
-function fmtPct(w, l, t = 0) {
-  return coreFn('fmtPct')(w, l, t);
+function fmtWhole(value) {
+  return Number.isFinite(+value) ? `${Math.round(+value)}` : '—';
 }
 
-function ownerSeasonRows(owner, seasonSummaries = []) {
-  return seasonSummaries
-    .filter(row => row && row.owner === owner)
-    .slice()
-    .sort((a, b) => (+b.season) - (+a.season) || String(a.owner || '').localeCompare(String(b.owner || '')));
+function fmtDecimal(value, digits = 1) {
+  return Number.isFinite(+value) ? (+value).toFixed(digits) : '—';
 }
 
-function ownerSeasonAggregateRows(owner, seasonAggregates = []) {
-  return seasonAggregates
-    .filter(row => row && row.team === owner)
-    .slice()
-    .sort((a, b) => (+b.season) - (+a.season) || String(a.team || '').localeCompare(String(b.team || '')));
+function fmtSigned(value, digits = 1) {
+  if (!Number.isFinite(+value)) return '—';
+  const n = +value;
+  return `${n >= 0 ? '+' : ''}${n.toFixed(digits)}`;
 }
 
-function formatRecord(wins = 0, losses = 0, ties = 0) {
-  return ties ? `${wins}-${losses}-${ties}` : `${wins}-${losses}`;
+function fmtScore(value, digits = 1) {
+  return Number.isFinite(+value) ? fmtTrimmed(+value).replace(/\.?$/, '') : '—';
 }
 
-function formatOrdinal(value) {
-  const n = Math.trunc(Number(value));
-  if (!Number.isFinite(n)) return '—';
+function joinYears(years) {
+  if (!Array.isArray(years) || years.length === 0) return '—';
+  return years.slice().sort((a, b) => +a - +b).join(', ');
+}
+
+function uniquePreserveOrder(values) {
+  const seen = new Set();
+  const out = [];
+  for (const value of values) {
+    if (seen.has(value)) continue;
+    seen.add(value);
+    out.push(value);
+  }
+  return out;
+}
+
+function isFiniteRow(row) {
+  return row && Number.isFinite(+row.season);
+}
+
+function sortSeasonDesc(a, b) {
+  return (+b.season) - (+a.season);
+}
+
+function sortSeasonAsc(a, b) {
+  return (+a.season) - (+b.season);
+}
+
+function regularRecordString(profile) {
+  const { wins, losses, ties } = profile.totals.regular;
+  return `${wins}-${losses}-${ties}`;
+}
+
+function playoffRecordString(profile) {
+  const { wins, losses, ties } = profile.totals.playoffs;
+  return `${wins}-${losses}${ties ? `-${ties}` : ''}`;
+}
+
+function saundersRecordString(profile) {
+  const { wins, losses, ties } = profile.totals.saunders;
+  return `${wins}-${losses}${ties ? `-${ties}` : ''}`;
+}
+
+function calcPctFromRecord(record) {
+  const games = record.wins + record.losses + record.ties;
+  if (!games) return null;
+  return ((record.wins + 0.5 * record.ties) / games);
+}
+
+function calcAvg(values) {
+  const nums = values.filter(v => Number.isFinite(+v)).map(Number);
+  if (!nums.length) return null;
+  return nums.reduce((sum, value) => sum + value, 0) / nums.length;
+}
+
+function calcStdDev(values) {
+  const nums = values.filter(v => Number.isFinite(+v)).map(Number);
+  if (nums.length < 2) return 0;
+  const avg = calcAvg(nums);
+  const variance = nums.reduce((sum, value) => sum + ((value - avg) ** 2), 0) / nums.length;
+  return Math.sqrt(variance);
+}
+
+function formatPctValue(value) {
+  return Number.isFinite(+value) ? `${(+value * 100).toFixed(1)}%` : '—';
+}
+
+function ordinalText(value) {
+  if (!Number.isFinite(+value)) return '—';
+  const n = Math.round(+value);
   const mod100 = n % 100;
   if (mod100 >= 11 && mod100 <= 13) return `${n}th`;
   switch (n % 10) {
@@ -64,572 +126,1268 @@ function formatOrdinal(value) {
   }
 }
 
-function formatDelta(value, digits = 1) {
-  if (!Number.isFinite(+value)) return '—';
-  const n = +value;
-  const prefix = n > 0 ? '+' : '';
-  return `${prefix}${nfmt(n, digits)}`;
+function valueRankText(rank, tied = false) {
+  if (!Number.isFinite(+rank)) return '—';
+  return tied && rank > 1 ? `T-${rank}` : ordinalText(rank);
 }
 
-function bestBy(rows, scoreFn, tieBreakerFn = null) {
-  const sorted = rows
-    .slice()
-    .sort((a, b) => {
-      const diff = scoreFn(b) - scoreFn(a);
-      if (diff !== 0) return diff;
-      if (tieBreakerFn) return tieBreakerFn(a, b);
-      return (+b.season) - (+a.season);
-    });
-  return sorted[0] || null;
+function svgDataUri(svg) {
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
-function seasonOutcomeLabel(row) {
-  if (!row) return '—';
-  if (row.champion) return 'Champion';
-  if (row.saunders) return 'Saunders';
-  if (row.playoff_wins || row.playoff_losses) return 'Playoff Run';
-  if (row.bye) return 'Top-2 Seed';
-  if (row.wild_card) return 'Wild Card';
-  if (row.saunders_bye) return 'Saunders Bye';
-  return 'Regular Season';
-}
-
-function seasonOutcomeRank(row) {
-  if (!row) return 0;
-  if (row.champion) return 6;
-  if (row.saunders) return 5;
-  if (row.playoff_wins || row.playoff_losses) return 4;
-  if (row.bye) return 3;
-  if (row.wild_card) return 2;
-  if (row.saunders_bye) return 1;
-  return 0;
-}
-
-function seasonOutcomeSummary(row) {
-  if (!row) return { label: '—', season: null };
-  return {
-    label: seasonOutcomeLabel(row),
-    season: row.season,
+function hardwareArt(kind) {
+  const icons = {
+    trophy: svgDataUri(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-hidden="true">
+        <defs>
+          <linearGradient id="g" x1="0" x2="1">
+            <stop offset="0%" stop-color="#fde68a"/>
+            <stop offset="100%" stop-color="#f59e0b"/>
+          </linearGradient>
+        </defs>
+        <rect width="64" height="64" rx="14" fill="#fff7ed"/>
+        <path d="M22 12h20v6h8c0 9-5 16-13 18v6h6v6H21v-6h6v-6c-8-2-13-9-13-18h8v-6zm-2 10c0 5 3 9 8 11v-11h-8zm24 0v11c5-2 8-6 8-11h-8z" fill="url(#g)"/>
+      </svg>
+    `),
+    medal: svgDataUri(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-hidden="true">
+        <rect width="64" height="64" rx="14" fill="#eff6ff"/>
+        <path d="M22 8h8l6 12-8 8-6-20zm20 0h-8l-6 12 8 8 6-20z" fill="#2563eb"/>
+        <circle cx="32" cy="36" r="16" fill="#bfdbfe" stroke="#2563eb" stroke-width="4"/>
+        <path d="M32 24l3.5 7.1 7.8 1.1-5.6 5.5 1.3 7.7L32 41.8 25 45.4l1.3-7.7-5.6-5.5 7.8-1.1z" fill="#1d4ed8"/>
+      </svg>
+    `),
+    bagel: svgDataUri(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-hidden="true">
+        <rect width="64" height="64" rx="14" fill="#fff7ed"/>
+        <path d="M32 14c10 0 18 8 18 18s-8 18-18 18-18-8-18-18 8-18 18-18zm0 8a10 10 0 100 20 10 10 0 000-20z" fill="#c08457"/>
+        <path d="M21 32c0-6 4-11 11-11 6 0 11 5 11 11s-5 11-11 11c-7 0-11-5-11-11z" fill="#f7cfa7"/>
+        <circle cx="32" cy="32" r="4" fill="#f8fafc"/>
+      </svg>
+    `),
+    warning: svgDataUri(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-hidden="true">
+        <rect width="64" height="64" rx="14" fill="#fef2f2"/>
+        <path d="M32 10 56 52H8L32 10z" fill="#ef4444"/>
+        <rect x="29" y="24" width="6" height="16" rx="3" fill="#fff"/>
+        <circle cx="32" cy="46" r="3" fill="#fff"/>
+      </svg>
+    `),
+    football: svgDataUri(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-hidden="true">
+        <rect width="64" height="64" rx="14" fill="#f1f5f9"/>
+        <ellipse cx="32" cy="32" rx="18" ry="12" fill="#6b3f1d"/>
+        <path d="M22 32h20M30 26v12M34 26v12" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+    `),
+    beachChair: svgDataUri(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-hidden="true">
+        <rect width="64" height="64" rx="14" fill="#f0f9ff"/>
+        <circle cx="48" cy="18" r="7" fill="#fbbf24"/>
+        <path d="M15 45 31 22l6 3-10 20z" fill="#fb7185"/>
+        <path d="M26 26h14l5 18H20z" fill="#93c5fd"/>
+        <path d="M18 50h28M24 33l9 5M29 26l5 7" stroke="#1d4ed8" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+    `),
+    joker: svgDataUri(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-hidden="true">
+        <rect width="64" height="64" rx="14" fill="#eef2ff"/>
+        <rect x="20" y="13" width="22" height="32" rx="5" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+        <rect x="28" y="9" width="22" height="34" rx="5" fill="#fff" stroke="#0f172a" stroke-width="2.5"/>
+        <path d="M36 16c3-4 7-4 10 0 3 4 0 8-3 10 2 2 3 5 1 8-2 3-5 4-8 3" fill="none" stroke="#2563eb" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M32 42c4-7 11-10 18-9" fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/>
+        <path d="M42 18l1.8 3.8 4.2.6-3 3 0.7 4.2-3.7-2-3.7 2 0.7-4.2-3-3 4.2-.6z" fill="#ef4444"/>
+        <path d="M35 28l2.6 2.1-1.1 3.1h-3l-1.1-3.1z" fill="#1d4ed8"/>
+      </svg>
+    `),
+    turd: svgDataUri(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-hidden="true">
+        <rect width="64" height="64" rx="14" fill="#fff7ed"/>
+        <path d="M20 46c-4-10 4-17 12-17 2-8 16-10 20 0 4 3 6 7 6 11 0 7-6 14-18 14H28c-4 0-7-3-8-8z" fill="#8b5a2b"/>
+        <path d="M24 38c4-4 10-4 14 0 4-4 8-4 12 0" fill="none" stroke="#d6a066" stroke-width="4" stroke-linecap="round"/>
+        <circle cx="44" cy="27" r="4" fill="#c08457"/>
+      </svg>
+    `),
   };
+  return icons[kind] || '';
 }
 
-function countByTeam(rows, team) {
-  return rows.reduce((count, row) => count + ((row && row.team === team) ? +row.count || 0 : 0), 0);
+function ownerMetricRow(leagueRanks, owner, metricKey) {
+  const metric = leagueRanks?.metrics?.[metricKey];
+  if (!metric) return null;
+  return metric.rows.find(row => row.owner === owner) || null;
 }
 
-function findByTeam(rows, team) {
-  return rows.find(row => row && row.team === team) || null;
-}
-
-function uniqueSeasons(rows, predicate) {
-  return rows
-    .filter(predicate)
-    .map(row => row.season)
-    .filter(season => season !== null && season !== undefined)
-    .sort((a, b) => (+b) - (+a));
-}
-
-function formatYearChips(items = []) {
-  if (!items.length) return '';
-  return `<div class="trophy-year-list">${items.map(item => {
-    const label = typeof item === 'object' && item ? (item.label || item.season) : item;
-    return `<span class="trophy-year-chip">${esc(label)}</span>`;
-  }).join('')}</div>`;
-}
-
-function emptyTile(label, value = '0', sub = '—', tone = '') {
-  return {
-    label: String(label),
-    value: String(value),
-    sub: String(sub),
-    tone: String(tone || ''),
-    chips: [],
-  };
-}
-
-function computeOwnerHardware(owner, seasonRows, seasonSummaries) {
-  const championYears = uniqueSeasons(seasonRows, row => row.champion);
-  const saundersYears = uniqueSeasons(seasonRows, row => row.saunders);
-  const regularYears = coreFn('computeRegularSeasonChampYears')(owner, seasonSummaries);
-  const byeYears = uniqueSeasons(seasonRows, row => row.bye);
-  const wildCardYears = uniqueSeasons(seasonRows, row => row.wild_card);
-  const saundersByeYears = uniqueSeasons(seasonRows, row => row.saunders_bye);
-  const bagelRows = seasonRows.filter(row => Number.isFinite(+row.bagels_earned) && +row.bagels_earned > 0);
-  const bagels = bagelRows.reduce((sum, row) => sum + (+row.bagels_earned || 0), 0);
-
-  return [
-    {
-      label: 'Darlings',
-      value: `${championYears.length}`,
-      sub: championYears.length ? 'Championship seasons' : 'No championships yet',
-      tone: championYears.length ? 'primary' : '',
-      chips: championYears,
-    },
-    {
-      label: 'Saunders Titles',
-      value: `${saundersYears.length}`,
-      sub: saundersYears.length ? 'Saunders bracket winners' : 'No Saunders titles yet',
-      tone: saundersYears.length ? 'warning' : '',
-      chips: saundersYears,
-    },
-    {
-      label: 'Regular-Season Titles',
-      value: `${regularYears.length}`,
-      sub: regularYears.length ? 'Best regular-season records' : 'No regular-season titles yet',
-      tone: regularYears.length ? 'primary' : '',
-      chips: regularYears,
-    },
-    {
-      label: 'Top-2 Seeds',
-      value: `${byeYears.length}`,
-      sub: byeYears.length ? 'Finished with a bye' : 'No top-2 seeds yet',
-      tone: byeYears.length ? 'primary' : '',
-      chips: byeYears,
-    },
-    {
-      label: 'Wild Cards',
-      value: `${wildCardYears.length}`,
-      sub: wildCardYears.length ? 'Earned a wild card spot' : 'No wild card seasons yet',
-      tone: wildCardYears.length ? 'warning' : '',
-      chips: wildCardYears,
-    },
-    {
-      label: 'Saunders Byes',
-      value: `${saundersByeYears.length}`,
-      sub: saundersByeYears.length ? 'Avoided the opening Saunders match' : 'No Saunders byes yet',
-      tone: saundersByeYears.length ? 'warning' : '',
-      chips: saundersByeYears,
-    },
-    {
-      label: 'Bagels Earned',
-      value: `${bagels}`,
-      sub: bagels ? 'Blanked an opponent' : 'No bagels yet',
-      tone: bagelRows.length ? 'warning' : '',
-      chips: bagelRows.map(row => ({
-        season: row.season,
-        label: Number.isFinite(+row.bagels_earned) ? `${row.season} (${+row.bagels_earned})` : `${row.season}`,
-      })),
-    },
+function topStatHighlights(view) {
+  const owner = view.owner;
+  const keys = [
+    ['championships', 'Darlings', 'trophy'],
+    ['regularTitles', 'Regular Titles', 'medal'],
+    ['weeklyCrowns', 'Weekly Crowns', 'medal'],
+    ['playoffWins', 'Playoff Wins', 'football'],
+    ['top2Seeds', 'Byes', 'beachChair'],
+    ['avgFinish', 'Avg Finish', null],
+    ['sub70Games', 'Sub-70 Games', 'warning'],
+    ['saundersPain', 'Saunders Titles', 'warning'],
   ];
+
+  const items = [];
+  for (const [key, label, icon] of keys) {
+    const metricRow = ownerMetricRow(view.leagueRanks, owner, key);
+    if (!metricRow || !Number.isFinite(metricRow.rank) || metricRow.rank > 3) continue;
+    const tied = (view.leagueRanks.metrics[key]?.rows || []).filter(row => row.value === metricRow.value).length > 1;
+    const value = Number.isFinite(metricRow.value)
+      ? (key === 'avgFinish' ? fmtDecimal(metricRow.value, 1) : `${Math.round(metricRow.value)}`)
+      : '—';
+    items.push({
+      label,
+      value,
+      rankText: valueRankText(metricRow.rank, tied),
+      icon,
+      type: key,
+    });
+  }
+
+  return items;
 }
 
-function computeOwnerRegularResume(owner, seasonRows, seasonAggregates) {
-  const rows = seasonRows.slice();
-  const aggregates = ownerSeasonAggregateRows(owner, seasonAggregates);
-  const totals = rows.reduce((acc, row) => {
+function formatLedgerNotes(row) {
+  const notes = [];
+  if (row.champion) notes.push('Champion');
+  if (row.saunders) notes.push('Saunders');
+  if (row.playoff_wins > 0 || row.playoff_losses > 0) {
+    notes.push(`Postseason ${row.playoff_wins || 0}-${row.playoff_losses || 0}`);
+  }
+  if (row.saunders_wins > 0 || row.saunders_losses > 0) {
+    notes.push(`Saunders ${row.saunders_wins || 0}-${row.saunders_losses || 0}`);
+  }
+  if (row.bye) notes.push(row.champion ? 'Regular-season title' : 'Bye');
+  if (row.wild_card) notes.push('Wild card');
+  if (row.bagels_earned !== null && row.bagels_earned !== undefined) {
+    notes.push(`Bagels ${row.bagels_earned}`);
+  }
+  return uniquePreserveOrder(notes);
+}
+
+function competitionRankRows(rows, accessor, { direction = 'desc' } = {}) {
+  const scored = rows.map(row => {
+    const raw = accessor(row);
+    const value = Number.isFinite(+raw) ? +raw : null;
+    return { row, value };
+  });
+
+  const filtered = scored
+    .filter(item => item.value !== null)
+    .sort((a, b) => {
+      if (a.value === b.value) return a.row.owner.localeCompare(b.row.owner);
+      return direction === 'asc' ? a.value - b.value : b.value - a.value;
+    });
+
+  const rankByValue = new Map();
+  filtered.forEach((item, index) => {
+    if (!rankByValue.has(item.value)) {
+      rankByValue.set(item.value, index + 1);
+    }
+  });
+
+  return scored.map(item => ({
+    owner: item.row.owner,
+    value: item.value,
+    rank: item.value === null ? null : rankByValue.get(item.value),
+  }));
+}
+
+function buildOwnerCareerProfile(owner, seasonSummaries = [], leagueGames = [], opts = {}) {
+  const seasonRows = seasonSummaries
+    .filter(row => row.owner === owner)
+    .sort(sortSeasonDesc);
+  const ownerGames = leagueGames
+    .filter(game => game.teamA === owner || game.teamB === owner)
+    .sort(byDateAsc);
+  const regularGames = ownerGames.filter(isRegularGame);
+  const playoffGames = ownerGames.filter(isPlayoffGame);
+  const saundersGames = ownerGames.filter(isSaundersGame);
+
+  const regularRecord = seasonRows.reduce((acc, row) => {
     acc.wins += +row.wins || 0;
     acc.losses += +row.losses || 0;
     acc.ties += +row.ties || 0;
-    acc.pf += +row.points_for || 0;
-    acc.pa += +row.points_against || 0;
     return acc;
-  }, { wins: 0, losses: 0, ties: 0, pf: 0, pa: 0 });
-  const seasonCount = rows.length || 0;
-  const avgFinishRows = rows.filter(row => Number.isFinite(+row.finish));
-  const avgFinish = avgFinishRows.length
-    ? avgFinishRows.reduce((sum, row) => sum + (+row.finish), 0) / avgFinishRows.length
-    : null;
-  const bestFinish = bestBy(rows.filter(row => Number.isFinite(+row.finish)), row => -(+row.finish));
-  const bestPf = bestBy(aggregates.filter(row => Number.isFinite(+row.pf)), row => +row.pf);
-  const bestDiff = bestBy(aggregates.filter(row => Number.isFinite(+row.diff)), row => +row.diff);
-  const unlucky = bestBy(aggregates.filter(row => Number.isFinite(+row.luck)), row => -(+row.luck));
+  }, { wins: 0, losses: 0, ties: 0 });
 
-  return [
-    emptyTile('Record', formatRecord(totals.wins, totals.losses, totals.ties), 'Career regular season'),
-    emptyTile('Win %', fmtPct(totals.wins, totals.losses, totals.ties), seasonCount ? `${seasonCount} seasons` : 'No seasons recorded'),
-    {
-      label: 'Points For',
-      value: nfmt(totals.pf, 1),
-      sub: seasonCount ? `Avg ${nfmt(totals.pf / seasonCount, 1)} per season` : 'No seasons recorded',
-      tone: '',
-      chips: [],
+  const playoffRecord = seasonRows.reduce((acc, row) => {
+    acc.wins += +row.playoff_wins || 0;
+    acc.losses += +row.playoff_losses || 0;
+    return acc;
+  }, { wins: 0, losses: 0, ties: 0 });
+
+  const saundersRecord = seasonRows.reduce((acc, row) => {
+    acc.wins += +row.saunders_wins || 0;
+    acc.losses += +row.saunders_losses || 0;
+    return acc;
+  }, { wins: 0, losses: 0, ties: 0 });
+
+  const pointsFor = seasonRows.reduce((sum, row) => sum + (Number.isFinite(+row.points_for) ? +row.points_for : 0), 0);
+  const pointsAgainst = seasonRows.reduce((sum, row) => sum + (Number.isFinite(+row.points_against) ? +row.points_against : 0), 0);
+  const diffTotal = pointsFor - pointsAgainst;
+  const finishes = seasonRows.map(row => toNumber(row.finish)).filter(value => value !== null);
+  const averageFinish = calcAvg(finishes);
+  const finishStdDev = calcStdDev(finishes);
+  const finishCount = finishes.length;
+  const bestFinish = finishCount ? Math.min(...finishes) : null;
+  const worstFinish = finishCount ? Math.max(...finishes) : null;
+
+  const regularTitleYears = computeRegularSeasonChampYears(owner, seasonSummaries);
+  const championYears = seasonRows.filter(row => row.champion).map(row => +row.season).sort((a, b) => a - b);
+  const saundersYears = seasonRows.filter(row => row.saunders).map(row => +row.season).sort((a, b) => a - b);
+  const byeYears = seasonRows.filter(row => row.bye).map(row => +row.season).sort((a, b) => a - b);
+  const wildCardYears = seasonRows.filter(row => row.wild_card).map(row => +row.season).sort((a, b) => a - b);
+  const saundersByeYears = seasonRows.filter(row => row.saunders_bye).map(row => +row.season).sort((a, b) => a - b);
+
+  const weeklyAwards = computeWeeklyAwards(leagueGames, 150);
+  const weeklyCrowns = (weeklyAwards.top || []).find(row => row.team === owner)?.count || 0;
+  const lowScores = (weeklyAwards.low || []).find(row => row.team === owner)?.count || 0;
+  const highScores = (weeklyAwards.high150 || []).find(row => row.team === owner)?.count || 0;
+  const sub70Games = regularGames.filter(game => {
+    const s = sidesForTeam(game, owner);
+    return s && +s.pf < 70;
+  }).length;
+
+  const seasonLuckRows = seasonRows
+    .map(row => {
+      const games = regularGames.filter(game => +game.season === +row.season);
+      const expectedWins = games.reduce((sum, game) => {
+        const xw = computeExpectedWinForGame(leagueGames, owner, game);
+        return xw === null ? sum : sum + xw;
+      }, 0);
+      const luck = games.reduce((sum, game) => {
+        const xw = computeExpectedWinForGame(leagueGames, owner, game);
+        if (xw === null) return sum;
+        const s = sidesForTeam(game, owner);
+        if (!s) return sum;
+        const actual = s.result === 'W' ? 1 : s.result === 'T' ? 0.5 : 0;
+        return sum + (actual - xw);
+      }, 0);
+      return { season: +row.season, luck, games: games.length, expectedWins };
+    })
+    .filter(row => row.games > 0)
+    .sort((a, b) => a.luck - b.luck || b.season - a.season);
+
+  const luckySeason = seasonLuckRows.length ? seasonLuckRows[seasonLuckRows.length - 1] : null;
+  const unluckySeason = seasonLuckRows.length ? seasonLuckRows[0] : null;
+
+  const singleGameRows = ownerGames
+    .map(game => {
+      const s = sidesForTeam(game, owner);
+      if (!s) return null;
+      const xw = isRegularGame(game) ? computeExpectedWinForGame(leagueGames, owner, game) : null;
+      return {
+        game,
+        opponent: s.opp,
+        result: s.result,
+        pf: s.pf,
+        pa: s.pa,
+        margin: s.pf - s.pa,
+        luckDelta: xw === null ? null : ((s.result === 'W' ? 1 : s.result === 'T' ? 0.5 : 0) - xw),
+        xw,
+      };
+    })
+    .filter(Boolean);
+
+  const regularScoringRows = singleGameRows.filter(row => isRegularGame(row.game) && +row.game.season !== 2014);
+
+  const profile = {
+    owner,
+    seasonRows,
+    ownerGames,
+    regularGames,
+    playoffGames,
+    saundersGames,
+    totals: {
+      regular: regularRecord,
+      playoffs: playoffRecord,
+      saunders: saundersRecord,
+      pointsFor,
+      pointsAgainst,
+      diff: diffTotal,
     },
-    {
-      label: 'Points Against',
-      value: nfmt(totals.pa, 1),
-      sub: seasonCount ? `Avg ${nfmt(totals.pa / seasonCount, 1)} per season` : 'No seasons recorded',
-      tone: '',
-      chips: [],
+    counts: {
+      championships: championYears.length,
+      regularTitles: regularTitleYears.length,
+      top2Seeds: byeYears.length,
+      wildCards: wildCardYears.length,
+      saundersTitles: saundersYears.length,
+      saundersByes: saundersByeYears.length,
+      weeklyCrowns,
+      lowScores,
+      highScores,
+      sub70Games,
+      bagels: seasonRows.reduce((sum, row) => sum + (Number.isFinite(+row.bagels_earned) ? +row.bagels_earned : 0), 0),
     },
-    emptyTile('Average Finish', avgFinish === null ? '—' : nfmt(avgFinish, 1), seasonCount ? `${seasonCount} seasons tracked` : 'No finish data'),
-    emptyTile('Best Finish', bestFinish ? formatOrdinal(bestFinish.finish) : '—', bestFinish ? `${bestFinish.season}` : 'No finish data'),
-    emptyTile('Best Scoring Season', bestPf ? nfmt(bestPf.pf, 1) : '—', bestPf ? `${bestPf.season}` : 'No scoring data'),
-    emptyTile('Best Differential Season', bestDiff ? formatDelta(bestDiff.diff, 1) : '—', bestDiff ? `${bestDiff.season}` : 'No differential data'),
-    emptyTile('Most Unlucky Season', unlucky ? formatDelta(unlucky.luck, 2) : '—', unlucky ? `${unlucky.season}` : 'No luck data'),
-  ];
+    years: {
+      champions: championYears,
+      regularTitles: regularTitleYears,
+      top2Seeds: byeYears,
+      wildCards: wildCardYears,
+      saundersTitles: saundersYears,
+      saundersByes: saundersByeYears,
+    },
+    rates: {
+      regularWinPct: calcPctFromRecord(regularRecord),
+      playoffWinPct: calcPctFromRecord(playoffRecord),
+      saundersWinPct: calcPctFromRecord(saundersRecord),
+      averageFinish,
+      finishStdDev,
+    },
+    finishes: {
+      count: finishCount,
+      best: bestFinish,
+      worst: worstFinish,
+    },
+    seasonLuckRows,
+    bestSeason: regularTitleYears[regularTitleYears.length - 1] || (championYears[championYears.length - 1] || null),
+    bestPFSeason: seasonRows
+      .filter(row => Number.isFinite(+row.points_for))
+      .sort((a, b) => (+b.points_for) - (+a.points_for) || +b.season - +a.season)[0] || null,
+    bestDiffSeason: seasonRows
+      .filter(row => Number.isFinite(+row.points_for) && Number.isFinite(+row.points_against))
+      .sort((a, b) => ((+b.points_for - +b.points_against) - (+a.points_for - +a.points_against)) || +b.season - +a.season)[0] || null,
+    worstFinishSeason: seasonRows
+      .filter(row => Number.isFinite(+row.finish))
+      .sort((a, b) => (+b.finish) - (+a.finish) || +b.season - +a.season)[0] || null,
+    mostUnluckySeason: unluckySeason ? seasonRows.find(row => +row.season === unluckySeason.season) || null : null,
+    luckiestSeason: luckySeason ? seasonRows.find(row => +row.season === luckySeason.season) || null : null,
+    bestGame: regularScoringRows
+      .slice()
+      .sort((a, b) => b.pf - a.pf || byDateDesc(a.game, b.game))[0] || null,
+    worstGame: singleGameRows
+      .slice()
+      .sort((a, b) => a.pf - b.pf || byDateDesc(a.game, b.game))[0] || null,
+    biggestWin: singleGameRows
+      .filter(row => row.margin > 0)
+      .sort((a, b) => b.margin - a.margin || byDateDesc(a.game, b.game))[0] || null,
+    biggestLoss: singleGameRows
+      .filter(row => row.margin < 0)
+      .sort((a, b) => a.margin - b.margin || byDateDesc(a.game, b.game))[0] || null,
+    bestPlayoffWin: playoffGames
+      .map(game => {
+        const s = sidesForTeam(game, owner);
+        return s && s.result === 'W' ? { game, opponent: s.opp, margin: s.pf - s.pa, pf: s.pf, pa: s.pa } : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.margin - a.margin || byDateDesc(a.game, b.game))[0] || null,
+    worstPlayoffLoss: playoffGames
+      .map(game => {
+        const s = sidesForTeam(game, owner);
+        return s && s.result === 'L' ? { game, opponent: s.opp, margin: s.pf - s.pa, pf: s.pf, pa: s.pa } : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.margin - b.margin || byDateDesc(a.game, b.game))[0] || null,
+    bestSaundersWin: saundersGames
+      .map(game => {
+        const s = sidesForTeam(game, owner);
+        return s && s.result === 'W' ? { game, opponent: s.opp, margin: s.pf - s.pa, pf: s.pf, pa: s.pa } : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.margin - a.margin || byDateDesc(a.game, b.game))[0] || null,
+  };
+
+  return profile;
 }
 
-function championshipAppearanceSeasons(owner, seasonRows, leagueGames) {
-  const seasons = new Set();
-  for (const game of leagueGames || []) {
-    if (game.teamA !== owner && game.teamB !== owner) continue;
-    const round = String(coreFn('normRound')(game.round) || '').toLowerCase();
-    const type = String(coreFn('normType')(game.type) || '').toLowerCase();
-    const isSaunders = coreFn('isSaundersGame')(game);
-    if (!isSaunders && type !== 'regular' && (round.includes('final') || round.includes('champ'))) {
-      seasons.add(+game.season);
-    }
-  }
-  if (seasons.size) {
-    return [...seasons].sort((a, b) => b - a);
-  }
-  return seasonRows
-    .filter(row => +row.playoff_wins > 0 || +row.playoff_losses > 0 || row.champion)
-    .map(row => row.season)
-    .filter((season, index, arr) => arr.indexOf(season) === index)
-    .sort((a, b) => b - a);
+function rankOwners(ownerProfiles, accessor, { direction = 'desc' } = {}) {
+  const rows = ownerProfiles.map(profile => ({
+    owner: profile.owner,
+    value: accessor(profile),
+  }));
+  const ranked = competitionRankRows(rows, row => row.value, { direction });
+  const byOwner = new Map(ranked.map(row => [row.owner, row]));
+  return { rows: ranked, byOwner };
 }
 
-function computeOwnerPostseasonResume(owner, seasonRows, leagueGames) {
-  const playoffWins = seasonRows.reduce((sum, row) => sum + (+row.playoff_wins || 0), 0);
-  const playoffLosses = seasonRows.reduce((sum, row) => sum + (+row.playoff_losses || 0), 0);
-  const saundersWins = seasonRows.reduce((sum, row) => sum + (+row.saunders_wins || 0), 0);
-  const saundersLosses = seasonRows.reduce((sum, row) => sum + (+row.saunders_losses || 0), 0);
-  const champions = uniqueSeasons(seasonRows, row => row.champion);
-  const saundersTitles = uniqueSeasons(seasonRows, row => row.saunders);
-  const byes = uniqueSeasons(seasonRows, row => row.bye);
-  const wildCards = uniqueSeasons(seasonRows, row => row.wild_card);
-  const saundersByes = uniqueSeasons(seasonRows, row => row.saunders_bye);
-  const finalAppearances = championshipAppearanceSeasons(owner, seasonRows, leagueGames);
-  const bestPostseason = seasonRows
-    .slice()
-    .sort((a, b) => seasonOutcomeRank(b) - seasonOutcomeRank(a) || (+b.season) - (+a.season))[0] || null;
+function computeLeagueRanks(allOwnerProfiles) {
+  const profiles = Array.isArray(allOwnerProfiles)
+    ? allOwnerProfiles.slice()
+    : allOwnerProfiles instanceof Map
+      ? Array.from(allOwnerProfiles.values())
+      : [];
 
-  return [
-    {
-      label: 'Playoff Record',
-      value: formatRecord(playoffWins, playoffLosses),
-      sub: playoffWins || playoffLosses ? fmtPct(playoffWins, playoffLosses) : 'No playoff games recorded',
-      tone: '',
-      chips: [],
-    },
-    emptyTile('Championships', `${champions.length}`, champions.length ? 'Won the title' : 'No championships yet', champions.length ? 'primary' : ''),
-    emptyTile('Championship Appearances', `${finalAppearances.length}`, finalAppearances.length ? 'Reached the final round' : 'No championship games recorded'),
-    {
-      label: 'Best Postseason',
-      value: bestPostseason ? seasonOutcomeLabel(bestPostseason) : '—',
-      sub: bestPostseason ? `${bestPostseason.season}` : 'No postseason data',
-      tone: bestPostseason && bestPostseason.champion ? 'primary' : (bestPostseason && bestPostseason.saunders ? 'warning' : ''),
-      chips: [],
-    },
-    {
-      label: 'Saunders Record',
-      value: formatRecord(saundersWins, saundersLosses),
-      sub: saundersWins || saundersLosses ? 'Saunders bracket games' : 'No Saunders bracket games',
-      tone: '',
-      chips: [],
-    },
-    emptyTile('Saunders Titles', `${saundersTitles.length}`, saundersTitles.length ? 'Won Saunders' : 'No Saunders titles yet', saundersTitles.length ? 'warning' : ''),
-    emptyTile('Saunders Scars', `${saundersLosses}`, saundersLosses ? 'Losses in the Saunders bracket' : 'No Saunders losses'),
-    emptyTile('Top-2 Byes', `${byes.length}`, byes.length ? 'Started with a bye' : 'No top-2 seeds yet', byes.length ? 'primary' : ''),
-    emptyTile('Wild Cards', `${wildCards.length}`, wildCards.length ? 'Reached the bracket via wild card' : 'No wild card seasons yet', wildCards.length ? 'warning' : ''),
-    emptyTile('Saunders Byes', `${saundersByes.length}`, saundersByes.length ? 'Skipped the first Saunders round' : 'No Saunders byes yet', saundersByes.length ? 'warning' : ''),
-  ];
-}
+  const metrics = {
+    championships: rankOwners(profiles, profile => profile.counts.championships, { direction: 'desc' }),
+    winPct: rankOwners(profiles, profile => profile.rates.regularWinPct, { direction: 'desc' }),
+    avgFinish: rankOwners(profiles, profile => profile.rates.averageFinish, { direction: 'asc' }),
+    regularTitles: rankOwners(profiles, profile => profile.counts.regularTitles, { direction: 'desc' }),
+    playoffWins: rankOwners(profiles, profile => profile.totals.playoffs.wins, { direction: 'desc' }),
+    weeklyCrowns: rankOwners(profiles, profile => profile.counts.weeklyCrowns, { direction: 'desc' }),
+    sub70Games: rankOwners(profiles, profile => profile.counts.sub70Games, { direction: 'asc' }),
+    saundersPain: rankOwners(profiles, profile => profile.counts.saundersTitles, { direction: 'asc' }),
+    finishStdDev: rankOwners(profiles, profile => profile.rates.finishStdDev, { direction: 'asc' }),
+    playoffWinPct: rankOwners(profiles, profile => profile.rates.playoffWinPct, { direction: 'desc' }),
+  };
 
-function lookupCount(rows, owner) {
-  const row = findByTeam(rows, owner);
-  return row ? (+row.count || 0) : 0;
-}
-
-function bestGameForOwner(games, owner, compareFn) {
-  let best = null;
-  for (const game of games || []) {
-    const s = coreFn('sidesForTeam')(game, owner);
-    if (!s) continue;
+  const byOwner = new Map();
+  for (const profile of profiles) {
     const row = {
-      season: +game.season,
-      date: game.date,
-      opp: s.opp,
-      pf: +s.pf,
-      pa: +s.pa,
-      margin: +s.pf - +s.pa,
+      owner: profile.owner,
+      championships: metrics.championships.byOwner.get(profile.owner) || { rank: null, value: null },
+      winPct: metrics.winPct.byOwner.get(profile.owner) || { rank: null, value: null },
+      avgFinish: metrics.avgFinish.byOwner.get(profile.owner) || { rank: null, value: null },
+      regularTitles: metrics.regularTitles.byOwner.get(profile.owner) || { rank: null, value: null },
+      playoffWins: metrics.playoffWins.byOwner.get(profile.owner) || { rank: null, value: null },
+      weeklyCrowns: metrics.weeklyCrowns.byOwner.get(profile.owner) || { rank: null, value: null },
+      sub70Games: metrics.sub70Games.byOwner.get(profile.owner) || { rank: null, value: null },
+      saundersPain: metrics.saundersPain.byOwner.get(profile.owner) || { rank: null, value: null },
+      finishStdDev: metrics.finishStdDev.byOwner.get(profile.owner) || { rank: null, value: null },
+      playoffWinPct: metrics.playoffWinPct.byOwner.get(profile.owner) || { rank: null, value: null },
     };
-    if (!best || compareFn(row, best) > 0) {
-      best = row;
-    }
+    byOwner.set(profile.owner, row);
   }
-  return best;
+
+  return { metrics, byOwner, profiles };
 }
 
-function computeOwnerWeeklyResume(owner, leagueGames, weeklyAwards = {}, sub70 = []) {
-  const topCount = lookupCount(weeklyAwards.top || [], owner);
-  const lowCount = lookupCount(weeklyAwards.low || [], owner);
-  const high150Count = lookupCount(weeklyAwards.high150 || [], owner);
-  const sub70Count = lookupCount(sub70, owner);
-  const ownerGames = (leagueGames || []).filter(game => game.teamA === owner || game.teamB === owner);
-  const highest = bestGameForOwner(ownerGames, owner, (a, b) => a.pf - b.pf);
-  const lowest = bestGameForOwner(ownerGames, owner, (a, b) => b.pf - a.pf);
-  const biggestWin = bestGameForOwner(ownerGames, owner, (a, b) => (a.margin > b.margin ? 1 : (a.margin < b.margin ? -1 : 0)));
-  const biggestLoss = bestGameForOwner(ownerGames, owner, (a, b) => (a.margin < b.margin ? 1 : (a.margin > b.margin ? -1 : 0)));
+function ownerRank(leagueRanks, owner, metric) {
+  return leagueRanks.byOwner.get(owner)?.[metric] || { rank: null, value: null };
+}
 
-  return [
-    emptyTile('Weekly Crowns', `${topCount}`, topCount ? 'Highest score on a game date' : 'No weekly crowns'),
-    emptyTile('Weekly Lows', `${lowCount}`, lowCount ? 'Lowest score on a game date' : 'No weekly lows'),
-    emptyTile('150+ Games', `${high150Count}`, high150Count ? 'Regular season scores of 150+' : 'No 150+ games'),
-    emptyTile('Sub-70 Games', `${sub70Count}`, sub70Count ? 'Regular season scores below 70' : 'No sub-70 games'),
+function computeOwnerIdentity(ownerProfile, leagueRanks) {
+  const ranks = leagueRanks.byOwner.get(ownerProfile.owner) || {};
+  const profile = ownerProfile;
+  const champCount = profile.counts.championships;
+  const regularTitleCount = profile.counts.regularTitles;
+  const playoffWins = profile.totals.playoffs.wins;
+  const weeklyCrowns = profile.counts.weeklyCrowns;
+  const top2Seeds = profile.counts.top2Seeds;
+  const winPct = profile.rates.regularWinPct;
+  const finishStdDev = profile.rates.finishStdDev;
+  const saundersPain = profile.counts.saundersTitles;
+  const playoffWinPct = profile.rates.playoffWinPct;
+  const winPctRank = ranks.winPct?.rank;
+  const champRank = ranks.championships?.rank;
+  const regularTitleRank = ranks.regularTitles?.rank;
+  const playoffWinRank = ranks.playoffWins?.rank;
+  const weeklyCrownsRank = ranks.weeklyCrowns?.rank;
+  const avgFinishRank = ranks.avgFinish?.rank;
+  const sub70Rank = ranks.sub70Games?.rank;
+  const saundersRank = ranks.saundersPain?.rank;
+  const finishRank = ranks.finishStdDev?.rank;
+  const dominanceSignal = [
+    champRank,
+    regularTitleRank,
+    playoffWinRank,
+    weeklyCrownsRank,
+    avgFinishRank,
+    sub70Rank,
+  ].some(rank => Number.isFinite(rank) && rank <= 3);
+  const identityLabel = (() => {
+    if (champCount >= 2 || (champCount >= 1 && dominanceSignal)) return 'Dynasty Threat';
+    if (regularTitleCount >= 2 && champCount === 0) return 'Regular Season Merchant';
+    if ((saundersPain > 0 && Number.isFinite(saundersRank) && saundersRank <= 2) || profile.seasonLuckRows.some(row => row.luck < 0 && row.games >= 3)) return 'Snakebitten';
+    if (finishStdDev > 4.5 || (Number.isFinite(finishRank) && finishRank <= 2)) return 'Boom/Bust';
+    if ((playoffWinPct !== null && playoffWinPct > 0 && Number.isFinite(playoffWinRank) && playoffWinRank <= 3) || playoffWins >= 4) return 'Playoff Riser';
+    if (champCount === 0 && regularTitleCount === 0 && playoffWins === 0) return 'Rebuild Resume';
+    if (saundersPain === 0 && playoffWins > 0) return 'Saunders Survivor';
+    if (weeklyCrowns > top2Seeds && winPct !== null && winPct >= 0.5) return 'Chaos Team';
+    return 'Contender Profile';
+  })();
+
+  const summaryParts = [];
+  if (champCount > 0) summaryParts.push(`${champCount} Darlings`);
+  if (regularTitleCount > 0) summaryParts.push(`${regularTitleCount} regular-season titles`);
+  if (top2Seeds > 0) summaryParts.push(`${top2Seeds} byes`);
+  if (weeklyCrowns > 0) summaryParts.push(`${weeklyCrowns} weekly crowns`);
+  if (summaryParts.length === 0) summaryParts.push('A career still in progress');
+  const summary = `${summaryParts.slice(0, 3).join(', ')}${summaryParts.length > 3 ? `, and ${summaryParts[3]}` : ''}.`;
+
+  return {
+    label: identityLabel,
+    summary,
+    context: {
+      championshipRank: champRank,
+      winPctRank,
+      regularTitleRank,
+      playoffWinRank,
+      saundersRank,
+      finishRank,
+    },
+  };
+}
+
+function buildHeroView(ownerProfile, identity, leagueRanks) {
+  const championshipRank = ownerRank(leagueRanks, ownerProfile.owner, 'championships').rank;
+  const regularTitleRank = ownerRank(leagueRanks, ownerProfile.owner, 'regularTitles').rank;
+  const weeklyRank = ownerRank(leagueRanks, ownerProfile.owner, 'weeklyCrowns').rank;
+  const recordPct = fmtPct(ownerProfile.totals.regular.wins, ownerProfile.totals.regular.losses, ownerProfile.totals.regular.ties);
+  const record = `${regularRecordString(ownerProfile)} (${recordPct})`;
+  const highlights = topStatHighlights({ owner: ownerProfile.owner, leagueRanks });
+  const bestAchievement = ownerProfile.counts.championships > 0
+    ? `${joinYears(ownerProfile.years.champions)} Darling`
+    : ownerProfile.counts.regularTitles > 0
+      ? `${joinYears(ownerProfile.years.regularTitles)} regular-season title`
+      : ownerProfile.bestPFSeason
+        ? `${ownerProfile.bestPFSeason.season} scoring peak`
+        : 'Still building';
+
+  const worstScar = ownerProfile.counts.saundersTitles > 0
+    ? `${joinYears(ownerProfile.years.saundersTitles)} Saunders`
+    : ownerProfile.worstGame
+      ? `${ownerProfile.worstGame.game.season} lowest outing`
+      : 'No clear low point yet';
+
+  return {
+    owner: ownerProfile.owner,
+    title: ownerProfile.owner,
+    identityLabel: identity.label,
+    summary: highlights.length
+      ? 'Top-three stats are highlighted below. Win percentage is intentionally excluded.'
+      : identity.summary,
+    highlights,
+    record,
+    best: bestAchievement,
+    worst: worstScar,
+    rankContext: [
+      Number.isFinite(championshipRank) ? `Darlings #${championshipRank}` : null,
+      Number.isFinite(regularTitleRank) ? `Regular titles #${regularTitleRank}` : null,
+      Number.isFinite(weeklyRank) ? `Weekly crowns #${weeklyRank}` : null,
+    ].filter(Boolean).join(' | '),
+  };
+}
+
+function seasonOutcomeTag(row) {
+  if (row.champion) return 'Champion';
+  if (row.saunders) return 'Saunders';
+  if (row.bye) return 'Top-2 Seed';
+  if (row.wild_card) return 'Wild Card';
+  if (Number.isFinite(+row.finish)) return `Finish ${row.finish}`;
+  return 'Season';
+}
+
+function computeHardwareShelf(ownerProfile, leagueRanks) {
+  const rankMap = leagueRanks.byOwner.get(ownerProfile.owner) || {};
+  const items = [
     {
-      label: 'Highest Single-Game Score',
-      value: highest ? nfmt(highest.pf, 2) : '—',
-      sub: highest ? `${highest.date} vs ${highest.opp}` : 'No games recorded',
-      tone: '',
-      chips: [],
+      label: 'Darlings',
+      count: ownerProfile.counts.championships,
+      years: ownerProfile.years.champions,
+      rank: rankMap.championships?.rank,
+      context: ownerProfile.counts.championships > 0 ? 'League title hardware' : 'Still chasing the first one',
+      tone: 'gold',
+      icon: 'trophy',
     },
     {
-      label: 'Lowest Single-Game Score',
-      value: lowest ? nfmt(lowest.pf, 2) : '—',
-      sub: lowest ? `${lowest.date} vs ${lowest.opp}` : 'No games recorded',
-      tone: '',
-      chips: [],
+      label: 'Regular-season titles',
+      count: ownerProfile.counts.regularTitles,
+      years: ownerProfile.years.regularTitles,
+      rank: rankMap.regularTitles?.rank,
+      context: ownerProfile.counts.regularTitles > 0 ? 'Regular season hardware' : 'No regular-season crown yet',
+      tone: 'gold',
+      icon: 'medal',
     },
     {
-      label: 'Biggest Blowout Win',
-      value: biggestWin ? formatDelta(biggestWin.margin, 2) : '—',
-      sub: biggestWin ? `${biggestWin.date} vs ${biggestWin.opp}` : 'No wins recorded',
-      tone: '',
-      chips: [],
+      label: 'Byes',
+      count: ownerProfile.counts.top2Seeds,
+      years: ownerProfile.years.top2Seeds,
+      rank: null,
+      context: 'Playoff positioning',
+      tone: 'neutral',
+      icon: 'beachChair',
     },
     {
-      label: 'Biggest Blowout Loss',
-      value: biggestLoss ? formatDelta(biggestLoss.margin, 2) : '—',
-      sub: biggestLoss ? `${biggestLoss.date} vs ${biggestLoss.opp}` : 'No losses recorded',
-      tone: '',
-      chips: [],
+      label: 'Wild cards',
+      count: ownerProfile.counts.wildCards,
+      years: ownerProfile.years.wildCards,
+      rank: null,
+      context: 'Back-door playoff appearances',
+      tone: 'neutral',
+      icon: 'joker',
+    },
+    {
+      label: 'Playoff wins',
+      count: ownerProfile.totals.playoffs.wins,
+      years: [],
+      rank: rankMap.playoffWins?.rank,
+      context: 'Postseason wins',
+      tone: 'neutral',
+      icon: null,
+    },
+    {
+      label: 'Saunders titles',
+      count: ownerProfile.counts.saundersTitles,
+      years: ownerProfile.years.saundersTitles,
+      rank: rankMap.saundersPain?.rank,
+      context: ownerProfile.counts.saundersTitles > 0 ? 'Saunders hardware' : 'Clean Saunders sheet',
+      tone: 'scar',
+      icon: 'turd',
+    },
+    {
+      label: 'Saunders byes',
+      count: ownerProfile.counts.saundersByes,
+      years: ownerProfile.years.saundersByes,
+      rank: null,
+      context: 'Avoided the basement',
+      tone: 'scar',
+      icon: 'warning',
+    },
+    {
+      label: 'Bagels',
+      count: ownerProfile.counts.bagels,
+      years: [],
+      rank: null,
+      context: 'League-wide bagels earned',
+      tone: 'scar',
+      icon: 'bagel',
     },
   ];
+
+  return items;
 }
 
-function computeSignatureSeasonNotes(owner, seasonRows, seasonSummaries, seasonAggregates) {
-  const aggRows = ownerSeasonAggregateRows(owner, seasonAggregates);
-  const championSeasons = new Set(uniqueSeasons(seasonRows, row => row.champion));
-  const saundersSeasons = new Set(uniqueSeasons(seasonRows, row => row.saunders));
-  const regularSeasonTitleSeasons = new Set(coreFn('computeRegularSeasonChampYears')(owner, seasonSummaries));
-  const byeSeasons = new Set(uniqueSeasons(seasonRows, row => row.bye));
-  const wildCardSeasons = new Set(uniqueSeasons(seasonRows, row => row.wild_card));
-  const saundersByeSeasons = new Set(uniqueSeasons(seasonRows, row => row.saunders_bye));
-  const bagelMap = new Map(seasonRows.filter(row => Number.isFinite(+row.bagels_earned) && +row.bagels_earned > 0).map(row => [row.season, +row.bagels_earned]));
-  const bestPf = aggRows.length ? Math.max(...aggRows.map(row => +row.pf || 0)) : null;
-  const worstPf = aggRows.length ? Math.min(...aggRows.map(row => +row.pf || 0)) : null;
-  const bestDiff = aggRows.length ? Math.max(...aggRows.map(row => +row.diff || 0)) : null;
-  const unlucky = aggRows.length ? Math.min(...aggRows.map(row => +row.luck || 0)) : null;
+function tierForSeason(row) {
+  if (row.champion) return { tier: 'champion', label: 'Champion' };
+  if (row.saunders) return { tier: 'saunders', label: 'Saunders' };
+  if (row.bye || (+row.finish <= 2)) return { tier: 'contender', label: 'Contender' };
+  if (Number.isFinite(+row.finish) && +row.finish <= 4) return { tier: 'upper', label: 'Upper tier' };
+  if (Number.isFinite(+row.finish) && +row.finish >= 8) return { tier: 'pain', label: 'Pain' };
+  return { tier: 'mid', label: 'Mid-table' };
+}
 
-  return seasonRows.map(row => {
-    const notes = [];
-    if (championSeasons.has(+row.season)) notes.push('Champion');
-    if (saundersSeasons.has(+row.season)) notes.push('Saunders');
-    if (regularSeasonTitleSeasons.has(+row.season)) notes.push('Regular-season title');
-    if (byeSeasons.has(+row.season)) notes.push('Top-2 seed');
-    if (wildCardSeasons.has(+row.season)) notes.push('Wild card');
-    if (saundersByeSeasons.has(+row.season)) notes.push('Saunders bye');
-    if (bestPf !== null && (+row.points_for || 0) === bestPf) notes.push('Best scoring season');
-    if (worstPf !== null && (+row.points_for || 0) === worstPf) notes.push('Worst scoring season');
-    if (bestDiff !== null && aggRows.some(agg => +agg.season === +row.season && (+agg.diff || 0) === bestDiff)) notes.push('Best differential season');
-    if (unlucky !== null && aggRows.some(agg => +agg.season === +row.season && (+agg.luck || 0) === unlucky)) notes.push('Most unlucky season');
-    if (bagelMap.has(+row.season)) notes.push(`Bagels earned ${bagelMap.get(+row.season)}`);
+function computeCareerShape(owner, seasonRows = []) {
+  const rows = seasonRows
+    .slice()
+    .sort(sortSeasonAsc)
+    .map(row => {
+      const tier = tierForSeason(row);
+      const record = `${row.wins}-${row.losses}-${row.ties || 0}`;
+      const finish = Number.isFinite(+row.finish) ? `${row.finish}` : '—';
+      const playoffCutoff = +row.season === 2014 ? 4 : 6;
+      const pf = Number.isFinite(+row.points_for) ? fmtDecimal(row.points_for, 1) : '—';
+      const pa = Number.isFinite(+row.points_against) ? fmtDecimal(row.points_against, 1) : '—';
+      const diff = Number.isFinite(+row.points_for) && Number.isFinite(+row.points_against)
+        ? fmtSigned(+row.points_for - +row.points_against, 1)
+        : '—';
+      return {
+        season: +row.season,
+        owner,
+        tier: tier.tier,
+        label: tier.label,
+        record,
+        finish,
+        playoffCutoff,
+        pf,
+        pa,
+        diff,
+        title: `${row.season}: ${tier.label} | ${record} | Finish ${finish} | PF ${pf} | PA ${pa} | Diff ${diff} | Playoff cutoff ${playoffCutoff}`,
+      };
+    });
+
+  return {
+    owner,
+    rows,
+    summary: rows.length ? `${rows.length} seasons on the board` : 'No seasons recorded',
+  };
+}
+
+function signatureSeasonReason(row, profile) {
+  const reasons = [];
+  if (row.champion) reasons.push('Champion');
+  if (profile.bestPFSeason && +profile.bestPFSeason.season === +row.season) reasons.push('Best scoring season');
+  if (profile.bestDiffSeason && +profile.bestDiffSeason.season === +row.season) reasons.push('Best differential season');
+  if (profile.mostUnluckySeason && +profile.mostUnluckySeason.season === +row.season) reasons.push('Most unlucky season');
+  if (profile.worstFinishSeason && +profile.worstFinishSeason.season === +row.season) reasons.push('Worst finish');
+  if (row.bye && !profile.years?.regularTitles?.includes(+row.season)) reasons.push('Bye');
+  if (row.saunders) reasons.push('Saunders');
+  if (row.wild_card) reasons.push('Wild card');
+  if (row.bagels_earned !== null && row.bagels_earned !== undefined) reasons.push(`Bagels earned ${row.bagels_earned}`);
+  return uniquePreserveOrder(reasons);
+}
+
+function computeSignatureSeasons(ownerProfile) {
+  const rows = ownerProfile.seasonRows.slice();
+  const candidates = [];
+  const addCandidate = (season, badge, reason, priority) => {
+    if (!Number.isFinite(+season)) return;
+    const key = +season;
+    let existing = candidates.find(item => item.season === key);
+    if (!existing) {
+      existing = { season: key, badge, reasons: [], priority };
+      candidates.push(existing);
+    }
+    if (badge && (!existing.badge || priority < existing.priority)) existing.badge = badge;
+    existing.priority = Math.min(existing.priority, priority);
+    if (reason) existing.reasons.push(reason);
+  };
+
+  for (const row of rows) {
+    if (row.champion) addCandidate(row.season, 'Champion', 'Champion', 0);
+    if (ownerProfile.years.regularTitles.includes(+row.season)) addCandidate(row.season, 'Regular-season title', 'Regular-season title', 1);
+    if (row.saunders) addCandidate(row.season, 'Saunders', 'Saunders', 4);
+    if (row.bye && !ownerProfile.years.regularTitles.includes(+row.season)) addCandidate(row.season, 'Bye', 'Bye', 5);
+    if (row.wild_card) addCandidate(row.season, 'Wild card', 'Wild card', 6);
+  }
+  if (ownerProfile.bestPFSeason) addCandidate(ownerProfile.bestPFSeason.season, 'Best PF', 'Best scoring season', 2);
+  if (ownerProfile.bestDiffSeason) addCandidate(ownerProfile.bestDiffSeason.season, 'Best Diff', 'Best differential season', 2);
+  if (ownerProfile.mostUnluckySeason) addCandidate(ownerProfile.mostUnluckySeason.season, 'Most Unlucky', 'Most unlucky season', 3);
+  if (ownerProfile.worstFinishSeason) addCandidate(ownerProfile.worstFinishSeason.season, 'Worst Finish', 'Worst finish', 5);
+
+  if (!candidates.length && rows.length) {
+    const row = rows[0];
+    candidates.push({
+      season: +row.season,
+      badge: 'Season',
+      reasons: ['Season summary'],
+      priority: 9,
+    });
+  }
+
+  return candidates
+    .sort((a, b) => a.priority - b.priority || b.season - a.season)
+    .slice(0, 6)
+    .map(item => {
+      const row = rows.find(r => +r.season === item.season) || null;
+      const record = row ? `${row.wins}-${row.losses}-${row.ties || 0}` : '—';
+      const finish = row && Number.isFinite(+row.finish) ? `${row.finish}` : '—';
+      const pf = row && Number.isFinite(+row.points_for) ? fmtDecimal(row.points_for, 1) : '—';
+      const pa = row && Number.isFinite(+row.points_against) ? fmtDecimal(row.points_against, 1) : '—';
+      const diff = row && Number.isFinite(+row.points_for) && Number.isFinite(+row.points_against)
+        ? fmtSigned(+row.points_for - +row.points_against, 1)
+        : '—';
+      const reasons = uniquePreserveOrder([
+        ...item.reasons,
+        ...(row ? signatureSeasonReason(row, ownerProfile) : []),
+      ]).slice(0, 3);
+      return {
+        season: item.season,
+        badge: item.badge || 'Season',
+        record,
+        finish,
+        pf,
+        pa,
+        diff,
+        reason: reasons.join(' • '),
+        summary: row ? `${row.season} ${item.badge || 'Season'}` : `${item.season} ${item.badge || 'Season'}`,
+      };
+    });
+}
+
+function achievementAndScarItems(ownerProfile) {
+  const bestScore = ownerProfile.bestGame;
+  const worstScore = ownerProfile.worstGame;
+  const biggestWin = ownerProfile.biggestWin;
+  const biggestLoss = ownerProfile.biggestLoss;
+  const bestDiffSeason = ownerProfile.bestDiffSeason;
+  const mostUnluckySeason = ownerProfile.mostUnluckySeason;
+  const bestSeason = ownerProfile.bestPFSeason || ownerProfile.bestDiffSeason || ownerProfile.seasonRows[0] || null;
+  const bestSeasonRecord = bestSeason ? `${bestSeason.wins}-${bestSeason.losses}-${bestSeason.ties || 0}` : '—';
+  const bestSeasonFinish = bestSeason && Number.isFinite(+bestSeason.finish) ? `${bestSeason.finish}` : '—';
+  const bestSeasonDiff = bestSeason && Number.isFinite(+bestSeason.points_for) && Number.isFinite(+bestSeason.points_against)
+    ? fmtSigned(+bestSeason.points_for - +bestSeason.points_against, 1)
+    : '—';
+  const bestSeasonDetail = bestSeason
+    ? `${bestSeasonRecord} • Finish ${bestSeasonFinish} • Diff ${bestSeasonDiff}`
+    : 'No season yet';
+  const unluckyLuckRow = mostUnluckySeason
+    ? ownerProfile.seasonLuckRows.find(row => +row.season === +mostUnluckySeason.season) || null
+    : null;
+  const unluckyExpectedRecord = unluckyLuckRow
+    ? `${fmtDecimal(unluckyLuckRow.expectedWins, 1)}-${fmtDecimal(Math.max(0, unluckyLuckRow.games - unluckyLuckRow.expectedWins), 1)}`
+    : null;
+  const unluckySeasonDetail = mostUnluckySeason
+    ? `Record ${mostUnluckySeason.wins}-${mostUnluckySeason.losses}-${mostUnluckySeason.ties || 0} • Expected ${unluckyExpectedRecord || '—'} • Luck ${fmtSigned(mostUnluckySeason.luck, 2)}`
+    : null;
+
+  const achievements = [
+    bestSeason ? {
+      label: 'Best regular season',
+      value: `${bestSeason.season}`,
+      detail: bestSeasonDetail,
+    } : null,
+    bestScore ? {
+      label: 'Highest weekly score',
+      value: `${fmtDecimal(bestScore.pf, 1)}`,
+      detail: `${bestScore.game.date} vs ${bestScore.opponent}`,
+    } : null,
+    biggestWin ? {
+      label: 'Best win margin',
+      value: fmtSigned(biggestWin.margin, 1),
+      detail: `${biggestWin.game.date} vs ${biggestWin.opponent}`,
+    } : null,
+  ].filter(Boolean);
+
+  const scars = [
+    mostUnluckySeason ? {
+      label: 'Most unlucky season',
+      value: `${mostUnluckySeason.season}`,
+      detail: unluckySeasonDetail || `Luck ${fmtSigned(mostUnluckySeason.luck, 2)}`,
+    } : null,
+    worstScore ? {
+      label: 'Worst weekly score',
+      value: `${fmtDecimal(worstScore.pf, 1)}`,
+      detail: `${worstScore.game.date} vs ${worstScore.opponent}`,
+    } : null,
+    biggestLoss ? {
+      label: 'Biggest loss',
+      value: fmtSigned(biggestLoss.margin, 1),
+      detail: `${biggestLoss.game.date} vs ${biggestLoss.opponent}`,
+    } : null,
+  ].filter(Boolean);
+
+  return {
+    achievements,
+    scars,
+    bestAchievement: achievements[0] || null,
+    worstScar: scars[0] || null,
+  };
+}
+
+function describeGameMoment(kind, row) {
+  if (!row) return null;
+  const scoreline = `${fmtDecimal(row.pf, 1)}-${fmtDecimal(row.pa, 1)}`;
+  const note = kind === 'luck' && Number.isFinite(row.luckDelta)
+    ? `Luck ${fmtSigned(row.luckDelta, 2)} vs expectation`
+    : kind === 'playoff'
+      ? `Playoff ${row.margin >= 0 ? 'win' : 'loss'}`
+      : '';
+  return {
+    label: kind,
+    value: kind === 'bestScore' || kind === 'worstScore' ? fmtDecimal(row.pf, 1) : fmtSigned(row.margin, 1),
+    date: row.game.date,
+    season: row.game.season,
+    opponent: row.opponent,
+    scoreline,
+    note,
+  };
+}
+
+function computeOwnerMoments(owner, leagueGames = []) {
+  const ownerGames = leagueGames
+    .filter(game => game.teamA === owner || game.teamB === owner)
+    .map(game => {
+      const s = sidesForTeam(game, owner);
+      if (!s) return null;
+      const xw = isRegularGame(game) ? computeExpectedWinForGame(leagueGames, owner, game) : null;
+      return {
+        game,
+        opponent: s.opp,
+        pf: s.pf,
+        pa: s.pa,
+        margin: s.pf - s.pa,
+        result: s.result,
+        xw,
+        luckDelta: xw === null ? null : ((s.result === 'W' ? 1 : s.result === 'T' ? 0.5 : 0) - xw),
+      };
+    })
+    .filter(Boolean)
+    .sort(byDateAsc);
+
+  const regularGames = ownerGames.filter(row => isRegularGame(row.game));
+
+  const moments = [
+    regularGames.length ? {
+      label: 'Highest score',
+      value: fmtDecimal(regularGames.filter(row => +row.game.season !== 2014).slice().sort((a, b) => b.pf - a.pf || byDateDesc(a.game, b.game))[0]?.pf, 1),
+      item: regularGames.filter(row => +row.game.season !== 2014).slice().sort((a, b) => b.pf - a.pf || byDateDesc(a.game, b.game))[0] || null,
+    } : null,
+    ownerGames.length ? {
+      label: 'Lowest score',
+      value: fmtDecimal(ownerGames.slice().sort((a, b) => a.pf - b.pf || byDateDesc(a.game, b.game))[0].pf, 1),
+      item: ownerGames.slice().sort((a, b) => a.pf - b.pf || byDateDesc(a.game, b.game))[0],
+    } : null,
+    ownerGames.length ? {
+      label: 'Biggest win',
+      value: fmtSigned(ownerGames.filter(row => row.margin > 0).slice().sort((a, b) => b.margin - a.margin || byDateDesc(a.game, b.game))[0]?.margin, 1),
+      item: ownerGames.filter(row => row.margin > 0).slice().sort((a, b) => b.margin - a.margin || byDateDesc(a.game, b.game))[0] || null,
+    } : null,
+    ownerGames.length ? {
+      label: 'Biggest loss',
+      value: fmtSigned(ownerGames.filter(row => row.margin < 0).slice().sort((a, b) => a.margin - b.margin || byDateDesc(a.game, b.game))[0]?.margin, 1),
+      item: ownerGames.filter(row => row.margin < 0).slice().sort((a, b) => a.margin - b.margin || byDateDesc(a.game, b.game))[0] || null,
+    } : null,
+  ].filter(item => item && item.item);
+
+  return moments.slice(0, 8).map(item => {
+    const row = item.item;
+    const scoreline = `${fmtDecimal(row.pf, 1)}-${fmtDecimal(row.pa, 1)}`;
     return {
-      season: row.season,
-      record: formatRecord(+row.wins || 0, +row.losses || 0, +row.ties || 0),
-      finish: Number.isFinite(+row.finish) ? `${+row.finish}` : '—',
-      outcome: seasonOutcomeLabel(row),
-      pf: nfmt(row.points_for, 1),
-      pa: nfmt(row.points_against, 1),
-      diff: formatDelta((+row.points_for || 0) - (+row.points_against || 0), 1),
-      notes,
-      finishRank: Number.isFinite(+row.finish) ? +row.finish : null,
-      outcomeRank: seasonOutcomeRank(row),
+      label: item.label,
+      value: item.value,
+      date: row.game.date,
+      season: row.game.season,
+      opponent: row.opponent,
+      scoreline,
+      note: '',
     };
   });
 }
 
+function computeSeasonLedger(owner, seasonRows = [], opts = {}) {
+  return seasonRows
+    .slice()
+    .sort(sortSeasonDesc)
+    .map(row => {
+      const finish = Number.isFinite(+row.finish) ? `${row.finish}` : '—';
+      const pf = Number.isFinite(+row.points_for) ? fmtDecimal(row.points_for, 1) : '—';
+      const pa = Number.isFinite(+row.points_against) ? fmtDecimal(row.points_against, 1) : '—';
+      const diff = Number.isFinite(+row.points_for) && Number.isFinite(+row.points_against)
+        ? fmtSigned(+row.points_for - +row.points_against, 1)
+        : '—';
+      return {
+        season: +row.season,
+        record: `${row.wins}-${row.losses}-${row.ties || 0}`,
+        finish,
+        pf,
+        pa,
+        diff,
+        notes: [],
+      };
+    });
+}
+
 function buildTrophyCaseViewModel(owner, opts = {}) {
   const seasonSummaries = Array.isArray(opts.seasonSummaries) ? opts.seasonSummaries : [];
-  const seasonAggregates = Array.isArray(opts.seasonAggregates) ? opts.seasonAggregates : [];
-  const weeklyAwards = opts.weeklyAwards || { top: [], low: [], high150: [] };
-  const sub70 = Array.isArray(opts.sub70) ? opts.sub70 : [];
   const leagueGames = Array.isArray(opts.leagueGames) ? opts.leagueGames : [];
-
-  const seasonRows = ownerSeasonRows(owner, seasonSummaries);
-  const hardware = computeOwnerHardware(owner, seasonRows, seasonSummaries);
-  const regularSeason = computeOwnerRegularResume(owner, seasonRows, seasonAggregates);
-  const postseason = computeOwnerPostseasonResume(owner, seasonRows, leagueGames);
-  const weeklyResume = computeOwnerWeeklyResume(owner, leagueGames, weeklyAwards, sub70);
-  const signatureSeasons = computeSignatureSeasonNotes(owner, seasonRows, seasonSummaries, seasonAggregates)
-    .slice()
-    .sort((a, b) => (+b.season) - (+a.season));
-
-  const championCount = hardware[0]?.value || '0';
-  const regularTitleCount = hardware[2]?.value || '0';
-  const top2Count = hardware[3]?.value || '0';
-  const regularRecord = regularSeason[0]?.value || '0-0';
-  const regularPct = regularSeason[1]?.value || '0.0%';
-  const bestFinish = regularSeason[5]?.value || '—';
-  const avgFinishRow = seasonRows.filter(row => Number.isFinite(+row.finish));
-  const avgFinish = avgFinishRow.length
-    ? nfmt(avgFinishRow.reduce((sum, row) => sum + (+row.finish), 0) / avgFinishRow.length, 1)
-    : '—';
-  const bestPostseason = postseason[3]?.value || '—';
-  const bestPostseasonSeason = postseason[3]?.sub || '—';
+  const allOwners = uniquePreserveOrder([
+    ...seasonSummaries.map(row => row.owner).filter(Boolean),
+    ...leagueGames.flatMap(game => [game.teamA, game.teamB]).filter(Boolean),
+  ]);
+  const allOwnerProfiles = allOwners.map(ownerName => buildOwnerCareerProfile(ownerName, seasonSummaries, leagueGames, opts));
+  const leagueRanks = computeLeagueRanks(allOwnerProfiles);
+  const ownerProfile = allOwnerProfiles.find(profile => profile.owner === owner)
+    || buildOwnerCareerProfile(owner, seasonSummaries, leagueGames, opts);
+  const identity = computeOwnerIdentity(ownerProfile, leagueRanks);
+  const hero = buildHeroView(ownerProfile, identity, leagueRanks);
+  const hardwareShelf = computeHardwareShelf(ownerProfile, leagueRanks);
+  const careerShape = computeCareerShape(ownerProfile.owner, ownerProfile.seasonRows);
+  const achievementScar = achievementAndScarItems(ownerProfile);
+  const seasonLedger = computeSeasonLedger(ownerProfile.owner, ownerProfile.seasonRows, opts);
 
   return {
     owner,
-    hero: {
-      title: `${owner} Trophy Case`,
-      lines: seasonRows.length ? [
-        `${championCount} Darlings | ${regularTitleCount} Regular-Season Titles | ${top2Count} Top-2 Seeds`,
-        `Career regular season: ${regularRecord} (${regularPct})`,
-        `Best finish: ${bestFinish} | Average finish: ${avgFinish}`,
-        `Best postseason: ${bestPostseason}${bestPostseasonSeason && bestPostseasonSeason !== '—' ? ` (${bestPostseasonSeason})` : ''}`,
-      ] : [
-        'No seasons recorded yet.',
-      ],
-    },
-    hardware,
-    regularSeason,
-    postseason,
-    weeklyAwards: weeklyResume,
-    signatureSeasons,
+    identity,
+    hero,
+    hardwareShelf,
+    leagueRanks,
+    careerShape,
+    achievements: achievementScar.achievements,
+    scars: achievementScar.scars,
+    seasonLedger,
   };
 }
 
-function tileHtml(tile) {
-  const toneClass = tile.tone ? ` ${tile.tone}` : '';
-  return `<div class="trophy-card${toneClass}">
-    <div class="label">${esc(tile.label)}</div>
-    <div class="value">${esc(tile.value)}</div>
-    <div class="sub">${esc(tile.sub || '—')}</div>
-    ${formatYearChips(tile.chips || [])}
-  </div>`;
-}
-
-function statTileHtml(tile) {
-  return `<div class="stat">
-    <div class="label">${esc(tile.label)}</div>
-    <div class="value">${esc(tile.value)}</div>
-    ${tile.sub ? `<div class="sub">${esc(tile.sub)}</div>` : ''}
-  </div>`;
-}
-
-function trophyHeroHtml(vm) {
-  const hero = vm.hero || {};
-  const lines = Array.isArray(hero.lines) ? hero.lines : [];
-  return `<div class="trophy-hero">
-    <div class="trophy-hero-copy">
-      <div class="trophy-kicker">Trophy Case</div>
-      <h3>${esc(hero.title || vm.owner || 'Trophy Case')}</h3>
-      <div class="trophy-hero-lines">
-        ${lines.map(line => `<p>${esc(line)}</p>`).join('')}
-      </div>
+function trophyHeroHtml(view) {
+  const highlights = Array.isArray(view.hero?.highlights) ? view.hero.highlights : [];
+  const chipHtml = highlights.length
+    ? `<div class="trophy-chip-row">${highlights.map(item => `
+      <span class="trophy-chip">
+        ${item.icon ? `<img class="trophy-chip-icon" src="${esc(hardwareArt(item.icon))}" alt="" />` : ''}
+        <span>${esc(item.value)} ${esc(item.label)}</span>
+        <strong>${esc(item.rankText)}</strong>
+      </span>
+    `).join('')}</div>`
+    : '';
+  return `
+    <div class="trophy-hero-title">
+      <div class="trophy-identity">${esc(view.hero?.identityLabel || view.identity?.label || 'Contender Profile')}</div>
+      <h3>${esc(view.hero?.title || view.owner || '')}</h3>
     </div>
-  </div>`;
+    <p class="trophy-hero-summary">${esc(view.hero?.summary || view.identity?.summary || 'No summary available')}</p>
+    ${chipHtml}
+    <div class="trophy-hero-record">${esc(view.hero?.record || '—')}</div>
+    <div class="trophy-hero-rank">${esc(view.hero?.rankContext || '')}</div>
+    <div class="trophy-hero-split">
+      <div><strong>Best:</strong> ${esc(view.hero?.best || '—')}</div>
+      <div><strong>Worst:</strong> ${esc(view.hero?.worst || '—')}</div>
+    </div>
+  `;
 }
 
-function trophyHardwareHtml(vm) {
-  const tiles = Array.isArray(vm.hardware) ? vm.hardware : [];
-  return tiles.map(tileHtml).join('');
-}
-
-function trophyRegularSeasonHtml(vm) {
-  const tiles = Array.isArray(vm.regularSeason) ? vm.regularSeason : [];
-  return tiles.map(statTileHtml).join('');
-}
-
-function trophyPostseasonHtml(vm) {
-  const tiles = Array.isArray(vm.postseason) ? vm.postseason : [];
-  return tiles.map(statTileHtml).join('');
-}
-
-function trophyWeeklyAwardsHtml(vm) {
-  const tiles = Array.isArray(vm.weeklyAwards) ? vm.weeklyAwards : [];
-  return tiles.map(statTileHtml).join('');
-}
-
-function trophySeasonTableHtml(vm) {
-  const rows = Array.isArray(vm.signatureSeasons) ? vm.signatureSeasons : [];
-  if (!rows.length) {
-    return '<tr><td colspan="8" class="muted">No seasons recorded for this owner.</td></tr>';
+function trophyHardwareShelfHtml(view) {
+  const items = Array.isArray(view.hardwareShelf) ? view.hardwareShelf : [];
+  if (!items.length) {
+    return '<div class="trophy-empty">No hardware yet.</div>';
   }
-  return rows.map(row => {
-    const noteHtml = (row.notes || []).map(note => `<span class="trophy-season-note">${esc(note)}</span>`).join(' ');
-    return `<tr>
+  return items.map(item => `
+    <article class="trophy-hardware-card ${esc(item.tone || 'neutral')}">
+      <div class="trophy-card-top">
+        <div class="trophy-card-title">
+          ${item.icon ? `<img class="trophy-card-art" src="${esc(hardwareArt(item.icon))}" alt="" />` : ''}
+          <div class="trophy-year-chip">${esc(item.label)}</div>
+        </div>
+        <div class="trophy-card-rank">${Number.isFinite(item.rank) ? `#${item.rank}` : '—'}</div>
+      </div>
+      <div class="trophy-card-value">${fmtWhole(item.count)}</div>
+      <div class="trophy-card-years">${item.years && item.years.length ? esc(joinYears(item.years)) : '—'}</div>
+    </article>
+  `).join('');
+}
+
+function trophyRankStripHtml(view) {
+  const owner = view.owner;
+  const ranks = view.leagueRanks?.byOwner.get(owner) || {};
+  const strip = [
+    { label: 'Championships', rank: ranks.championships?.rank, value: `${view.hardwareShelf?.[0]?.count ?? 0}` },
+    { label: 'Average Finish', rank: ranks.avgFinish?.rank, value: Number.isFinite(ranks.avgFinish?.value) ? fmtDecimal(ranks.avgFinish.value, 1) : '—' },
+    { label: 'Regular Titles', rank: ranks.regularTitles?.rank, value: `${view.hardwareShelf?.[1]?.count ?? 0}` },
+    { label: 'Playoff Wins', rank: ranks.playoffWins?.rank, value: `${view.leagueRanks?.byOwner.get(owner)?.playoffWins?.value ?? 0}` },
+    { label: 'Weekly Crowns', rank: ranks.weeklyCrowns?.rank, value: `${view.leagueRanks?.byOwner.get(owner)?.weeklyCrowns?.value ?? 0}` },
+    { label: 'Sub-70 Games', rank: ranks.sub70Games?.rank, value: `${view.leagueRanks?.byOwner.get(owner)?.sub70Games?.value ?? 0}` },
+    { label: 'Saunders Pain', rank: ranks.saundersPain?.rank, value: `${view.leagueRanks?.byOwner.get(owner)?.saundersPain?.value ?? 0}` },
+  ];
+
+  return strip.map(item => `
+    <div class="trophy-rank-pill">
+      <div class="trophy-rank-pill-label">${esc(item.label)}</div>
+      <div class="trophy-rank-pill-value">${Number.isFinite(item.rank) ? `#${item.rank}` : '—'}</div>
+      <div class="trophy-rank-pill-sub">${esc(item.value)}</div>
+    </div>
+  `).join('');
+}
+
+function trophyCareerShapeHtml(view) {
+  const rows = Array.isArray(view.careerShape?.rows) ? view.careerShape.rows : [];
+  if (!rows.length) {
+    return '<div class="trophy-empty">No seasons recorded.</div>';
+  }
+  const width = 760;
+  const height = 330;
+  const margin = { top: 38, right: 22, bottom: 48, left: 46 };
+  const innerW = width - margin.left - margin.right;
+  const innerH = height - margin.top - margin.bottom;
+  const finishValues = rows.map(row => Number.isFinite(+row.finish) ? +row.finish : null).filter(v => v !== null);
+  const maxFinish = Math.max(6, ...finishValues, 6);
+  const minFinish = 1;
+  const xFor = (index) => rows.length === 1
+    ? margin.left + innerW / 2
+    : margin.left + (index * innerW / Math.max(1, rows.length - 1));
+  const yFor = (finish) => {
+    const n = Math.max(minFinish, Math.min(maxFinish, +finish || maxFinish));
+    return margin.top + ((n - minFinish) / Math.max(1, maxFinish - minFinish)) * innerH;
+  };
+  const points = rows.map((row, index) => ({
+    row,
+    x: xFor(index),
+    y: yFor(row.finish),
+    finish: Number.isFinite(+row.finish) ? +row.finish : maxFinish,
+  }));
+  const linePath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' ');
+  const baselineY = margin.top + innerH;
+  const playoffY = yFor(6);
+  const tickValues = uniquePreserveOrder([1, 2, 4, 6, maxFinish]).sort((a, b) => a - b);
+  const has2014 = rows.some(row => +row.season === 2014);
+  return `
+    <div class="trophy-career-chart">
+      <div class="trophy-career-header">
+        <div>
+          <div class="trophy-career-title">Season finish trend</div>
+          <div class="trophy-career-subtitle">Lower is better. Playoff cutoff is 6th, except 2014 when it was 4th.</div>
+        </div>
+        <div class="trophy-career-legend">
+          <span><img src="${esc(hardwareArt('trophy'))}" alt="" /> Champion</span>
+          <span><span class="legend-swatch playoff"></span> Playoff finish</span>
+          <span><img src="${esc(hardwareArt('turd'))}" alt="" /> Saunders</span>
+          <span><span class="legend-swatch miss"></span> Missed playoffs</span>
+        </div>
+      </div>
+      <svg class="trophy-career-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Season finish trend">
+        <defs>
+          <linearGradient id="trophyCareerGradient" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="rgba(37,99,235,.05)" />
+            <stop offset="100%" stop-color="rgba(37,99,235,.01)" />
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="${width}" height="${height}" rx="18" fill="url(#trophyCareerGradient)" />
+        <line x1="${margin.left}" y1="${playoffY}" x2="${width - margin.right}" y2="${playoffY}" class="trophy-career-playoff-line" />
+        <text x="${width - margin.right}" y="${playoffY - 8}" text-anchor="end" class="trophy-career-playoff-label">Playoff cutoff</text>
+        ${tickValues.map(value => {
+          const y = yFor(value);
+          return `
+            <line x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" class="trophy-career-grid" />
+            <text x="${margin.left - 8}" y="${y + 4}" text-anchor="end" class="trophy-career-axis-label">${esc(value)}</text>
+          `;
+        }).join('')}
+        ${rows.map((row, index) => {
+          const x = xFor(index);
+          return `
+            <line x1="${x}" y1="${margin.top}" x2="${x}" y2="${baselineY}" class="trophy-career-xgrid" />
+            <text x="${x}" y="${height - 15}" text-anchor="middle" class="trophy-career-year-label">${esc(row.season)}</text>
+          `;
+        }).join('')}
+        ${linePath ? `<path d="${linePath}" class="trophy-career-line" />` : ''}
+        ${points.map(point => {
+          const cutoff = Number.isFinite(+point.row.playoffCutoff) ? +point.row.playoffCutoff : 6;
+          const madePlayoffs = point.finish <= cutoff;
+          const tierClass = point.row.champion
+            ? 'champion'
+            : point.row.saunders
+              ? 'saunders'
+              : madePlayoffs
+                ? 'playoff'
+                : 'miss';
+          const icon = point.row.champion ? 'trophy' : point.row.saunders ? 'turd' : null;
+          return `
+            <g class="trophy-career-point-group">
+              ${icon ? `<image href="${esc(hardwareArt(icon))}" x="${point.x - 12}" y="${point.y - 36}" width="24" height="24" preserveAspectRatio="xMidYMid meet" />` : ''}
+              <circle cx="${point.x}" cy="${point.y}" r="9" class="trophy-career-point ${tierClass}" />
+              <circle cx="${point.x}" cy="${point.y}" r="3.5" class="trophy-career-point-core ${tierClass}" />
+              <text x="${point.x}" y="${point.y - 14}" text-anchor="middle" class="trophy-career-point-label">${esc(point.finish)}</text>
+              <title>${esc(`${point.row.title} | Playoff cutoff ${cutoff}`)}</title>
+            </g>
+          `;
+        }).join('')}
+      </svg>
+    </div>
+    <div class="trophy-career-summary">${esc(view.careerShape?.summary || '')}${has2014 ? ' 2014 used a top-4 playoff cutoff.' : ''}</div>
+  `;
+}
+
+function trophySignatureSeasonsHtml(view) {
+  const items = Array.isArray(view.signatureSeasons) ? view.signatureSeasons : [];
+  if (!items.length) {
+    return '<div class="trophy-empty">No signature seasons yet.</div>';
+  }
+  return items.map(item => `
+    <article class="trophy-season-card">
+      <div class="trophy-season-card-head">
+        <div>
+          <div class="trophy-year-chip">${esc(item.season)}</div>
+          <div class="trophy-season-badge">${esc(item.badge)}</div>
+        </div>
+        <div class="trophy-season-card-reason">${esc(item.reason || 'Season highlight')}</div>
+      </div>
+      <div class="trophy-season-card-grid">
+        <div><span>Record</span><strong>${esc(item.record)}</strong></div>
+        <div><span>Finish</span><strong>${esc(item.finish)}</strong></div>
+        <div><span>PF</span><strong>${esc(item.pf)}</strong></div>
+        <div><span>PA</span><strong>${esc(item.pa)}</strong></div>
+        <div><span>Diff</span><strong>${esc(item.diff)}</strong></div>
+      </div>
+    </article>
+  `).join('');
+}
+
+function renderListSection(items, emptyText, tone) {
+  if (!items.length) return `<div class="trophy-empty">${esc(emptyText)}</div>`;
+  return `<ul class="trophy-list ${tone ? `tone-${tone}` : ''}">
+    ${items.map(item => `
+      <li>
+        <span class="trophy-list-label">${esc(item.label)}</span>
+        <span class="trophy-list-value">${esc(item.value)}</span>
+        <span class="trophy-list-detail">${esc(item.detail || '')}</span>
+      </li>
+    `).join('')}
+  </ul>`;
+}
+
+function trophyAchievementListHtml(view) {
+  return renderListSection(Array.isArray(view.achievements) ? view.achievements : [], 'No highlights yet.', 'gold');
+}
+
+function trophyScarListHtml(view) {
+  return renderListSection(Array.isArray(view.scars) ? view.scars : [], 'No low points yet.', 'scar');
+}
+
+function trophyMomentGridHtml(view) {
+  const items = Array.isArray(view.moments) ? view.moments : [];
+  if (!items.length) return '<div class="trophy-empty">No moments recorded.</div>';
+  return items.map(item => `
+    <article class="trophy-moment-card">
+      <div class="trophy-moment-label">${esc(item.label)}</div>
+      <div class="trophy-moment-value">${esc(item.value)}</div>
+      <div class="trophy-moment-meta">${esc(item.date)} • ${esc(item.season)} • ${esc(item.opponent)}</div>
+      <div class="trophy-moment-score">${esc(item.scoreline)}</div>
+      ${item.note ? `<div class="trophy-moment-note">${esc(item.note)}</div>` : ''}
+    </article>
+  `).join('');
+}
+
+function trophySeasonLedgerHtml(view) {
+  const items = Array.isArray(view.seasonLedger) ? view.seasonLedger : [];
+  if (!items.length) {
+    return '<tr><td colspan="7" class="muted">No seasons recorded for this owner.</td></tr>';
+  }
+  return items.map(row => `
+    <tr>
       <td>${esc(row.season)}</td>
       <td>${esc(row.record)}</td>
       <td>${esc(row.finish)}</td>
-      <td>${esc(row.outcome)}</td>
       <td>${esc(row.pf)}</td>
       <td>${esc(row.pa)}</td>
       <td>${esc(row.diff)}</td>
-      <td>${noteHtml || '<span class="muted">—</span>'}</td>
-    </tr>`;
-  }).join('');
+      <td>${row.notes.length ? row.notes.map(note => `<span class="trophy-chip">${esc(note)}</span>`).join(' ') : ''}</td>
+    </tr>
+  `).join('');
 }
 
-function renderTrophyHero(vm, opts = {}) {
-  const root = docOrDefault(opts.doc);
+function renderInto(selector, html, doc) {
+  const root = docOrDefault(doc);
   if (!root) return;
-  const el = root.getElementById('trophyHero');
+  const el = root.querySelector(selector);
   if (!el) return;
-  el.innerHTML = trophyHeroHtml(vm);
+  el.innerHTML = html;
 }
 
-function renderTrophyHardware(vm, opts = {}) {
-  const root = docOrDefault(opts.doc);
-  if (!root) return;
-  const el = root.getElementById('trophyHardwareGrid');
-  if (!el) return;
-  el.innerHTML = trophyHardwareHtml(vm);
+function renderTrophyHero(view, opts = {}) {
+  renderInto('#trophyHero', trophyHeroHtml(view), opts.doc);
 }
 
-function renderTrophyRegularSeason(vm, opts = {}) {
-  const root = docOrDefault(opts.doc);
-  if (!root) return;
-  const el = root.getElementById('trophyRegularGrid');
-  if (!el) return;
-  el.innerHTML = trophyRegularSeasonHtml(vm);
+function renderTrophyHardwareShelf(view, opts = {}) {
+  renderInto('#trophyHardwareShelf', trophyHardwareShelfHtml(view), opts.doc);
 }
 
-function renderTrophyPostseason(vm, opts = {}) {
-  const root = docOrDefault(opts.doc);
-  if (!root) return;
-  const el = root.getElementById('trophyPostseasonGrid');
-  if (!el) return;
-  el.innerHTML = trophyPostseasonHtml(vm);
+function renderTrophyRankStrip(view, opts = {}) {
+  renderInto('#trophyRankStrip', trophyRankStripHtml(view), opts.doc);
 }
 
-function renderTrophyWeeklyAwards(vm, opts = {}) {
-  const root = docOrDefault(opts.doc);
-  if (!root) return;
-  const el = root.getElementById('trophyWeeklyGrid');
-  if (!el) return;
-  el.innerHTML = trophyWeeklyAwardsHtml(vm);
+function renderTrophyCareerShape(view, opts = {}) {
+  renderInto('#trophyCareerShape', trophyCareerShapeHtml(view), opts.doc);
 }
 
-function renderTrophySeasonTable(vm, opts = {}) {
+function renderTrophySignatureSeasons(view, opts = {}) {
+  renderInto('#trophySignatureSeasons', trophySignatureSeasonsHtml(view), opts.doc);
+}
+
+function renderTrophyAchievementList(view, opts = {}) {
+  renderInto('#trophyAchievementList', trophyAchievementListHtml(view), opts.doc);
+}
+
+function renderTrophyScarList(view, opts = {}) {
+  renderInto('#trophyScarList', trophyScarListHtml(view), opts.doc);
+}
+
+function renderTrophyMomentGrid(view, opts = {}) {
+  renderInto('#trophyMomentGrid', trophyMomentGridHtml(view), opts.doc);
+}
+
+function renderTrophySeasonLedger(view, opts = {}) {
   const root = docOrDefault(opts.doc);
   if (!root) return;
-  const el = root.querySelector('#trophySeasonTable tbody');
-  if (!el) return;
-  el.innerHTML = trophySeasonTableHtml(vm);
+  const tbody = root.querySelector('#trophySeasonTable tbody');
+  if (!tbody) return;
+  tbody.innerHTML = trophySeasonLedgerHtml(view);
 }
 
 export {
+  buildOwnerCareerProfile,
+  computeLeagueRanks,
+  computeOwnerIdentity,
+  computeHardwareShelf,
+  computeCareerShape,
+  computeSignatureSeasons,
+  achievementAndScarItems as computeAchievementAndScarLists,
+  computeOwnerMoments,
+  computeSeasonLedger,
   buildTrophyCaseViewModel,
   trophyHeroHtml,
-  trophyHardwareHtml,
-  trophyRegularSeasonHtml,
-  trophyPostseasonHtml,
-  trophyWeeklyAwardsHtml,
-  trophySeasonTableHtml,
+  trophyHardwareShelfHtml,
+  trophyRankStripHtml,
+  trophyCareerShapeHtml,
+  trophyAchievementListHtml,
+  trophyScarListHtml,
+  trophySeasonLedgerHtml,
   renderTrophyHero,
-  renderTrophyHardware,
-  renderTrophyRegularSeason,
-  renderTrophyPostseason,
-  renderTrophyWeeklyAwards,
-  renderTrophySeasonTable,
-  ownerSeasonRows,
-  ownerSeasonAggregateRows,
-  computeOwnerHardware,
-  computeOwnerRegularResume,
-  computeOwnerPostseasonResume,
-  computeOwnerWeeklyResume,
-  computeSignatureSeasonNotes,
+  renderTrophyHardwareShelf,
+  renderTrophyRankStrip,
+  renderTrophyCareerShape,
+  renderTrophyAchievementList,
+  renderTrophyScarList,
+  renderTrophySeasonLedger,
 };

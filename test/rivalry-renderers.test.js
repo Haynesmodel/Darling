@@ -4,8 +4,11 @@ import assert from 'node:assert/strict';
 import {
   buildRivalryViewModel,
   rivalryHeadlineHtml,
+  rivalryHighlightBoardHtml,
+  rivalryLeadMeterHtml,
   rivalrySeasonTableHtml,
   rivalryGameTableHtml,
+  rivalryTimelineHtml,
   rivalryTapeHtml,
   summarizeRivalry,
 } from '../js/rivalry-renderers.js';
@@ -92,10 +95,21 @@ test('rivalry renderer summarizes games and tape from team A perspective', () =>
   assert.match(tape, /7\.50 \/ 10\.00/);
   assert.match(tape, /30\+ Point Wins/);
   assert.match(tape, /Joe 0 \/ Joel 0/);
-  assert.match(tape, /Biggest Blowout/);
-  assert.match(tape, /Joel on 2025-12-14/);
-  assert.match(tape, /Shootouts/);
-  assert.match(tape, /Both teams 130\+/);
+
+  const leadMeter = rivalryLeadMeterHtml(vm);
+  assert.match(leadMeter, /Joel leads 2-1-1/);
+  assert.match(leadMeter, /4 games tracked/);
+
+  const highlights = rivalryHighlightBoardHtml(vm);
+  assert.match(highlights, /Biggest Blowout/);
+  assert.match(highlights, /Highest Combined/);
+  assert.match(highlights, /Longest Run/);
+  assert.match(highlights, /Shootouts/);
+
+  const timeline = rivalryTimelineHtml(vm);
+  assert.match(timeline, /rivalry-timeline-item/);
+  assert.match(timeline, /2024-09-01/);
+  assert.match(timeline, /2025-12-14/);
 
   const headline = rivalryHeadlineHtml(vm);
   assert.match(headline, /Joe vs Joel/);

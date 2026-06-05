@@ -54,9 +54,12 @@ import {
 } from './rivalry-controls.js';
 import {
   buildRivalryViewModel,
+  renderRivalryHighlightBoard,
+  renderRivalryLeadMeter,
   renderRivalryGameTable,
   renderRivalryHeadline,
   renderRivalrySeasonTable,
+  renderRivalryTimeline,
   renderRivalryTape,
 } from './rivalry-renderers.js';
 import { setGroupBackdrop, triggerGroupEgg } from './easter-eggs.js';
@@ -212,6 +215,9 @@ function renderRivalry() {
   const signature = `${selectedRivalryTeamA}|${selectedRivalryTeamB}|${view.summary.overall.g}`;
   renderIfChanged('rivalry', signature, () => {
     renderRivalryHeadline(view, { doc: document });
+    renderRivalryLeadMeter(view, { doc: document });
+    renderRivalryHighlightBoard(view, { doc: document });
+    renderRivalryTimeline(view, { doc: document });
     renderRivalryTape(view, { doc: document });
     renderRivalrySeasonTable(view, { doc: document });
     renderRivalryGameTable(view, { doc: document });

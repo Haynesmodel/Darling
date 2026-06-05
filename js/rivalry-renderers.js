@@ -423,13 +423,6 @@ function buildRivalryViewModel(teamA, teamB, games) {
     { label: 'Series Record', value: summary.overall.recordText || '—', sub: summary.overall.g ? leaderLabel : '' },
     { label: 'Point Differential', value: `${summary.overall.diff >= 0 ? '+' : ''}${nfmt(summary.overall.diff, 2)}`, sub: summary.overall.g ? leaderLabel : '' },
     { label: 'Average Score', value: `${nfmt(summary.overall.averageA, 2)} - ${nfmt(summary.overall.averageB, 2)}`, sub: summary.overall.g ? scoreLeaderLabel : '' },
-    {
-      label: 'Biggest Blowout',
-      value: summary.biggestBlowout ? formatScoreline(summary.biggestBlowout.pf, summary.biggestBlowout.pa) : '—',
-      sub: summary.biggestBlowout
-        ? `${summary.biggestBlowout.winner} on ${summary.biggestBlowout.date}`
-        : '',
-    },
     { label: 'Regular Season', value: summary.regular.recordText || '—', sub: '' },
     { label: 'Playoffs', value: summary.playoffs.recordText || '—', sub: '' },
     { label: 'Saunders', value: summary.saunders.recordText || '—', sub: '' },
@@ -438,7 +431,6 @@ function buildRivalryViewModel(teamA, teamB, games) {
     { label: teamRunLabel(teamB), value: formatLeaderText(teamA, teamB, summary.longestTeamBStreak?.result || 'T', summary.longestTeamBStreak?.len || 0), sub: summary.longestTeamBStreak ? `${summary.longestTeamBStreak.start.date} to ${summary.longestTeamBStreak.end.date}` : '' },
     { label: 'Margin Avg / Median', value: marginStats.averageMargin === null ? '—' : `${nfmt(marginStats.averageMargin, 2)} / ${nfmt(marginStats.medianMargin, 2)}`, sub: '' },
     { label: '30+ Point Wins', value: `${teamA} ${marginStats.blowoutCounts[teamA] || 0} / ${teamB} ${marginStats.blowoutCounts[teamB] || 0}`, sub: '' },
-    { label: 'Shootouts', value: `${marginStats.shootouts}`, sub: 'Both teams 130+' },
     { label: 'Last Meeting', value: summary.lastMeeting ? `${summary.lastMeeting.winner === 'Tie' ? 'Tied' : summary.lastMeeting.winner} ${formatScoreline(summary.lastMeeting.pf, summary.lastMeeting.pa)}` : '—', sub: summary.lastMeeting ? summary.lastMeeting.date : '' },
   ];
 
@@ -496,6 +488,128 @@ function rivalryTapeHtml(view) {
   `).join('');
 }
 
+function rivalryLeadMeterHtml(view) {
+  const overall = view.summary.overall;
+  if (!overall.g) {
+    return '<div class="muted">No recorded games between these teams.</div>';
+  }
+
+  const teamA = overall.w;
+  const teamB = overall.l;
+  const ties = overall.t;
+  const leftFlex = Math.max(teamA + (ties / 2), 0.5);
+  const rightFlex = Math.max(teamB + (ties / 2), 0.5);
+  const leaderText = teamA > teamB
+    ? `${esc(view.teamA)} leads ${formatRecord(overall.w, overall.l, overall.t)}`
+    : teamB > teamA
+      ? `${esc(view.teamB)} leads ${formatRecord(overall.l, overall.w, overall.t)}`
+      : `Series tied ${formatRecord(overall.w, overall.l, overall.t)}`;
+
+  return `
+    <div class="rivalry-meter">
+      <div class="rivalry-meter-top">
+        <div class="rivalry-meter-label">${leaderText}</div>
+        <div class="rivalry-meter-sub">${overall.g} games tracked${ties ? ` · ${ties} tie${ties === 1 ? '' : 's'}` : ''}</div>
+      </div>
+      <div class="rivalry-meter-bar" aria-hidden="true">
+        <span class="rivalry-meter-a" style="flex:${leftFlex}"><span>${esc(view.teamA)} ${overall.w}</span></span>
+        <span class="rivalry-meter-b" style="flex:${rightFlex}"><span>${esc(view.teamB)} ${overall.l}</span></span>
+      </div>
+    </div>
+  `;
+}
+
+function rivalryHighlightBoardHtml(view) {
+  if (!view.summary.overall.g) {
+    return '<div class="muted">No recorded games between these teams.</div>';
+  }
+
+  const items = [];
+  const summary = view.summary;
+
+  if (summary.biggestBlowout) {
+    items.push({
+      icon: '💥',
+      label: 'Biggest Blowout',
+      value: formatScoreline(summary.biggestBlowout.pf, summary.biggestBlowout.pa),
+      sub: `${summary.biggestBlowout.winner} on ${summary.biggestBlowout.date}`,
+      tone: 'blowout',
+    });
+  }
+
+  if (summary.highestCombinedGame) {
+    items.push({
+      icon: '🔥',
+      label: 'Highest Combined',
+      value: `${nfmt(summary.highestCombinedGame.total, 2)} total`,
+      sub: `${summary.highestCombinedGame.winner} on ${summary.highestCombinedGame.date}`,
+      tone: 'heat',
+    });
+  }
+
+  const longestRun = (() => {
+    const a = summary.longestTeamAStreak;
+    const b = summary.longestTeamBStreak;
+    if (!a && !b) return null;
+    if (!b) return { team: view.teamA, run: a };
+    if (!a) return { team: view.teamB, run: b };
+    if (a.len > b.len) return { team: view.teamA, run: a };
+    if (b.len > a.len) return { team: view.teamB, run: b };
+    return (a.end.date >= b.end.date) ? { team: view.teamA, run: a } : { team: view.teamB, run: b };
+  })();
+
+  if (longestRun?.run) {
+    items.push({
+      icon: '🎯',
+      label: 'Longest Run',
+      value: formatLeaderText(view.teamA, view.teamB, longestRun.run.result, longestRun.run.len),
+      sub: `${longestRun.run.start.date} to ${longestRun.run.end.date}`,
+      tone: 'run',
+    });
+  }
+
+  items.push({
+    icon: '⚡',
+    label: 'Shootouts',
+    value: `${summary.games.filter(g => +g.scoreA >= 130 && +g.scoreB >= 130).length}`,
+    sub: 'Both teams 130+',
+    tone: 'spark',
+  });
+
+  if (!items.length) {
+    return '<div class="muted">No recorded games between these teams.</div>';
+  }
+
+  return items.map(item => `
+    <div class="rivalry-highlight rivalry-${item.tone}">
+      <div class="rivalry-highlight-icon">${item.icon}</div>
+      <div class="rivalry-highlight-body">
+        <div class="rivalry-highlight-label">${esc(item.label)}</div>
+        <div class="rivalry-highlight-value">${esc(item.value)}</div>
+        ${item.sub ? `<div class="rivalry-highlight-sub">${esc(item.sub)}</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function rivalryTimelineHtml(view) {
+  const rows = view.gameRows.slice().reverse();
+  if (!rows.length) {
+    return '<div class="muted">No recorded games between these teams.</div>';
+  }
+  return rows.map(row => `
+    <div class="rivalry-timeline-item ${row.rowClass} ${row.postseasonClass}" title="${esc(`${row.date} • ${row.type}${row.round && row.round !== '—' ? ` • ${row.round}` : ''} • ${row.winner} ${row.score}`)}">
+      <div class="rivalry-timeline-top">
+        <span>${esc(row.season)}</span>
+        <span>${esc(row.type)}</span>
+      </div>
+      <div class="rivalry-timeline-result">${esc(row.winner === 'Tie' ? 'T' : row.result)}</div>
+      <div class="rivalry-timeline-score">${esc(row.score)}</div>
+      <div class="rivalry-timeline-date">${esc(row.date)}</div>
+    </div>
+  `).join('');
+}
+
 function rivalrySeasonTableHtml(view) {
   if (!view.seasonRows.length) {
     return '<tr><td colspan="6" class="muted">No recorded games between these teams.</td></tr>';
@@ -546,6 +660,30 @@ function renderRivalryTape(view, opts = {}) {
   el.innerHTML = rivalryTapeHtml(view);
 }
 
+function renderRivalryLeadMeter(view, opts = {}) {
+  const doc = docOrDefault(opts.doc);
+  if (!doc) return;
+  const el = doc.getElementById('rivalryLeadMeter');
+  if (!el) return;
+  el.innerHTML = rivalryLeadMeterHtml(view);
+}
+
+function renderRivalryHighlightBoard(view, opts = {}) {
+  const doc = docOrDefault(opts.doc);
+  if (!doc) return;
+  const el = doc.getElementById('rivalryHighlightBoard');
+  if (!el) return;
+  el.innerHTML = rivalryHighlightBoardHtml(view);
+}
+
+function renderRivalryTimeline(view, opts = {}) {
+  const doc = docOrDefault(opts.doc);
+  if (!doc) return;
+  const el = doc.getElementById('rivalryTimeline');
+  if (!el) return;
+  el.innerHTML = rivalryTimelineHtml(view);
+}
+
 function renderRivalrySeasonTable(view, opts = {}) {
   const doc = docOrDefault(opts.doc);
   if (!doc) return;
@@ -574,13 +712,19 @@ export {
   rivalryGameRows,
   rivalryGames,
   rivalryHeadlineHtml,
+  rivalryHighlightBoardHtml,
+  rivalryLeadMeterHtml,
+  rivalryTimelineHtml,
   rivalrySeasonBreakdown,
   rivalrySeasonTableHtml,
   rivalryGameTableHtml,
   rivalryTapeHtml,
+  renderRivalryHighlightBoard,
+  renderRivalryLeadMeter,
   renderRivalryGameTable,
   renderRivalryHeadline,
   renderRivalrySeasonTable,
+  renderRivalryTimeline,
   renderRivalryTape,
   summarizeRivalry,
 };

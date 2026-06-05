@@ -139,6 +139,11 @@ test('rivalry tab renders a tale of the tape and saved rivalry selection', async
   await expect(page.locator('#rivalryTeamB option[value="Joe"]')).toHaveCount(0);
   await expect(page.locator('#rivalryHeadline')).toContainText('Joe vs Joel');
   await expect(page.locator('#rivalryHeadline')).toContainText('Current streak:');
+  await expect(page.locator('#rivalryLeadMeter')).toContainText('Joe');
+  await expect(page.locator('#rivalryHighlightBoard .rivalry-highlight')).toHaveCount(4);
+  expect(await page.locator('#rivalryTapeGrid .stat').count()).toBeGreaterThan(0);
+  expect(await page.locator('#rivalryTimeline .rivalry-timeline-item').count()).toBeGreaterThan(0);
+  expect(await page.locator('#rivalryTimeline').evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
   await expect.poll(async () => page.evaluate(() => {
     const params = new URL(location.href).searchParams;
     return [params.get('tab'), params.get('rivalryTeamA'), params.get('rivalryTeamB')].join('|');

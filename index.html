@@ -19,6 +19,7 @@
   <nav class="tabs">
     <button class="tab active" id="tabHistoryBtn">League History</button>
     <button class="tab" id="tabRivalryBtn">Head to Head</button>
+    <button class="tab" id="tabTrophyBtn">Trophy Case</button>
   </nav>
 
   <main>
@@ -232,6 +233,57 @@
                 <th scope="col">Winner</th>
                 <th scope="col">Score</th>
                 <th scope="col">Margin</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="page-trophy" class="page">
+      <div class="card">
+        <div class="controls filters trophy-controls">
+          <select id="trophyOwnerSelect" aria-label="Trophy case owner"></select>
+        </div>
+      </div>
+
+      <div class="card" id="trophyHero"></div>
+
+      <div class="card">
+        <h3>Hardware</h3>
+        <div id="trophyHardwareGrid" class="trophy-grid"></div>
+      </div>
+
+      <div class="card">
+        <h3>Regular Season Resume</h3>
+        <div id="trophyRegularGrid" class="stats-grid"></div>
+      </div>
+
+      <div class="card">
+        <h3>Postseason Resume</h3>
+        <div id="trophyPostseasonGrid" class="stats-grid"></div>
+      </div>
+
+      <div class="card">
+        <h3>Weekly Awards</h3>
+        <div id="trophyWeeklyGrid" class="stats-grid"></div>
+      </div>
+
+      <div class="card">
+        <h3>Signature Seasons</h3>
+        <div class="table-wrap">
+          <table id="trophySeasonTable">
+            <thead>
+              <tr>
+                <th scope="col">Season</th>
+                <th scope="col">Record</th>
+                <th scope="col">Finish</th>
+                <th scope="col">Outcome</th>
+                <th scope="col">PF</th>
+                <th scope="col">PA</th>
+                <th scope="col">Diff</th>
+                <th scope="col">Notes</th>
               </tr>
             </thead>
             <tbody></tbody>

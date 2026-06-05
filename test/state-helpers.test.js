@@ -56,6 +56,22 @@ test('url helpers parse and rebuild rivalry state', () => {
   assert.equal(next, '/index.html?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel');
 });
 
+test('url helpers parse and rebuild trophy state', () => {
+  const parsed = parseUrlState('?tab=trophy&trophyOwner=Joe');
+  assert.equal(parsed.tab, 'trophy');
+  assert.equal(parsed.trophyOwner, 'Joe');
+  assert.equal(parsed.hasTrophy, true);
+  assert.equal(parsed.hasAny, true);
+
+  const next = buildUrlFromState({
+    tab: 'trophy',
+    selectedTrophyOwner: 'Joe',
+    pathname: '/index.html',
+    allTeams: '__ALL__',
+  });
+  assert.equal(next, '/index.html?tab=trophy&trophyOwner=Joe');
+});
+
 test('url helpers preserve opponent selections with spaces and punctuation', () => {
   const next = buildUrlFromState({
     selectedTeam: 'Joe',

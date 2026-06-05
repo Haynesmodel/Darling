@@ -187,6 +187,39 @@ test('head to head url restores the rivalry page and selected teams', async ({ p
   })).toBe('rivalry|Joe|Joel');
 });
 
+test('trophy case url restores the trophy page and owner selection', async ({ page }) => {
+  await page.goto('/?tab=trophy&trophyOwner=Joe');
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#tabTrophyBtn')).toHaveClass(/active/);
+  await expect(page.locator('#trophyOwnerSelect')).toHaveValue('Joe');
+  expect(await page.locator('#headerBanners .banner').count()).toBeGreaterThan(0);
+  await expect(page.locator('#trophyHero')).toContainText('Joe Trophy Case');
+  expect(await page.locator('#trophyHardwareGrid .trophy-card').count()).toBeGreaterThan(0);
+
+  const ownerOptions = await page.locator('#trophyOwnerSelect option').evaluateAll(options =>
+    options.map(option => option.value).filter(value => value && value !== '__ALL__')
+  );
+  expect(ownerOptions.length).toBeGreaterThan(1);
+
+  await page.locator('#trophyOwnerSelect').selectOption('Joel');
+  await expect(page.locator('#trophyOwnerSelect')).toHaveValue('Joel');
+  await expect(page.locator('#trophyHero')).toContainText('Joel Trophy Case');
+  await expect.poll(async () => page.evaluate(() => {
+    const params = new URL(location.href).searchParams;
+    return [params.get('tab'), params.get('trophyOwner')].join('|');
+  })).toBe('trophy|Joel');
+
+  await page.locator('#tabHistoryBtn').click();
+  await expect(page.locator('#tabHistoryBtn')).toHaveClass(/active/);
+  await expect(page.locator('#teamSelect')).toBeVisible();
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('#exportCsv').click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe('history_Joe.csv');
+});
+
 test('url state restores selected team and facet filters on load', async ({ page }) => {
   await page.goto('/?team=Joe&seasons=2025&weeks=1&opps=Shemer&types=Regular');
   await page.waitForLoadState('networkidle');

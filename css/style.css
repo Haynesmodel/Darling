@@ -38,6 +38,7 @@ main{padding:16px}
 .page.visible{display:grid;grid-template-columns:3fr 1fr;gap:16px}
 #page-history.page.visible{grid-template-columns:1fr}
 #page-rivalry.page.visible{grid-template-columns:1fr}
+#page-trophy.page.visible{grid-template-columns:1fr}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:16px}
 .card h3{margin:4px 0 10px;font-size:16px}
 .status-banner{
@@ -65,6 +66,8 @@ main{padding:16px}
 .controls input,.controls select{padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px}
 .rivalry-controls{align-items:center}
 .rivalry-controls select{min-width:180px}
+.trophy-controls{align-items:center}
+.trophy-controls select{min-width:220px}
 .rivalry-vs{font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
 .btn{border:1px solid var(--border);background:#fff;padding:6px 10px;border-radius:999px;font-size:13px;cursor:pointer}
 .btn:hover{background:#f3f4f6}
@@ -111,6 +114,101 @@ tbody tr:nth-child(even){background:var(--row-alt)}
 .stat .value{font-size:16px;font-weight:700}
 .stat .sub{font-size:12px;color:var(--muted);margin-top:4px}
 .callout{margin-top:12px;padding:12px;border-radius:12px;background:#eef2ff;border:1px solid #c7d2fe;font-size:14px;font-weight:600}
+
+.trophy-hero{
+  display:grid;
+  gap:12px;
+  padding:16px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  background:
+    linear-gradient(135deg, rgba(37,99,235,.08), rgba(139,92,246,.05)),
+    #fff;
+}
+.trophy-kicker{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  margin-bottom:6px;
+  padding:4px 10px;
+  border-radius:999px;
+  background:#eef2ff;
+  color:#1d4ed8;
+  font-size:12px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.trophy-hero h3{margin:0;font-size:28px;line-height:1.1}
+.trophy-hero-lines{display:grid;gap:6px;margin-top:10px}
+.trophy-hero-lines p{margin:0;color:var(--text);font-weight:600}
+
+.trophy-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:10px;
+}
+.trophy-card{
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px;
+  background:#fff;
+  box-shadow:0 1px 0 rgba(17,24,39,.02);
+}
+.trophy-card.primary{
+  border-color:#bfdbfe;
+  box-shadow:inset 0 0 0 1px rgba(37,99,235,.18);
+}
+.trophy-card.warning{
+  border-color:#fde68a;
+  box-shadow:inset 0 0 0 1px rgba(245,158,11,.18);
+}
+.trophy-card .label{
+  font-size:12px;
+  color:var(--muted);
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.trophy-card .value{
+  margin-top:4px;
+  font-size:22px;
+  font-weight:900;
+  line-height:1.1;
+}
+.trophy-card .sub{
+  margin-top:6px;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.35;
+}
+.trophy-year-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:10px;
+}
+.trophy-year-chip{
+  display:inline-flex;
+  align-items:center;
+  padding:3px 8px;
+  border-radius:999px;
+  background:#f3f4f6;
+  color:#374151;
+  font-size:11px;
+  font-weight:700;
+}
+.trophy-season-note{
+  display:inline-flex;
+  align-items:center;
+  padding:3px 8px;
+  margin:2px 4px 2px 0;
+  border-radius:999px;
+  background:#eef2ff;
+  color:#3730a3;
+  font-size:11px;
+  font-weight:700;
+}
 
 .rivalry-headline{display:grid;gap:8px}
 .rivalry-title{font-size:24px;font-weight:800;line-height:1.1}

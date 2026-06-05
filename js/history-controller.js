@@ -536,6 +536,7 @@ function renderOppBreakdown(team, games) {
 function renderHistory() {
   const teamSel = document.getElementById('teamSelect');
   if (teamSel && selectedTeam !== teamSel.value) selectedTeam = teamSel.value;
+  updateHeaderForTeam(selectedTeam);
 
   const filtered = filteredGamesForCurrentState();
   const renderKeys = buildHistoryRenderKeys(currentFacetState(), filtered, {

@@ -137,6 +137,11 @@ test('rivalry tab renders a tale of the tape and saved rivalry selection', async
   await expect(page.locator('#page-rivalry')).toContainText('Head to Head');
   await expect(page.locator('header h2')).toHaveText('Joe');
 
+  await page.locator('#tabHistoryBtn').click();
+  await expect(page.locator('#tabHistoryBtn')).toHaveClass(/active/);
+  await expect(page.locator('header h2')).toHaveText('Joel');
+
+  await page.locator('#tabRivalryBtn').click();
   await page.locator('#rivalryTeamA').selectOption('Joe');
   await expect(page.locator('#rivalryTeamA')).toHaveValue('Joe');
   await expect(page.locator('#rivalryTeamB')).toHaveValue('Joel');

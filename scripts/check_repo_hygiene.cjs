@@ -44,7 +44,7 @@ function checkRepoHygiene(root = process.cwd()) {
     }
   }
 
-  for (const relPath of jsFiles(root, 'js').filter(file => file !== 'js/app.js' && file !== 'js/easter-eggs.js')) {
+  for (const relPath of jsFiles(root, 'js').filter(file => file !== 'js/app.js')) {
     const src = read(root, relPath);
     if (!/\bexport\s*\{/.test(src)) {
       fail(`${relPath} must export named helper APIs.`);

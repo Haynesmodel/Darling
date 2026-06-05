@@ -61,7 +61,10 @@ import {
   leagueSummaryTablesHtml,
   teamFunFactsView,
 } from './league-renderers.js';
-import './easter-eggs.js';
+import {
+  setGroupBackdrop,
+  triggerGroupEgg,
+} from './easter-eggs.js';
 
 /* ---------- Global State ---------- */
 
@@ -642,12 +645,8 @@ function renderOppBreakdown(team, games){
   if(calloutsBox){
     calloutsBox.innerHTML = view.calloutsHtml;
     if(view.shouldUpdateBackdrop){
-      if(view.triggerSlug && window.triggerGroupEgg){
-        try{ window.triggerGroupEgg(view.triggerSlug); }catch(e){}
-      }
-      if(window.setGroupBackdrop){
-        try{ window.setGroupBackdrop(view.backdropSlug || null); }catch(e){}
-      }
+      if(view.triggerSlug) triggerGroupEgg(view.triggerSlug);
+      setGroupBackdrop(view.backdropSlug || null);
     }
   }
 }

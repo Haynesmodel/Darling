@@ -51,6 +51,8 @@ test('page loads and renders the history tables', async ({ page }) => {
 
   await expect(page.locator('#appStatus')).toBeHidden();
   await expect(page.locator('header h2')).toHaveText('Joe');
+  expect(await page.evaluate(() => typeof window.triggerGroupEgg)).toBe('undefined');
+  expect(await page.evaluate(() => typeof window.setGroupBackdrop)).toBe('undefined');
 
   const seasonCount = await page.locator('#seasonRecapTable tbody tr').count();
   const weekCount = await page.locator('#weekTable tbody tr').count();

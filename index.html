@@ -20,6 +20,7 @@
     <button class="tab active" id="tabHistoryBtn">League History</button>
     <button class="tab" id="tabRivalryBtn">Head to Head</button>
     <button class="tab" id="tabTrophyBtn">Trophy Case</button>
+    <button class="tab" id="tabDynastyBtn">Dynasty Rankings</button>
   </nav>
 
   <main>
@@ -293,6 +294,68 @@
           </table>
         </div>
       </section>
+    </section>
+
+    <section id="page-dynasty" class="page">
+      <div class="card">
+        <div class="controls filters dynasty-controls">
+          <label>Mode:
+            <select id="dynastyModeSelect"></select>
+          </label>
+          <label>Owner:
+            <select id="dynastyOwnerSelect"></select>
+          </label>
+          <label>Start:
+            <select id="dynastyStartSeason"></select>
+          </label>
+          <label>End:
+            <select id="dynastyEndSeason"></select>
+          </label>
+          <label>Minimum Seasons to Qualify:
+            <select id="dynastyMinSeasons"></select>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="dynastySaundersToggle" checked />
+            Include Saunders penalties
+          </label>
+        </div>
+        <p class="dynasty-control-hint" id="dynastyControlHint">
+          Individual scores one owner across the chosen range. Minimum Seasons to Qualify is the cutoff for being scored, and Saunders penalties stay optional.
+        </p>
+      </div>
+
+      <div class="card" id="dynastyCalculatorHero"></div>
+
+      <div class="card">
+        <h3>Score Breakdown</h3>
+        <div id="dynastyScoreBreakdown"></div>
+      </div>
+
+      <div class="card">
+        <h3>Period Comparison</h3>
+        <div id="dynastyPeriodLeaderboard"></div>
+      </div>
+
+      <div class="card">
+        <h3>Best Dynasty Windows</h3>
+        <div id="dynastyBestWindows"></div>
+      </div>
+
+      <div class="card">
+        <div id="dynastyTrendChart"></div>
+      </div>
+
+      <div class="card">
+        <h3>Era Heatmap</h3>
+        <div id="dynastyHeatmap"></div>
+      </div>
+
+      <div class="card">
+        <h3>Slumps</h3>
+        <div id="dynastySlumps"></div>
+      </div>
+
+      <div id="dynastyWindowModal" class="dynasty-modal" hidden aria-hidden="true"></div>
     </section>
   </main>
 

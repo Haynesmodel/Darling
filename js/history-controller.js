@@ -88,6 +88,23 @@ import {
   renderTrophyScarList,
   renderTrophySeasonLedger,
 } from './trophy-renderers.js';
+import {
+  buildDynastyControls,
+} from './dynasty-controls.js';
+import {
+  findDynastyWindowByKey,
+  findDynastyWindowByKeyFromRows,
+  buildDynastyViewModel,
+  renderDynastyCalculatorHero,
+  renderDynastyScoreBreakdown,
+  renderDynastyPeriodLeaderboard,
+  renderDynastyBestWindows,
+  renderDynastyHeatmap,
+  renderDynastyTrendChart,
+  renderDynastyWindowModal,
+  renderDynastySlumpModal,
+  renderDynastySlumps,
+} from './dynasty-renderers.js';
 
 const DEFAULT_TEAM = 'Joe';
 const ALL_TEAMS = '__ALL__';
@@ -108,6 +125,7 @@ let selectedRounds = new Set();
 let selectedRivalryTeamA = DEFAULT_TEAM;
 let selectedRivalryTeamB = null;
 let selectedTrophyOwner = DEFAULT_TEAM;
+let selectedDynastyState = null;
 let universe = { seasons: [], weeks: [], opponents: [], types: [], rounds: [] };
 let isApplyingUrlState = false;
 let derivedWeeksSet = new Set();
@@ -305,6 +323,220 @@ function renderTrophy() {
   updateUrlFromState({
     tab: 'trophy',
     selectedTrophyOwner,
+    isApplyingUrlState,
+  });
+}
+
+function handleDynastyChange(next) {
+  selectedDynastyState = {
+    ...(selectedDynastyState || {}),
+    ...next,
+  };
+  renderDynasty();
+}
+
+function handleDynastyTrendToggle(owner) {
+  if (!owner) return;
+  const current = Array.isArray(selectedDynastyState?.chartHiddenOwners)
+    ? selectedDynastyState.chartHiddenOwners
+    : [];
+  const hidden = new Set(current);
+  if (hidden.has(owner)) hidden.delete(owner);
+  else hidden.add(owner);
+  selectedDynastyState = {
+    ...(selectedDynastyState || {}),
+    chartHiddenOwners: [...hidden].sort((a, b) => a.localeCompare(b)),
+  };
+  renderDynasty();
+}
+
+function handleDynastyWindowCardClick(key) {
+  if (!key) return;
+  selectedDynastyState = {
+    ...(selectedDynastyState || {}),
+    selectedWindowKey: key,
+    selectedWindowKind: 'playoffs',
+  };
+  renderDynasty();
+}
+
+function handleDynastySlumpCardClick(key) {
+  if (!key) return;
+  selectedDynastyState = {
+    ...(selectedDynastyState || {}),
+    selectedWindowKey: key,
+    selectedWindowKind: 'saunders',
+  };
+  renderDynasty();
+}
+
+function handleDynastyWindowModalClose() {
+  if (!selectedDynastyState?.selectedWindowKey) return;
+  selectedDynastyState = {
+    ...(selectedDynastyState || {}),
+    selectedWindowKey: null,
+    selectedWindowKind: null,
+  };
+  renderDynasty();
+}
+
+function ensureDynastyControls(initialState = {}) {
+  const modeSelect = document.getElementById('dynastyModeSelect');
+  if (!modeSelect) return null;
+
+  if (!modeSelect.dataset.ready) {
+    const urlState = parseUrlState();
+    const built = buildDynastyControls({
+      doc: document,
+      seasonSummaries,
+      selectedState: initialState,
+      urlState,
+      allTeams: ALL_TEAMS,
+      onChange: handleDynastyChange,
+    });
+    selectedDynastyState = built;
+    modeSelect.dataset.ready = '1';
+  }
+
+  return modeSelect;
+}
+
+function ensureDynastyTrendControls() {
+  const container = document.getElementById('dynastyTrendChart');
+  if (!container || container.dataset.bound) return container;
+  container.addEventListener('click', event => {
+    const target = event.target instanceof Element ? event.target : null;
+    const button = target?.closest('[data-dynasty-trend-toggle="1"]');
+    if (!button || !container.contains(button)) return;
+    event.preventDefault();
+    handleDynastyTrendToggle(button.dataset.owner);
+  });
+  container.dataset.bound = '1';
+  return container;
+}
+
+function ensureDynastyWindowInteractions() {
+  const bestWindows = document.getElementById('dynastyBestWindows');
+  const slumps = document.getElementById('dynastySlumps');
+  const modal = document.getElementById('dynastyWindowModal');
+  if (bestWindows && !bestWindows.dataset.bound) {
+    bestWindows.addEventListener('click', event => {
+      const target = event.target instanceof Element ? event.target : null;
+      const button = target?.closest('.dynasty-window-card[data-window-key]');
+      if (!button || !bestWindows.contains(button)) return;
+      event.preventDefault();
+      handleDynastyWindowCardClick(button.dataset.windowKey);
+    });
+    bestWindows.dataset.bound = '1';
+  }
+  if (slumps && !slumps.dataset.bound) {
+    slumps.addEventListener('click', event => {
+      const target = event.target instanceof Element ? event.target : null;
+      const button = target?.closest('.dynasty-slump-item[data-window-key]');
+      if (!button || !slumps.contains(button)) return;
+      event.preventDefault();
+      handleDynastySlumpCardClick(button.dataset.windowKey);
+    });
+    slumps.dataset.bound = '1';
+  }
+  if (modal && !modal.dataset.bound) {
+    modal.addEventListener('click', event => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target?.closest('[data-dynasty-modal-close="1"]')) return;
+      event.preventDefault();
+      handleDynastyWindowModalClose();
+    });
+    modal.dataset.bound = '1';
+  }
+  if (!document.body.dataset.dynastyModalEscBound) {
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && selectedDynastyState?.selectedWindowKey) {
+        handleDynastyWindowModalClose();
+      }
+    });
+    document.body.dataset.dynastyModalEscBound = '1';
+  }
+}
+
+function updateHeaderForDynasty(score) {
+  const h2 = document.querySelector('header h2');
+  const owner = score?.owner || null;
+  if (h2) h2.textContent = owner ? `${owner} Dynasty Rankings` : 'Dynasty Rankings';
+  if (owner) renderHeaderBanners(owner, seasonSummaries);
+  else renderHeaderBanners('', seasonSummaries);
+  if (document.title !== undefined) {
+    document.title = owner ? `${owner} Dynasty Rankings` : 'Dynasty Rankings';
+  }
+}
+
+function renderDynasty() {
+  if (!selectedDynastyState) return;
+
+  const view = buildDynastyViewModel({
+    leagueGames,
+    seasonSummaries,
+    seasonAggregates: seasonAggregatesAllTeams(),
+    ...selectedDynastyState,
+    allTeams: ALL_TEAMS,
+  });
+  const score = view.selectedScore;
+  updateHeaderForDynasty(score);
+  const selectedWindowKey = selectedDynastyState?.selectedWindowKey || '';
+  const selectedWindowKind = selectedDynastyState?.selectedWindowKind || 'playoffs';
+  const selectedWindow = selectedWindowKind === 'saunders'
+    ? findDynastyWindowByKeyFromRows(view.slumps.lowestScores, selectedWindowKey)
+    : findDynastyWindowByKey(view.bestWindows, selectedWindowKey);
+
+  const signature = JSON.stringify({
+    mode: view.controls.mode,
+    owner: view.controls.owner,
+    startSeason: view.controls.startSeason,
+    endSeason: view.controls.endSeason,
+    requestedStartSeason: view.controls.requestedStartSeason,
+    requestedEndSeason: view.controls.requestedEndSeason,
+    minSeasons: view.controls.minSeasons,
+    includeSaundersPenalty: view.controls.includeSaundersPenalty,
+    score: score?.score ?? null,
+    scoreOwner: score?.owner ?? null,
+    leaderboardTop: view.periodScores[0]?.owner ?? null,
+    windowsTop: view.bestWindows.topOverall[0]?.owner ?? null,
+    trendHidden: (selectedDynastyState?.chartHiddenOwners || []).slice().sort().join('|'),
+    selectedWindowKey,
+    selectedWindowKind,
+  });
+
+  renderIfChanged('dynasty', signature, () => {
+    renderDynastyCalculatorHero(score, { doc: document });
+    renderDynastyScoreBreakdown(score, { doc: document });
+    renderDynastyPeriodLeaderboard(view.comparisonRows, {
+      doc: document,
+      mode: view.controls.mode,
+      windowSizeLabel: view.bestWindows.windowSizeLabel,
+    });
+    renderDynastyBestWindows(view.bestWindows, { doc: document });
+    renderDynastyTrendChart(view.trendChart, {
+      doc: document,
+      hiddenOwners: selectedDynastyState?.chartHiddenOwners || [],
+    });
+    if (selectedWindowKind === 'saunders') {
+      renderDynastySlumpModal(selectedWindow, { doc: document, allGames: leagueGames });
+    } else {
+      renderDynastyWindowModal(selectedWindow, { doc: document, allGames: leagueGames });
+    }
+    renderDynastyHeatmap(view.heatmap, { doc: document });
+    renderDynastySlumps(view.slumps, { doc: document });
+  });
+  ensureDynastyTrendControls();
+  ensureDynastyWindowInteractions();
+
+  updateUrlFromState({
+    tab: 'dynasty',
+    selectedDynastyMode: view.controls.mode,
+    selectedDynastyOwner: view.controls.owner,
+    selectedDynastyStartSeason: view.controls.requestedStartSeason ?? view.controls.startSeason,
+    selectedDynastyEndSeason: view.controls.requestedEndSeason ?? view.controls.endSeason,
+    selectedDynastyMinSeasons: view.controls.minSeasons,
+    selectedDynastySaunders: view.controls.includeSaundersPenalty,
     isApplyingUrlState,
   });
 }
@@ -762,6 +994,15 @@ function bindListeners() {
     });
   }
 
+  const dynastyTab = document.getElementById('tabDynastyBtn');
+  if (dynastyTab) {
+    dynastyTab.addEventListener('click', () => {
+      showPage('dynasty');
+      ensureDynastyControls();
+      renderDynasty();
+    });
+  }
+
   document.addEventListener('click', handleDocumentClick);
   document.addEventListener('keydown', handleKeydown);
 
@@ -773,7 +1014,7 @@ function bindListeners() {
 
 async function bootstrapHistoryApp() {
   const urlState = parseUrlState();
-  showPage(urlState.tab === 'rivalry' ? 'rivalry' : urlState.tab === 'trophy' ? 'trophy' : 'history');
+  showPage(urlState.tab === 'rivalry' ? 'rivalry' : urlState.tab === 'trophy' ? 'trophy' : urlState.tab === 'dynasty' ? 'dynasty' : 'history');
   const loaded = await loadLeagueJSON();
   if (!loaded) return;
   bindListeners();
@@ -790,6 +1031,22 @@ async function bootstrapHistoryApp() {
       selectedOwner: urlState.trophyOwner || selectedTrophyOwner,
     });
     renderTrophy();
+    return;
+  }
+  if (urlState.tab === 'dynasty') {
+    isApplyingUrlState = true;
+    ensureDynastyControls({
+      mode: urlState.dynastyMode || 'calculator',
+      owner: urlState.dynastyOwner || null,
+      startSeason: urlState.dynastyStart,
+      endSeason: urlState.dynastyEnd,
+      requestedStartSeason: urlState.dynastyStart,
+      requestedEndSeason: urlState.dynastyEnd,
+      minSeasons: urlState.dynastyMinSeasons ?? 2,
+      includeSaundersPenalty: urlState.dynastySaunders ?? true,
+    });
+    renderDynasty();
+    isApplyingUrlState = false;
     return;
   }
   ensureHistoryControls();

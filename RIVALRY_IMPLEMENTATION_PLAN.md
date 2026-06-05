@@ -71,9 +71,9 @@ Suggested structure:
 </section>
 ```
 
-## 2. Extend App State
+## 2. Add A Rivalry Controller
 
-Update `js/app.js` with rivalry-specific state:
+Create `js/rivalry-controller.js` for rivalry-specific state, render orchestration, and tab lifecycle, with `js/app.js` staying as the bootstrap/import surface only:
 
 ```js
 let selectedRivalrySlug = '';
@@ -81,23 +81,17 @@ let rivalryTeamA = DEFAULT_TEAM;
 let rivalryTeamB = null;
 ```
 
-Add tab handling alongside the existing history tab:
+Add tab handling alongside the existing history tab inside the controller:
 
 ```js
-const rivalryTab = document.getElementById('tabRivalryBtn');
-
-rivalryTab.addEventListener('click', () => {
-  showPage('rivalry');
-  buildRivalryControlsOnce();
-  renderRivalry();
-});
+// handled by js/rivalry-controller.js
 ```
 
-The existing `showPage()` helper likely already supports toggling pages by id. If it assumes only `history`, extend it to support `rivalry`.
+The existing `showPage()` helper likely already supports toggling pages by id. If it assumes only `history`, extend the shared page helper to support `rivalry` without moving page state into `js/app.js`.
 
 ## 3. Add Rivalry Control Builder
 
-Create a new function in `app.js`:
+Create `js/rivalry-controls.js` for the control builder and DOM read/write helpers:
 
 ```js
 function buildRivalryControls() {
@@ -460,7 +454,7 @@ Add UI coverage in `test/ui/app.spec.js`:
 ## 14. Implementation Order
 
 1. Add Rivalry tab and empty Rivalry page markup.
-2. Extend `showPage()` / tab behavior.
+2. Extend shared page/tab behavior if needed.
 3. Add control builder for Team A, Team B, saved rivalries.
 4. Add `rivalry-renderers.js` with pure view model functions.
 5. Render headline, tape cards, season table, game log.

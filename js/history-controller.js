@@ -75,6 +75,19 @@ import {
   updateFacetCountTexts,
 } from './history-controls.js';
 import { opponentOptions, teamOptions } from './facet-helpers.js';
+import {
+  buildTrophyControls,
+} from './trophy-controls.js';
+import {
+  buildTrophyCaseViewModel,
+  renderTrophyHero,
+  renderTrophyHardwareShelf,
+  renderTrophyRankStrip,
+  renderTrophyCareerShape,
+  renderTrophyAchievementList,
+  renderTrophyScarList,
+  renderTrophySeasonLedger,
+} from './trophy-renderers.js';
 
 const DEFAULT_TEAM = 'Joe';
 const ALL_TEAMS = '__ALL__';
@@ -94,6 +107,7 @@ let selectedTypes = new Set();
 let selectedRounds = new Set();
 let selectedRivalryTeamA = DEFAULT_TEAM;
 let selectedRivalryTeamB = null;
+let selectedTrophyOwner = DEFAULT_TEAM;
 let universe = { seasons: [], weeks: [], opponents: [], types: [], rounds: [] };
 let isApplyingUrlState = false;
 let derivedWeeksSet = new Set();
@@ -185,6 +199,11 @@ function handleRivalryChange(next) {
   renderRivalry();
 }
 
+function handleTrophyChange(next) {
+  selectedTrophyOwner = next.selectedOwner;
+  renderTrophy();
+}
+
 function ensureRivalryControls(initialState = {}) {
   const teamASelect = document.getElementById('rivalryTeamA');
   if (!teamASelect) return null;
@@ -209,13 +228,38 @@ function ensureRivalryControls(initialState = {}) {
   return teamASelect;
 }
 
+function ensureTrophyControls(initialState = {}) {
+  const ownerSelect = document.getElementById('trophyOwnerSelect');
+  if (!ownerSelect) return null;
+
+  if (!ownerSelect.dataset.ready) {
+    const urlState = parseUrlState();
+    const built = buildTrophyControls({
+      doc: document,
+      leagueGames,
+      seasonSummaries,
+      selectedOwner: initialState.selectedOwner
+        || urlState.trophyOwner
+        || urlState.team
+        || selectedTrophyOwner
+        || selectedTeam,
+      allTeams: ALL_TEAMS,
+      onChange: handleTrophyChange,
+    });
+    selectedTrophyOwner = built.selectedOwner;
+    ownerSelect.dataset.ready = '1';
+  }
+
+  return ownerSelect;
+}
+
 function renderRivalry() {
   if (!selectedRivalryTeamA || !selectedRivalryTeamB) return;
 
   const view = buildRivalryViewModel(selectedRivalryTeamA, selectedRivalryTeamB, leagueGames);
   const signature = `${selectedRivalryTeamA}|${selectedRivalryTeamB}|${view.summary.overall.g}`;
+  updateHeaderForTeam(selectedRivalryTeamA);
   renderIfChanged('rivalry', signature, () => {
-    updateHeaderForTeam(selectedRivalryTeamA);
     renderRivalryHeadline(view, { doc: document });
     renderRivalryLeadMeter(view, { doc: document });
     renderRivalryHighlightBoard(view, { doc: document });
@@ -232,6 +276,35 @@ function renderRivalry() {
     tab: 'rivalry',
     selectedRivalryTeamA,
     selectedRivalryTeamB,
+    isApplyingUrlState,
+  });
+}
+
+function renderTrophy() {
+  if (!selectedTrophyOwner) return;
+
+  const signature = selectedTrophyOwner;
+  updateHeaderForTrophy(selectedTrophyOwner);
+  renderIfChanged('trophy', signature, () => {
+    const view = buildTrophyCaseViewModel(selectedTrophyOwner, {
+      leagueGames,
+      seasonSummaries,
+      champNoteFn: champNote,
+      saundersNoteFn: saundersNote,
+    });
+
+    renderTrophyHero(view, { doc: document });
+    renderTrophyHardwareShelf(view, { doc: document });
+    renderTrophyRankStrip(view, { doc: document });
+    renderTrophyCareerShape(view, { doc: document });
+    renderTrophyAchievementList(view, { doc: document });
+    renderTrophyScarList(view, { doc: document });
+    renderTrophySeasonLedger(view, { doc: document });
+  });
+
+  updateUrlFromState({
+    tab: 'trophy',
+    selectedTrophyOwner,
     isApplyingUrlState,
   });
 }
@@ -255,8 +328,6 @@ async function loadLeagueJSON() {
     filteredGamesCacheValue = [];
     renderMetrics.filterRuns = 0;
     lastEffectKey = null;
-
-    renderHeaderBannersForOwner(DEFAULT_TEAM);
     clearAppStatus();
     return true;
   } catch (e) {
@@ -266,12 +337,17 @@ async function loadLeagueJSON() {
   }
 }
 
-function renderHeaderBannersForOwner(owner) {
-  renderHeaderBanners(owner, seasonSummaries);
-}
-
 function updateHeaderForTeam(team) {
   updateTeamHeader(team, seasonSummaries);
+}
+
+function updateHeaderForTrophy(owner) {
+  const h2 = document.querySelector('header h2');
+  if (h2) h2.textContent = owner;
+  renderHeaderBanners(owner, seasonSummaries);
+  if (document.title !== undefined) {
+    document.title = `${owner} Trophy Case`;
+  }
 }
 
 function syncFacetStateFromDom() {
@@ -677,6 +753,15 @@ function bindListeners() {
     });
   }
 
+  const trophyTab = document.getElementById('tabTrophyBtn');
+  if (trophyTab) {
+    trophyTab.addEventListener('click', () => {
+      showPage('trophy');
+      ensureTrophyControls();
+      renderTrophy();
+    });
+  }
+
   document.addEventListener('click', handleDocumentClick);
   document.addEventListener('keydown', handleKeydown);
 
@@ -688,7 +773,7 @@ function bindListeners() {
 
 async function bootstrapHistoryApp() {
   const urlState = parseUrlState();
-  showPage(urlState.tab === 'rivalry' ? 'rivalry' : 'history');
+  showPage(urlState.tab === 'rivalry' ? 'rivalry' : urlState.tab === 'trophy' ? 'trophy' : 'history');
   const loaded = await loadLeagueJSON();
   if (!loaded) return;
   bindListeners();
@@ -698,6 +783,13 @@ async function bootstrapHistoryApp() {
       selectedTeamB: urlState.rivalryTeamB || selectedRivalryTeamB,
     });
     renderRivalry();
+    return;
+  }
+  if (urlState.tab === 'trophy') {
+    ensureTrophyControls({
+      selectedOwner: urlState.trophyOwner || selectedTrophyOwner,
+    });
+    renderTrophy();
     return;
   }
   ensureHistoryControls();

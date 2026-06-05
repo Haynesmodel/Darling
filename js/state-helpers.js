@@ -40,7 +40,8 @@ function parseUrlState(search) {
   const tab = params.get('tab') || null;
   const rivalryTeamA = params.get('rivalryTeamA') || null;
   const rivalryTeamB = params.get('rivalryTeamB') || null;
-  const hasAny = !!(team || (seasons && seasons.length) || (weeks && weeks.length) || (opps && opps.length) || (types && types.length) || (rounds && rounds.length));
+  const trophyOwner = params.get('trophyOwner') || null;
+  const hasAny = !!(team || trophyOwner || (seasons && seasons.length) || (weeks && weeks.length) || (opps && opps.length) || (types && types.length) || (rounds && rounds.length));
   return {
     team,
     seasons: seasons ? new Set(seasons) : null,
@@ -51,7 +52,9 @@ function parseUrlState(search) {
     tab,
     rivalryTeamA,
     rivalryTeamB,
+    trophyOwner,
     hasRivalry: tab === 'rivalry' || !!rivalryTeamA || !!rivalryTeamB,
+    hasTrophy: tab === 'trophy' || !!trophyOwner,
     hasAny,
   };
 }
@@ -99,10 +102,16 @@ function buildUrlFromState(opts = {}) {
 
   const params = new URLSearchParams();
   if (tab) params.set('tab', tab);
-  if (selectedTeam && selectedTeam !== allTeams) params.set('team', selectedTeam);
+  if (tab !== 'trophy' && selectedTeam && selectedTeam !== allTeams) params.set('team', selectedTeam);
   if (tab === 'rivalry') {
     if (selectedRivalryTeamA) params.set('rivalryTeamA', selectedRivalryTeamA);
     if (selectedRivalryTeamB) params.set('rivalryTeamB', selectedRivalryTeamB);
+  }
+  if (tab === 'trophy') {
+    const selectedTrophyOwner = Object.prototype.hasOwnProperty.call(opts, 'selectedTrophyOwner')
+      ? opts.selectedTrophyOwner
+      : (selectedTeam && selectedTeam !== allTeams ? selectedTeam : null);
+    if (selectedTrophyOwner) params.set('trophyOwner', selectedTrophyOwner);
   }
   const setIf = (key, set, uni) => { if (isRestrictiveFn(set, uni)) params.set(key, [...set].join(',')); };
   setIf('seasons', selectedSeasons, universe.seasons || []);

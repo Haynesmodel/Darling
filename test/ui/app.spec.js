@@ -187,6 +187,74 @@ test('head to head url restores the rivalry page and selected teams', async ({ p
   })).toBe('rivalry|Joe|Joel');
 });
 
+test('trophy case url restores the trophy page and owner selection', async ({ page }) => {
+  await page.goto('/?tab=trophy&trophyOwner=Joe');
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#tabTrophyBtn')).toHaveClass(/active/);
+  await expect(page.locator('#trophyOwnerSelect')).toHaveValue('Joe');
+  expect(await page.locator('#headerBanners .banner').count()).toBeGreaterThan(0);
+  await expect(page.locator('#trophyHero')).toContainText('Joe');
+  await expect(page.locator('#trophyHero')).toContainText(/Dynasty Threat|Contender Profile|Regular Season Merchant|Playoff Riser|Snakebitten|Boom\/Bust|Saunders Survivor|Chaos Team|Rebuild Resume/);
+  expect(await page.locator('#trophyHardwareShelf .trophy-hardware-card').count()).toBeGreaterThan(0);
+  await expect(page.locator('#trophyHardwareShelf')).toContainText('Byes');
+  expect(await page.locator('#trophyRankStrip .trophy-rank-pill').count()).toBeGreaterThan(0);
+  await expect(page.locator('#trophyRankStrip')).not.toContainText('Actual:');
+  await expect(page.locator('#trophyCareerShape')).toContainText('Playoff cutoff is 6th');
+  await expect(page.locator('#trophyAchievementList')).toContainText('Best regular season');
+  await expect(page.locator('#trophyScarList')).toContainText('Most unlucky season');
+  expect(await page.locator('#trophySeasonTable tbody tr').count()).toBeGreaterThan(0);
+
+  const ownerOptions = await page.locator('#trophyOwnerSelect option').evaluateAll(options =>
+    options.map(option => option.value).filter(value => value && value !== '__ALL__')
+  );
+  expect(ownerOptions.length).toBeGreaterThan(1);
+
+  await page.locator('#trophyOwnerSelect').selectOption('Joel');
+  await expect(page.locator('#trophyOwnerSelect')).toHaveValue('Joel');
+  await expect(page.locator('#trophyHero')).toContainText('Joel');
+  await expect.poll(async () => page.evaluate(() => {
+    const params = new URL(location.href).searchParams;
+    return [params.get('tab'), params.get('trophyOwner')].join('|');
+  })).toBe('trophy|Joel');
+
+  await page.locator('#tabHistoryBtn').click();
+  await expect(page.locator('#tabHistoryBtn')).toHaveClass(/active/);
+  await expect(page.locator('#teamSelect')).toBeVisible();
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('#exportCsv').click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe('history_Joe.csv');
+});
+
+test('trophy case first viewport stacks hero shelf and rank strip without overlap on mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?tab=trophy&trophyOwner=Joe');
+  await page.waitForLoadState('networkidle');
+
+  const hero = page.locator('#trophyHero');
+  const shelf = page.locator('#trophyHardwareShelf');
+  const rankStrip = page.locator('#trophyRankStrip');
+
+  await expect(hero).toBeVisible();
+  await expect(shelf).toBeVisible();
+  await expect(rankStrip).toBeVisible();
+
+  const heroBox = await hero.boundingBox();
+  const shelfBox = await shelf.boundingBox();
+  const rankBox = await rankStrip.boundingBox();
+  expect(heroBox).toBeTruthy();
+  expect(shelfBox).toBeTruthy();
+  expect(rankBox).toBeTruthy();
+  expect(heroBox.width).toBeLessThanOrEqual(390);
+  expect(shelfBox.width).toBeLessThanOrEqual(390);
+  expect(rankBox.width).toBeLessThanOrEqual(390);
+  expect(heroBox.y + heroBox.height).toBeLessThanOrEqual(shelfBox.y + 2);
+  expect(shelfBox.y + shelfBox.height).toBeLessThanOrEqual(rankBox.y + 2);
+  expect(await page.locator('#trophyHero').textContent()).toContain('Joe');
+});
+
 test('url state restores selected team and facet filters on load', async ({ page }) => {
   await page.goto('/?team=Joe&seasons=2025&weeks=1&opps=Shemer&types=Regular');
   await page.waitForLoadState('networkidle');

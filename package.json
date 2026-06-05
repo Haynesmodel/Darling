@@ -3,8 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "npm run test:data",
+    "test": "npm run test:data && npm run test:scripts",
     "test:data": "node test/data.test.js",
+    "test:scripts": "node --test test/scripts.test.cjs",
     "test:hygiene": "node scripts/check_repo_hygiene.cjs",
     "test:coverage": "node scripts/run_tests_with_coverage.cjs && node scripts/v8_coverage_report.cjs && node scripts/check_coverage.cjs",
     "test:ui": "playwright test",

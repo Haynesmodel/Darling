@@ -116,18 +116,50 @@ test('facet dropdowns keep expanded state in sync and close with escape', async 
 
   await expect(seasonButton).toHaveAttribute('aria-controls', 'seasonFilters');
   await expect(seasonButton).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#seasonFilters')).toHaveAttribute('aria-hidden', 'true');
 
   await seasonButton.click();
   await expect(seasonButton).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#seasonFilters')).toHaveAttribute('aria-hidden', 'false');
   await expect(page.locator('#seasonFilters')).toBeVisible();
 
   await weekButton.click();
   await expect(seasonButton).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#seasonFilters')).toHaveAttribute('aria-hidden', 'true');
   await expect(weekButton).toHaveAttribute('aria-expanded', 'true');
 
   await page.keyboard.press('Escape');
   await expect(weekButton).toHaveAttribute('aria-expanded', 'false');
   await expect(weekButton).toBeFocused();
+});
+
+test('facet dropdowns support keyboard navigation and checkbox toggling', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+
+  const seasonButton = page.locator('.dropdown-toggle[data-target="seasonFilters"]');
+  await seasonButton.focus();
+  await page.keyboard.press('Enter');
+  await expect(seasonButton).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#seasonFilters')).toHaveAttribute('aria-hidden', 'false');
+
+  await page.keyboard.press('Tab');
+  await expect(page.locator('#season-all-option')).toBeFocused();
+
+  await page.keyboard.press('Tab');
+  const firstSeason = page.locator('#seasonFilters .season-cb').first();
+  await expect(firstSeason).toBeFocused();
+  await expect(firstSeason).not.toBeChecked();
+
+  await page.keyboard.press('Space');
+  await expect(firstSeason).toBeChecked();
+  await expect(page.locator('#seasonFilters .season-all')).not.toBeChecked();
+  await expect(page.locator('#seasonCountText')).toHaveText('1 selected');
+
+  await page.keyboard.press('Escape');
+  await expect(seasonButton).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#seasonFilters')).toHaveAttribute('aria-hidden', 'true');
+  await expect(seasonButton).toBeFocused();
 });
 
 test('single-season filters render the season callout', async ({ page }) => {

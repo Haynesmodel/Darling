@@ -88,20 +88,24 @@ function updateTeamHeader(team, seasonSummaries, doc) {
 
 function facetControlHtml(values, opts = {}) {
   const { prefix = 'f' } = opts;
+  const allId = `${prefix}-all-option`;
   return `
   <div class="all-row">
-    <label>
-      <input type="checkbox" class="${prefix}-all" checked />
+    <label for="${allId}">
+      <input id="${allId}" type="checkbox" class="${prefix}-all" checked />
       <span>All</span>
     </label>
   </div>
   <div class="grid">
-    ${values.map(v => `
-      <label>
-        <input type="checkbox" class="${prefix}-cb" data-value="${encodeURIComponent(v)}" />
+    ${values.map((v, index) => {
+      const id = `${prefix}-option-${index}`;
+      return `
+      <label for="${id}">
+        <input id="${id}" type="checkbox" class="${prefix}-cb" data-value="${encodeURIComponent(v)}" />
         <span>${escapeHtml(v)}</span>
       </label>
-    `).join('')}
+    `;
+    }).join('')}
   </div>
 `;
 }

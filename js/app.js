@@ -165,6 +165,8 @@ function setDropdownOpen(dropdown, isOpen){
   dropdown.classList.toggle('open', isOpen);
   const btn = dropdown.querySelector('.dropdown-toggle');
   if(btn) btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  const menu = dropdown.querySelector('.dropdown-menu');
+  if(menu) menu.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
 }
 
 function closeDropdowns(except = null){

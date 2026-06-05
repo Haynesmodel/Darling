@@ -8,5 +8,5 @@ fs.rmSync(coverageDir, { recursive: true, force: true });
 fs.mkdirSync(coverageDir, { recursive: true });
 
 const env = { ...process.env, NODE_V8_COVERAGE: coverageDir };
-const res = spawnSync(process.execPath, ['test/data.test.js'], { stdio: 'inherit', env });
+const res = spawnSync(process.execPath, ['--test', 'test/data.test.js', 'test/scripts.test.cjs'], { stdio: 'inherit', env });
 process.exit(res.status ?? 1);

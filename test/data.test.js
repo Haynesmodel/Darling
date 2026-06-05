@@ -51,6 +51,9 @@ const {
   buildHistoryCsvText,
 } = state;
 const {
+  normalizeLeagueGame,
+  normalizeSeasonSummary,
+  normalizeRivalry,
   validateLeagueGames,
   validateSeasonSummaries,
   validateRivalries,
@@ -269,19 +272,20 @@ test('deriveWeeksInPlace assigns per-team week numbers', () => {
 
 test('loadLeagueAssets fetches, dedupes, and derives weeks', async () => {
   const game = {
-    season: 2025,
+    season: '2025',
     date: '2025-09-07',
-    teamA: 'Joe',
-    teamB: 'Shap',
-    scoreA: 100,
-    scoreB: 90,
-    type: 'Regular',
-    round: '',
+    teamA: ' Joe ',
+    teamB: ' Shap ',
+    scoreA: '100',
+    scoreB: '90',
+    week: '1',
+    type: ' Regular ',
+    round: null,
   };
   const responses = new Map([
     ['assets/H2H.json', mockJsonResponse([game, { ...game }])],
-    ['assets/SeasonSummary.json', mockJsonResponse([validSeasonRow()])],
-    ['assets/Rivalries.json', mockJsonResponse([{ name: 'Originals', members: ['Joe', 'Shap'] }])],
+    ['assets/SeasonSummary.json', mockJsonResponse([validSeasonRow({ season: '2025', owner: ' Joe ', wins: '10', finish: '1' })])],
+    ['assets/Rivalries.json', mockJsonResponse([{ name: ' Originals ', members: [' Joe ', ' Shap '], note: ' Founders ' }])],
   ]);
   const loaded = await loadLeagueAssets({
     fetchFn: async (url) => responses.get(url),
@@ -292,8 +296,48 @@ test('loadLeagueAssets fetches, dedupes, and derives weeks', async () => {
   assert.equal(loaded.leagueGames.length, 1);
   assert.deepEqual([...loaded.derivedWeeksSet], [1]);
   assert.equal(loaded.leagueGames[0]._weekByTeam.Joe, 1);
-  assert.deepEqual(loaded.seasonSummaries, [validSeasonRow()]);
-  assert.deepEqual(loaded.rivalries, [{ name: 'Originals', members: ['Joe', 'Shap'] }]);
+  assert.equal(loaded.rawGames[0].season, 2025);
+  assert.equal(loaded.rawGames[0].teamA, 'Joe');
+  assert.equal(loaded.rawGames[0].scoreA, 100);
+  assert.equal(loaded.rawGames[0].round, '');
+  assert.equal(loaded.rawGames[0].week, 1);
+  assert.deepEqual(loaded.seasonSummaries, [validSeasonRow({ owner: 'Joe' })]);
+  assert.deepEqual(loaded.rivalries, [{ name: 'Originals', members: ['Joe', 'Shap'], note: 'Founders' }]);
+});
+
+test('asset normalizers coerce imported rows into canonical shapes', () => {
+  assert.deepEqual(
+    normalizeLeagueGame({
+      season: '2025',
+      date: ' 2025-09-07 ',
+      teamA: ' Joe ',
+      teamB: ' Shap ',
+      scoreA: '100.5',
+      scoreB: '90',
+      week: '',
+      type: ' Regular ',
+      round: null,
+    }),
+    {
+      season: 2025,
+      date: '2025-09-07',
+      teamA: 'Joe',
+      teamB: 'Shap',
+      scoreA: 100.5,
+      scoreB: 90,
+      week: null,
+      type: 'Regular',
+      round: '',
+    }
+  );
+  assert.deepEqual(
+    normalizeSeasonSummary(validSeasonRow({ season: '2025', owner: ' Joe ', wins: '10', finish: '', bagels_earned: '2' })),
+    validSeasonRow({ season: 2025, owner: 'Joe', wins: 10, finish: null, bagels_earned: 2 })
+  );
+  assert.deepEqual(
+    normalizeRivalry({ name: ' Rivals ', members: [' Joe ', ' Shap '], type: ' group ', slug: ' rivals ', note: ' Legacy ' }),
+    { name: 'Rivals', members: ['Joe', 'Shap'], type: 'group', slug: 'rivals', note: 'Legacy' }
+  );
 });
 
 test('loadLeagueAssets defaults to globalThis.fetch', async () => {
@@ -549,6 +593,8 @@ test('render helpers format text and build stable markup', () => {
 
   const facet = facetControlHtml(['A&B', 'Semi Final'], { prefix: 'round' });
   assert.match(facet, /class="round-all"/);
+  assert.match(facet, /id="round-all-option"/);
+  assert.match(facet, /for="round-option-0"/);
   assert.match(facet, /class="round-cb"/);
   assert.match(facet, /data-value="A%26B"/);
   assert.match(facet, /Semi Final/);

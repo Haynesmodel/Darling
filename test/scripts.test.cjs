@@ -108,11 +108,13 @@ test('coverage reporter measures source files and excludes tests', async () => {
     fs.mkdirSync(path.join(root, 'test'), { recursive: true });
 
     const appSource = 'const app = true;\nexport { app };\n';
+    const entryPointPath = path.join(root, 'js', 'app.js');
     const scriptSource = 'module.exports = { ok: true };\n';
     const testSource = 'assert.equal(1, 1);\n';
     const appPath = path.join(root, 'js', 'helpers.js');
     const scriptPath = path.join(root, 'scripts', 'tool.cjs');
     const testPath = path.join(root, 'test', 'data.test.js');
+    fs.writeFileSync(entryPointPath, "import './helpers.js';\n");
     fs.writeFileSync(appPath, appSource);
     fs.writeFileSync(scriptPath, scriptSource);
     fs.writeFileSync(testPath, testSource);
@@ -123,15 +125,80 @@ test('coverage reporter measures source files and excludes tests', async () => {
         functions: [{
           ranges: [{ startOffset: 0, endOffset: fs.readFileSync(filePath, 'utf8').length, count: 1 }],
         }],
-      })),
+      })).concat([entryPointPath].map(filePath => ({
+        url: pathToFileURL(filePath).href,
+        functions: [{
+          ranges: [{ startOffset: 0, endOffset: fs.readFileSync(filePath, 'utf8').length, count: 1 }],
+        }],
+      }))),
     }));
 
     const summary = buildCoverageSummary(root);
     assert.deepEqual(
       summary.files.map(file => file.file).sort(),
-      ['js/helpers.js', 'scripts/tool.cjs']
+      ['js/app.js', 'js/helpers.js', 'scripts/tool.cjs']
     );
     assert.equal(summary.total.lines.pct, 100);
+  });
+});
+
+test('coverage reporter fails when a source file never appears in coverage output', async () => {
+  await withTempRepo((root) => {
+    fs.mkdirSync(path.join(root, 'coverage', '.v8'), { recursive: true });
+    const entryPointPath = path.join(root, 'js', 'app.js');
+    const coveredPath = path.join(root, 'js', 'helpers.js');
+    const missingPath = path.join(root, 'js', 'missing.js');
+    fs.writeFileSync(entryPointPath, "import './helpers.js';\n");
+    fs.writeFileSync(coveredPath, 'const covered = true;\nexport { covered };\n');
+    fs.writeFileSync(missingPath, 'const missing = true;\nexport { missing };\n');
+    fs.writeFileSync(path.join(root, 'coverage', '.v8', 'coverage.json'), JSON.stringify({
+      result: [{
+        url: pathToFileURL(entryPointPath).href,
+        functions: [{
+          ranges: [{ startOffset: 0, endOffset: fs.readFileSync(entryPointPath, 'utf8').length, count: 1 }],
+        }],
+      }, {
+        url: pathToFileURL(coveredPath).href,
+        functions: [{
+          ranges: [{ startOffset: 0, endOffset: fs.readFileSync(coveredPath, 'utf8').length, count: 1 }],
+        }],
+      }],
+    }));
+
+    assert.throws(
+      () => buildCoverageSummary(root),
+      /Missing coverage for source files: js\/missing\.js/
+    );
+  });
+});
+
+test('coverage summary checker accepts a valid summary file', async () => {
+  await withTempRepo((root) => {
+    fs.mkdirSync(path.join(root, 'coverage'));
+    fs.writeFileSync(path.join(root, 'coverage', 'coverage-summary.json'), JSON.stringify({
+      total: {
+        lines: {
+          pct: 100,
+        },
+      },
+    }));
+
+    const result = runNode(path.join(__dirname, '..', 'scripts', 'check_coverage.cjs'), [], root);
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Coverage 100% meets minimum 80%/);
+  });
+});
+
+test('run_tests_with_coverage can execute in a minimal temp repo', async () => {
+  await withTempRepo((root) => {
+    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ type: 'module' }));
+    fs.mkdirSync(path.join(root, 'test'));
+    fs.writeFileSync(path.join(root, 'test', 'data.test.js'), "import test from 'node:test';\nimport assert from 'node:assert/strict';\ntest('data ok', () => { assert.equal(1, 1); });\n");
+    fs.writeFileSync(path.join(root, 'test', 'scripts.test.cjs'), "const test = require('node:test');\nconst assert = require('node:assert/strict');\ntest('scripts ok', () => { assert.equal(1, 1); });\n");
+    fs.writeFileSync(path.join(root, 'test', 'app-state-controller.test.js'), "import test from 'node:test';\nimport assert from 'node:assert/strict';\ntest('app ok', () => { assert.ok(true); });\n");
+
+    const result = runNode(path.join(__dirname, '..', 'scripts', 'run_tests_with_coverage.cjs'), [], root);
+    assert.equal(result.status, 0);
   });
 });
 

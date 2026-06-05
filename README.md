@@ -15,7 +15,8 @@ Test locally:
 - `npm run test:assets` validates `assets/H2H.json`, `assets/SeasonSummary.json`, and `assets/Rivalries.json`.
 - `npm run test:scripts` runs the script helper tests, including the Python update helpers.
 - `npm run test:ui` runs the Playwright browser tests.
-- `npm run test:ci` runs script, coverage, and browser tests, matching CI.
+- `npm run test:coverage` runs the Node tests, browser tests, and coverage check.
+- `npm run test:ci` runs hygiene, script, and coverage checks, matching CI.
 - GitHub branch protection should require the `CI / test` check.
 
 Primary web-served data:

@@ -1,4 +1,35 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { test, expect } from '@playwright/test';
+
+function slugifyTitle(title) {
+  return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+async function startBrowserCoverage(page, browserName) {
+  if (browserName !== 'chromium') return null;
+  const session = await page.context().newCDPSession(page);
+  await session.send('Profiler.enable');
+  await session.send('Profiler.startPreciseCoverage', {
+    callCount: true,
+    detailed: true,
+  });
+  return session;
+}
+
+async function stopBrowserCoverage(session, title) {
+  if (!session) return;
+  const coverage = await session.send('Profiler.takePreciseCoverage');
+  await session.send('Profiler.stopPreciseCoverage');
+  await session.send('Profiler.disable');
+
+  const outDir = path.join(process.cwd(), 'coverage', '.v8');
+  fs.mkdirSync(outDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(outDir, `ui-${slugifyTitle(title)}.json`),
+    JSON.stringify({ result: coverage.result }, null, 2),
+  );
+}
 
 async function downloadText(download) {
   const stream = await download.createReadStream();
@@ -7,7 +38,7 @@ async function downloadText(download) {
   return Buffer.concat(chunks).toString('utf8');
 }
 
-test.beforeEach(async ({ page }, testInfo) => {
+test.beforeEach(async ({ page, browserName }, testInfo) => {
   const browserErrors = [];
   const expectedFailureTest = testInfo.title.includes('fetch failure');
 
@@ -28,9 +59,12 @@ test.beforeEach(async ({ page }, testInfo) => {
 
   page.__browserErrors = browserErrors;
   page.__allowExpectedFailure = expectedFailureTest;
+  page.__browserCoverageSession = await startBrowserCoverage(page, browserName);
 });
 
-test.afterEach(async ({ page }) => {
+test.afterEach(async ({ page }, testInfo) => {
+  await stopBrowserCoverage(page.__browserCoverageSession, testInfo.title);
+
   const errors = page.__browserErrors || [];
   if (page.__allowExpectedFailure) {
     const unexpected = errors.filter(error =>

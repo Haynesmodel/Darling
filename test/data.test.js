@@ -277,19 +277,19 @@ test('deriveWeeksInPlace assigns per-team week numbers', () => {
 
 test('loadLeagueAssets fetches, dedupes, and derives weeks', async () => {
   const game = {
-    season: '2025',
+    season: 2025,
     date: '2025-09-07',
-    teamA: ' Joe ',
-    teamB: ' Shap ',
-    scoreA: '100',
-    scoreB: '90',
-    week: '1',
-    type: ' Regular ',
-    round: null,
+    teamA: 'Joe',
+    teamB: 'Shap',
+    scoreA: 100,
+    scoreB: 90,
+    week: 1,
+    type: 'Regular',
+    round: '',
   };
   const responses = new Map([
     ['assets/H2H.json', mockJsonResponse([game, { ...game }])],
-    ['assets/SeasonSummary.json', mockJsonResponse([validSeasonRow({ season: '2025', owner: ' Joe ', wins: '10', finish: '1' })])],
+    ['assets/SeasonSummary.json', mockJsonResponse([validSeasonRow({ season: 2025, owner: 'Joe', wins: 10, finish: 1 })])],
     ['assets/Rivalries.json', mockJsonResponse([{ name: ' Originals ', members: [' Joe ', ' Shap '], note: ' Founders ' }])],
   ]);
   const loaded = await loadLeagueAssets({
@@ -456,7 +456,19 @@ test('data validators reject invalid league asset rows', async () => {
     /H2H row 0 invalid date/
   );
   assert.throws(
+    () => validateLeagueGames([{ season: null, date: '2025-09-07', teamA: 'Joe', teamB: 'Shap', scoreA: 1, scoreB: 2, type: 'Regular' }], 'H2H'),
+    /H2H row 0 missing numeric season/
+  );
+  assert.throws(
+    () => validateLeagueGames([{ season: 2025, date: '2025-09-07', teamA: 'Joe', teamB: 'Shap', scoreA: '', scoreB: 2, type: 'Regular' }], 'H2H'),
+    /H2H row 0 missing numeric scoreA/
+  );
+  assert.throws(
     () => validateSeasonSummaries([{ ...validSeasonRow(), wins: 'ten' }], 'SeasonSummary'),
+    /SeasonSummary row 0 missing numeric wins/
+  );
+  assert.throws(
+    () => validateSeasonSummaries([{ ...validSeasonRow(), wins: null }], 'SeasonSummary'),
     /SeasonSummary row 0 missing numeric wins/
   );
   assert.throws(

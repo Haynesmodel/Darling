@@ -4,6 +4,7 @@
 
 - Added a visible loading state and a user-facing error banner for JSON fetch failures.
 - Added upfront season-anchor validation to `scripts/sleeper_to_h2h.py`.
+- Tightened asset validation for required numeric fields and fixed coverage reporting for browser and script sources.
 - Added update-script validation-only mode and offline tests for the Sleeper update helpers.
 - Documented easter-egg maintenance order and moved the `H2H.xlsx` reference file out of web-served assets.
 - Stopped tracking generated coverage, cache, local metadata, and update scratch files.

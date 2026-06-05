@@ -11,10 +11,10 @@
     "test:data": "npm run test:assets && node test/data.test.js",
     "test:scripts": "node --test test/scripts.test.cjs test/app-state-controller.test.js && python3 -m unittest discover -s test -p 'test_*.py'",
     "test:hygiene": "node scripts/check_repo_hygiene.cjs",
-    "test:coverage": "npm run test:assets && node scripts/run_tests_with_coverage.cjs && node scripts/v8_coverage_report.cjs && node scripts/check_coverage.cjs",
+    "test:coverage": "npm run test:assets && node scripts/run_tests_with_coverage.cjs && npm run test:ui && node scripts/v8_coverage_report.cjs && node scripts/check_coverage.cjs",
     "test:ui": "playwright test",
     "serve": "node scripts/serve_static.cjs 8000 127.0.0.1",
-    "test:ci": "npm run test:hygiene && npm run test:scripts && npm run test:coverage && npm run test:ui"
+    "test:ci": "npm run test:hygiene && npm run test:scripts && npm run test:coverage"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0"

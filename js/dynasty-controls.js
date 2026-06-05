@@ -239,7 +239,10 @@ function buildDynastyControls({
   function emitChange({ requestedStartSeason, requestedEndSeason } = {}) {
     const nextMode = modeSelect.value;
     const modeState = modeControlState(nextMode, { allTeams, previousOwner: rememberedOwner });
-    const ownerSeed = nextMode === 'calculator' ? rememberedOwner : allTeams;
+    const currentOwner = ownerSelect.value;
+    const ownerSeed = nextMode === 'calculator'
+      ? (currentOwner && currentOwner !== allTeams ? currentOwner : rememberedOwner)
+      : allTeams;
     const nextOwner = renderOwnerOptions(ownerSelect, owners, ownerSeed, nextMode, allTeams);
     const nextStart = Number.isFinite(+startSelect.value) ? +startSelect.value : null;
     const nextEnd = Number.isFinite(+endSelect.value) ? +endSelect.value : null;
@@ -262,12 +265,12 @@ function buildDynastyControls({
     if (modeState.ownerLocked) {
       ownerSelect.value = allTeams;
     } else {
-      rememberedOwner = ownerSelect.value || rememberedOwner;
+      rememberedOwner = nextOwner || currentOwner || rememberedOwner;
     }
 
     const nextState = {
       mode: nextMode,
-      owner: modeState.ownerLocked ? rememberedOwner : ownerSelect.value,
+      owner: modeState.ownerLocked ? rememberedOwner : nextOwner || currentOwner,
       startSeason: nextRange.startSeason,
       endSeason: nextRange.endSeason,
       requestedStartSeason: nextRange.requestedStartSeason,

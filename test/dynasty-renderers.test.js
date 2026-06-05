@@ -161,8 +161,12 @@ test('buildOwnerSeasonProfiles computes ranks and hardware flags', () => {
   assert.equal(seasonProfiles.find(row => row.owner === 'Joe' && row.season === 2021).pointDiffRank, 2);
   assert.equal(nuss2021.pointDiffRank, 3);
 
-  const scored = scoreOwnerSeason(joe2022);
-  assert.equal(scored.components.postseason, 12);
+  const scored = scoreOwnerSeason({
+    ...joe2022,
+    playoffWins: 0,
+  });
+  assert.equal(scored.components.postseason, 0);
+  assert.equal(scored.components.hardware, 23);
   assert.equal(scored.score, scored.components.regularSeason + scored.components.postseason + scored.components.hardware + scored.components.scoringDominance + scored.components.consistency + scored.components.penalties);
 });
 
@@ -184,7 +188,7 @@ test('calculateDynastyScore scores a selected owner and preserves coverage metad
   assert.equal(score.label, 'Dynasty Run');
   assert.equal(score.championships, 2);
   assert.equal(score.regularSeasonTitles, 1);
-  assert.equal(score.playoffWins, 6);
+  assert.equal(score.playoffWins, 5);
   assert.equal(Number.isFinite(score.rankInPeriod), true);
   assert.ok(score.score > 0);
   assert.equal(score.score, score.components.regularSeason + score.components.postseason + score.components.hardware + score.components.scoringDominance + score.components.consistency + score.components.penalties);

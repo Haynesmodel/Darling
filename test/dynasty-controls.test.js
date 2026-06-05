@@ -126,6 +126,12 @@ test('buildDynastyControls populates controls and emits normalized changes', () 
     includeSaundersPenalty: true,
   }]);
 
+  ownerSelect.value = 'Shap';
+  ownerSelect.trigger('change');
+  assert.equal(ownerSelect.value, 'Shap');
+  assert.equal(changes.at(-1).owner, 'Shap');
+  assert.equal(changes.at(-1).mode, 'calculator');
+
   modeSelect.value = 'all-time';
   modeSelect.trigger('change');
   assert.equal(ownerSelect.disabled, true);
@@ -139,5 +145,5 @@ test('buildDynastyControls populates controls and emits normalized changes', () 
   ownerSelect.trigger('change');
   const last = changes.at(-1);
   assert.equal(last.mode, 'all-time');
-  assert.equal(last.owner, 'Joe');
+  assert.equal(last.owner, 'Shap');
 });

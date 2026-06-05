@@ -148,7 +148,7 @@ function rankByValue(rows, valueFn, { descending = true } = {}) {
 function scoreOwnerSeason(profile, weights = DYNASTY_WEIGHTS, opts = {}) {
   const includeSaundersPenalty = opts.includeSaundersPenalty !== false;
   const components = emptyScoreComponents();
-  const effectivePlayoffWins = (+profile.playoffWins || 0) + (profile.bye ? 1 : 0);
+  const effectivePlayoffWins = +profile.playoffWins || 0;
 
   components.regularSeason += (+profile.wins || 0) * weights.regularSeasonWin;
   components.regularSeason += (+profile.ties || 0) * weights.regularSeasonTie;
@@ -334,7 +334,7 @@ function aggregateSeasonProfiles(seasons, {
     losses += season.losses;
     ties += season.ties;
     games += season.games;
-    playoffWins += (+season.playoffWins || 0) + (season.bye ? 1 : 0);
+    playoffWins += +season.playoffWins || 0;
     playoffLosses += season.playoffLosses;
     saundersWins += season.saundersWins;
     saundersLosses += season.saundersLosses;
@@ -1122,7 +1122,7 @@ function dynastyWindowModalHtml(window = null, opts = {}) {
   const saundersAppearances = seasons.filter(season =>
     ((+season.saundersWins || 0) + (+season.saundersLosses || 0) > 0) || season.saundersBye || season.saunders
   ).length;
-  const playoffWins = seasons.reduce((total, season) => total + ((+season.playoffWins || 0) + (season.bye ? 1 : 0)), 0);
+  const playoffWins = seasons.reduce((total, season) => total + (+season.playoffWins || 0), 0);
   const playoffLosses = seasons.reduce((total, season) => total + (+season.playoffLosses || 0), 0);
   const saundersWins = seasons.reduce((total, season) => total + (+season.saundersWins || 0), 0);
   const saundersLosses = seasons.reduce((total, season) => total + (+season.saundersLosses || 0), 0);

@@ -1,5 +1,8 @@
 import * as core from './core-helpers.js';
 import {
+  normalizeLeagueGame,
+  normalizeSeasonSummary,
+  normalizeRivalry,
   validateLeagueGames,
   validateSeasonSummaries,
   validateRivalries,
@@ -42,69 +45,6 @@ async function readOptionalArrayJson(fetchFn, path, logger = console) {
     logger.warn(`[Darling] ${path} not found/parse error - optional data disabled.`);
     return [];
   }
-}
-
-const SEASON_SUMMARY_NUMERIC_FIELDS = [
-  'season',
-  'wins',
-  'losses',
-  'ties',
-  'finish',
-  'playoff_wins',
-  'playoff_losses',
-  'saunders_wins',
-  'saunders_losses',
-  'points_for',
-  'points_against',
-  'bagels_earned',
-];
-
-function normalizeOptionalNumber(value) {
-  if (value === null || value === undefined || value === '') return null;
-  return +value;
-}
-
-function normalizeLeagueGame(row) {
-  const game = {
-    ...row,
-    season: +row.season,
-    date: row.date.trim(),
-    teamA: row.teamA.trim(),
-    teamB: row.teamB.trim(),
-    scoreA: +row.scoreA,
-    scoreB: +row.scoreB,
-    type: row.type.trim(),
-    round: row.round === null || row.round === undefined ? '' : String(row.round).trim(),
-  };
-  if (Object.prototype.hasOwnProperty.call(row, 'week')) {
-    game.week = normalizeOptionalNumber(row.week);
-  }
-  return game;
-}
-
-function normalizeSeasonSummary(row) {
-  const summary = {
-    ...row,
-    owner: row.owner.trim(),
-  };
-  for (const field of SEASON_SUMMARY_NUMERIC_FIELDS) {
-    if (Object.prototype.hasOwnProperty.call(row, field)) {
-      summary[field] = normalizeOptionalNumber(row[field]);
-    }
-  }
-  return summary;
-}
-
-function normalizeRivalry(row) {
-  const rivalry = {
-    ...row,
-    name: row.name.trim(),
-    members: row.members.map(member => member.trim()),
-  };
-  if (row.type !== undefined) rivalry.type = row.type.trim();
-  if (row.slug !== undefined) rivalry.slug = row.slug.trim();
-  if (row.note !== undefined && typeof row.note === 'string') rivalry.note = row.note.trim();
-  return rivalry;
 }
 
 async function loadLeagueAssets(opts = {}) {

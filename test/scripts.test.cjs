@@ -275,7 +275,7 @@ test('asset validation cli reports row-level failures', async () => {
 });
 
 test('update workflow refuses live Sleeper calls unless explicitly enabled', async () => {
-  const result = runShell(path.join(__dirname, '..', 'scripts', 'update_2025.sh'), {}, path.join(__dirname, '..'));
+  const result = runShell(path.join(__dirname, '..', 'scripts', 'update_sleeper_h2h.sh'), {}, path.join(__dirname, '..'));
   assert.equal(result.status, 2);
   assert.match(result.stderr, /UPDATE_LIVE=1/);
 });
@@ -324,7 +324,7 @@ JSON
 
   try {
     const result = runShell(
-      path.join(repoRoot, 'scripts', 'update_2025.sh'),
+      path.join(repoRoot, 'scripts', 'update_sleeper_h2h.sh'),
       {
         UPDATE_LIVE: '1',
         VALIDATE_ONLY: '1',

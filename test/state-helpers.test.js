@@ -98,6 +98,52 @@ test('url helpers parse and rebuild dynasty state', () => {
   assert.equal(next, '/index.html?tab=dynasty&dynastyMode=calculator&dynastyOwner=Joe&dynastyStart=2021&dynastyEnd=2023&dynastyMinSeasons=2&dynastySaunders=1');
 });
 
+test('url helpers parse and rebuild gauntlet state', () => {
+  const parsed = parseUrlState('?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019&gm=hybrid&gp=1&gn=10000&gs=abc123');
+  assert.equal(parsed.tab, 'gauntlet');
+  assert.equal(parsed.gauntletA, 'Joe:2024');
+  assert.equal(parsed.gauntletB, 'Zook:2019');
+  assert.equal(parsed.gauntletModel, 'hybrid');
+  assert.equal(parsed.gauntletIncludePostseason, true);
+  assert.equal(parsed.gauntletSimulations, 10000);
+  assert.equal(parsed.gauntletSeed, 'abc123');
+  assert.equal(parsed.hasGauntlet, true);
+  assert.equal(parsed.hasAny, true);
+
+  const missing = parseUrlState('?tab=gauntlet');
+  assert.equal(missing.gauntletA, null);
+  assert.equal(missing.gauntletB, null);
+  assert.equal(missing.gauntletModel, null);
+  assert.equal(missing.gauntletIncludePostseason, null);
+  assert.equal(missing.gauntletSimulations, null);
+  assert.equal(missing.gauntletSeed, null);
+  assert.equal(missing.hasGauntlet, true);
+
+  const next = buildUrlFromState({
+    tab: 'gauntlet',
+    selectedGauntletA: 'Joe:2024',
+    selectedGauntletB: 'Zook:2019',
+    selectedGauntletModel: 'hybrid',
+    selectedGauntletIncludePostseason: true,
+    selectedGauntletSimulations: 10000,
+    selectedGauntletSeed: 'abc123',
+    selectedTeam: 'Joe',
+    selectedSeasons: new Set([2024]),
+    selectedWeeks: new Set([1]),
+    selectedOpponents: new Set(['Zook']),
+    universe: {
+      seasons: [2024, 2025],
+      weeks: [1, 2],
+      opponents: ['Zook', 'Shap'],
+      types: ['Regular'],
+      rounds: ['Final'],
+    },
+    pathname: '/index.html',
+    allTeams: '__ALL__',
+  });
+  assert.equal(next, '/index.html?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019&gm=hybrid&gp=1&gn=10000&gs=abc123');
+});
+
 test('url helpers preserve opponent selections with spaces and punctuation', () => {
   const next = buildUrlFromState({
     selectedTeam: 'Joe',

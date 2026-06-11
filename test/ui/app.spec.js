@@ -371,6 +371,109 @@ test('dynasty url restores the requested owner and period', async ({ page }) => 
   })).toBe('dynasty|calculator|Joe|2021|2023|2|1');
 });
 
+test('gauntlet url restores matchup controls and renders simulation output', async ({ page }) => {
+  await page.goto('/?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019&gm=hybrid&gp=1&gn=10000');
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#tabGauntletBtn')).toHaveClass(/active/);
+  await expect(page.locator('#page-gauntlet')).toBeVisible();
+  await expect(page.locator('#gauntletOwnerA')).toHaveValue('Joe');
+  await expect(page.locator('#gauntletSeasonA')).toHaveValue('2024');
+  await expect(page.locator('#gauntletOwnerB')).toHaveValue('Zook');
+  await expect(page.locator('#gauntletSeasonB')).toHaveValue('2019');
+  await expect(page.locator('#gauntletEraAdjusted')).toBeChecked();
+  await expect(page.locator('#gauntletIncludePostseason')).toBeChecked();
+  await expect(page.locator('#gauntletSimulations')).toHaveValue('10000');
+  await expect(page.locator('#gauntletProbability')).toContainText('Era-adjusted + postseason model, 10,000 sims');
+  await expect(page.locator('#gauntletProbability')).toContainText('wins');
+  const distributionCharts = page.locator('#gauntletHistogram svg');
+  await expect(distributionCharts).toHaveCount(1);
+  await expect(distributionCharts.first()).toBeVisible();
+  await expect(page.locator('#gauntletStats')).toContainText('Simulated average');
+  await expect(page.locator('#gauntletContext')).toContainText('All-time record');
+  await expect(page.locator('#gauntletNarrative')).toContainText('Joe 2024');
+  await expect(page.locator('#gauntletCopyText')).toHaveValue(/Joe 2024 vs Zook 2019/);
+  await expect(page.locator('#gauntletCopyText')).toHaveValue(/Model: Era-adjusted \+ postseason/);
+  await expect(page.locator('#gauntletCopyText')).toHaveValue(/Current URL:/);
+  await expect.poll(async () => page.evaluate(() => {
+    const params = new URL(location.href).searchParams;
+    return [params.get('tab'), params.get('ga'), params.get('gb'), params.get('gm'), params.get('gp'), params.get('gn')].join('|');
+  })).toBe('gauntlet|Joe:2024|Zook:2019|hybrid|1|10000');
+});
+
+test('gauntlet controls update the url and browser back restores the previous matchup', async ({ page }) => {
+  await page.goto('/?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019&gm=hybrid&gp=1&gn=10000');
+  await page.waitForLoadState('networkidle');
+
+  const initialCopy = await page.locator('#gauntletCopyText').inputValue();
+  await page.locator('#gauntletIncludePostseason').uncheck();
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#gauntletIncludePostseason')).not.toBeChecked();
+  await expect(page.locator('#gauntletCopyText')).toHaveValue(/Model: Era-adjusted$/m);
+  await expect.poll(async () => page.evaluate(() => {
+    const params = new URL(location.href).searchParams;
+    return [params.get('tab'), params.get('gp')].join('|');
+  })).toBe('gauntlet|0');
+
+  await page.locator('#gauntletEraAdjusted').uncheck();
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#gauntletEraAdjusted')).not.toBeChecked();
+  await expect(page.locator('#gauntletCopyText')).toHaveValue(/Historical/);
+  await expect.poll(async () => page.evaluate(() => {
+    const params = new URL(location.href).searchParams;
+    return [params.get('tab'), params.get('gm'), params.get('gp')].join('|');
+  })).toBe('gauntlet|historical|0');
+
+  await page.goBack();
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#gauntletEraAdjusted')).toBeChecked();
+  await expect(page.locator('#gauntletIncludePostseason')).not.toBeChecked();
+  await expect(page.locator('#gauntletCopyText')).toHaveValue(/Model: Era-adjusted$/m);
+  await expect.poll(async () => page.evaluate(() => {
+    const params = new URL(location.href).searchParams;
+    return [params.get('tab'), params.get('gm'), params.get('gp')].join('|');
+  })).toBe('gauntlet|hybrid|0');
+
+  await page.goBack();
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#gauntletEraAdjusted')).toBeChecked();
+  await expect(page.locator('#gauntletIncludePostseason')).toBeChecked();
+  await expect(page.locator('#gauntletCopyText')).toHaveValue(initialCopy);
+  await expect.poll(async () => page.evaluate(() => {
+    const params = new URL(location.href).searchParams;
+    return [params.get('tab'), params.get('gm'), params.get('gp')].join('|');
+  })).toBe('gauntlet|hybrid|1');
+});
+
+test('gauntlet mobile layout stacks the matchup and keeps the histogram visible', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019');
+  await page.waitForLoadState('networkidle');
+
+  const matchup = page.locator('#gauntletMatchup');
+  const histogram = page.locator('#gauntletHistogram');
+  const narrative = page.locator('#gauntletNarrative');
+
+  await expect(matchup).toBeVisible();
+  await expect(histogram.locator('svg')).toHaveCount(1);
+  await expect(histogram.locator('svg').first()).toBeVisible();
+  await expect(narrative).toBeVisible();
+
+  const matchupBox = await matchup.boundingBox();
+  const histogramBox = await histogram.boundingBox();
+  const narrativeBox = await narrative.boundingBox();
+  expect(matchupBox).toBeTruthy();
+  expect(histogramBox).toBeTruthy();
+  expect(narrativeBox).toBeTruthy();
+  expect(matchupBox.width).toBeLessThanOrEqual(390);
+  expect(histogramBox.width).toBeLessThanOrEqual(390);
+  expect(narrativeBox.width).toBeLessThanOrEqual(390);
+});
+
 test('dynasty mobile layout stacks the main panels without overlap', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?tab=dynasty&dynastyMode=calculator&dynastyOwner=Joe&dynastyStart=2021&dynastyEnd=2023');

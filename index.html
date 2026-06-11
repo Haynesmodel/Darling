@@ -21,6 +21,7 @@
     <button class="tab" id="tabRivalryBtn">Head to Head</button>
     <button class="tab" id="tabTrophyBtn">Trophy Case</button>
     <button class="tab" id="tabDynastyBtn">Dynasty Rankings</button>
+    <button class="tab" id="tabGauntletBtn">Historical Matchup</button>
   </nav>
 
   <main>
@@ -356,6 +357,44 @@
       </div>
 
       <div id="dynastyWindowModal" class="dynasty-modal" hidden aria-hidden="true"></div>
+    </section>
+
+    <section id="page-gauntlet" class="page">
+      <div class="card gauntlet-card">
+        <h3>Historical Matchup</h3>
+        <div class="card-kicker">Compare two owner-seasons using the league's scoring history.</div>
+        <div id="gauntletControls"></div>
+      </div>
+
+      <div class="card gauntlet-card">
+        <h3>Matchup</h3>
+        <div id="gauntletMatchup"></div>
+        <div id="gauntletProbability"></div>
+      </div>
+
+      <div class="card gauntlet-card">
+        <h3>Score Distribution</h3>
+        <div id="gauntletHistogram"></div>
+      </div>
+
+      <div class="card gauntlet-card">
+        <h3>Key Stats</h3>
+        <div id="gauntletStats"></div>
+      </div>
+
+      <div class="card gauntlet-card">
+        <h3>Head to Head Context</h3>
+        <div id="gauntletContext"></div>
+      </div>
+
+      <div class="card gauntlet-card">
+        <h3>Narrative and Copy</h3>
+        <p id="gauntletNarrative" class="gauntlet-narrative"></p>
+        <div class="gauntlet-copy-row">
+          <button type="button" id="gauntletCopyBtn" class="btn primary">Copy Result</button>
+        </div>
+        <textarea id="gauntletCopyText" class="gauntlet-copy-text" rows="8" readonly aria-label="Copyable gauntlet result"></textarea>
+      </div>
     </section>
   </main>
 

@@ -380,6 +380,46 @@ function handleDynastyWindowModalClose() {
   renderDynasty();
 }
 
+function applyUrlState(urlState = parseUrlState()) {
+  isApplyingUrlState = true;
+  try {
+    showPage(urlState.tab === 'rivalry' ? 'rivalry' : urlState.tab === 'trophy' ? 'trophy' : urlState.tab === 'dynasty' ? 'dynasty' : 'history');
+    if (urlState.tab === 'rivalry') {
+      ensureRivalryControls({
+        selectedTeamA: urlState.rivalryTeamA || selectedRivalryTeamA,
+        selectedTeamB: urlState.rivalryTeamB || selectedRivalryTeamB,
+      });
+      renderRivalry();
+      return;
+    }
+    if (urlState.tab === 'trophy') {
+      ensureTrophyControls({
+        selectedOwner: urlState.trophyOwner || selectedTrophyOwner,
+      });
+      renderTrophy();
+      return;
+    }
+    if (urlState.tab === 'dynasty') {
+      ensureDynastyControls({
+        mode: urlState.dynastyMode || 'calculator',
+        owner: urlState.dynastyOwner || null,
+        startSeason: urlState.dynastyStart,
+        endSeason: urlState.dynastyEnd,
+        requestedStartSeason: urlState.dynastyStart,
+        requestedEndSeason: urlState.dynastyEnd,
+        minSeasons: urlState.dynastyMinSeasons ?? 2,
+        includeSaundersPenalty: urlState.dynastySaunders ?? true,
+      });
+      renderDynasty();
+      return;
+    }
+    ensureHistoryControls();
+    renderHistory();
+  } finally {
+    isApplyingUrlState = false;
+  }
+}
+
 function ensureDynastyControls(initialState = {}) {
   const modeSelect = document.getElementById('dynastyModeSelect');
   if (!modeSelect) return null;
@@ -1005,6 +1045,10 @@ function bindListeners() {
 
   document.addEventListener('click', handleDocumentClick);
   document.addEventListener('keydown', handleKeydown);
+  window.addEventListener('popstate', () => {
+    if (!leagueGames.length) return;
+    applyUrlState(parseUrlState());
+  });
 
   const clearBtn = document.getElementById('clearFilters');
   if (clearBtn) clearBtn.addEventListener('click', resetAllFacetsToAll);
@@ -1018,39 +1062,7 @@ async function bootstrapHistoryApp() {
   const loaded = await loadLeagueJSON();
   if (!loaded) return;
   bindListeners();
-  if (urlState.tab === 'rivalry') {
-    ensureRivalryControls({
-      selectedTeamA: urlState.rivalryTeamA || selectedRivalryTeamA,
-      selectedTeamB: urlState.rivalryTeamB || selectedRivalryTeamB,
-    });
-    renderRivalry();
-    return;
-  }
-  if (urlState.tab === 'trophy') {
-    ensureTrophyControls({
-      selectedOwner: urlState.trophyOwner || selectedTrophyOwner,
-    });
-    renderTrophy();
-    return;
-  }
-  if (urlState.tab === 'dynasty') {
-    isApplyingUrlState = true;
-    ensureDynastyControls({
-      mode: urlState.dynastyMode || 'calculator',
-      owner: urlState.dynastyOwner || null,
-      startSeason: urlState.dynastyStart,
-      endSeason: urlState.dynastyEnd,
-      requestedStartSeason: urlState.dynastyStart,
-      requestedEndSeason: urlState.dynastyEnd,
-      minSeasons: urlState.dynastyMinSeasons ?? 2,
-      includeSaundersPenalty: urlState.dynastySaunders ?? true,
-    });
-    renderDynasty();
-    isApplyingUrlState = false;
-    return;
-  }
-  ensureHistoryControls();
-  renderHistory();
+  applyUrlState(urlState);
 }
 
 export {

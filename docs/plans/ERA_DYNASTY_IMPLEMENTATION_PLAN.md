@@ -1,5 +1,7 @@
 # Era / Dynasty Rankings Implementation Plan
 
+Status: complete.
+
 Add a top-level **Dynasty Rankings** page that answers:
 
 ```txt

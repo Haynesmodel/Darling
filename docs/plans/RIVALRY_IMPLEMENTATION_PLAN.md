@@ -1,5 +1,7 @@
 # Rivalry Feature Implementation Plan
 
+Status: complete.
+
 Add a second top-level tab called **Rivalry** that lets users select two teams and view a full "tale of the tape" head-to-head breakdown. Keep it static, data-driven, and consistent with the current League History page.
 
 ## 1. Add The Rivalry Tab

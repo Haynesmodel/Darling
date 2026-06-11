@@ -1,0 +1,198 @@
+name: Update Sleeper H2H
+
+on:
+  workflow_dispatch:
+    inputs:
+      season:
+        description: Target season to update
+        required: false
+        type: string
+      validate_only:
+        description: Dry run without copying tracked assets
+        required: false
+        type: boolean
+        default: false
+  schedule:
+    - cron: '0 13 * * 1'
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: update-sleeper-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CI: true
+      LEAGUE_ID: ${{ secrets.SLEEPER_LEAGUE_ID }}
+      REQUESTED_SEASON: ${{ github.event.inputs.season }}
+      VALIDATE_ONLY_REQUESTED: ${{ github.event.inputs.validate_only }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Resolve target season
+        id: resolve
+        shell: bash
+        run: |
+          if [[ -z "${LEAGUE_ID}" ]]; then
+            echo "Missing required SLEEPER_LEAGUE_ID secret." >&2
+            exit 1
+          fi
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+
+          const requested = String(process.env.REQUESTED_SEASON || '').trim();
+          const anchors = JSON.parse(fs.readFileSync('scripts/sleeper_week1_anchors.json', 'utf8'));
+          const mappingFiles = fs.readdirSync('scripts')
+            .map(name => {
+              const match = /^(\d+)_team_mapping\.json$/.exec(name);
+              return match ? Number(match[1]) : null;
+            })
+            .filter(season => Number.isFinite(season));
+          const available = mappingFiles
+            .filter(season => Object.prototype.hasOwnProperty.call(anchors, String(season)))
+            .sort((a, b) => a - b);
+
+          if (!available.length) {
+            throw new Error('No seasons are configured with both a team mapping and a week 1 anchor.');
+          }
+
+          let season = requested ? Number(requested) : available[available.length - 1];
+          if (!Number.isFinite(season)) {
+            throw new Error(`Invalid requested season: ${requested}`);
+          }
+          if (!available.includes(season)) {
+            throw new Error(`Season ${season} is not configured with both a mapping file and a week 1 anchor.`);
+          }
+
+          const mapFile = path.join('scripts', `${season}_team_mapping.json`);
+          if (!fs.existsSync(mapFile)) {
+            throw new Error(`Missing mapping file: ${mapFile}`);
+          }
+          if (!Object.prototype.hasOwnProperty.call(anchors, String(season))) {
+            throw new Error(`Missing week 1 anchor for season ${season}.`);
+          }
+
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, [
+            `season=${season}`,
+            `map_file=${mapFile}`,
+            `validate_only_flag=${String(process.env.VALIDATE_ONLY_REQUESTED).trim() === 'true' ? '1' : '0'}`,
+            '',
+          ].join('\n'));
+          NODE
+
+      - name: Run Sleeper update
+        shell: bash
+        run: |
+          VALIDATE_ONLY_FLAG="${{ steps.resolve.outputs.validate_only_flag }}"
+          UPDATE_LIVE=1 \
+          VALIDATE_ONLY="${VALIDATE_ONLY_FLAG}" \
+          SEASON="${{ steps.resolve.outputs.season }}" \
+          LEAGUE_ID="${LEAGUE_ID}" \
+          scripts/update_sleeper_h2h.sh
+
+      - name: Promote generated assets
+        shell: bash
+        run: |
+          if [[ "${{ steps.resolve.outputs.validate_only_flag }}" == "1" ]]; then
+            echo "Validation-only run complete; tracked assets were not modified."
+            exit 0
+          fi
+
+          if cmp -s assets/H2H.updated.json assets/H2H.json; then
+            echo "No H2H changes detected; nothing to commit."
+            exit 0
+          fi
+
+          cp assets/H2H.updated.json assets/H2H.json
+
+          if [[ -f scripts/generate_season_summary_draft.py ]]; then
+            python3 scripts/generate_season_summary_draft.py \
+              --h2h assets/H2H.json \
+              --existing assets/SeasonSummary.json \
+              --out assets/SeasonSummary.draft.json \
+              --season "${{ steps.resolve.outputs.season }}"
+          fi
+
+          node scripts/validate_assets.cjs
+
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add assets/H2H.json
+          if [[ -f assets/SeasonSummary.draft.json ]]; then
+            git add assets/SeasonSummary.draft.json
+          fi
+
+          if git diff --cached --quiet; then
+            echo "No tracked asset changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Update Sleeper H2H for season ${{ steps.resolve.outputs.season }}"
+          git push origin "HEAD:${{ github.ref_name }}"
+
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v7
+        env:
+          TARGET_SEASON: ${{ steps.resolve.outputs.season }}
+          VALIDATE_ONLY_FLAG: ${{ steps.resolve.outputs.validate_only_flag }}
+        with:
+          script: |
+            const title = 'Weekly Sleeper update failed';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              'The weekly Sleeper update failed.',
+              '',
+              `- Run: ${runUrl}`,
+              `- Branch: ${context.ref}`,
+              `- Season: ${process.env.TARGET_SEASON || 'unknown'}`,
+              `- Dry run: ${process.env.VALIDATE_ONLY_FLAG === '1' ? 'yes' : 'no'}`,
+              '',
+              'Likely causes:',
+              '- Missing or invalid SLEEPER_LEAGUE_ID secret.',
+              '- Missing season mapping file or week 1 anchor.',
+              '- Sleeper API returned unexpected matchup or bracket data.',
+              '- Asset validation or draft generation failed.',
+            ].join('\n');
+
+            const query = `repo:${context.repo.owner}/${context.repo.repo} is:issue is:open label:data-pipeline label:automated "${title}"`;
+            const search = await github.rest.search.issuesAndPullRequests({ q: query });
+            const issue = search.data.items.find(item => item.title === title);
+
+            if (issue) {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: issue.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                ...context.repo,
+                title,
+                body,
+                labels: ['data-pipeline', 'automated'],
+              });
+            }

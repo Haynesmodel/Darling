@@ -136,6 +136,27 @@ test('stats helpers compute expected wins and season aggregates', () => {
   assert.equal(luck.luck, 1 - (2.5 / 3));
 });
 
+test('stats helpers cover edge-case expected win and luck calculations', () => {
+  const games = [
+    { season: 2025, date: '2025-09-07', teamA: 'Alpha', teamB: 'Beta', scoreA: 100, scoreB: 90, type: 'Regular', round: '' },
+    { season: 2025, date: '2025-09-07', teamA: 'Gamma', teamB: 'Delta', scoreA: 90, scoreB: 80, type: 'Regular', round: '' },
+    { season: 2025, date: '2025-09-14', teamA: 'Alpha', teamB: 'Gamma', scoreA: 50, scoreB: 60, type: 'Regular', round: '' },
+    { season: 2024, date: '2024-09-07', teamA: 'Alpha', teamB: 'Beta', scoreA: 200, scoreB: 10, type: 'Regular', round: '' },
+  ];
+
+  assert.equal(computeExpectedWinForGame(games, 'Alpha', games[0]), 1.0);
+  assert.equal(computeExpectedWinForGame(games, 'Delta', games[1]), 0.0);
+  assert.equal(computeExpectedWinForGame(games, 'Gamma', games[1]), 0.5);
+  assert.equal(computeExpectedWinForGame(games, 'Alpha', games[2]), 0.0);
+  assert.equal(computeExpectedWinForGame(games, 'Alpha', games[3]), 1.0);
+
+  const positiveLuck = computeLuckSummary(games, 'Gamma', games);
+  const negativeLuck = computeLuckSummary(games, 'Beta', games);
+
+  assert.ok(positiveLuck.luck > 0);
+  assert.ok(negativeLuck.luck < 0);
+});
+
 test('stats helpers compute league lists and streaks', () => {
   const games = [
     { season: 2025, date: '2025-09-07', teamA: 'Joe', teamB: 'Shap', scoreA: 100, scoreB: 90, type: 'Regular', round: '' },
@@ -168,6 +189,31 @@ test('stats helpers compute league lists and streaks', () => {
   assert.equal(bestStreakForTeam(games, 'Joe', 'L').len, 2);
   assert.equal(computeLongestTeamStreaks(games, ['Joe', 'Shap'], 'L', 1)[0].team, 'Joe');
   assert.equal(computeLongestStreaksGlobal(games, ['Joe', 'Shap'], 'L', 1)[0].team, 'Joe');
+});
+
+test('dedupeGames preserves distinct same-date games and deriveWeeksInPlace resets by season', () => {
+  const sameDateGames = [
+    { season: 2025, date: '2025-09-07', type: 'Regular', round: '', teamA: 'Joe', teamB: 'Shap', scoreA: 101.2, scoreB: 99.8 },
+    { season: 2025, date: '2025-09-07', type: 'Regular', round: '', teamA: 'Joe', teamB: 'Nuss', scoreA: 88.4, scoreB: 77.1 },
+    { season: 2025, date: '2025-09-07', type: 'Regular', round: '', teamA: 'Joe', teamB: 'Shap', scoreA: 101.2, scoreB: 99.8 },
+  ];
+
+  const deduped = dedupeGames(sameDateGames);
+  assert.equal(deduped.length, 2);
+  assert.equal(deduped[0], sameDateGames[0]);
+  assert.equal(deduped[1], sameDateGames[1]);
+
+  const crossSeasonGames = [
+    { season: 2024, date: '2024-09-07', teamA: 'Joe', teamB: 'Shap', scoreA: 100, scoreB: 90 },
+    { season: 2024, date: '2024-09-14', teamA: 'Joe', teamB: 'Nuss', scoreA: 110, scoreB: 80 },
+    { season: 2025, date: '2025-09-07', teamA: 'Joe', teamB: 'Shap', scoreA: 120, scoreB: 100 },
+  ];
+
+  const weeks = deriveWeeksInPlace(crossSeasonGames);
+  assert.deepEqual([...weeks].sort((a, b) => a - b), [1, 2]);
+  assert.equal(crossSeasonGames[0]._weekByTeam.Joe, 1);
+  assert.equal(crossSeasonGames[1]._weekByTeam.Joe, 2);
+  assert.equal(crossSeasonGames[2]._weekByTeam.Joe, 1);
 });
 
 test('render helpers format text and build stable markup', () => {

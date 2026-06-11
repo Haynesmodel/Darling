@@ -228,6 +228,54 @@ test('trophy case url restores the trophy page and owner selection', async ({ pa
   expect(download.suggestedFilename()).toBe('history_Joe.csv');
 });
 
+test('history filters do not leak into dynasty controls', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+
+  await page.locator('#teamSelect').selectOption('Joel');
+  await page.locator('#seasonFilters .season-cb').last().evaluate((input) => {
+    input.checked = true;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await expect(page.locator('#seasonCountText')).toHaveText('1 selected');
+
+  await page.locator('#tabDynastyBtn').click();
+  await expect(page.locator('#tabDynastyBtn')).toHaveClass(/active/);
+  await expect(page.locator('#dynastyModeSelect')).toHaveValue('calculator');
+  await expect(page.locator('#dynastyOwnerSelect')).toHaveValue('Joe');
+  await expect(page.locator('#dynastyStartSeason')).toHaveValue('2023');
+  await expect(page.locator('#dynastyEndSeason')).toHaveValue('2025');
+  await expect(page.locator('#dynastyCalculatorHero')).toContainText('Joe Dynasty Score');
+  await expect(page.locator('#dynastyCalculatorHero')).toContainText('2023-2025');
+});
+
+test('browser back restores the previous history state after a tab change', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+
+  await page.locator('#teamSelect').selectOption('Joel');
+  await page.locator('#seasonFilters .season-cb').last().evaluate((input) => {
+    input.checked = true;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await expect(page.locator('#seasonCountText')).toHaveText('1 selected');
+  await expect.poll(async () => page.url()).toContain('team=Joel');
+
+  await page.locator('#tabTrophyBtn').click();
+  await expect(page.locator('#tabTrophyBtn')).toHaveClass(/active/);
+  await expect(page.locator('#trophyOwnerSelect')).toHaveValue('Joel');
+
+  await page.goBack();
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('#tabHistoryBtn')).toHaveClass(/active/);
+  await expect(page.locator('#page-history')).toBeVisible();
+  await expect(page.locator('#teamSelect')).toHaveValue('Joel');
+  await expect(page.locator('#seasonCountText')).toHaveText('1 selected');
+  await expect(page.locator('#historyGamesTable tbody tr')).not.toHaveCount(0);
+  await expect(page).toHaveURL(/team=Joel/);
+  await expect(page).toHaveURL(/seasons=/);
+});
+
 test('dynasty tab renders controls and responds to calculator changes', async ({ page }) => {
   await page.goto('/');
   await page.waitForLoadState('networkidle');

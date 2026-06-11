@@ -164,8 +164,11 @@ function updateUrlFromState(opts = {}) {
   const isApplyingUrlState = !!opts.isApplyingUrlState;
   if (isApplyingUrlState) return buildUrlFromState(opts);
   const next = buildUrlFromState(opts);
-  if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
-    window.history.replaceState(null, '', next);
+  if (typeof window !== 'undefined' && window.location) {
+    const current = `${window.location.pathname}${window.location.search}`;
+    if (current !== next && window.history && window.history.pushState) {
+      window.history.pushState(null, '', next);
+    }
   }
   return next;
 }

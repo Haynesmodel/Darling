@@ -13,11 +13,12 @@ Run locally:
 Test locally:
 - `npm test` runs the data and helper tests.
 - `npm run test:assets` validates `assets/H2H.json`, `assets/SeasonSummary.json`, and `assets/Rivalries.json`.
+- `npm run test:unit` runs hygiene, asset validation, Node unit tests, and Python tests.
 - `npm run test:scripts` runs the script helper tests, including the Python update helpers.
 - `npm run test:ui` runs the Playwright browser tests.
 - `npm run test:coverage` runs the Node tests, browser tests, and coverage check.
-- `npm run test:ci` runs hygiene, script, and coverage checks, matching CI.
-- GitHub branch protection should require the `CI / test` check.
+- `npm run test:ci` runs the local unit and UI checks that mirror CI.
+- GitHub branch protection should require the `CI / unit` and `CI / ui` checks.
 
 Primary web-served data:
 - `assets/H2H.json`
@@ -40,5 +41,6 @@ Season update flow:
 - Dry run with `UPDATE_LIVE=1 VALIDATE_ONLY=1 scripts/update_sleeper_h2h.sh` to generate and validate a temporary bundle without touching `assets/`.
 - Run `UPDATE_LIVE=1 scripts/update_sleeper_h2h.sh` to write `assets/H2H.updated.json` for review.
 - Review `assets/H2H.updated.json`, copy it into `assets/H2H.json`, and rerun `npm run test:assets` and `npm run test:scripts` before committing.
+- The GitHub Actions workflow at [`.github/workflows/update-sleeper.yml`](./.github/workflows/update-sleeper.yml) automates the same flow, creates `assets/SeasonSummary.draft.json` when H2H changes, and files a failure alert if the run breaks.
 
 Season notes and cleanup history live in [CHANGELOG.md](./CHANGELOG.md).

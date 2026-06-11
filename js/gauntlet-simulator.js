@@ -1,5 +1,5 @@
 const DEFAULT_HISTOGRAM_BINS = 18;
-const DEFAULT_BLOWOUT_MARGIN = 20;
+const DEFAULT_BLOWOUT_MARGIN = 29;
 const DEFAULT_CLOSE_GAME_MARGIN = 5;
 
 function seedText(value) {

@@ -198,6 +198,7 @@ function gauntletHistogramSvg(result, teamSeasonA, teamSeasonB) {
 
 function gauntletStatsTableHtml(result, teamSeasonA, teamSeasonB) {
   if (!result || !teamSeasonA || !teamSeasonB) return '';
+  const blowoutLabel = `Blowout win rate (${DEFAULT_BLOWOUT_MARGIN}+)`;
   const rows = [
     ['PPG', nfmt(teamSeasonA.mean, 1), nfmt(teamSeasonB.mean, 1)],
     ['Record', escapeHtml(teamSeasonA.record), escapeHtml(teamSeasonB.record)],
@@ -205,7 +206,7 @@ function gauntletStatsTableHtml(result, teamSeasonA, teamSeasonB) {
     ['Score range', `${nfmt(teamSeasonA.min, 1)} - ${nfmt(teamSeasonA.max, 1)}`, `${nfmt(teamSeasonB.min, 1)} - ${nfmt(teamSeasonB.max, 1)}`],
     ['Simulated average', nfmt(result.avgA, 1), nfmt(result.avgB, 1)],
     ['Win probability', pctLabel(result.pctA), pctLabel(result.pctB)],
-    ['Blowout win rate', pctLabel(result.blowoutPctA), pctLabel(result.blowoutPctB)],
+    [blowoutLabel, pctLabel(result.blowoutPctA), pctLabel(result.blowoutPctB)],
     ['Close-game rate', pctLabel(result.closeGamePct), pctLabel(result.closeGamePct)],
   ];
 

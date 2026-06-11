@@ -522,11 +522,13 @@ function applyUrlState(urlState = parseUrlState()) {
     }
     if (urlState.tab === 'gauntlet') {
       ensureGauntletControls({
+        ...(selectedGauntletState || {}),
         selectedOwnerA: selectedGauntletState?.selectedOwnerA,
         selectedSeasonA: selectedGauntletState?.selectedSeasonA,
         selectedOwnerB: selectedGauntletState?.selectedOwnerB,
         selectedSeasonB: selectedGauntletState?.selectedSeasonB,
         selectedModel: selectedGauntletState?.selectedModel,
+        selectedIncludePostseason: selectedGauntletState?.selectedIncludePostseason,
         selectedSimulations: selectedGauntletState?.selectedSimulations,
         seed: selectedGauntletState?.seed,
         seedSource: selectedGauntletState?.seedSource,
@@ -1287,11 +1289,13 @@ function bindListeners() {
     gauntletTab.addEventListener('click', () => {
       showPage('gauntlet');
       ensureGauntletControls({
+        ...(selectedGauntletState || {}),
         selectedOwnerA: selectedGauntletState?.selectedOwnerA,
         selectedSeasonA: selectedGauntletState?.selectedSeasonA,
         selectedOwnerB: selectedGauntletState?.selectedOwnerB,
         selectedSeasonB: selectedGauntletState?.selectedSeasonB,
         selectedModel: selectedGauntletState?.selectedModel,
+        selectedIncludePostseason: selectedGauntletState?.selectedIncludePostseason,
         selectedSimulations: selectedGauntletState?.selectedSimulations,
         seed: selectedGauntletState?.seed,
         seedSource: selectedGauntletState?.seedSource,

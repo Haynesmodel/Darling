@@ -109,11 +109,22 @@ function buildTeamSeasons(leagueGames = [], seasonSummaries = [], opts = {}) {
     const sortedScores = season.scores.slice().sort((a, b) => a - b);
     const mean = weightedMean(season.scoreEvents);
     const stdev = weightedPopulationStdev(season.scoreEvents, mean);
-    const wins = Number.isFinite(summary?.wins) ? Number(summary.wins) : season.wins;
-    const losses = Number.isFinite(summary?.losses) ? Number(summary.losses) : season.losses;
-    const ties = Number.isFinite(summary?.ties) ? Number(summary.ties) : season.ties;
-    const pointsFor = Number.isFinite(summary?.points_for) ? Number(summary.points_for) : sum(season.scores);
-    const pointsAgainst = Number.isFinite(summary?.points_against) ? Number(summary.points_against) : season.pointsAgainst;
+    const useIncludedSeasonTotals = includePostseason;
+    const wins = useIncludedSeasonTotals
+      ? season.wins
+      : (Number.isFinite(summary?.wins) ? Number(summary.wins) : season.wins);
+    const losses = useIncludedSeasonTotals
+      ? season.losses
+      : (Number.isFinite(summary?.losses) ? Number(summary.losses) : season.losses);
+    const ties = useIncludedSeasonTotals
+      ? season.ties
+      : (Number.isFinite(summary?.ties) ? Number(summary.ties) : season.ties);
+    const pointsFor = useIncludedSeasonTotals
+      ? sum(season.scores)
+      : (Number.isFinite(summary?.points_for) ? Number(summary.points_for) : sum(season.scores));
+    const pointsAgainst = useIncludedSeasonTotals
+      ? season.pointsAgainst
+      : (Number.isFinite(summary?.points_against) ? Number(summary.points_against) : season.pointsAgainst);
 
     teamSeasons.push({
       id: season.id,

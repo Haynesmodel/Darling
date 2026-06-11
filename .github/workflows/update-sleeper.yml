@@ -178,6 +178,26 @@ jobs:
               '- Asset validation or draft generation failed.',
             ].join('\n');
 
+            const ensureLabel = async (name, color, description) => {
+              try {
+                await github.rest.issues.getLabel({
+                  ...context.repo,
+                  name,
+                });
+              } catch (err) {
+                if (err.status !== 404) throw err;
+                await github.rest.issues.createLabel({
+                  ...context.repo,
+                  name,
+                  color,
+                  description,
+                });
+              }
+            };
+
+            await ensureLabel('data-pipeline', '0e8a16', 'Automated data pipeline workflow alerts');
+            await ensureLabel('automated', '5319e7', 'Created or updated by automation');
+
             const query = `repo:${context.repo.owner}/${context.repo.repo} is:issue is:open label:data-pipeline label:automated "${title}"`;
             const search = await github.rest.search.issuesAndPullRequests({ q: query });
             const issue = search.data.items.find(item => item.title === title);

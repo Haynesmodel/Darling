@@ -18,7 +18,7 @@ Test locally:
 - `npm run test:ui` runs the Playwright browser tests.
 - `npm run test:coverage` runs the Node tests, browser tests, and coverage check.
 - `npm run test:ci` runs the local unit and UI checks that mirror CI.
-- GitHub branch protection should require the `CI / unit` and `CI / ui` checks.
+- GitHub branch protection should require the `CI / unit`, `CI / ui`, and `CI / coverage` checks.
 
 Primary web-served data:
 - `assets/H2H.json`

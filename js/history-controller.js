@@ -380,6 +380,42 @@ function handleDynastyWindowModalClose() {
   renderDynasty();
 }
 
+function applyHistoryUrlState(urlState = parseUrlState()) {
+  const teamSelect = document.getElementById('teamSelect');
+  if (!teamSelect) return;
+
+  const teams = teamOptions(seasonSummaries, leagueGames, ALL_TEAMS);
+  const defaultTeam = teams.find(t => t.value === DEFAULT_TEAM)?.value || teams[0]?.value || DEFAULT_TEAM;
+  const nextTeam = (urlState.team && teams.some(t => t.value === urlState.team))
+    ? urlState.team
+    : defaultTeam;
+
+  selectedTeam = nextTeam;
+  teamSelect.value = nextTeam;
+  updateHeaderForTeam(selectedTeam);
+
+  rebuildOpponentFacet({
+    doc: document,
+    leagueGames,
+    selectedTeam,
+    allTeams: ALL_TEAMS,
+    onFacetChange: syncFacetStateFromDom,
+  });
+
+  universe.opponents = opponentOptions(leagueGames, selectedTeam, ALL_TEAMS);
+  setFacetSelections('seasonFilters', 'season', urlState.seasons, document);
+  setFacetSelections('weekFilters', 'week', urlState.weeks, document);
+  setFacetSelections('oppFilters', 'opp', urlState.opps, document);
+  setFacetSelections('typeFilters', 'type', urlState.types, document);
+  setFacetSelections('roundFilters', 'round', urlState.rounds, document);
+
+  if (urlState.hasAny) {
+    syncFacetStateFromDom();
+  } else {
+    resetAllFacetsToAll();
+  }
+}
+
 function applyUrlState(urlState = parseUrlState()) {
   isApplyingUrlState = true;
   try {
@@ -413,8 +449,10 @@ function applyUrlState(urlState = parseUrlState()) {
       renderDynasty();
       return;
     }
-    ensureHistoryControls();
-    renderHistory();
+    const teamSelect = ensureHistoryControls();
+    if (teamSelect && teamSelect.dataset.ready === '1') {
+      applyHistoryUrlState(urlState);
+    }
   } finally {
     isApplyingUrlState = false;
   }

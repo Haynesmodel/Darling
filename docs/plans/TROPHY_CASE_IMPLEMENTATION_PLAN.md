@@ -1,5 +1,7 @@
 # Trophy Case Implementation Plan
 
+Status: complete.
+
 Add a top-level **Trophy Case** page that turns each owner's league history into a visual resume: championships, regular-season titles, playoff results, Saunders outcomes, weekly awards, signature seasons, and notable scars.
 
 Rivalries are now implemented as a top-level page beside League History. Trophy Case should follow that same product shape: a focused workflow with its own tab, page markup, controls module, renderer module, tests, and URL state.

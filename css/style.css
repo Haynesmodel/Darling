@@ -40,6 +40,7 @@ main{padding:16px;overflow-x:hidden}
 #page-rivalry.page.visible{grid-template-columns:minmax(0,1fr)}
 #page-trophy.page.visible{grid-template-columns:minmax(0,1fr)}
 #page-dynasty.page.visible{grid-template-columns:minmax(0,1fr)}
+#page-gauntlet.page.visible{grid-template-columns:minmax(0,1fr)}
 .page.visible > *{min-width:0}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:16px;min-width:0}
 .card h3{margin:4px 0 10px;font-size:16px}
@@ -77,6 +78,53 @@ main{padding:16px;overflow-x:hidden}
 .rivalry-controls select{min-width:180px}
 .trophy-controls{align-items:center}
 .trophy-controls select{min-width:220px}
+.gauntlet-controls-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(170px, 1fr));
+  gap:12px;
+  align-items:end;
+}
+.gauntlet-field{
+  display:grid;
+  gap:6px;
+  font-size:13px;
+  font-weight:700;
+  color:var(--muted);
+}
+.gauntlet-field select{
+  width:100%;
+  min-width:0;
+  font-weight:700;
+}
+.gauntlet-field-checkbox{
+  align-content:start;
+  gap:4px;
+}
+.gauntlet-checkbox-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:var(--header);
+  font-weight:800;
+}
+.gauntlet-field-note{
+  font-size:12px;
+  font-weight:600;
+  color:var(--muted);
+  line-height:1.35;
+}
+.gauntlet-actions{
+  display:grid;
+  gap:8px;
+  align-content:end;
+  justify-items:start;
+}
+.gauntlet-seed{
+  font-size:12px;
+  color:var(--muted);
+  font-weight:700;
+  line-height:1.2;
+}
 .rivalry-vs{font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
 .checkbox-label{
   display:inline-flex;
@@ -136,6 +184,277 @@ tbody tr:nth-child(even){background:var(--row-alt)}
 .stat .value{font-size:16px;font-weight:700}
 .stat .sub{font-size:12px;color:var(--muted);margin-top:4px}
 .callout{margin-top:12px;padding:12px;border-radius:12px;background:#eef2ff;border:1px solid #c7d2fe;font-size:14px;font-weight:600}
+
+.gauntlet-card{
+  background:
+    radial-gradient(circle at top right, rgba(37,99,235,.05), transparent 24%),
+    radial-gradient(circle at bottom left, rgba(245,158,11,.04), transparent 22%),
+    var(--panel);
+}
+.gauntlet-matchup-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  gap:12px;
+  align-items:stretch;
+}
+.gauntlet-vs{
+  align-self:center;
+  justify-self:center;
+  padding:10px 12px;
+  border-radius:999px;
+  background:#111827;
+  color:#fff;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  font-size:12px;
+}
+.gauntlet-team-card{
+  display:grid;
+  gap:8px;
+  padding:14px;
+  border:1px solid var(--border);
+  border-radius:16px;
+  background:linear-gradient(180deg, #fff, #fbfcff);
+  box-shadow:0 8px 18px rgba(15,23,42,.04);
+}
+.gauntlet-team-card-empty{
+  grid-column:1 / -1;
+  text-align:center;
+  color:var(--muted);
+  font-weight:700;
+}
+.gauntlet-team-card-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:10px;
+}
+.gauntlet-team-owner{
+  font-size:24px;
+  font-weight:900;
+  line-height:1;
+  letter-spacing:-.03em;
+}
+.gauntlet-team-season,
+.gauntlet-team-record,
+.gauntlet-team-sum,
+.gauntlet-team-range,
+.gauntlet-team-meta{
+  font-size:13px;
+  color:var(--muted);
+  font-weight:700;
+}
+.gauntlet-team-record{color:var(--header)}
+.gauntlet-team-finish{
+  font-size:28px;
+  font-weight:900;
+  line-height:1;
+  color:var(--header);
+}
+.gauntlet-badge-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+.gauntlet-badge{
+  display:inline-flex;
+  align-items:center;
+  padding:4px 8px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  border:1px solid var(--border);
+  background:#fff;
+  color:var(--muted);
+}
+.gauntlet-badge-champ{background:#fef3c7;border-color:#f59e0b;color:#92400e}
+.gauntlet-badge-bye{background:#dbeafe;border-color:#60a5fa;color:#1d4ed8}
+.gauntlet-badge-saunders{background:#ede9fe;border-color:#8b5cf6;color:#6d28d9}
+.gauntlet-badge-muted{background:#f9fafb}
+.gauntlet-probability{
+  display:grid;
+  gap:10px;
+  margin-top:14px;
+  padding:14px;
+  border:1px solid var(--border);
+  border-radius:16px;
+  background:#fff;
+}
+.gauntlet-probability-head{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+}
+.gauntlet-kicker{
+  font-size:12px;
+  color:var(--muted);
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.gauntlet-probability-title{
+  font-size:18px;
+  font-weight:900;
+  letter-spacing:-.02em;
+}
+.gauntlet-probability-summary{
+  text-align:right;
+  font-size:13px;
+  line-height:1.4;
+  color:var(--muted);
+  font-weight:700;
+}
+.gauntlet-probability-bar{
+  height:14px;
+  display:flex;
+  overflow:hidden;
+  border-radius:999px;
+  background:#e5e7eb;
+}
+.gauntlet-probability-a{background:#2563eb}
+.gauntlet-probability-b{background:#f59e0b}
+.gauntlet-probability-foot{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  gap:8px 12px;
+  font-size:12px;
+  color:var(--muted);
+  font-weight:700;
+}
+.gauntlet-histogram-wrap{
+  display:grid;
+  gap:10px;
+}
+.gauntlet-histogram-legend{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px 14px;
+  align-items:center;
+  font-size:12px;
+  color:var(--muted);
+  font-weight:700;
+}
+.gauntlet-histogram-legend span{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+}
+.gauntlet-legend-swatch{
+  width:10px;
+  height:10px;
+  border-radius:999px;
+  display:inline-block;
+}
+.gauntlet-legend-a{background:#2563eb}
+.gauntlet-legend-b{background:#f59e0b}
+.gauntlet-histogram-note{font-weight:600}
+.gauntlet-histogram-panel{
+  display:grid;
+  gap:8px;
+}
+.gauntlet-histogram-panel-head{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  gap:6px 12px;
+  align-items:center;
+  font-size:12px;
+}
+.gauntlet-histogram-panel-title{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  color:var(--header);
+  font-weight:800;
+}
+.gauntlet-histogram-panel-title-inline{
+  flex-wrap:wrap;
+}
+.gauntlet-histogram-panel-meta{
+  color:var(--muted);
+  font-weight:700;
+}
+.gauntlet-histogram-svg{
+  width:100%;
+  height:auto;
+  display:block;
+}
+.gauntlet-histogram-svg path{
+  shape-rendering:geometricPrecision;
+}
+.gauntlet-histogram-grid-line{
+  stroke:#e5e7eb;
+  stroke-width:1;
+}
+.gauntlet-histogram-axis{
+  fill:var(--muted);
+  font-size:11px;
+  font-weight:700;
+}
+.gauntlet-histogram-y-axis{
+  fill:var(--muted);
+  font-size:11px;
+  font-weight:700;
+}
+.gauntlet-histogram-y-axis-title{
+  font-size:11px;
+  font-weight:800;
+}
+.gauntlet-histogram-foot{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  gap:8px 12px;
+  font-size:12px;
+  color:var(--muted);
+  font-weight:600;
+}
+.gauntlet-table-wrap table th[scope="row"]{
+  font-weight:800;
+  color:var(--header);
+}
+.gauntlet-context-grid{
+  margin-bottom:12px;
+}
+.gauntlet-context-notes{
+  display:grid;
+  gap:6px;
+  font-size:13px;
+  color:var(--muted);
+  font-weight:600;
+  line-height:1.45;
+}
+.gauntlet-narrative{
+  margin:0 0 14px;
+  font-size:15px;
+  line-height:1.55;
+  color:var(--text);
+  font-weight:600;
+}
+.gauntlet-copy-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-bottom:10px;
+}
+.gauntlet-copy-text{
+  width:100%;
+  min-height:180px;
+  padding:12px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:#fff;
+  font:inherit;
+  font-size:13px;
+  line-height:1.5;
+  color:var(--text);
+  resize:vertical;
+}
 
 .trophy-toolbar{
   display:flex;
@@ -1635,5 +1954,17 @@ tbody tr:nth-child(even){background:var(--row-alt)}
   }
   .dynasty-heatmap-row{
     grid-template-columns:120px repeat(var(--season-count), minmax(68px, 1fr));
+  }
+  .gauntlet-matchup-grid{
+    grid-template-columns:1fr;
+  }
+  .gauntlet-vs{
+    justify-self:start;
+  }
+  .gauntlet-probability-head{
+    flex-direction:column;
+  }
+  .gauntlet-probability-summary{
+    text-align:left;
   }
 }

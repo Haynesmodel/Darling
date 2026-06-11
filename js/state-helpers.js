@@ -44,6 +44,14 @@ function parseUrlState(search) {
   const tab = params.get('tab') || null;
   const rivalryTeamA = params.get('rivalryTeamA') || null;
   const rivalryTeamB = params.get('rivalryTeamB') || null;
+  const gauntletA = params.get('ga') || null;
+  const gauntletB = params.get('gb') || null;
+  const gauntletModel = params.get('gm') || null;
+  const gauntletIncludePostseason = params.get('gp');
+  const gauntletSimulations = params.get('gn');
+  const gauntletSeed = params.get('gs') || null;
+  const parsedGauntletSimulations = isFiniteInput(gauntletSimulations) ? +gauntletSimulations : null;
+  const parsedGauntletIncludePostseason = gauntletIncludePostseason === null ? null : gauntletIncludePostseason !== '0';
   const trophyOwner = params.get('trophyOwner') || null;
   const dynastyMode = params.get('dynastyMode') || null;
   const dynastyOwner = params.get('dynastyOwner') || null;
@@ -56,7 +64,8 @@ function parseUrlState(search) {
   const parsedDynastyMinSeasons = isFiniteInput(dynastyMinSeasons) ? +dynastyMinSeasons : null;
   const parsedDynastySaunders = dynastySaunders === null ? null : dynastySaunders !== '0';
   const hasDynasty = !!(tab === 'dynasty' || dynastyMode || dynastyOwner || parsedDynastyStart !== null || parsedDynastyEnd !== null || parsedDynastyMinSeasons !== null || parsedDynastySaunders !== null);
-  const hasAny = !!(team || trophyOwner || hasDynasty || (seasons && seasons.length) || (weeks && weeks.length) || (opps && opps.length) || (types && types.length) || (rounds && rounds.length));
+  const hasGauntlet = !!(tab === 'gauntlet' || gauntletA || gauntletB || gauntletModel || parsedGauntletIncludePostseason !== null || parsedGauntletSimulations !== null || gauntletSeed);
+  const hasAny = !!(team || trophyOwner || hasDynasty || hasGauntlet || (seasons && seasons.length) || (weeks && weeks.length) || (opps && opps.length) || (types && types.length) || (rounds && rounds.length));
   return {
     team,
     seasons: seasons ? new Set(seasons) : null,
@@ -67,6 +76,12 @@ function parseUrlState(search) {
     tab,
     rivalryTeamA,
     rivalryTeamB,
+    gauntletA,
+    gauntletB,
+    gauntletModel,
+    gauntletIncludePostseason: parsedGauntletIncludePostseason,
+    gauntletSimulations: parsedGauntletSimulations,
+    gauntletSeed,
     trophyOwner,
     dynastyMode,
     dynastyOwner,
@@ -75,6 +90,7 @@ function parseUrlState(search) {
     dynastyMinSeasons: parsedDynastyMinSeasons,
     dynastySaunders: parsedDynastySaunders,
     hasRivalry: tab === 'rivalry' || !!rivalryTeamA || !!rivalryTeamB,
+    hasGauntlet,
     hasTrophy: tab === 'trophy' || !!trophyOwner,
     hasDynasty,
     hasAny,
@@ -119,6 +135,12 @@ function buildUrlFromState(opts = {}) {
   const selectedDynastyEndSeason = Object.prototype.hasOwnProperty.call(opts, 'selectedDynastyEndSeason') ? opts.selectedDynastyEndSeason : null;
   const selectedDynastyMinSeasons = Object.prototype.hasOwnProperty.call(opts, 'selectedDynastyMinSeasons') ? opts.selectedDynastyMinSeasons : null;
   const selectedDynastySaunders = Object.prototype.hasOwnProperty.call(opts, 'selectedDynastySaunders') ? opts.selectedDynastySaunders : null;
+  const selectedGauntletA = Object.prototype.hasOwnProperty.call(opts, 'selectedGauntletA') ? opts.selectedGauntletA : null;
+  const selectedGauntletB = Object.prototype.hasOwnProperty.call(opts, 'selectedGauntletB') ? opts.selectedGauntletB : null;
+  const selectedGauntletModel = Object.prototype.hasOwnProperty.call(opts, 'selectedGauntletModel') ? opts.selectedGauntletModel : null;
+  const selectedGauntletIncludePostseason = Object.prototype.hasOwnProperty.call(opts, 'selectedGauntletIncludePostseason') ? opts.selectedGauntletIncludePostseason : null;
+  const selectedGauntletSimulations = Object.prototype.hasOwnProperty.call(opts, 'selectedGauntletSimulations') ? opts.selectedGauntletSimulations : null;
+  const selectedGauntletSeed = Object.prototype.hasOwnProperty.call(opts, 'selectedGauntletSeed') ? opts.selectedGauntletSeed : null;
   const selectedSeasons = asSet(opts.selectedSeasons);
   const selectedWeeks = asSet(opts.selectedWeeks);
   const selectedOpponents = asSet(opts.selectedOpponents);
@@ -130,7 +152,7 @@ function buildUrlFromState(opts = {}) {
 
   const params = new URLSearchParams();
   if (tab) params.set('tab', tab);
-  if (tab !== 'trophy' && tab !== 'dynasty' && selectedTeam && selectedTeam !== allTeams) params.set('team', selectedTeam);
+  if (tab !== 'trophy' && tab !== 'dynasty' && tab !== 'gauntlet' && selectedTeam && selectedTeam !== allTeams) params.set('team', selectedTeam);
   if (tab === 'rivalry') {
     if (selectedRivalryTeamA) params.set('rivalryTeamA', selectedRivalryTeamA);
     if (selectedRivalryTeamB) params.set('rivalryTeamB', selectedRivalryTeamB);
@@ -150,12 +172,23 @@ function buildUrlFromState(opts = {}) {
     if (selectedDynastySaunders === true) params.set('dynastySaunders', '1');
     if (selectedDynastySaunders === false) params.set('dynastySaunders', '0');
   }
+  if (tab === 'gauntlet') {
+    if (selectedGauntletA) params.set('ga', selectedGauntletA);
+    if (selectedGauntletB) params.set('gb', selectedGauntletB);
+    if (selectedGauntletModel) params.set('gm', selectedGauntletModel);
+    if (selectedGauntletIncludePostseason === true) params.set('gp', '1');
+    if (selectedGauntletIncludePostseason === false) params.set('gp', '0');
+    if (isFiniteInput(selectedGauntletSimulations)) params.set('gn', `${selectedGauntletSimulations}`);
+    if (selectedGauntletSeed) params.set('gs', selectedGauntletSeed);
+  }
   const setIf = (key, set, uni) => { if (isRestrictiveFn(set, uni)) params.set(key, [...set].join(',')); };
-  setIf('seasons', selectedSeasons, universe.seasons || []);
-  setIf('weeks', selectedWeeks, universe.weeks || []);
-  setIf('opps', selectedOpponents, universe.opponents || []);
-  setIf('types', selectedTypes, universe.types || []);
-  setIf('rounds', selectedRounds, universe.rounds || []);
+  if (tab !== 'gauntlet') {
+    setIf('seasons', selectedSeasons, universe.seasons || []);
+    setIf('weeks', selectedWeeks, universe.weeks || []);
+    setIf('opps', selectedOpponents, universe.opponents || []);
+    setIf('types', selectedTypes, universe.types || []);
+    setIf('rounds', selectedRounds, universe.rounds || []);
+  }
   const qs = params.toString();
   return `${pathname}${qs ? `?${qs}` : ''}`;
 }
@@ -164,8 +197,11 @@ function updateUrlFromState(opts = {}) {
   const isApplyingUrlState = !!opts.isApplyingUrlState;
   if (isApplyingUrlState) return buildUrlFromState(opts);
   const next = buildUrlFromState(opts);
-  if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
-    window.history.replaceState(null, '', next);
+  if (typeof window !== 'undefined' && window.location) {
+    const current = `${window.location.pathname}${window.location.search}`;
+    if (current !== next && window.history && window.history.pushState) {
+      window.history.pushState(null, '', next);
+    }
   }
   return next;
 }

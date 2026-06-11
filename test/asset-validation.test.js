@@ -79,6 +79,14 @@ test('SeasonSummary rows have required shape', () => {
   }
 });
 
+test('SeasonSummary points_for values stay numeric and positive', () => {
+  const seasons = readJson(seasonPath);
+  for (const [i, r] of seasons.entries()) {
+    assert.ok(isNum(r.points_for), `row ${i} missing points_for`);
+    assert.ok(+r.points_for > 0, `row ${i} points_for must be positive`);
+  }
+});
+
 test('H2H has no duplicate games (canonical key)', () => {
   const h2h = readJson(h2hPath);
   const seen = new Set();
@@ -423,6 +431,60 @@ test('SeasonSummary playoff/saunders totals match H2H', () => {
     assert.equal(r.playoff_losses, pr.l, `${key} playoff_losses mismatch`);
     assert.equal(r.saunders_wins, sr.w, `${key} saunders_wins mismatch`);
     assert.equal(r.saunders_losses, sr.l, `${key} saunders_losses mismatch`);
+  }
+});
+
+test('H2H playoff rounds stay within the known round set', () => {
+  const h2h = readJson(h2hPath);
+  const knownRounds = new Set([
+    '',
+    'Wild Card',
+    'Semi Final',
+    'Championship',
+    'Saunders Wild Card',
+    'Saunders Semi Final',
+    'Saunders Final',
+    'Third Place',
+  ]);
+
+  for (const [i, g] of h2h.entries()) {
+    const round = String(g.round || '');
+    assert.ok(knownRounds.has(round), `row ${i} has unexpected round: ${round}`);
+  }
+});
+
+test('Each completed season has exactly one championship game', () => {
+  const h2h = readJson(h2hPath);
+  const counts = new Map();
+  for (const g of h2h) {
+    if (String(g.round || '') !== 'Championship') continue;
+    counts.set(+g.season, (counts.get(+g.season) || 0) + 1);
+  }
+  for (const [season, count] of counts.entries()) {
+    assert.equal(count, 1, `season ${season} has ${count} championship games`);
+  }
+});
+
+test('SeasonSummary finish positions stay within season bounds and remain unique', () => {
+  const seasons = readJson(seasonPath);
+  const bySeason = new Map();
+  for (const row of seasons) {
+    const season = +row.season;
+    const rows = bySeason.get(season) || [];
+    rows.push(row);
+    bySeason.set(season, rows);
+  }
+
+  for (const [season, rows] of bySeason.entries()) {
+    const finishes = rows.map(row => +row.finish);
+    const teamCount = rows.length;
+    const seen = new Set();
+    for (const [idx, finish] of finishes.entries()) {
+      assert.ok(Number.isFinite(finish), `season ${season} row ${idx} missing finish`);
+      assert.ok(finish >= 1 && finish <= teamCount, `season ${season} finish ${finish} out of range`);
+      assert.ok(!seen.has(finish), `season ${season} has duplicate finish ${finish}`);
+      seen.add(finish);
+    }
   }
 });
 

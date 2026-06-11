@@ -105,6 +105,23 @@ import {
   renderDynastySlumpModal,
   renderDynastySlumps,
 } from './dynasty-renderers.js';
+import {
+  buildTeamSeasons,
+  teamSeasonId,
+  headToHeadContext,
+} from './gauntlet-data.js';
+import {
+  buildGauntletControls,
+  resolveGauntletInitialState,
+  readGauntletControls,
+  syncGauntletControls,
+} from './gauntlet-controls.js';
+import {
+  gauntletNarrativeText,
+  gauntletModelLabel,
+  renderGauntlet as renderGauntletView,
+} from './gauntlet-renderers.js';
+import { simulateMatchup } from './gauntlet-simulator.js';
 
 const DEFAULT_TEAM = 'Joe';
 const ALL_TEAMS = '__ALL__';
@@ -126,12 +143,14 @@ let selectedRivalryTeamA = DEFAULT_TEAM;
 let selectedRivalryTeamB = null;
 let selectedTrophyOwner = DEFAULT_TEAM;
 let selectedDynastyState = null;
+let selectedGauntletState = null;
 let universe = { seasons: [], weeks: [], opponents: [], types: [], rounds: [] };
 let isApplyingUrlState = false;
 let derivedWeeksSet = new Set();
 let seasonAggregatesCache = null;
 let weeklyAwardsCache = null;
 let teamsFromLeagueGamesCache = null;
+let teamSeasonsCache = new Map();
 const headToHeadPairsCache = new Map();
 const renderSectionCache = new Map();
 let filteredGamesCacheKey = null;
@@ -211,6 +230,14 @@ function weeklyAwards() {
   return weeklyAwardsCache;
 }
 
+function teamSeasons(includePostseason = false) {
+  const cacheKey = includePostseason ? 'postseason' : 'regular';
+  if (teamSeasonsCache.has(cacheKey)) return teamSeasonsCache.get(cacheKey);
+  const built = buildTeamSeasons(leagueGames, seasonSummaries, { includePostseason });
+  teamSeasonsCache.set(cacheKey, built);
+  return built;
+}
+
 function handleRivalryChange(next) {
   selectedRivalryTeamA = next.selectedTeamA;
   selectedRivalryTeamB = next.selectedTeamB;
@@ -220,6 +247,17 @@ function handleRivalryChange(next) {
 function handleTrophyChange(next) {
   selectedTrophyOwner = next.selectedOwner;
   renderTrophy();
+}
+
+function handleGauntletChange(next) {
+  const derivedSeed = `${teamSeasonId(next.selectedOwnerA, next.selectedSeasonA)}|${teamSeasonId(next.selectedOwnerB, next.selectedSeasonB)}|${next.selectedModel}|${next.selectedIncludePostseason ? 'postseason' : 'regular'}|${next.selectedSimulations}`;
+  const explicitSeed = next.seedSource === 'explicit' || selectedGauntletState?.seedSource === 'explicit';
+  selectedGauntletState = {
+    ...next,
+    seed: explicitSeed ? (next.seed || selectedGauntletState?.seed || derivedSeed) : derivedSeed,
+    seedSource: explicitSeed ? 'explicit' : 'derived',
+  };
+  renderGauntlet();
 }
 
 function ensureRivalryControls(initialState = {}) {
@@ -269,6 +307,39 @@ function ensureTrophyControls(initialState = {}) {
   }
 
   return ownerSelect;
+}
+
+function ensureGauntletControls(initialState = {}) {
+  const container = document.getElementById('gauntletControls');
+  if (!container) return null;
+
+  const urlState = parseUrlState();
+  const currentState = urlState.hasGauntlet ? null : (initialState.selectedOwnerA ? initialState : selectedGauntletState);
+  const resolved = resolveGauntletInitialState({
+    teamSeasons: teamSeasons(),
+    urlState: urlState.hasGauntlet ? urlState : null,
+    currentState,
+  });
+
+  if (!container.dataset.ready) {
+    selectedGauntletState = buildGauntletControls({
+      doc: document,
+      teamSeasons: teamSeasons(),
+      selectedState: resolved,
+      onChange: handleGauntletChange,
+    });
+    container.dataset.ready = '1';
+  } else {
+    selectedGauntletState = resolved;
+    buildGauntletControls({
+      doc: document,
+      teamSeasons: teamSeasons(),
+      selectedState: selectedGauntletState,
+      onChange: handleGauntletChange,
+    });
+  }
+
+  return container;
 }
 
 function renderRivalry() {
@@ -378,6 +449,98 @@ function handleDynastyWindowModalClose() {
     selectedWindowKind: null,
   };
   renderDynasty();
+}
+
+function applyHistoryUrlState(urlState = parseUrlState()) {
+  const teamSelect = document.getElementById('teamSelect');
+  if (!teamSelect) return;
+
+  const teams = teamOptions(seasonSummaries, leagueGames, ALL_TEAMS);
+  const defaultTeam = teams.find(t => t.value === DEFAULT_TEAM)?.value || teams[0]?.value || DEFAULT_TEAM;
+  const nextTeam = (urlState.team && teams.some(t => t.value === urlState.team))
+    ? urlState.team
+    : defaultTeam;
+
+  selectedTeam = nextTeam;
+  teamSelect.value = nextTeam;
+  updateHeaderForTeam(selectedTeam);
+
+  rebuildOpponentFacet({
+    doc: document,
+    leagueGames,
+    selectedTeam,
+    allTeams: ALL_TEAMS,
+    onFacetChange: syncFacetStateFromDom,
+  });
+
+  universe.opponents = opponentOptions(leagueGames, selectedTeam, ALL_TEAMS);
+  setFacetSelections('seasonFilters', 'season', urlState.seasons, document);
+  setFacetSelections('weekFilters', 'week', urlState.weeks, document);
+  setFacetSelections('oppFilters', 'opp', urlState.opps, document);
+  setFacetSelections('typeFilters', 'type', urlState.types, document);
+  setFacetSelections('roundFilters', 'round', urlState.rounds, document);
+
+  if (urlState.hasAny) {
+    syncFacetStateFromDom();
+  } else {
+    resetAllFacetsToAll();
+  }
+}
+
+function applyUrlState(urlState = parseUrlState()) {
+  isApplyingUrlState = true;
+  try {
+    showPage(urlState.tab === 'rivalry' ? 'rivalry' : urlState.tab === 'trophy' ? 'trophy' : urlState.tab === 'dynasty' ? 'dynasty' : urlState.tab === 'gauntlet' ? 'gauntlet' : 'history');
+    if (urlState.tab === 'rivalry') {
+      ensureRivalryControls({
+        selectedTeamA: urlState.rivalryTeamA || selectedRivalryTeamA,
+        selectedTeamB: urlState.rivalryTeamB || selectedRivalryTeamB,
+      });
+      renderRivalry();
+      return;
+    }
+    if (urlState.tab === 'trophy') {
+      ensureTrophyControls({
+        selectedOwner: urlState.trophyOwner || selectedTrophyOwner,
+      });
+      renderTrophy();
+      return;
+    }
+    if (urlState.tab === 'dynasty') {
+      ensureDynastyControls({
+        mode: urlState.dynastyMode || 'calculator',
+        owner: urlState.dynastyOwner || null,
+        startSeason: urlState.dynastyStart,
+        endSeason: urlState.dynastyEnd,
+        requestedStartSeason: urlState.dynastyStart,
+        requestedEndSeason: urlState.dynastyEnd,
+        minSeasons: urlState.dynastyMinSeasons ?? 2,
+        includeSaundersPenalty: urlState.dynastySaunders ?? true,
+      });
+      renderDynasty();
+      return;
+    }
+    if (urlState.tab === 'gauntlet') {
+      ensureGauntletControls({
+        selectedOwnerA: selectedGauntletState?.selectedOwnerA,
+        selectedSeasonA: selectedGauntletState?.selectedSeasonA,
+        selectedOwnerB: selectedGauntletState?.selectedOwnerB,
+        selectedSeasonB: selectedGauntletState?.selectedSeasonB,
+        selectedModel: selectedGauntletState?.selectedModel,
+        selectedSimulations: selectedGauntletState?.selectedSimulations,
+        seed: selectedGauntletState?.seed,
+        seedSource: selectedGauntletState?.seedSource,
+      });
+      renderGauntlet();
+      return;
+    }
+    const teamSelect = ensureHistoryControls();
+    if (teamSelect && teamSelect.dataset.ready === '1') {
+      applyHistoryUrlState(urlState);
+    }
+  } finally {
+    isApplyingUrlState = false;
+  }
 }
 
 function ensureDynastyControls(initialState = {}) {
@@ -554,6 +717,8 @@ async function loadLeagueJSON() {
     seasonAggregatesCache = null;
     weeklyAwardsCache = null;
     teamsFromLeagueGamesCache = null;
+    teamSeasonsCache = new Map();
+    selectedGauntletState = null;
     headToHeadPairsCache.clear();
     renderSectionCache.clear();
     filteredGamesCacheKey = null;
@@ -580,6 +745,120 @@ function updateHeaderForTrophy(owner) {
   if (document.title !== undefined) {
     document.title = `${owner} Trophy Case`;
   }
+}
+
+function updateHeaderForGauntlet(teamSeasonA, teamSeasonB) {
+  const h2 = document.querySelector('header h2');
+  if (h2) h2.textContent = 'Historical Matchup';
+  renderHeaderBanners('', seasonSummaries);
+  if (document.title !== undefined) {
+    if (teamSeasonA && teamSeasonB) {
+      document.title = `${teamSeasonA.owner} ${teamSeasonA.season} vs ${teamSeasonB.owner} ${teamSeasonB.season} — Historical Matchup`;
+    } else {
+      document.title = 'Historical Matchup';
+    }
+  }
+}
+
+function buildGauntletCopyText({ teamSeasonA, teamSeasonB, result, context }) {
+  if (!teamSeasonA || !teamSeasonB || !result) return '';
+  const modelLabel = gauntletModelLabel(result.model, result.includePostseason);
+  const lines = [
+    `${teamSeasonA.owner} ${teamSeasonA.season} vs ${teamSeasonB.owner} ${teamSeasonB.season}`,
+    `Model: ${modelLabel}`,
+    `Simulations: ${result.simulations.toLocaleString()}`,
+    `Win probability: ${teamSeasonA.owner} ${(result.pctA * 100).toFixed(1)}% (${Math.round(result.actualWinsA || 0).toLocaleString()} wins) | ${teamSeasonB.owner} ${(result.pctB * 100).toFixed(1)}% (${Math.round(result.actualWinsB || 0).toLocaleString()} wins)`,
+    `Average score: ${result.avgA.toFixed(1)} - ${result.avgB.toFixed(1)}`,
+    `Average margin: ${result.avgMargin >= 0 ? '+' : ''}${result.avgMargin.toFixed(1)}`,
+    `Median margin: ${result.medianMargin >= 0 ? '+' : ''}${result.medianMargin.toFixed(1)}`,
+  ];
+  if (context?.allTime?.games) {
+    lines.push(`All-time head-to-head: ${context.allTime.recordA} across ${context.allTime.games} games`);
+  }
+  if (context?.selected?.games) {
+    lines.push(`Selected seasons: ${context.selected.recordA} across ${context.selected.games} games`);
+  }
+  lines.push(`Current URL: ${window.location.href}`);
+  return lines.join('\n');
+}
+
+function renderGauntlet() {
+  const gauntletContainer = document.getElementById('gauntletControls');
+  if (!gauntletContainer) return;
+
+  const resolvedState = selectedGauntletState || resolveGauntletInitialState({
+    teamSeasons: teamSeasons(),
+    currentState: null,
+  });
+  const seasons = teamSeasons(resolvedState.selectedIncludePostseason);
+  const teamSeasonA = seasons.find(teamSeason => teamSeason.id === teamSeasonId(resolvedState.selectedOwnerA, resolvedState.selectedSeasonA)) || null;
+  const teamSeasonB = seasons.find(teamSeason => teamSeason.id === teamSeasonId(resolvedState.selectedOwnerB, resolvedState.selectedSeasonB)) || null;
+
+  updateHeaderForGauntlet(teamSeasonA, teamSeasonB);
+  if (!teamSeasonA || !teamSeasonB) {
+    renderGauntletView({
+      teamSeasonA,
+      teamSeasonB,
+      result: null,
+      context: null,
+      narrative: 'No matchup selected.',
+      copyText: '',
+    }, { doc: document });
+    return;
+  }
+
+  const result = simulateMatchup(teamSeasonA, teamSeasonB, {
+    model: resolvedState.selectedModel,
+    simulations: resolvedState.selectedSimulations,
+    seed: resolvedState.seed,
+    includePostseason: resolvedState.selectedIncludePostseason,
+  });
+  const context = headToHeadContext(teamSeasonA.owner, teamSeasonB.owner, leagueGames, [teamSeasonA.season, teamSeasonB.season]);
+  const narrative = gauntletNarrativeText(result, teamSeasonA, teamSeasonB, context);
+  const signature = JSON.stringify({
+    a: teamSeasonA.id,
+    b: teamSeasonB.id,
+    model: resolvedState.selectedModel,
+    postseason: resolvedState.selectedIncludePostseason,
+    sims: resolvedState.selectedSimulations,
+    seed: resolvedState.seed,
+    pctA: result.pctA,
+    pctB: result.pctB,
+    avgA: result.avgA,
+    avgB: result.avgB,
+    avgMargin: result.avgMargin,
+    contextA: context.allTime.games,
+    contextS: context.selected?.games || 0,
+  });
+
+  updateUrlFromState({
+    tab: 'gauntlet',
+    selectedGauntletA: teamSeasonId(teamSeasonA.owner, teamSeasonA.season),
+    selectedGauntletB: teamSeasonId(teamSeasonB.owner, teamSeasonB.season),
+    selectedGauntletModel: resolvedState.selectedModel,
+    selectedGauntletIncludePostseason: resolvedState.selectedIncludePostseason,
+    selectedGauntletSimulations: resolvedState.selectedSimulations,
+    selectedGauntletSeed: resolvedState.seed,
+    isApplyingUrlState,
+  });
+
+  const copyText = buildGauntletCopyText({
+    teamSeasonA,
+    teamSeasonB,
+    result,
+    context,
+  });
+
+  renderIfChanged('gauntlet', signature, () => {
+    renderGauntletView({
+      teamSeasonA,
+      teamSeasonB,
+      result,
+      context,
+      narrative,
+      copyText,
+    }, { doc: document });
+  });
 }
 
 function syncFacetStateFromDom() {
@@ -1003,54 +1282,65 @@ function bindListeners() {
     });
   }
 
+  const gauntletTab = document.getElementById('tabGauntletBtn');
+  if (gauntletTab) {
+    gauntletTab.addEventListener('click', () => {
+      showPage('gauntlet');
+      ensureGauntletControls({
+        selectedOwnerA: selectedGauntletState?.selectedOwnerA,
+        selectedSeasonA: selectedGauntletState?.selectedSeasonA,
+        selectedOwnerB: selectedGauntletState?.selectedOwnerB,
+        selectedSeasonB: selectedGauntletState?.selectedSeasonB,
+        selectedModel: selectedGauntletState?.selectedModel,
+        selectedSimulations: selectedGauntletState?.selectedSimulations,
+        seed: selectedGauntletState?.seed,
+        seedSource: selectedGauntletState?.seedSource,
+      });
+      renderGauntlet();
+    });
+  }
+
   document.addEventListener('click', handleDocumentClick);
   document.addEventListener('keydown', handleKeydown);
+  window.addEventListener('popstate', () => {
+    if (!leagueGames.length) return;
+    applyUrlState(parseUrlState());
+  });
 
   const clearBtn = document.getElementById('clearFilters');
   if (clearBtn) clearBtn.addEventListener('click', resetAllFacetsToAll);
   const exportBtn = document.getElementById('exportCsv');
   if (exportBtn) exportBtn.addEventListener('click', exportHistoryCsv);
+  const copyBtn = document.getElementById('gauntletCopyBtn');
+  if (copyBtn && !copyBtn.dataset.bound) {
+    copyBtn.addEventListener('click', async () => {
+      const text = document.getElementById('gauntletCopyText')?.value || '';
+      if (!text) return;
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(text);
+          return;
+        }
+      } catch {
+        // Fall back to text selection below.
+      }
+      const field = document.getElementById('gauntletCopyText');
+      if (field) {
+        field.focus();
+        field.select();
+      }
+    });
+    copyBtn.dataset.bound = '1';
+  }
 }
 
 async function bootstrapHistoryApp() {
   const urlState = parseUrlState();
-  showPage(urlState.tab === 'rivalry' ? 'rivalry' : urlState.tab === 'trophy' ? 'trophy' : urlState.tab === 'dynasty' ? 'dynasty' : 'history');
+  showPage(urlState.tab === 'rivalry' ? 'rivalry' : urlState.tab === 'trophy' ? 'trophy' : urlState.tab === 'dynasty' ? 'dynasty' : urlState.tab === 'gauntlet' ? 'gauntlet' : 'history');
   const loaded = await loadLeagueJSON();
   if (!loaded) return;
   bindListeners();
-  if (urlState.tab === 'rivalry') {
-    ensureRivalryControls({
-      selectedTeamA: urlState.rivalryTeamA || selectedRivalryTeamA,
-      selectedTeamB: urlState.rivalryTeamB || selectedRivalryTeamB,
-    });
-    renderRivalry();
-    return;
-  }
-  if (urlState.tab === 'trophy') {
-    ensureTrophyControls({
-      selectedOwner: urlState.trophyOwner || selectedTrophyOwner,
-    });
-    renderTrophy();
-    return;
-  }
-  if (urlState.tab === 'dynasty') {
-    isApplyingUrlState = true;
-    ensureDynastyControls({
-      mode: urlState.dynastyMode || 'calculator',
-      owner: urlState.dynastyOwner || null,
-      startSeason: urlState.dynastyStart,
-      endSeason: urlState.dynastyEnd,
-      requestedStartSeason: urlState.dynastyStart,
-      requestedEndSeason: urlState.dynastyEnd,
-      minSeasons: urlState.dynastyMinSeasons ?? 2,
-      includeSaundersPenalty: urlState.dynastySaunders ?? true,
-    });
-    renderDynasty();
-    isApplyingUrlState = false;
-    return;
-  }
-  ensureHistoryControls();
-  renderHistory();
+  applyUrlState(urlState);
 }
 
 export {

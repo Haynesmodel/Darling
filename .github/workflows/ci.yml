@@ -11,10 +11,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: test
+  unit:
+    name: unit
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      CI: true
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit/data test suite
+        run: npm run test:unit
+
+  ui:
+    name: ui
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: unit
     env:
       CI: true
 
@@ -34,8 +58,53 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
-      - name: Run CI test suite
-        run: npm run test:ci
+      - name: Run UI test suite
+        run: npm run test:ui
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload Playwright test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  coverage:
+    name: coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: ui
+    env:
+      CI: true
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run coverage gate
+        run: npm run test:coverage
 
       - name: Upload Playwright report
         if: failure()

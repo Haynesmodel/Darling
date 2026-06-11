@@ -228,6 +228,54 @@ test('trophy case url restores the trophy page and owner selection', async ({ pa
   expect(download.suggestedFilename()).toBe('history_Joe.csv');
 });
 
+test('history filters do not leak into dynasty controls', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+
+  await page.locator('#teamSelect').selectOption('Joel');
+  await page.locator('#seasonFilters .season-cb').last().evaluate((input) => {
+    input.checked = true;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await expect(page.locator('#seasonCountText')).toHaveText('1 selected');
+
+  await page.locator('#tabDynastyBtn').click();
+  await expect(page.locator('#tabDynastyBtn')).toHaveClass(/active/);
+  await expect(page.locator('#dynastyModeSelect')).toHaveValue('calculator');
+  await expect(page.locator('#dynastyOwnerSelect')).toHaveValue('Joe');
+  await expect(page.locator('#dynastyStartSeason')).toHaveValue('2023');
+  await expect(page.locator('#dynastyEndSeason')).toHaveValue('2025');
+  await expect(page.locator('#dynastyCalculatorHero')).toContainText('Joe Dynasty Score');
+  await expect(page.locator('#dynastyCalculatorHero')).toContainText('2023-2025');
+});
+
+test('browser back restores the previous history state after a tab change', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+
+  await page.locator('#teamSelect').selectOption('Joel');
+  await page.locator('#seasonFilters .season-cb').last().evaluate((input) => {
+    input.checked = true;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await expect(page.locator('#seasonCountText')).toHaveText('1 selected');
+  await expect.poll(async () => page.url()).toContain('team=Joel');
+
+  await page.locator('#tabTrophyBtn').click();
+  await expect(page.locator('#tabTrophyBtn')).toHaveClass(/active/);
+  await expect(page.locator('#trophyOwnerSelect')).toHaveValue('Joel');
+
+  await page.goBack();
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('#tabHistoryBtn')).toHaveClass(/active/);
+  await expect(page.locator('#page-history')).toBeVisible();
+  await expect(page.locator('#teamSelect')).toHaveValue('Joel');
+  await expect(page.locator('#seasonCountText')).toHaveText('1 selected');
+  await expect(page.locator('#historyGamesTable tbody tr')).not.toHaveCount(0);
+  await expect(page).toHaveURL(/team=Joel/);
+  await expect(page).toHaveURL(/seasons=/);
+});
+
 test('dynasty tab renders controls and responds to calculator changes', async ({ page }) => {
   await page.goto('/');
   await page.waitForLoadState('networkidle');
@@ -321,6 +369,109 @@ test('dynasty url restores the requested owner and period', async ({ page }) => 
       params.get('dynastySaunders'),
     ].join('|');
   })).toBe('dynasty|calculator|Joe|2021|2023|2|1');
+});
+
+test('gauntlet url restores matchup controls and renders simulation output', async ({ page }) => {
+  await page.goto('/?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019&gm=hybrid&gp=1&gn=10000');
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#tabGauntletBtn')).toHaveClass(/active/);
+  await expect(page.locator('#page-gauntlet')).toBeVisible();
+  await expect(page.locator('#gauntletOwnerA')).toHaveValue('Joe');
+  await expect(page.locator('#gauntletSeasonA')).toHaveValue('2024');
+  await expect(page.locator('#gauntletOwnerB')).toHaveValue('Zook');
+  await expect(page.locator('#gauntletSeasonB')).toHaveValue('2019');
+  await expect(page.locator('#gauntletEraAdjusted')).toBeChecked();
+  await expect(page.locator('#gauntletIncludePostseason')).toBeChecked();
+  await expect(page.locator('#gauntletSimulations')).toHaveValue('10000');
+  await expect(page.locator('#gauntletProbability')).toContainText('Era-adjusted + postseason model, 10,000 sims');
+  await expect(page.locator('#gauntletProbability')).toContainText('wins');
+  const distributionCharts = page.locator('#gauntletHistogram svg');
+  await expect(distributionCharts).toHaveCount(1);
+  await expect(distributionCharts.first()).toBeVisible();
+  await expect(page.locator('#gauntletStats')).toContainText('Simulated average');
+  await expect(page.locator('#gauntletContext')).toContainText('All-time record');
+  await expect(page.locator('#gauntletNarrative')).toContainText('Joe 2024');
+  await expect(page.locator('#gauntletCopyText')).toHaveValue(/Joe 2024 vs Zook 2019/);
+  await expect(page.locator('#gauntletCopyText')).toHaveValue(/Model: Era-adjusted \+ postseason/);
+  await expect(page.locator('#gauntletCopyText')).toHaveValue(/Current URL:/);
+  await expect.poll(async () => page.evaluate(() => {
+    const params = new URL(location.href).searchParams;
+    return [params.get('tab'), params.get('ga'), params.get('gb'), params.get('gm'), params.get('gp'), params.get('gn')].join('|');
+  })).toBe('gauntlet|Joe:2024|Zook:2019|hybrid|1|10000');
+});
+
+test('gauntlet controls update the url and browser back restores the previous matchup', async ({ page }) => {
+  await page.goto('/?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019&gm=hybrid&gp=1&gn=10000');
+  await page.waitForLoadState('networkidle');
+
+  const initialCopy = await page.locator('#gauntletCopyText').inputValue();
+  await page.locator('#gauntletIncludePostseason').uncheck();
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#gauntletIncludePostseason')).not.toBeChecked();
+  await expect(page.locator('#gauntletCopyText')).toHaveValue(/Model: Era-adjusted$/m);
+  await expect.poll(async () => page.evaluate(() => {
+    const params = new URL(location.href).searchParams;
+    return [params.get('tab'), params.get('gp')].join('|');
+  })).toBe('gauntlet|0');
+
+  await page.locator('#gauntletEraAdjusted').uncheck();
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#gauntletEraAdjusted')).not.toBeChecked();
+  await expect(page.locator('#gauntletCopyText')).toHaveValue(/Historical/);
+  await expect.poll(async () => page.evaluate(() => {
+    const params = new URL(location.href).searchParams;
+    return [params.get('tab'), params.get('gm'), params.get('gp')].join('|');
+  })).toBe('gauntlet|historical|0');
+
+  await page.goBack();
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#gauntletEraAdjusted')).toBeChecked();
+  await expect(page.locator('#gauntletIncludePostseason')).not.toBeChecked();
+  await expect(page.locator('#gauntletCopyText')).toHaveValue(/Model: Era-adjusted$/m);
+  await expect.poll(async () => page.evaluate(() => {
+    const params = new URL(location.href).searchParams;
+    return [params.get('tab'), params.get('gm'), params.get('gp')].join('|');
+  })).toBe('gauntlet|hybrid|0');
+
+  await page.goBack();
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#gauntletEraAdjusted')).toBeChecked();
+  await expect(page.locator('#gauntletIncludePostseason')).toBeChecked();
+  await expect(page.locator('#gauntletCopyText')).toHaveValue(initialCopy);
+  await expect.poll(async () => page.evaluate(() => {
+    const params = new URL(location.href).searchParams;
+    return [params.get('tab'), params.get('gm'), params.get('gp')].join('|');
+  })).toBe('gauntlet|hybrid|1');
+});
+
+test('gauntlet mobile layout stacks the matchup and keeps the histogram visible', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019');
+  await page.waitForLoadState('networkidle');
+
+  const matchup = page.locator('#gauntletMatchup');
+  const histogram = page.locator('#gauntletHistogram');
+  const narrative = page.locator('#gauntletNarrative');
+
+  await expect(matchup).toBeVisible();
+  await expect(histogram.locator('svg')).toHaveCount(1);
+  await expect(histogram.locator('svg').first()).toBeVisible();
+  await expect(narrative).toBeVisible();
+
+  const matchupBox = await matchup.boundingBox();
+  const histogramBox = await histogram.boundingBox();
+  const narrativeBox = await narrative.boundingBox();
+  expect(matchupBox).toBeTruthy();
+  expect(histogramBox).toBeTruthy();
+  expect(narrativeBox).toBeTruthy();
+  expect(matchupBox.width).toBeLessThanOrEqual(390);
+  expect(histogramBox.width).toBeLessThanOrEqual(390);
+  expect(narrativeBox.width).toBeLessThanOrEqual(390);
 });
 
 test('dynasty mobile layout stacks the main panels without overlap', async ({ page }) => {

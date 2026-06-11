@@ -55,7 +55,10 @@ test('gauntlet data helpers can include weighted postseason games', () => {
     { season: 2025, date: '2025-09-07', teamA: 'Joe', teamB: 'Zook', scoreA: 100, scoreB: 90, type: 'Regular', round: '' },
     { season: 2025, date: '2025-09-14', teamA: 'Joe', teamB: 'Zook', scoreA: 200, scoreB: 150, type: 'Playoff', round: 'Final' },
   ];
-  const teamSeasons = buildTeamSeasons(leagueGames, [], { includePostseason: true });
+  const seasonSummaries = [
+    { owner: 'Joe', season: 2025, wins: 1, losses: 0, ties: 0, finish: 1, points_for: 100, points_against: 90, champion: true, saunders: false, bye: false },
+  ];
+  const teamSeasons = buildTeamSeasons(leagueGames, seasonSummaries, { includePostseason: true });
   const joe = teamSeasons.find(teamSeason => teamSeason.id === 'Joe:2025');
 
   assert.equal(joe.games, 2);
@@ -63,6 +66,9 @@ test('gauntlet data helpers can include weighted postseason games', () => {
   assert.deepEqual(joe.scoreEvents.map(event => event.weight), [1, 2]);
   assert.ok(Math.abs(joe.mean - 166.6666667) < 0.001);
   assert.ok(joe.stdev > 0);
+  assert.equal(joe.record, '2-0');
+  assert.equal(joe.pointsFor, 300);
+  assert.equal(joe.pointsAgainst, 240);
 });
 
 test('gauntlet ids and ranking helpers round-trip and rank correctly', () => {

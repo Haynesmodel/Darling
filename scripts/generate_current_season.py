@@ -55,6 +55,8 @@ def score_or_none(value, has_score):
 def matchup_status(week, current_week, game_date, cutoff, score_a, score_b):
     if score_a == 0.0 and score_b == 0.0:
         return "scheduled"
+    if game_date <= cutoff:
+        return "final"
     if current_week is not None:
         if week < current_week:
             return "final"
@@ -64,6 +66,27 @@ def matchup_status(week, current_week, game_date, cutoff, score_a, score_b):
     if game_date > cutoff:
         return "scheduled"
     return "final"
+
+
+def canonical_pair(team_a, team_b):
+    return tuple(sorted([str(team_a), str(team_b)]))
+
+
+def postseason_fallback_rows(path, season, regular_season_max_week):
+    if not path:
+        return {}
+    rows = load_json(path)
+    fallback = {}
+    for row in rows:
+        week = int(row.get("week") or 0)
+        if int(row.get("season") or 0) != season or week <= regular_season_max_week:
+            continue
+        game_type = str(row.get("type") or "").strip()
+        if game_type not in {"Playoff", "Saunders"}:
+            continue
+        key = (week, canonical_pair(row.get("teamA"), row.get("teamB")))
+        fallback[key] = row
+    return fallback
 
 
 def build_current_season_asset(args):
@@ -79,9 +102,11 @@ def build_current_season_asset(args):
     saunders_pairs = set()
     if args.allow_postseason and any(w > args.regular_season_max_week for w in weeks):
         playoff_pairs, saunders_pairs = sleeper.build_bracket_roster_pairs(args.league)
+    fallback_rows = postseason_fallback_rows(args.h2h_fallback, args.season, args.regular_season_max_week)
 
     games = []
     fetched_weeks = []
+    unclassified_postseason = {}
 
     for week in weeks:
         if week > args.regular_season_max_week and not args.allow_postseason:
@@ -112,7 +137,16 @@ def build_current_season_asset(args):
                     week,
                 )
                 if not game_type:
-                    continue
+                    fallback_key = (week, canonical_pair(rid_to_name[str(rid_a)], rid_to_name[str(rid_b)]))
+                    fallback = fallback_rows.get(fallback_key)
+                    if fallback:
+                        game_type = fallback.get("type") or ""
+                        round_name = fallback.get("round") or ""
+                    else:
+                        unclassified_postseason.setdefault(week, []).append(
+                            f"{rid_to_name[str(rid_a)]} vs {rid_to_name[str(rid_b)]}"
+                        )
+                        continue
 
             games.append({
                 "season": args.season,
@@ -129,6 +163,13 @@ def build_current_season_asset(args):
                 "rosterA": rid_a,
                 "rosterB": rid_b,
             })
+
+    if args.allow_postseason:
+        for week in [w for w in fetched_weeks if w > args.regular_season_max_week]:
+            classified_count = sum(1 for game in games if game["week"] == week)
+            if classified_count == 0:
+                missed = ", ".join(unclassified_postseason.get(week, [])) or "no classified pairs"
+                raise ValueError(f"Fetched postseason week {week} yielded zero classified games: {missed}")
 
     current_week = args.current_week
     if current_week is None:
@@ -162,6 +203,7 @@ def main():
     parser.add_argument("--regular-season-max-week", type=int, default=14)
     parser.add_argument("--max-week", type=int, default=17)
     parser.add_argument("--allow-postseason", action="store_true", default=False)
+    parser.add_argument("--h2h-fallback", default=None, help="Optional H2H asset used to classify postseason pairs that Sleeper brackets omit")
     args = parser.parse_args()
 
     try:

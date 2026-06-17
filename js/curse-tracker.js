@@ -922,6 +922,7 @@ function buildCurseTrackerControls({
   const statusSelect = root.getElementById('curseStatusSelect');
   const severitySelect = root.getElementById('curseSeveritySelect');
   if (ownerSelect) {
+    const previousOwner = ownerSelect.value;
     const ownerOptions = [
       `<option value="__ALL__">All owners</option>`,
       ...owners.map(owner => `<option value="${escapeHtml(owner)}">${escapeHtml(owner)}</option>`),
@@ -932,7 +933,7 @@ function buildCurseTrackerControls({
       ownerSelect.disabled = true;
     } else {
       ownerSelect.disabled = false;
-      if (!ownerSelect.value || ownerSelect.value === selectedTeam) ownerSelect.value = '__ALL__';
+      ownerSelect.value = owners.includes(previousOwner) ? previousOwner : '__ALL__';
     }
   }
   if (categorySelect && !categorySelect.value) categorySelect.value = 'all';

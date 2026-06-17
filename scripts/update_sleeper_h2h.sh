@@ -109,22 +109,24 @@ ${PY} "${UPDATER}"   --league "${LEAGUE_ID}"   --season "${SEASON}"   --h2h "${I
 # 2) Postseason (winners + Saunders brackets), appended onto the file we just wrote
 ${PY} "${UPDATER}"   --league "${LEAGUE_ID}"   --season "${SEASON}"   --h2h "${OUT_H2H}"   --out "${OUT_H2H}"   --map "${MAP_FILE}"   --weeks "${POSTSEASON_WEEKS}"   --regular-season-max-week "${REG_SEASON_MAX_WEEK}"   --max-week "${MAX_WEEK}"   --only-played   --allow-postseason   --sort-mode season
 
-# 3) Validate the generated bundle before it is copied into the canonical asset file
-CURRENT_ARGS=()
+# 3) Generate CurrentSeason.json from Sleeper, using the generated H2H as a postseason fallback
+CURRENT_CMD=(
+  "${PY}" "${CURRENT_UPDATER}"
+  --league "${LEAGUE_ID}"
+  --season "${SEASON}"
+  --out "${OUT_CURRENT}"
+  --map "${MAP_FILE}"
+  --weeks "1-${MAX_WEEK}"
+  --regular-season-max-week "${REG_SEASON_MAX_WEEK}"
+  --max-week "${MAX_WEEK}"
+  --h2h-fallback "${OUT_H2H}"
+)
 if [[ -n "${CURRENT_WEEK}" ]]; then
-  CURRENT_ARGS+=(--current-week "${CURRENT_WEEK}")
+  CURRENT_CMD+=(--current-week "${CURRENT_WEEK}")
 fi
+CURRENT_CMD+=(--allow-postseason)
 
-${PY} "${CURRENT_UPDATER}" \
-  --league "${LEAGUE_ID}" \
-  --season "${SEASON}" \
-  --out "${OUT_CURRENT}" \
-  --map "${MAP_FILE}" \
-  --weeks "1-${MAX_WEEK}" \
-  --regular-season-max-week "${REG_SEASON_MAX_WEEK}" \
-  --max-week "${MAX_WEEK}" \
-  "${CURRENT_ARGS[@]}" \
-  --allow-postseason
+"${CURRENT_CMD[@]}"
 
 # 4) Validate the generated bundle before it is copied into the canonical asset file
 node "${VALIDATE}" "${OUT_H2H}" "${ASSETS_DIR}/SeasonSummary.json" "${ASSETS_DIR}/Rivalries.json" "${OUT_CURRENT}"

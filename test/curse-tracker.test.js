@@ -1,8 +1,36 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildCurseTrackerModel, buildCurseTrackerSummary, cardMatchesFilters } from '../js/curse-tracker.js';
+import {
+  buildCurseTrackerControls,
+  buildCurseTrackerModel,
+  buildCurseTrackerSummary,
+  cardMatchesFilters,
+} from '../js/curse-tracker.js';
 import { h2hPath, readJson, seasonPath } from './test-helpers.js';
+
+function makeElement() {
+  return {
+    dataset: {},
+    innerHTML: '',
+    value: '',
+    disabled: false,
+    checked: false,
+    appendChild() {},
+    addEventListener() {},
+  };
+}
+
+function makeDoc(elements) {
+  return {
+    getElementById(id) {
+      return elements[id] || null;
+    },
+    createElement() {
+      return makeElement();
+    },
+  };
+}
 
 test('curse tracker builds normalized cards from the league data', () => {
   const leagueGames = readJson(h2hPath);
@@ -93,4 +121,41 @@ test('curse tracker dev toggle exposes low-severity statistical candidates', () 
     severity: 'all',
     showDevelopmentCandidates: true,
   }, '__ALL__', '__ALL__'), true);
+});
+
+test('curse tracker owner select preserves selected owner after rerender', () => {
+  const controls = makeElement();
+  const ownerSelect = makeElement();
+  const categorySelect = makeElement();
+  const statusSelect = makeElement();
+  const severitySelect = makeElement();
+  const doc = makeDoc({
+    curseControls: controls,
+    curseOwnerSelect: ownerSelect,
+    curseCategorySelect: categorySelect,
+    curseStatusSelect: statusSelect,
+    curseSeveritySelect: severitySelect,
+  });
+  const seasonSummaries = [
+    { season: 2025, owner: 'Joe' },
+    { season: 2025, owner: 'Plot' },
+    { season: 2025, owner: 'Shap' },
+  ];
+
+  buildCurseTrackerControls({
+    doc,
+    seasonSummaries,
+    selectedTeam: '__ALL__',
+    allTeams: '__ALL__',
+  });
+  ownerSelect.value = 'Plot';
+  buildCurseTrackerControls({
+    doc,
+    seasonSummaries,
+    selectedTeam: '__ALL__',
+    allTeams: '__ALL__',
+  });
+
+  assert.equal(ownerSelect.value, 'Plot');
+  assert.equal(ownerSelect.disabled, false);
 });

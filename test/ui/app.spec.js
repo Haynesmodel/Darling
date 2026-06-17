@@ -123,6 +123,28 @@ test('changing the team updates the rendered rows and url state', async ({ page 
   expect(nextWeekCount).not.toBe(originalWeekCount);
 });
 
+test('current season tab renders matchups and links to head to head context', async ({ page }) => {
+  await page.goto('/?tab=current');
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#tabCurrentBtn')).toHaveClass(/active/);
+  await expect(page.locator('#currentSeasonSelect')).toBeVisible();
+  await expect(page.locator('#currentWeekSelect')).toBeVisible();
+  await expect(page.locator('#currentHero')).toContainText('Current Season');
+
+  const matchupCount = await page.locator('.current-matchup-card').count();
+  const standingsRows = await page.locator('#currentStandings tbody tr').count();
+  const snapshotCount = await page.locator('.current-snapshot-card').count();
+  expect(matchupCount).toBeGreaterThan(0);
+  expect(standingsRows).toBeGreaterThan(0);
+  expect(snapshotCount).toBeGreaterThan(0);
+
+  await page.locator('.current-matchup-card a[href*="tab=rivalry"]').first().click();
+  await expect(page.locator('#tabRivalryBtn')).toHaveClass(/active/);
+  await expect(page.locator('#rivalryHeadline')).toBeVisible();
+  await expect(page.locator('#rivalryScopeSelect')).toHaveValue('allTime');
+});
+
 test('rivalry tab renders a tale of the tape and saved rivalry selection', async ({ page }) => {
   await page.goto('/');
   await page.waitForLoadState('networkidle');

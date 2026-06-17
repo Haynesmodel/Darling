@@ -11,8 +11,10 @@
  * - `assets/H2H.json`: season, date, teamA, teamB, scoreA, scoreB, week?, type, round?
  * - `assets/SeasonSummary.json`: season, owner, wins, losses, ties, finish?, playoff_wins,
  *   playoff_losses, saunders_wins, saunders_losses, points_for?, points_against?,
- *   bagels_earned?, bye?, champion?, saunders?, saunders_bye?, wild_card?
+ *   bagels_earned?, draft_pick?, bye?, champion?, saunders?, saunders_bye?, wild_card?
  * - `assets/Rivalries.json`: name, members[], type?, slug?, note?
+ * - `assets/CurrentSeason.json`: source, league_id, season, generated_at, current_week?,
+ *   games[] where each game is H2H-like plus status? and nullable scores for scheduled matchups.
  */
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -48,6 +50,7 @@ const LEAGUE_ASSET_CONTRACT = Object.freeze({
       points_for: { kind: 'number', nullable: true, emptyToNull: true },
       points_against: { kind: 'number', nullable: true, emptyToNull: true },
       bagels_earned: { kind: 'number', nullable: true, emptyToNull: true },
+      draft_pick: { kind: 'number', nullable: true, emptyToNull: true },
       bye: { kind: 'boolean' },
       champion: { kind: 'boolean' },
       saunders: { kind: 'boolean' },
@@ -63,6 +66,21 @@ const LEAGUE_ASSET_CONTRACT = Object.freeze({
       type: { kind: 'string', trim: true },
       slug: { kind: 'string', trim: true },
       note: { kind: 'string', trim: true, nullable: true, allowBlank: true },
+    },
+  },
+  CurrentSeasonGame: {
+    path: 'assets/CurrentSeason.json games',
+    fields: {
+      season: { kind: 'number', required: true },
+      date: { kind: 'string', required: true, trim: true, pattern: DATE_RE },
+      teamA: { kind: 'string', required: true, trim: true },
+      teamB: { kind: 'string', required: true, trim: true },
+      scoreA: { kind: 'number', nullable: true, emptyToNull: true, min: 0 },
+      scoreB: { kind: 'number', nullable: true, emptyToNull: true, min: 0 },
+      week: { kind: 'number', required: true },
+      type: { kind: 'string', required: true, trim: true },
+      round: { kind: 'string', trim: true, default: '', always: true, nullable: true, allowBlank: true },
+      status: { kind: 'string', trim: true },
     },
   },
 });
@@ -214,6 +232,17 @@ function validateRivalries(rows, path = LEAGUE_ASSET_CONTRACT.Rivalries.path) {
   return validateRows(rows, 'Rivalries', path);
 }
 
+function validateCurrentSeason(data, path = 'assets/CurrentSeason.json') {
+  if (data === null || data === undefined) return null;
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error(`${path} must be a JSON object`);
+  }
+  if (!isRequiredFiniteNumber(data.season)) throw new Error(`${path} missing numeric season`);
+  if (!Array.isArray(data.games)) throw new Error(`${path} missing games`);
+  validateRows(data.games, 'CurrentSeasonGame', `${path} games`);
+  return data;
+}
+
 function validateLeagueAssetBundle(opts = {}) {
   const paths = {
     h2h: LEAGUE_ASSET_CONTRACT.H2H.path,
@@ -225,6 +254,7 @@ function validateLeagueAssetBundle(opts = {}) {
     h2hRows: validateLeagueGames(opts.h2hRows, paths.h2h),
     seasonSummaryRows: validateSeasonSummaries(opts.seasonSummaryRows, paths.seasonSummary),
     rivalriesRows: validateRivalries(opts.rivalriesRows, paths.rivalries),
+    currentSeason: opts.currentSeason === undefined ? undefined : validateCurrentSeason(opts.currentSeason, paths.currentSeason || 'assets/CurrentSeason.json'),
   };
 }
 
@@ -240,11 +270,17 @@ function normalizeRivalry(row) {
   return normalizeRow(row, 'Rivalries');
 }
 
+function normalizeCurrentSeasonGame(row) {
+  return normalizeRow(row, 'CurrentSeasonGame');
+}
+
 export {
   LEAGUE_ASSET_CONTRACT,
+  normalizeCurrentSeasonGame,
   normalizeLeagueGame,
   normalizeSeasonSummary,
   normalizeRivalry,
+  validateCurrentSeason,
   validateLeagueGames,
   validateSeasonSummaries,
   validateRivalries,

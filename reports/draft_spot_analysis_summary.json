@@ -1,0 +1,332 @@
+{
+  "seasons": [
+    2017,
+    2025
+  ],
+  "team_seasons": 92,
+  "correlation_pick_finish": -0.20599711368859913,
+  "correlation_draft_percentile_finish_score": 0.2193497588661789,
+  "correlation_draft_percentile_points_z": 0.027550083888799013,
+  "pick_summary": [
+    [
+      "Pick",
+      "N",
+      "Avg Finish",
+      "Avg Finish Score",
+      "Avg Wins +/-",
+      "Avg Points z",
+      "Top 3",
+      "Playoffs",
+      "Champs",
+      "Saunders"
+    ],
+    [
+      "1",
+      "9",
+      "6.1",
+      "0.45",
+      "-0.11",
+      "0.01",
+      "22%",
+      "56%",
+      "0",
+      "11%"
+    ],
+    [
+      "2",
+      "9",
+      "6.6",
+      "0.41",
+      "0.11",
+      "-0.25",
+      "33%",
+      "44%",
+      "1",
+      "22%"
+    ],
+    [
+      "3",
+      "9",
+      "6.7",
+      "0.37",
+      "0.67",
+      "0.19",
+      "11%",
+      "44%",
+      "0",
+      "11%"
+    ],
+    [
+      "4",
+      "9",
+      "5.6",
+      "0.50",
+      "-0.11",
+      "0.21",
+      "11%",
+      "67%",
+      "0",
+      "0%"
+    ],
+    [
+      "5",
+      "9",
+      "5.4",
+      "0.52",
+      "-0.44",
+      "0.04",
+      "33%",
+      "44%",
+      "0",
+      "0%"
+    ],
+    [
+      "6",
+      "9",
+      "5.0",
+      "0.57",
+      "-0.22",
+      "-0.01",
+      "44%",
+      "67%",
+      "2",
+      "11%"
+    ],
+    [
+      "7",
+      "9",
+      "6.0",
+      "0.46",
+      "-0.33",
+      "-0.13",
+      "11%",
+      "67%",
+      "1",
+      "11%"
+    ],
+    [
+      "8",
+      "9",
+      "6.0",
+      "0.47",
+      "-0.11",
+      "-0.36",
+      "33%",
+      "56%",
+      "1",
+      "22%"
+    ],
+    [
+      "9",
+      "9",
+      "6.0",
+      "0.46",
+      "-0.22",
+      "-0.51",
+      "22%",
+      "56%",
+      "0",
+      "0%"
+    ],
+    [
+      "10",
+      "9",
+      "3.9",
+      "0.69",
+      "0.89",
+      "0.61",
+      "56%",
+      "78%",
+      "3",
+      "11%"
+    ],
+    [
+      "11",
+      "1",
+      "1.0",
+      "1.00",
+      "-1.00",
+      "1.08",
+      "100%",
+      "100%",
+      "1",
+      "0%"
+    ],
+    [
+      "12",
+      "1",
+      "2.0",
+      "0.91",
+      "0.00",
+      "0.75",
+      "100%",
+      "100%",
+      "0",
+      "0%"
+    ]
+  ],
+  "zone_summary": [
+    [
+      "Zone",
+      "N",
+      "Avg Pick",
+      "Avg Finish",
+      "Finish Score",
+      "Wins +/-",
+      "Points z",
+      "Top 3",
+      "Playoff",
+      "Champion",
+      "Saunders"
+    ],
+    [
+      "Early (1-3)",
+      "27",
+      "2.0",
+      "6.4",
+      "0.41",
+      "0.22",
+      "-0.02",
+      "22%",
+      "48%",
+      "4%",
+      "15%"
+    ],
+    [
+      "Middle (4-7)",
+      "36",
+      "5.5",
+      "5.5",
+      "0.51",
+      "-0.28",
+      "0.03",
+      "25%",
+      "61%",
+      "8%",
+      "6%"
+    ],
+    [
+      "Late (8+)",
+      "29",
+      "9.2",
+      "5.0",
+      "0.57",
+      "0.14",
+      "-0.02",
+      "41%",
+      "66%",
+      "17%",
+      "10%"
+    ]
+  ],
+  "owner_recommendations": [
+    {
+      "owner": "Connor",
+      "target": "Pick 7 upside; Early (1-3) repeat zone",
+      "recommendation": "Best result is Pick 7 in Middle (4-7), but that zone only has one sample. The best repeat area is Early (1-3) (avg finish 7.6, n=5).",
+      "caution": "Weakest area: Late (8+) (avg finish 10.0, n=3).",
+      "best_pick": "Pick 7: n=1, avg finish 6.0, playoffs 1/1, top 3 0/1, titles 0",
+      "best_zone": "Middle (4-7): n=1, avg finish 6.0, playoffs 1/1, top 3 0/1, titles 0",
+      "history": "2017: p2, f10 Saunders; 2018: p2, f10 Saunders; 2019: p8, f9; 2020: p7, f6; 2021: p8, f9; 2022: p2, f6; 2023: p2, f3; 2024: p1, f9; 2025: p8, f12 Saunders"
+    },
+    {
+      "owner": "Joe",
+      "target": "Pick 6",
+      "recommendation": "Target Pick 6 specifically. It has the strongest repeat sample: avg finish 3.2, playoffs 3/4, titles 2.",
+      "caution": "Weakest area: Early (1-3) (avg finish 5.0, n=3).",
+      "best_pick": "Pick 9: n=1, avg finish 3.0, playoffs 1/1, top 3 1/1, titles 0",
+      "best_zone": "Middle (4-7): n=4, avg finish 3.2, playoffs 3/4, top 3 3/4, titles 2",
+      "history": "2017: p3, f4; 2018: p1, f7; 2019: p6, f8; 2020: p6, f3; 2021: p6, f1 champ; 2022: p1, f4; 2023: p6, f1 champ; 2024: p9, f3; 2025: p10, f7"
+    },
+    {
+      "owner": "Joel",
+      "target": "Pick 10",
+      "recommendation": "Target Pick 10 specifically. It has the strongest repeat sample: avg finish 1.5, playoffs 4/4, titles 2.",
+      "caution": "Weakest area: Middle (4-7) (avg finish 7.0, n=2).",
+      "best_pick": "Pick 10: n=4, avg finish 1.5, playoffs 4/4, top 3 4/4, titles 2",
+      "best_zone": "Late (8+): n=5, avg finish 3.2, playoffs 4/5, top 3 4/5, titles 2",
+      "history": "2017: p10, f1 champ; 2018: p3, f9; 2019: p1, f3; 2020: p10, f1 champ; 2021: p10, f2; 2022: p4, f9; 2023: p10, f2; 2024: p4, f5; 2025: p9, f10"
+    },
+    {
+      "owner": "Nuss",
+      "target": "Middle (4-7)",
+      "recommendation": "Target Middle (4-7). It is this owner's best zone: avg finish 6.2, playoffs 4/8, titles 1.",
+      "caution": "Weakest area: Early (1-3) (avg finish 8.0, n=1).",
+      "best_pick": "Pick 7: n=2, avg finish 5.5, playoffs 1/2, top 3 1/2, titles 1",
+      "best_zone": "Middle (4-7): n=8, avg finish 6.2, playoffs 4/8, top 3 2/8, titles 1",
+      "history": "2017: p6, f9; 2018: p4, f5; 2019: p7, f10 Saunders; 2020: p2, f8; 2021: p4, f7; 2022: p6, f3; 2023: p4, f9; 2024: p7, f1 champ; 2025: p6, f6"
+    },
+    {
+      "owner": "Plot",
+      "target": "Middle (4-7)",
+      "recommendation": "Target Middle (4-7). It is this owner's best zone: avg finish 5.4, playoffs 3/5, titles 0.",
+      "caution": "Weakest area: Late (8+) (avg finish 10.0, n=1).",
+      "best_pick": "Pick 4: n=2, avg finish 3.0, playoffs 2/2, top 3 1/2, titles 0",
+      "best_zone": "Middle (4-7): n=5, avg finish 5.4, playoffs 3/5, top 3 1/5, titles 0",
+      "history": "2017: p5, f8; 2018: p6, f4; 2019: p4, f4; 2020: p4, f2; 2021: p3, f10 Saunders; 2022: p10, f10 Saunders; 2023: p1, f6; 2024: p3, f8; 2025: p7, f9"
+    },
+    {
+      "owner": "Rishi",
+      "target": "Pick 5 upside; Middle (4-7) repeat zone",
+      "recommendation": "Best single result is Pick 5, but the sturdier area is Middle (4-7) (avg finish 4.4, n=5).",
+      "caution": "Weakest area: Early (1-3) (avg finish 8.0, n=2).",
+      "best_pick": "Pick 5: n=1, avg finish 2.0, playoffs 1/1, top 3 1/1, titles 0",
+      "best_zone": "Middle (4-7): n=5, avg finish 4.4, playoffs 5/5, top 3 1/5, titles 0",
+      "history": "2017: p7, f6; 2018: p7, f6; 2019: p3, f6; 2020: p1, f10 Saunders; 2021: p7, f4; 2022: p5, f2; 2023: p8, f10 Saunders; 2024: p8, f4; 2025: p4, f4"
+    },
+    {
+      "owner": "Shap",
+      "target": "Pick 3 upside; Late (8+) repeat zone",
+      "recommendation": "Best result is Pick 3 in Early (1-3), but that zone only has one sample. The best repeat area is Late (8+) (avg finish 5.3, n=3).",
+      "caution": "Weakest area: Middle (4-7) (avg finish 6.4, n=5).",
+      "best_pick": "Pick 3: n=1, avg finish 3.0, playoffs 1/1, top 3 1/1, titles 0",
+      "best_zone": "Early (1-3): n=1, avg finish 3.0, playoffs 1/1, top 3 1/1, titles 0",
+      "history": "2017: p4, f5; 2018: p5, f8; 2019: p10, f5; 2020: p8, f5; 2021: p9, f6; 2022: p7, f7; 2023: p7, f5; 2024: p5, f7; 2025: p3, f3"
+    },
+    {
+      "owner": "Shemer",
+      "target": "Insufficient owner sample; observed pick 2",
+      "recommendation": "Only one data point: pick 2 in 2025, finish 11. Use league-wide history more than owner-specific history.",
+      "caution": "No clear avoid zone yet. Sample is too small for a firm owner-specific read.",
+      "best_pick": "Pick 2: n=1, avg finish 11.0, playoffs 0/1, top 3 0/1, titles 0",
+      "best_zone": "Early (1-3): n=1, avg finish 11.0, playoffs 0/1, top 3 0/1, titles 0",
+      "history": "2025: p2, f11"
+    },
+    {
+      "owner": "Singer",
+      "target": "Pick 12 upside; Late (8+) repeat zone",
+      "recommendation": "Best single result is Pick 12, but the sturdier area is Late (8+) (avg finish 3.0, n=4).",
+      "caution": "Weakest area: Early (1-3) (avg finish 8.0, n=2).",
+      "best_pick": "Pick 12: n=1, avg finish 2.0, playoffs 1/1, top 3 1/1, titles 0",
+      "best_zone": "Late (8+): n=4, avg finish 3.0, playoffs 4/4, top 3 3/4, titles 0",
+      "history": "2017: p8, f2; 2018: p8, f2; 2019: p5, f2; 2020: p5, f7; 2021: p5, f3; 2022: p3, f8; 2023: p3, f8; 2024: p10, f6; 2025: p12, f2"
+    },
+    {
+      "owner": "Snare",
+      "target": "Insufficient owner sample; observed pick 1",
+      "recommendation": "Only one data point: pick 1 in 2025, finish 8. Use league-wide history more than owner-specific history.",
+      "caution": "No clear avoid zone yet. Sample is too small for a firm owner-specific read.",
+      "best_pick": "Pick 1: n=1, avg finish 8.0, playoffs 0/1, top 3 0/1, titles 0",
+      "best_zone": "Early (1-3): n=1, avg finish 8.0, playoffs 0/1, top 3 0/1, titles 0",
+      "history": "2025: p1, f8"
+    },
+    {
+      "owner": "Zook",
+      "target": "Pick 10 upside; Early (1-3) repeat zone",
+      "recommendation": "Best single result is Pick 10, but the sturdier area is Early (1-3) (avg finish 4.0, n=2).",
+      "caution": "Weakest area: Middle (4-7) (avg finish 10.0, n=1).",
+      "best_pick": "Pick 10: n=1, avg finish 1.0, playoffs 1/1, top 3 1/1, titles 1",
+      "best_zone": "Early (1-3): n=2, avg finish 4.0, playoffs 2/2, top 3 1/2, titles 0",
+      "history": "2017: p1, f3; 2018: p10, f1 champ; 2019: p9, f7; 2020: p9, f9; 2021: p1, f5; 2022: p9, f5; 2023: p9, f4; 2024: p6, f10 Saunders; 2025: p11, f1 champ"
+    },
+    {
+      "owner": "Zubs",
+      "target": "Pick 2",
+      "recommendation": "Target Pick 2 specifically. It has the strongest repeat sample: avg finish 3.7, playoffs 2/3, titles 1.",
+      "caution": "Weakest area: Middle (4-7) (avg finish 6.0, n=2).",
+      "best_pick": "Pick 8: n=1, avg finish 1.0, playoffs 1/1, top 3 1/1, titles 1",
+      "best_zone": "Late (8+): n=3, avg finish 3.7, playoffs 2/3, top 3 2/3, titles 1",
+      "history": "2017: p9, f7; 2018: p9, f3; 2019: p2, f1 champ; 2020: p3, f4; 2021: p2, f8; 2022: p8, f1 champ; 2023: p5, f7; 2024: p2, f2; 2025: p5, f5"
+    }
+  ]
+}

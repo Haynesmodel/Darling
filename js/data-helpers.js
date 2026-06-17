@@ -1,9 +1,11 @@
 import * as core from './core-helpers.js';
 import {
   normalizeLeagueGame,
+  normalizeCurrentSeasonGame,
   normalizeSeasonSummary,
   normalizeRivalry,
   validateLeagueGames,
+  validateCurrentSeason,
   validateSeasonSummaries,
   validateRivalries,
   validateLeagueAssetBundle,
@@ -47,6 +49,25 @@ async function readOptionalArrayJson(fetchFn, path, logger = console) {
   }
 }
 
+async function readOptionalObjectJson(fetchFn, path, logger = console) {
+  try {
+    const res = await fetchFn(path);
+    if (!responseOk(res)) {
+      logger.warn(`[Darling] ${path} missing - optional data disabled.`);
+      return null;
+    }
+    const data = await res.json();
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      logger.warn(`[Darling] ${path} missing or invalid - optional data disabled.`);
+      return null;
+    }
+    return data;
+  } catch {
+    logger.warn(`[Darling] ${path} not found/parse error - optional data disabled.`);
+    return null;
+  }
+}
+
 async function loadLeagueAssets(opts = {}) {
   const fetchFn = opts.fetchFn || globalThis.fetch;
   if (typeof fetchFn !== 'function') {
@@ -57,26 +78,37 @@ async function loadLeagueAssets(opts = {}) {
     h2h: 'assets/H2H.json',
     seasonSummary: 'assets/SeasonSummary.json',
     rivalries: 'assets/Rivalries.json',
+    currentSeason: 'assets/CurrentSeason.json',
     ...(opts.paths || {}),
   };
   const logger = opts.logger || console;
 
-  const [rawGameRows, seasonSummaryRows, rivalryRows] = await Promise.all([
+  const [rawGameRows, seasonSummaryRows, rivalryRows, currentSeasonData] = await Promise.all([
     readRequiredJson(fetchFn, paths.h2h),
     readRequiredJson(fetchFn, paths.seasonSummary),
     readOptionalArrayJson(fetchFn, paths.rivalries, logger),
+    readOptionalObjectJson(fetchFn, paths.currentSeason, logger),
   ]);
 
   validateLeagueAssetBundle({
     h2hRows: rawGameRows,
     seasonSummaryRows,
     rivalriesRows: rivalryRows,
+    currentSeason: currentSeasonData || undefined,
     paths,
   });
 
   const rawGames = rawGameRows.map(normalizeLeagueGame);
   const seasonSummaries = seasonSummaryRows.map(normalizeSeasonSummary);
   const rivalries = rivalryRows.map(normalizeRivalry);
+  const currentSeason = currentSeasonData
+    ? {
+      ...currentSeasonData,
+      season: +currentSeasonData.season,
+      current_week: currentSeasonData.current_week === null || currentSeasonData.current_week === undefined ? null : +currentSeasonData.current_week,
+      games: (currentSeasonData.games || []).map(normalizeCurrentSeasonGame),
+    }
+    : null;
 
   const dedupeGamesFn = opts.dedupeGamesFn || coreFn('dedupeGames');
   const deriveWeeksInPlaceFn = opts.deriveWeeksInPlaceFn || coreFn('deriveWeeksInPlace');
@@ -89,12 +121,15 @@ async function loadLeagueAssets(opts = {}) {
     derivedWeeksSet,
     seasonSummaries,
     rivalries,
+    currentSeason,
   };
 }
 export {
+  normalizeCurrentSeasonGame,
   normalizeLeagueGame,
   normalizeSeasonSummary,
   normalizeRivalry,
+  validateCurrentSeason,
   validateLeagueGames,
   validateSeasonSummaries,
   validateRivalries,

@@ -44,6 +44,11 @@ function parseUrlState(search) {
   const tab = params.get('tab') || null;
   const rivalryTeamA = params.get('rivalryTeamA') || null;
   const rivalryTeamB = params.get('rivalryTeamB') || null;
+  const rivalryScope = params.get('rivalryScope') || null;
+  const currentSeason = params.get('currentSeason');
+  const currentWeek = params.get('currentWeek');
+  const parsedCurrentSeason = isFiniteInput(currentSeason) ? +currentSeason : null;
+  const parsedCurrentWeek = isFiniteInput(currentWeek) ? +currentWeek : null;
   const gauntletA = params.get('ga') || null;
   const gauntletB = params.get('gb') || null;
   const gauntletModel = params.get('gm') || null;
@@ -63,9 +68,10 @@ function parseUrlState(search) {
   const parsedDynastyEnd = isFiniteInput(dynastyEnd) ? +dynastyEnd : null;
   const parsedDynastyMinSeasons = isFiniteInput(dynastyMinSeasons) ? +dynastyMinSeasons : null;
   const parsedDynastySaunders = dynastySaunders === null ? null : dynastySaunders !== '0';
+  const hasCurrent = !!(tab === 'current' || parsedCurrentSeason !== null || parsedCurrentWeek !== null);
   const hasDynasty = !!(tab === 'dynasty' || dynastyMode || dynastyOwner || parsedDynastyStart !== null || parsedDynastyEnd !== null || parsedDynastyMinSeasons !== null || parsedDynastySaunders !== null);
   const hasGauntlet = !!(tab === 'gauntlet' || gauntletA || gauntletB || gauntletModel || parsedGauntletIncludePostseason !== null || parsedGauntletSimulations !== null || gauntletSeed);
-  const hasAny = !!(team || trophyOwner || hasDynasty || hasGauntlet || (seasons && seasons.length) || (weeks && weeks.length) || (opps && opps.length) || (types && types.length) || (rounds && rounds.length));
+  const hasAny = !!(team || trophyOwner || hasCurrent || hasDynasty || hasGauntlet || (seasons && seasons.length) || (weeks && weeks.length) || (opps && opps.length) || (types && types.length) || (rounds && rounds.length));
   return {
     team,
     seasons: seasons ? new Set(seasons) : null,
@@ -76,6 +82,9 @@ function parseUrlState(search) {
     tab,
     rivalryTeamA,
     rivalryTeamB,
+    rivalryScope,
+    currentSeason: parsedCurrentSeason,
+    currentWeek: parsedCurrentWeek,
     gauntletA,
     gauntletB,
     gauntletModel,
@@ -90,6 +99,7 @@ function parseUrlState(search) {
     dynastyMinSeasons: parsedDynastyMinSeasons,
     dynastySaunders: parsedDynastySaunders,
     hasRivalry: tab === 'rivalry' || !!rivalryTeamA || !!rivalryTeamB,
+    hasCurrent,
     hasGauntlet,
     hasTrophy: tab === 'trophy' || !!trophyOwner,
     hasDynasty,
@@ -129,6 +139,9 @@ function buildUrlFromState(opts = {}) {
   const tab = Object.prototype.hasOwnProperty.call(opts, 'tab') ? opts.tab : null;
   const selectedRivalryTeamA = Object.prototype.hasOwnProperty.call(opts, 'selectedRivalryTeamA') ? opts.selectedRivalryTeamA : null;
   const selectedRivalryTeamB = Object.prototype.hasOwnProperty.call(opts, 'selectedRivalryTeamB') ? opts.selectedRivalryTeamB : null;
+  const selectedRivalryScope = Object.prototype.hasOwnProperty.call(opts, 'selectedRivalryScope') ? opts.selectedRivalryScope : null;
+  const selectedCurrentSeason = Object.prototype.hasOwnProperty.call(opts, 'selectedCurrentSeason') ? opts.selectedCurrentSeason : null;
+  const selectedCurrentWeek = Object.prototype.hasOwnProperty.call(opts, 'selectedCurrentWeek') ? opts.selectedCurrentWeek : null;
   const selectedDynastyMode = Object.prototype.hasOwnProperty.call(opts, 'selectedDynastyMode') ? opts.selectedDynastyMode : null;
   const selectedDynastyOwner = Object.prototype.hasOwnProperty.call(opts, 'selectedDynastyOwner') ? opts.selectedDynastyOwner : null;
   const selectedDynastyStartSeason = Object.prototype.hasOwnProperty.call(opts, 'selectedDynastyStartSeason') ? opts.selectedDynastyStartSeason : null;
@@ -156,6 +169,11 @@ function buildUrlFromState(opts = {}) {
   if (tab === 'rivalry') {
     if (selectedRivalryTeamA) params.set('rivalryTeamA', selectedRivalryTeamA);
     if (selectedRivalryTeamB) params.set('rivalryTeamB', selectedRivalryTeamB);
+    if (selectedRivalryScope && selectedRivalryScope !== 'allTime') params.set('rivalryScope', selectedRivalryScope);
+  }
+  if (tab === 'current') {
+    if (isFiniteInput(selectedCurrentSeason)) params.set('currentSeason', `${selectedCurrentSeason}`);
+    if (isFiniteInput(selectedCurrentWeek)) params.set('currentWeek', `${selectedCurrentWeek}`);
   }
   if (tab === 'trophy') {
     const selectedTrophyOwner = Object.prototype.hasOwnProperty.call(opts, 'selectedTrophyOwner')

@@ -73,8 +73,8 @@ test('history renderer builds week-by-week table html for selected team', () => 
 
 test('history renderer builds season recap html and narratives', () => {
   const summaries = [
-    { owner: 'Joe', season: 2025, wins: 10, losses: 4, ties: 0, finish: 1, champion: true, saunders: false, bagels_earned: 2 },
-    { owner: 'Joe', season: 2024, wins: 7, losses: 7, ties: 0, finish: 5, champion: false, saunders: false, bye: true },
+    { owner: 'Joe', season: 2025, wins: 10, losses: 4, ties: 0, finish: 1, draft_pick: 10, champion: true, saunders: false, bagels_earned: 2 },
+    { owner: 'Joe', season: 2024, wins: 7, losses: 7, ties: 0, finish: 5, draft_pick: 9, champion: false, saunders: false, bye: true },
     { owner: 'Shap', season: 2025, wins: 8, losses: 6, ties: 0, finish: 3, champion: false, saunders: false },
   ];
   const games = [
@@ -100,6 +100,7 @@ test('history renderer builds season recap html and narratives', () => {
     universeSeasons: [2024, 2025],
     allTeams: '__ALL__',
   });
+  assert.match(html, /#10/);
   assert.match(html, /10-4-0/);
   assert.match(html, /71\.4%/);
   assert.match(html, /👑 Defeated Shap in Semi Final/);
@@ -172,6 +173,7 @@ test('history renderer builds season callout view and effect metadata', () => {
       losses: 4,
       ties: 0,
       finish: 1,
+      draft_pick: 10,
       champion: true,
       bye: true,
       saunders: false,
@@ -191,6 +193,7 @@ test('history renderer builds season callout view and effect metadata', () => {
   assert.match(view.html, /Joe in <strong>2025<\/strong>/);
   assert.match(view.html, /Record: <strong>10-4-0<\/strong> \(71\.4%\)/);
   assert.match(view.html, /Champion\*/);
+  assert.match(view.html, /Draft Pick: <strong>#10<\/strong>/);
   assert.match(view.html, /Top-2 Seed/);
   assert.match(view.html, /Playoffs: 2-0-0/);
   assert.match(view.html, /2025 — COVID season/);
@@ -224,6 +227,7 @@ test('history renderer view model normalizes season callout text', () => {
       losses: 4,
       ties: 0,
       finish: 1,
+      draft_pick: 10,
       champion: true,
       bye: true,
       saunders: false,
@@ -242,6 +246,7 @@ test('history renderer view model normalizes season callout text', () => {
   assert.equal(vm.record, '10-4-0');
   assert.equal(vm.pct, '71.4%');
   assert.equal(vm.finish, '1');
+  assert.equal(vm.draftPick, '#10');
   assert.match(vm.bits.join(' • '), /Champion/);
   assert.match(vm.notes.join(' • '), /2025 — COVID season/);
   assert.equal(vm.effectKey, 'Joe|2025|C');

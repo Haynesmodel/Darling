@@ -77,6 +77,7 @@ function setLoadedLeagueData(state = {}, loaded = {}) {
     derivedWeeksSet: loaded.derivedWeeksSet || new Set(),
     seasonSummaries: loaded.seasonSummaries || [],
     rivalries: loaded.rivalries || [],
+    currentSeason: loaded.currentSeason || null,
   });
 }
 

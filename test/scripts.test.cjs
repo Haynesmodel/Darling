@@ -7,6 +7,7 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
 const { checkRepoHygiene } = require('../scripts/check_repo_hygiene.cjs');
+const { ensureStaticAssets, validateStaticAsset } = require('../scripts/ensure_static_assets.cjs');
 const { createStaticServer, resolvePath } = require('../scripts/serve_static.cjs');
 const { buildCoverageSummary } = require('../scripts/v8_coverage_report.cjs');
 
@@ -46,6 +47,21 @@ function runShell(script, env, cwd) {
   });
 }
 
+function runGit(root, args) {
+  return spawnSync('git', args, {
+    cwd: root,
+    encoding: 'utf8',
+  });
+}
+
+function tinyJpeg() {
+  return Buffer.concat([
+    Buffer.from([0xff, 0xd8, 0xff, 0xe0]),
+    Buffer.alloc(64, 1),
+    Buffer.from([0xff, 0xd9]),
+  ]);
+}
+
 test('repo hygiene accepts the expected ESM app shape', async () => {
   await withTempRepo((root) => {
     assert.deepEqual(checkRepoHygiene(root), []);
@@ -70,6 +86,55 @@ test('static server resolves only files under the configured root', async () => 
     assert.equal(resolvePath(root, '/'), path.join(root, 'index.html'));
     assert.equal(resolvePath(root, '/js/app.js?cache=1'), path.join(root, 'js', 'app.js'));
     assert.equal(resolvePath(root, '/../package.json'), null);
+  });
+});
+
+test('static asset check restores an iCloud-offloaded league picture from git', async () => {
+  await withTempRepo((root) => {
+    const asset = {
+      relPath: 'assets/LeaguePic.jpeg',
+      placeholderRelPath: 'assets/.LeaguePic.jpeg.icloud',
+      kind: 'jpeg',
+      minBytes: 16,
+    };
+    fs.mkdirSync(path.join(root, 'assets'));
+    fs.writeFileSync(path.join(root, asset.relPath), tinyJpeg());
+
+    assert.equal(runGit(root, ['init']).status, 0);
+    assert.equal(runGit(root, ['add', '.']).status, 0);
+    assert.equal(runGit(root, [
+      '-c', 'user.email=test@example.com',
+      '-c', 'user.name=Test User',
+      'commit',
+      '-m', 'seed static assets',
+    ]).status, 0);
+
+    fs.rmSync(path.join(root, asset.relPath));
+    fs.writeFileSync(path.join(root, asset.placeholderRelPath), 'iCloud placeholder');
+
+    const result = ensureStaticAssets(root, { assets: [asset] });
+    assert.deepEqual(result.failures, []);
+    assert.deepEqual(result.restored, [asset.relPath]);
+    assert.equal(validateStaticAsset(root, asset).ok, true);
+    assert.equal(fs.existsSync(path.join(root, asset.placeholderRelPath)), false);
+  });
+});
+
+test('static asset check reports an offloaded league picture when restore is disabled', async () => {
+  await withTempRepo((root) => {
+    const asset = {
+      relPath: 'assets/LeaguePic.jpeg',
+      placeholderRelPath: 'assets/.LeaguePic.jpeg.icloud',
+      kind: 'jpeg',
+      minBytes: 16,
+    };
+    fs.mkdirSync(path.join(root, 'assets'));
+    fs.writeFileSync(path.join(root, asset.placeholderRelPath), 'iCloud placeholder');
+
+    const result = ensureStaticAssets(root, { assets: [asset], restore: false });
+    assert.deepEqual(result.restored, []);
+    assert.equal(result.failures.length, 1);
+    assert.match(result.failures[0], /offloaded by iCloud/);
   });
 });
 

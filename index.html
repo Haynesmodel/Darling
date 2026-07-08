@@ -22,6 +22,7 @@
     <button class="tab" id="tabRivalryBtn">Head to Head</button>
     <button class="tab" id="tabTrophyBtn">Trophy Case</button>
     <button class="tab" id="tabDynastyBtn">Dynasty Rankings</button>
+    <button class="tab" id="tabDraftBtn">Draft Spot</button>
     <button class="tab" id="tabGauntletBtn">Historical Matchup</button>
   </nav>
 
@@ -393,6 +394,45 @@
       </div>
 
       <div id="dynastyWindowModal" class="dynasty-modal" hidden aria-hidden="true"></div>
+    </section>
+
+    <section id="page-draft" class="page">
+      <div id="draftStatus" class="status-banner status-error" role="status" hidden></div>
+
+      <div class="card">
+        <div id="draftControls" class="controls filters draft-controls"></div>
+      </div>
+
+      <section id="draftHero" class="card draft-hero"></section>
+
+      <section class="card">
+        <div id="draftPickBoard"></div>
+      </section>
+
+      <section class="card">
+        <h3>Zone Comparison</h3>
+        <div id="draftZoneComparison"></div>
+      </section>
+
+      <section class="card">
+        <h3>Owner Recommendations</h3>
+        <div id="draftOwnerRecommendations"></div>
+      </section>
+
+      <section class="card">
+        <h3>Owner Timeline</h3>
+        <div id="draftOwnerTimeline"></div>
+      </section>
+
+      <section class="card">
+        <h3>Pick Detail</h3>
+        <div id="draftPickDetail"></div>
+      </section>
+
+      <section class="card">
+        <h3>Draft Spot Data</h3>
+        <div id="draftRows"></div>
+      </section>
     </section>
 
     <section id="page-gauntlet" class="page">

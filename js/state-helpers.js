@@ -57,6 +57,19 @@ function parseUrlState(search) {
   const gauntletSeed = params.get('gs') || null;
   const parsedGauntletSimulations = isFiniteInput(gauntletSimulations) ? +gauntletSimulations : null;
   const parsedGauntletIncludePostseason = gauntletIncludePostseason === null ? null : gauntletIncludePostseason !== '0';
+  const draftOwner = params.get('draftOwner') || null;
+  const draftMode = params.get('draftMode') || null;
+  const draftStart = params.get('draftStart');
+  const draftEnd = params.get('draftEnd');
+  const draftMetric = params.get('draftMetric') || null;
+  const draftPick = params.get('draftPick');
+  const draftZone = params.get('draftZone') || null;
+  const draftMinSample = params.get('draftMinSample');
+  const draftNormalize = params.get('draftNormalize') || null;
+  const parsedDraftStart = isFiniteInput(draftStart) ? +draftStart : null;
+  const parsedDraftEnd = isFiniteInput(draftEnd) ? +draftEnd : null;
+  const parsedDraftPick = isFiniteInput(draftPick) ? +draftPick : null;
+  const parsedDraftMinSample = isFiniteInput(draftMinSample) ? +draftMinSample : null;
   const trophyOwner = params.get('trophyOwner') || null;
   const dynastyMode = params.get('dynastyMode') || null;
   const dynastyOwner = params.get('dynastyOwner') || null;
@@ -71,7 +84,8 @@ function parseUrlState(search) {
   const hasCurrent = !!(tab === 'current' || parsedCurrentSeason !== null || parsedCurrentWeek !== null);
   const hasDynasty = !!(tab === 'dynasty' || dynastyMode || dynastyOwner || parsedDynastyStart !== null || parsedDynastyEnd !== null || parsedDynastyMinSeasons !== null || parsedDynastySaunders !== null);
   const hasGauntlet = !!(tab === 'gauntlet' || gauntletA || gauntletB || gauntletModel || parsedGauntletIncludePostseason !== null || parsedGauntletSimulations !== null || gauntletSeed);
-  const hasAny = !!(team || trophyOwner || hasCurrent || hasDynasty || hasGauntlet || (seasons && seasons.length) || (weeks && weeks.length) || (opps && opps.length) || (types && types.length) || (rounds && rounds.length));
+  const hasDraft = !!(tab === 'draft' || draftOwner || draftMode || parsedDraftStart !== null || parsedDraftEnd !== null || draftMetric || parsedDraftPick !== null || draftZone || parsedDraftMinSample !== null || draftNormalize);
+  const hasAny = !!(team || trophyOwner || hasCurrent || hasDynasty || hasGauntlet || hasDraft || (seasons && seasons.length) || (weeks && weeks.length) || (opps && opps.length) || (types && types.length) || (rounds && rounds.length));
   return {
     team,
     seasons: seasons ? new Set(seasons) : null,
@@ -91,6 +105,15 @@ function parseUrlState(search) {
     gauntletIncludePostseason: parsedGauntletIncludePostseason,
     gauntletSimulations: parsedGauntletSimulations,
     gauntletSeed,
+    draftOwner,
+    draftMode,
+    draftStart: parsedDraftStart,
+    draftEnd: parsedDraftEnd,
+    draftMetric,
+    draftPick: parsedDraftPick,
+    draftZone,
+    draftMinSample: parsedDraftMinSample,
+    draftNormalize,
     trophyOwner,
     dynastyMode,
     dynastyOwner,
@@ -101,6 +124,7 @@ function parseUrlState(search) {
     hasRivalry: tab === 'rivalry' || !!rivalryTeamA || !!rivalryTeamB,
     hasCurrent,
     hasGauntlet,
+    hasDraft,
     hasTrophy: tab === 'trophy' || !!trophyOwner,
     hasDynasty,
     hasAny,
@@ -154,6 +178,15 @@ function buildUrlFromState(opts = {}) {
   const selectedGauntletIncludePostseason = Object.prototype.hasOwnProperty.call(opts, 'selectedGauntletIncludePostseason') ? opts.selectedGauntletIncludePostseason : null;
   const selectedGauntletSimulations = Object.prototype.hasOwnProperty.call(opts, 'selectedGauntletSimulations') ? opts.selectedGauntletSimulations : null;
   const selectedGauntletSeed = Object.prototype.hasOwnProperty.call(opts, 'selectedGauntletSeed') ? opts.selectedGauntletSeed : null;
+  const selectedDraftOwner = Object.prototype.hasOwnProperty.call(opts, 'selectedDraftOwner') ? opts.selectedDraftOwner : null;
+  const selectedDraftMode = Object.prototype.hasOwnProperty.call(opts, 'selectedDraftMode') ? opts.selectedDraftMode : null;
+  const selectedDraftStartSeason = Object.prototype.hasOwnProperty.call(opts, 'selectedDraftStartSeason') ? opts.selectedDraftStartSeason : null;
+  const selectedDraftEndSeason = Object.prototype.hasOwnProperty.call(opts, 'selectedDraftEndSeason') ? opts.selectedDraftEndSeason : null;
+  const selectedDraftMetric = Object.prototype.hasOwnProperty.call(opts, 'selectedDraftMetric') ? opts.selectedDraftMetric : null;
+  const selectedDraftPick = Object.prototype.hasOwnProperty.call(opts, 'selectedDraftPick') ? opts.selectedDraftPick : null;
+  const selectedDraftZone = Object.prototype.hasOwnProperty.call(opts, 'selectedDraftZone') ? opts.selectedDraftZone : null;
+  const selectedDraftMinSample = Object.prototype.hasOwnProperty.call(opts, 'selectedDraftMinSample') ? opts.selectedDraftMinSample : null;
+  const selectedDraftNormalize = Object.prototype.hasOwnProperty.call(opts, 'selectedDraftNormalize') ? opts.selectedDraftNormalize : null;
   const selectedSeasons = asSet(opts.selectedSeasons);
   const selectedWeeks = asSet(opts.selectedWeeks);
   const selectedOpponents = asSet(opts.selectedOpponents);
@@ -165,7 +198,7 @@ function buildUrlFromState(opts = {}) {
 
   const params = new URLSearchParams();
   if (tab) params.set('tab', tab);
-  if (tab !== 'trophy' && tab !== 'dynasty' && tab !== 'gauntlet' && selectedTeam && selectedTeam !== allTeams) params.set('team', selectedTeam);
+  if (tab !== 'trophy' && tab !== 'dynasty' && tab !== 'gauntlet' && tab !== 'draft' && selectedTeam && selectedTeam !== allTeams) params.set('team', selectedTeam);
   if (tab === 'rivalry') {
     if (selectedRivalryTeamA) params.set('rivalryTeamA', selectedRivalryTeamA);
     if (selectedRivalryTeamB) params.set('rivalryTeamB', selectedRivalryTeamB);
@@ -199,8 +232,19 @@ function buildUrlFromState(opts = {}) {
     if (isFiniteInput(selectedGauntletSimulations)) params.set('gn', `${selectedGauntletSimulations}`);
     if (selectedGauntletSeed) params.set('gs', selectedGauntletSeed);
   }
+  if (tab === 'draft') {
+    if (selectedDraftMode && selectedDraftMode !== 'league') params.set('draftMode', selectedDraftMode);
+    if (selectedDraftOwner && selectedDraftOwner !== allTeams) params.set('draftOwner', selectedDraftOwner);
+    if (isFiniteInput(selectedDraftStartSeason)) params.set('draftStart', `${selectedDraftStartSeason}`);
+    if (isFiniteInput(selectedDraftEndSeason)) params.set('draftEnd', `${selectedDraftEndSeason}`);
+    if (selectedDraftMetric && selectedDraftMetric !== 'avgFinish') params.set('draftMetric', selectedDraftMetric);
+    if (isFiniteInput(selectedDraftMinSample) && +selectedDraftMinSample !== 1) params.set('draftMinSample', `${selectedDraftMinSample}`);
+    if (selectedDraftNormalize === 'percentile') params.set('draftNormalize', 'percentile');
+    if (isFiniteInput(selectedDraftPick)) params.set('draftPick', `${selectedDraftPick}`);
+    else if (selectedDraftZone) params.set('draftZone', selectedDraftZone);
+  }
   const setIf = (key, set, uni) => { if (isRestrictiveFn(set, uni)) params.set(key, [...set].join(',')); };
-  if (tab !== 'gauntlet') {
+  if (tab !== 'gauntlet' && tab !== 'draft') {
     setIf('seasons', selectedSeasons, universe.seasons || []);
     setIf('weeks', selectedWeeks, universe.weeks || []);
     setIf('opps', selectedOpponents, universe.opponents || []);

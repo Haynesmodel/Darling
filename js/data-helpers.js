@@ -6,6 +6,7 @@ import {
   normalizeRivalry,
   validateLeagueGames,
   validateCurrentSeason,
+  validateDraftSpot,
   validateSeasonSummaries,
   validateRivalries,
   validateLeagueAssetBundle,
@@ -79,15 +80,17 @@ async function loadLeagueAssets(opts = {}) {
     seasonSummary: 'assets/SeasonSummary.json',
     rivalries: 'assets/Rivalries.json',
     currentSeason: 'assets/CurrentSeason.json',
+    draftSpot: 'assets/DraftSpot.json',
     ...(opts.paths || {}),
   };
   const logger = opts.logger || console;
 
-  const [rawGameRows, seasonSummaryRows, rivalryRows, currentSeasonData] = await Promise.all([
+  const [rawGameRows, seasonSummaryRows, rivalryRows, currentSeasonData, draftSpotData] = await Promise.all([
     readRequiredJson(fetchFn, paths.h2h),
     readRequiredJson(fetchFn, paths.seasonSummary),
     readOptionalArrayJson(fetchFn, paths.rivalries, logger),
     readOptionalObjectJson(fetchFn, paths.currentSeason, logger),
+    readOptionalObjectJson(fetchFn, paths.draftSpot, logger),
   ]);
 
   validateLeagueAssetBundle({
@@ -95,6 +98,7 @@ async function loadLeagueAssets(opts = {}) {
     seasonSummaryRows,
     rivalriesRows: rivalryRows,
     currentSeason: currentSeasonData || undefined,
+    draftSpot: draftSpotData || undefined,
     paths,
   });
 
@@ -109,6 +113,7 @@ async function loadLeagueAssets(opts = {}) {
       games: (currentSeasonData.games || []).map(normalizeCurrentSeasonGame),
     }
     : null;
+  const draftSpot = draftSpotData || null;
 
   const dedupeGamesFn = opts.dedupeGamesFn || coreFn('dedupeGames');
   const deriveWeeksInPlaceFn = opts.deriveWeeksInPlaceFn || coreFn('deriveWeeksInPlace');
@@ -122,6 +127,7 @@ async function loadLeagueAssets(opts = {}) {
     seasonSummaries,
     rivalries,
     currentSeason,
+    draftSpot,
   };
 }
 export {
@@ -130,6 +136,7 @@ export {
   normalizeSeasonSummary,
   normalizeRivalry,
   validateCurrentSeason,
+  validateDraftSpot,
   validateLeagueGames,
   validateSeasonSummaries,
   validateRivalries,

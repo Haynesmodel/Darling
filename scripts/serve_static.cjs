@@ -2,6 +2,7 @@
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
+const { ensureStaticAssets } = require('./ensure_static_assets.cjs');
 
 const types = {
   '.css': 'text/css; charset=utf-8',
@@ -76,6 +77,15 @@ function startServer({ root = process.cwd(), port = 8000, host = '127.0.0.1' } =
 }
 
 if (require.main === module) {
+  const assets = ensureStaticAssets(process.cwd());
+  for (const relPath of assets.restored) {
+    console.log(`Restored static asset from git: ${relPath}`);
+  }
+  if (assets.failures.length) {
+    for (const failure of assets.failures) console.error(`Static asset: ${failure}`);
+    process.exit(1);
+  }
+
   startServer({
     root: process.cwd(),
     port: Number(process.argv[2] || 8000),

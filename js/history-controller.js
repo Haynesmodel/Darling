@@ -139,6 +139,17 @@ import {
   renderGauntlet as renderGauntletView,
 } from './gauntlet-renderers.js';
 import { simulateMatchup } from './gauntlet-simulator.js';
+import {
+  buildDraftSpotControls,
+} from './draft-spot-controls.js';
+import {
+  DRAFT_ALL_OWNERS,
+  buildDraftSpotModel,
+  resolveDraftSpotState,
+} from './draft-spot-data.js';
+import {
+  renderDraftSpot as renderDraftSpotView,
+} from './draft-spot-renderers.js';
 
 const DEFAULT_TEAM = 'Joe';
 const ALL_TEAMS = '__ALL__';
@@ -151,6 +162,7 @@ let leagueGames = [];
 let seasonSummaries = [];
 let rivalries = [];
 let currentSeason = null;
+let draftSpotAsset = null;
 let selectedTeam = DEFAULT_TEAM;
 let selectedSeasons = new Set();
 let selectedWeeks = new Set();
@@ -164,6 +176,7 @@ let selectedCurrentSeasonState = null;
 let selectedTrophyOwner = DEFAULT_TEAM;
 let selectedDynastyState = null;
 let selectedGauntletState = null;
+let selectedDraftState = null;
 let universe = { seasons: [], weeks: [], opponents: [], types: [], rounds: [] };
 let isApplyingUrlState = false;
 let derivedWeeksSet = new Set();
@@ -298,6 +311,11 @@ function handleGauntletChange(next) {
   renderGauntlet();
 }
 
+function handleDraftSpotChange(next) {
+  selectedDraftState = resolveDraftSpotState(draftSpotAsset, next, selectedDraftState || {});
+  renderDraftSpot();
+}
+
 function ensureRivalryControls(initialState = {}) {
   const teamASelect = document.getElementById('rivalryTeamA');
   if (!teamASelect) return null;
@@ -430,6 +448,23 @@ function ensureGauntletControls(initialState = {}) {
       onChange: handleGauntletChange,
     });
   }
+
+  return container;
+}
+
+function ensureDraftSpotControls(initialState = {}) {
+  const container = document.getElementById('draftControls');
+  if (!container) return null;
+
+  const urlState = parseUrlState();
+  const currentState = urlState.hasDraft ? null : (selectedDraftState || {});
+  selectedDraftState = resolveDraftSpotState(draftSpotAsset, urlState.hasDraft ? urlState : initialState, currentState || {});
+  buildDraftSpotControls({
+    doc: document,
+    asset: draftSpotAsset,
+    selectedState: selectedDraftState,
+    onChange: handleDraftSpotChange,
+  });
 
   return container;
 }
@@ -635,7 +670,7 @@ function applyHistoryUrlState(urlState = parseUrlState()) {
 function applyUrlState(urlState = parseUrlState()) {
   isApplyingUrlState = true;
   try {
-    showPage(urlState.tab === 'current' ? 'current' : urlState.tab === 'rivalry' ? 'rivalry' : urlState.tab === 'trophy' ? 'trophy' : urlState.tab === 'dynasty' ? 'dynasty' : urlState.tab === 'gauntlet' ? 'gauntlet' : 'history');
+    showPage(urlState.tab === 'current' ? 'current' : urlState.tab === 'rivalry' ? 'rivalry' : urlState.tab === 'trophy' ? 'trophy' : urlState.tab === 'dynasty' ? 'dynasty' : urlState.tab === 'draft' ? 'draft' : urlState.tab === 'gauntlet' ? 'gauntlet' : 'history');
     if (urlState.tab === 'current') {
       ensureCurrentSeasonControls({
         selectedSeason: urlState.currentSeason,
@@ -688,6 +723,21 @@ function applyUrlState(urlState = parseUrlState()) {
         seedSource: selectedGauntletState?.seedSource,
       });
       renderGauntlet();
+      return;
+    }
+    if (urlState.tab === 'draft') {
+      ensureDraftSpotControls({
+        owner: urlState.draftOwner,
+        mode: urlState.draftMode,
+        startSeason: urlState.draftStart,
+        endSeason: urlState.draftEnd,
+        metric: urlState.draftMetric,
+        selectedPick: urlState.draftPick,
+        selectedZone: urlState.draftZone,
+        minSample: urlState.draftMinSample,
+        normalize: urlState.draftNormalize,
+      });
+      renderDraftSpot();
       return;
     }
     const teamSelect = ensureHistoryControls();
@@ -864,12 +914,13 @@ async function loadLeagueJSON() {
   setAppStatus('loading', 'Loading league data...');
   try {
     const loaded = await loadLeagueAssets();
-    ({ leagueGames, derivedWeeksSet, seasonSummaries, rivalries, currentSeason } = setLoadedLeagueData({
+    ({ leagueGames, derivedWeeksSet, seasonSummaries, rivalries, currentSeason, draftSpot: draftSpotAsset } = setLoadedLeagueData({
       leagueGames,
       derivedWeeksSet,
       seasonSummaries,
       rivalries,
       currentSeason,
+      draftSpot: draftSpotAsset,
     }, loaded));
     seasonAggregatesCache = null;
     weeklyAwardsCache = null;
@@ -877,6 +928,7 @@ async function loadLeagueJSON() {
     teamSeasonsCache = new Map();
     selectedCurrentSeasonState = null;
     selectedGauntletState = null;
+    selectedDraftState = null;
     headToHeadPairsCache.clear();
     renderSectionCache.clear();
     filteredGamesCacheKey = null;
@@ -915,6 +967,16 @@ function updateHeaderForGauntlet(teamSeasonA, teamSeasonB) {
     } else {
       document.title = 'Historical Matchup';
     }
+  }
+}
+
+function updateHeaderForDraftSpot(view) {
+  const h2 = document.querySelector('header h2');
+  const owner = view?.state?.owner && view.state.owner !== DRAFT_ALL_OWNERS ? view.state.owner : null;
+  if (h2) h2.textContent = owner ? `${owner} Draft Spot` : 'Draft Spot Explorer';
+  renderHeaderBanners(owner || '', seasonSummaries);
+  if (document.title !== undefined) {
+    document.title = owner ? `${owner} Draft Spot` : 'Draft Spot Explorer';
   }
 }
 
@@ -1016,6 +1078,82 @@ function renderGauntlet() {
       narrative,
       copyText,
     }, { doc: document });
+  });
+}
+
+function ensureDraftSpotInteractions() {
+  const page = document.getElementById('page-draft');
+  if (!page || page.dataset.bound) return;
+  page.addEventListener('click', event => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+    const pickButton = target.closest('[data-draft-pick]');
+    if (pickButton && page.contains(pickButton)) {
+      event.preventDefault();
+      const pick = Number(pickButton.dataset.draftPick);
+      if (!Number.isFinite(pick)) return;
+      selectedDraftState = {
+        ...(selectedDraftState || {}),
+        mode: 'pick',
+        selectedPick: selectedDraftState?.selectedPick === pick ? null : pick,
+        selectedZone: null,
+      };
+      renderDraftSpot();
+      return;
+    }
+    const zoneButton = target.closest('[data-draft-zone]');
+    if (zoneButton && page.contains(zoneButton)) {
+      event.preventDefault();
+      const zone = zoneButton.dataset.draftZone || null;
+      selectedDraftState = {
+        ...(selectedDraftState || {}),
+        mode: 'zone',
+        selectedPick: null,
+        selectedZone: selectedDraftState?.selectedZone === zone ? null : zone,
+      };
+      renderDraftSpot();
+    }
+  });
+  page.dataset.bound = '1';
+}
+
+function renderDraftSpot() {
+  ensureDraftSpotInteractions();
+  if (!draftSpotAsset) {
+    selectedDraftState = resolveDraftSpotState(null, selectedDraftState || {}, selectedDraftState || {});
+    updateHeaderForDraftSpot(null);
+    renderDraftSpotView({ asset: null, state: selectedDraftState }, { doc: document });
+    updateUrlFromState({
+      tab: 'draft',
+      isApplyingUrlState,
+    });
+    return;
+  }
+
+  selectedDraftState = resolveDraftSpotState(draftSpotAsset, selectedDraftState || {}, selectedDraftState || {});
+  buildDraftSpotControls({
+    doc: document,
+    asset: draftSpotAsset,
+    selectedState: selectedDraftState,
+    onChange: handleDraftSpotChange,
+  });
+  const view = buildDraftSpotModel(draftSpotAsset, { state: selectedDraftState });
+  selectedDraftState = view.state;
+  updateHeaderForDraftSpot(view);
+  renderDraftSpotView(view, { doc: document });
+
+  updateUrlFromState({
+    tab: 'draft',
+    selectedDraftOwner: view.state.owner,
+    selectedDraftMode: view.state.mode,
+    selectedDraftStartSeason: view.state.startSeason,
+    selectedDraftEndSeason: view.state.endSeason,
+    selectedDraftMetric: view.state.metric,
+    selectedDraftPick: view.state.selectedPick,
+    selectedDraftZone: view.state.selectedZone,
+    selectedDraftMinSample: view.state.minSample,
+    selectedDraftNormalize: view.state.normalize,
+    isApplyingUrlState,
   });
 }
 
@@ -1474,6 +1612,15 @@ function bindListeners() {
     });
   }
 
+  const draftTab = document.getElementById('tabDraftBtn');
+  if (draftTab) {
+    draftTab.addEventListener('click', () => {
+      showPage('draft');
+      ensureDraftSpotControls(selectedDraftState || {});
+      renderDraftSpot();
+    });
+  }
+
   const gauntletTab = document.getElementById('tabGauntletBtn');
   if (gauntletTab) {
     gauntletTab.addEventListener('click', () => {
@@ -1530,7 +1677,7 @@ function bindListeners() {
 
 async function bootstrapHistoryApp() {
   const urlState = parseUrlState();
-  showPage(urlState.tab === 'current' ? 'current' : urlState.tab === 'rivalry' ? 'rivalry' : urlState.tab === 'trophy' ? 'trophy' : urlState.tab === 'dynasty' ? 'dynasty' : urlState.tab === 'gauntlet' ? 'gauntlet' : 'history');
+  showPage(urlState.tab === 'current' ? 'current' : urlState.tab === 'rivalry' ? 'rivalry' : urlState.tab === 'trophy' ? 'trophy' : urlState.tab === 'dynasty' ? 'dynasty' : urlState.tab === 'draft' ? 'draft' : urlState.tab === 'gauntlet' ? 'gauntlet' : 'history');
   const loaded = await loadLeagueJSON();
   if (!loaded) return;
   bindListeners();

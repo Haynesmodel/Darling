@@ -6,6 +6,7 @@ const assets = path.join(root, 'assets');
 const h2hPath = path.join(assets, 'H2H.json');
 const seasonPath = path.join(assets, 'SeasonSummary.json');
 const rivalPath = path.join(assets, 'Rivalries.json');
+const draftSpotPath = path.join(assets, 'DraftSpot.json');
 
 function readJson(p) {
   return JSON.parse(fs.readFileSync(p, 'utf8'));
@@ -63,6 +64,7 @@ function validSeasonRow(overrides = {}) {
 
 export {
   assets,
+  draftSpotPath,
   h2hPath,
   isNum,
   isPlayoff,

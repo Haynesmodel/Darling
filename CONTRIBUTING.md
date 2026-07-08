@@ -12,7 +12,9 @@ This repository is maintained as a static site backed by JSON assets. The annual
 5. Run the live update and review `assets/H2H.updated.json` before copying it into `assets/H2H.json`.
 6. Verify the regular season and postseason rows look correct in the updated H2H output.
 7. After playoffs, generate or review `assets/SeasonSummary.draft.json` and fill in the manual fields before replacing the canonical summary.
-8. Run the local checks before pushing:
+8. After replacing `assets/SeasonSummary.json`, regenerate Draft Spot data:
+   - `python3 scripts/generate_draft_spot_asset.py --season-summary assets/SeasonSummary.json --out assets/DraftSpot.json`
+9. Run the local checks before pushing:
    - `npm run test:hygiene`
    - `npm run test:data`
    - `npm run test:scripts`
@@ -21,6 +23,8 @@ This repository is maintained as a static site backed by JSON assets. The annual
 
 ## Working Notes
 
+- Keep `assets/LeaguePic.jpeg` as a real tracked JPEG because it is the header background. `npm run serve` and `npm run test:assets` restore it from git when iCloud leaves only `.LeaguePic.jpeg.icloud` locally.
 - Keep generated draft data reviewable. Do not replace `assets/SeasonSummary.json` automatically.
+- `assets/DraftSpot.json` is generated from reviewed season summaries and intentionally excludes seasons without `draft_pick` values.
 - The Sleeper workflow needs the `SLEEPER_LEAGUE_ID` repository secret.
 - `docs/plans/README.md` is the index for the implementation plans.

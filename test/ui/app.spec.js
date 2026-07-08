@@ -85,6 +85,7 @@ test('page loads and renders the history tables', async ({ page }) => {
 
   await expect(page.locator('#appStatus')).toBeHidden();
   await expect(page.locator('header h2')).toHaveText('Joe');
+  await expect(page.locator('header')).toHaveCSS('background-image', /LeaguePic\.jpeg/);
   expect(await page.evaluate(() => typeof window.triggerGroupEgg)).toBe('undefined');
   expect(await page.evaluate(() => typeof window.setGroupBackdrop)).toBe('undefined');
 
@@ -391,6 +392,75 @@ test('dynasty url restores the requested owner and period', async ({ page }) => 
       params.get('dynastySaunders'),
     ].join('|');
   })).toBe('dynasty|calculator|Joe|2021|2023|2|1');
+});
+
+test('draft spot tab renders summary, pick board, and selectable detail', async ({ page }) => {
+  await page.goto('/?tab=draft');
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#tabDraftBtn')).toHaveClass(/active/);
+  await expect(page.locator('#draftOwnerSelect')).toBeVisible();
+  await expect(page.locator('#draftHero')).toContainText('Draft Spot Explorer');
+  await expect(page.locator('#draftHero')).toContainText('2017-2025');
+  await expect(page.locator('#draftPickBoard .draft-pick-card[data-draft-pick]')).toHaveCount(12);
+  await expect(page.locator('#draftZoneComparison')).toContainText('Late (8+)');
+  expect(await page.locator('#draftOwnerRecommendations .draft-owner-card').count()).toBeGreaterThan(0);
+  expect(await page.locator('#draftRowsTable tbody tr').count()).toBe(92);
+
+  await page.locator('#draftPickBoard .draft-pick-card[data-draft-pick="10"]').click();
+  await expect(page.locator('#draftPickDetail')).toContainText('Pick 10');
+  await expect(page.locator('#draftPickDetail')).toContainText('Champions:');
+  await expect.poll(async () => new URL(page.url()).searchParams.get('draftPick')).toBe('10');
+
+  await page.locator('#draftOwnerSelect').selectOption('Joe');
+  await expect(page.locator('#draftOwnerSelect')).toHaveValue('Joe');
+  await expect(page.locator('#draftHero')).toContainText("Joe's Draft Spot Profile");
+  await expect(page.locator('#draftOwnerTimeline .draft-timeline-item')).toHaveCount(9);
+  await expect.poll(async () => new URL(page.url()).searchParams.get('draftOwner')).toBe('Joe');
+});
+
+test('draft spot url restores owner metric pick and normalization state', async ({ page }) => {
+  await page.goto('/?tab=draft&draftOwner=Joe&draftMode=pick&draftStart=2021&draftEnd=2025&draftMetric=playoffRate&draftPick=10&draftMinSample=2&draftNormalize=percentile');
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#tabDraftBtn')).toHaveClass(/active/);
+  await expect(page.locator('#draftOwnerSelect')).toHaveValue('Joe');
+  await expect(page.locator('#draftModeSelect')).toHaveValue('pick');
+  await expect(page.locator('#draftStartSeason')).toHaveValue('2021');
+  await expect(page.locator('#draftEndSeason')).toHaveValue('2025');
+  await expect(page.locator('#draftMetricSelect')).toHaveValue('playoffRate');
+  await expect(page.locator('#draftMinSampleSelect')).toHaveValue('2');
+  await expect(page.locator('#draftNormalizeToggle')).toBeChecked();
+  await expect(page.locator('#draftPickBoard .draft-pick-card[data-draft-pick="10"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#draftPickBoard').getByRole('button', { name: /Pick 10/ })).toBeVisible();
+  await expect(page.locator('#draftPickBoard')).toContainText('draft percentile');
+  await expect(page.locator('#draftPickDetail')).toContainText('Pick 10');
+  await expect(page.locator('#draftRowsTable thead')).toContainText('Draft %');
+  await expect(page.locator('#draftRowsTable tbody tr')).toHaveCount(1);
+});
+
+test('draft spot mobile layout avoids horizontal overflow', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?tab=draft&draftOwner=Joe');
+  await page.waitForLoadState('networkidle');
+
+  const hero = page.locator('#draftHero');
+  const board = page.locator('#draftPickBoard');
+  const zones = page.locator('#draftZoneComparison');
+  await expect(hero).toBeVisible();
+  await expect(board).toBeVisible();
+  await expect(zones).toBeVisible();
+
+  const heroBox = await hero.boundingBox();
+  const boardBox = await board.boundingBox();
+  const zoneBox = await zones.boundingBox();
+  expect(heroBox).toBeTruthy();
+  expect(boardBox).toBeTruthy();
+  expect(zoneBox).toBeTruthy();
+  expect(heroBox.width).toBeLessThanOrEqual(390);
+  expect(boardBox.width).toBeLessThanOrEqual(390);
+  expect(zoneBox.width).toBeLessThanOrEqual(390);
+  expect(await page.locator('body').evaluate(el => el.scrollWidth <= window.innerWidth + 1)).toBe(true);
 });
 
 test('gauntlet url restores matchup controls and renders simulation output', async ({ page }) => {

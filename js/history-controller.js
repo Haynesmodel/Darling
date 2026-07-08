@@ -64,6 +64,7 @@ import {
 } from './current-season-data.js';
 import {
   buildCurrentSeasonViewModel,
+  renderCurrentCommandCenter,
   renderCurrentMatchups,
   renderCurrentSeasonHero,
   renderCurrentStandings,
@@ -350,11 +351,16 @@ function ensureCurrentSeasonControls(initialState = {}) {
       currentSeason,
       selectedSeason: selectedState.selectedSeason || urlState.currentSeason,
       selectedWeek: selectedState.selectedWeek || urlState.currentWeek,
+      selectedOwner: selectedState.selectedOwner ?? urlState.currentOwner ?? '',
+      selectedView: selectedState.selectedView || urlState.currentView || 'command',
       onChange: handleCurrentSeasonChange,
     });
     selectedCurrentSeasonState = {
       selectedSeason: built.selectedSeason,
       selectedWeek: built.selectedWeek,
+      selectedOwner: built.selectedOwner,
+      selectedView: built.selectedView,
+      selectedProjectionMode: selectedState.selectedProjectionMode || urlState.currentProjection || 'ifScoresHold',
     };
     seasonSelect.dataset.ready = '1';
   } else {
@@ -365,11 +371,16 @@ function ensureCurrentSeasonControls(initialState = {}) {
       currentSeason,
       selectedSeason: selectedState.selectedSeason || urlState.currentSeason,
       selectedWeek: selectedState.selectedWeek || urlState.currentWeek,
+      selectedOwner: selectedState.selectedOwner ?? urlState.currentOwner ?? '',
+      selectedView: selectedState.selectedView || urlState.currentView || 'command',
       onChange: handleCurrentSeasonChange,
     });
     selectedCurrentSeasonState = {
       selectedSeason: built.selectedSeason,
       selectedWeek: built.selectedWeek,
+      selectedOwner: built.selectedOwner,
+      selectedView: built.selectedView,
+      selectedProjectionMode: selectedState.selectedProjectionMode || urlState.currentProjection || 'ifScoresHold',
     };
   }
 
@@ -483,11 +494,17 @@ function renderCurrentSeason() {
     currentSeason,
     season: resolvedState.selectedSeason,
     week: resolvedState.selectedWeek,
+    selectedOwner: resolvedState.selectedOwner,
+    selectedView: resolvedState.selectedView,
+    projectionMode: resolvedState.selectedProjectionMode,
   });
 
   selectedCurrentSeasonState = {
     selectedSeason: view.season,
     selectedWeek: view.week,
+    selectedOwner: view.commandCenter.selectedOwner,
+    selectedView: view.commandCenter.selectedView,
+    selectedProjectionMode: view.commandCenter.selectedProjectionMode,
   };
   updateHeaderForCurrentSeason(view);
 
@@ -497,10 +514,15 @@ function renderCurrentSeason() {
     games: view.regularGames.length,
     matchups: view.matchups.map(row => `${row.teamA}:${row.teamB}:${row.scoreA}:${row.scoreB}`).join('|'),
     standings: view.standings.map(row => `${row.owner}:${row.record}:${row.pointsFor}:${row.pointsAgainst}`).join('|'),
+    owner: view.commandCenter.selectedOwner,
+    mode: view.commandCenter.selectedView,
+    projection: view.commandCenter.selectedProjectionMode,
+    picture: view.commandCenter.playoffPicture.map(row => `${row.owner}:${row.currentSeed}:${row.projectedSeed}:${row.status.key}`).join('|'),
   });
 
   renderIfChanged('current', signature, () => {
     renderCurrentSeasonHero(view, { doc: document });
+    renderCurrentCommandCenter(view, { doc: document });
     renderCurrentMatchups(view, { doc: document });
     renderCurrentStandings(view, { doc: document });
     renderCurrentTeamSnapshots(view, { doc: document });
@@ -510,6 +532,9 @@ function renderCurrentSeason() {
     tab: 'current',
     selectedCurrentSeason: view.season,
     selectedCurrentWeek: view.week,
+    selectedCurrentOwner: view.commandCenter.selectedOwner,
+    selectedCurrentView: view.commandCenter.selectedView,
+    selectedCurrentProjection: view.commandCenter.selectedProjectionMode,
     isApplyingUrlState,
   });
 }
@@ -640,6 +665,9 @@ function applyUrlState(urlState = parseUrlState()) {
       ensureCurrentSeasonControls({
         selectedSeason: urlState.currentSeason,
         selectedWeek: urlState.currentWeek,
+        selectedOwner: urlState.currentOwner || '',
+        selectedView: urlState.currentView || 'command',
+        selectedProjectionMode: urlState.currentProjection || 'ifScoresHold',
       });
       renderCurrentSeason();
       return;

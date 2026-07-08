@@ -177,6 +177,12 @@ def build_current_season_asset(args):
         final_weeks = sorted({g["week"] for g in games if g["status"] == "final"})
         current_week = scheduled_weeks[0] if scheduled_weeks else (final_weeks[-1] if final_weeks else None)
 
+    playoff_slots = getattr(args, "playoff_slots", 6)
+    bye_slots = getattr(args, "bye_slots", 2)
+    saunders_slots = getattr(args, "saunders_slots", 6)
+    tiebreakers = getattr(args, "standings_tiebreakers", None) or "win_pct,points_for,points_differential,owner"
+    update_mode = getattr(args, "update_mode", "manual")
+
     return {
         "source": "sleeper",
         "league_id": str(args.league),
@@ -184,6 +190,19 @@ def build_current_season_asset(args):
         "generated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         "current_week": current_week,
         "regular_season_max_week": args.regular_season_max_week,
+        "playoff_rules": {
+            "regular_season_max_week": args.regular_season_max_week,
+            "playoff_slots": playoff_slots,
+            "bye_slots": bye_slots,
+            "standings_tiebreakers": [part.strip() for part in str(tiebreakers).split(",") if part.strip()],
+            "saunders_slots": saunders_slots,
+        },
+        "update_context": {
+            "mode": update_mode,
+            "cutoff_date": cutoff.isoformat(),
+            "contains_live_scores": any(g["status"] == "live" for g in games),
+            "contains_projected_scores": False,
+        },
         "max_week": args.max_week,
         "weeks_fetched": fetched_weeks,
         "teams": public_team_rows(teams_info, rid_to_name),
@@ -201,6 +220,11 @@ def main():
     parser.add_argument("--cutoff-date", default=None, help="Optional YYYY-MM-DD cutoff for final/scheduled status")
     parser.add_argument("--current-week", type=int, default=None, help="Override current week")
     parser.add_argument("--regular-season-max-week", type=int, default=14)
+    parser.add_argument("--playoff-slots", type=int, default=6)
+    parser.add_argument("--bye-slots", type=int, default=2)
+    parser.add_argument("--saunders-slots", type=int, default=6)
+    parser.add_argument("--standings-tiebreakers", default="win_pct,points_for,points_differential,owner")
+    parser.add_argument("--update-mode", default="manual")
     parser.add_argument("--max-week", type=int, default=17)
     parser.add_argument("--allow-postseason", action="store_true", default=False)
     parser.add_argument("--h2h-fallback", default=None, help="Optional H2H asset used to classify postseason pairs that Sleeper brackets omit")

@@ -59,10 +59,13 @@ test('url helpers parse and rebuild rivalry state', () => {
 });
 
 test('url helpers parse and rebuild current season state', () => {
-  const parsed = parseUrlState('?tab=current&currentSeason=2025&currentWeek=6');
+  const parsed = parseUrlState('?tab=current&currentSeason=2025&currentWeek=6&currentOwner=Joe&currentView=owners&currentProjection=current');
   assert.equal(parsed.tab, 'current');
   assert.equal(parsed.currentSeason, 2025);
   assert.equal(parsed.currentWeek, 6);
+  assert.equal(parsed.currentOwner, 'Joe');
+  assert.equal(parsed.currentView, 'owners');
+  assert.equal(parsed.currentProjection, 'current');
   assert.equal(parsed.hasCurrent, true);
   assert.equal(parsed.hasAny, true);
 
@@ -70,10 +73,13 @@ test('url helpers parse and rebuild current season state', () => {
     tab: 'current',
     selectedCurrentSeason: 2025,
     selectedCurrentWeek: 6,
+    selectedCurrentOwner: 'Joe',
+    selectedCurrentView: 'owners',
+    selectedCurrentProjection: 'current',
     pathname: '/index.html',
     allTeams: '__ALL__',
   });
-  assert.equal(next, '/index.html?tab=current&currentSeason=2025&currentWeek=6');
+  assert.equal(next, '/index.html?tab=current&currentSeason=2025&currentWeek=6&currentOwner=Joe&currentView=owners&currentProjection=current');
 });
 
 test('url helpers parse and rebuild trophy state', () => {

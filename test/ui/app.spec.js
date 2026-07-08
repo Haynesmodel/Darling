@@ -130,7 +130,12 @@ test('current season tab renders matchups and links to head to head context', as
   await expect(page.locator('#tabCurrentBtn')).toHaveClass(/active/);
   await expect(page.locator('#currentSeasonSelect')).toBeVisible();
   await expect(page.locator('#currentWeekSelect')).toBeVisible();
+  await expect(page.locator('#currentViewSelect')).toBeVisible();
+  await expect(page.locator('#currentOwnerSelect')).toBeVisible();
   await expect(page.locator('#currentHero')).toContainText('Current Season');
+  await expect(page.locator('#currentPlayoffPicture')).toContainText('Playoff Picture');
+  await expect(page.locator('#currentWeekNeeds')).toContainText('This Week Needs');
+  await expect(page.locator('#currentProjectedStandings')).toContainText('Projected Standings');
 
   const matchupCount = await page.locator('.current-matchup-card').count();
   const standingsRows = await page.locator('#currentStandings tbody tr').count();
@@ -143,6 +148,12 @@ test('current season tab renders matchups and links to head to head context', as
   await expect(page.locator('#tabRivalryBtn')).toHaveClass(/active/);
   await expect(page.locator('#rivalryHeadline')).toBeVisible();
   await expect(page.locator('#rivalryScopeSelect')).toHaveValue('allTime');
+
+  await page.goto('/?tab=current&currentOwner=Joe&currentView=owners');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('#currentOwnerSelect')).toHaveValue('Joe');
+  await expect(page.locator('#currentViewSelect')).toHaveValue('owners');
+  await expect(page.locator('#currentWeekNeeds .current-owner-focus')).toContainText('Joe');
 });
 
 test('rivalry tab renders a tale of the tape and saved rivalry selection', async ({ page }) => {

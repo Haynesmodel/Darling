@@ -26,6 +26,10 @@ Primary web-served data:
 - `assets/SeasonSummary.json`
 - `assets/Rivalries.json`
 
+Current Season command-center assumptions:
+- `assets/CurrentSeason.json` can include `playoff_rules`; if omitted, the app assumes 14 regular-season weeks, 6 playoff teams, 2 byes, 6 Saunders slots, and standings sorted by win rate, points for, points differential, then owner.
+- The v1 command center uses a deterministic path model. It shows projected standings for completed games plus live leaders if scores hold; it does not display simulation odds or player-level projections.
+
 Shareable Dynasty URLs:
 - Open `http://127.0.0.1:8000/?tab=dynasty&dynastyMode=calculator&dynastyOwner=Joe&dynastyStart=2021&dynastyEnd=2023&dynastyMinSeasons=2&dynastySaunders=1` to land directly on Joe's 2021-2023 Dynasty Score.
 - The same URL shape works on the deployed site, so users can share a specific owner and range without additional setup.

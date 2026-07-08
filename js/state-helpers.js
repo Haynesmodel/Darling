@@ -49,6 +49,9 @@ function parseUrlState(search) {
   const currentWeek = params.get('currentWeek');
   const parsedCurrentSeason = isFiniteInput(currentSeason) ? +currentSeason : null;
   const parsedCurrentWeek = isFiniteInput(currentWeek) ? +currentWeek : null;
+  const currentOwner = params.get('currentOwner') || null;
+  const currentView = params.get('currentView') || null;
+  const currentProjection = params.get('currentProjection') || null;
   const gauntletA = params.get('ga') || null;
   const gauntletB = params.get('gb') || null;
   const gauntletModel = params.get('gm') || null;
@@ -68,7 +71,7 @@ function parseUrlState(search) {
   const parsedDynastyEnd = isFiniteInput(dynastyEnd) ? +dynastyEnd : null;
   const parsedDynastyMinSeasons = isFiniteInput(dynastyMinSeasons) ? +dynastyMinSeasons : null;
   const parsedDynastySaunders = dynastySaunders === null ? null : dynastySaunders !== '0';
-  const hasCurrent = !!(tab === 'current' || parsedCurrentSeason !== null || parsedCurrentWeek !== null);
+  const hasCurrent = !!(tab === 'current' || parsedCurrentSeason !== null || parsedCurrentWeek !== null || currentOwner || currentView || currentProjection);
   const hasDynasty = !!(tab === 'dynasty' || dynastyMode || dynastyOwner || parsedDynastyStart !== null || parsedDynastyEnd !== null || parsedDynastyMinSeasons !== null || parsedDynastySaunders !== null);
   const hasGauntlet = !!(tab === 'gauntlet' || gauntletA || gauntletB || gauntletModel || parsedGauntletIncludePostseason !== null || parsedGauntletSimulations !== null || gauntletSeed);
   const hasAny = !!(team || trophyOwner || hasCurrent || hasDynasty || hasGauntlet || (seasons && seasons.length) || (weeks && weeks.length) || (opps && opps.length) || (types && types.length) || (rounds && rounds.length));
@@ -85,6 +88,9 @@ function parseUrlState(search) {
     rivalryScope,
     currentSeason: parsedCurrentSeason,
     currentWeek: parsedCurrentWeek,
+    currentOwner,
+    currentView,
+    currentProjection,
     gauntletA,
     gauntletB,
     gauntletModel,
@@ -142,6 +148,9 @@ function buildUrlFromState(opts = {}) {
   const selectedRivalryScope = Object.prototype.hasOwnProperty.call(opts, 'selectedRivalryScope') ? opts.selectedRivalryScope : null;
   const selectedCurrentSeason = Object.prototype.hasOwnProperty.call(opts, 'selectedCurrentSeason') ? opts.selectedCurrentSeason : null;
   const selectedCurrentWeek = Object.prototype.hasOwnProperty.call(opts, 'selectedCurrentWeek') ? opts.selectedCurrentWeek : null;
+  const selectedCurrentOwner = Object.prototype.hasOwnProperty.call(opts, 'selectedCurrentOwner') ? opts.selectedCurrentOwner : null;
+  const selectedCurrentView = Object.prototype.hasOwnProperty.call(opts, 'selectedCurrentView') ? opts.selectedCurrentView : null;
+  const selectedCurrentProjection = Object.prototype.hasOwnProperty.call(opts, 'selectedCurrentProjection') ? opts.selectedCurrentProjection : null;
   const selectedDynastyMode = Object.prototype.hasOwnProperty.call(opts, 'selectedDynastyMode') ? opts.selectedDynastyMode : null;
   const selectedDynastyOwner = Object.prototype.hasOwnProperty.call(opts, 'selectedDynastyOwner') ? opts.selectedDynastyOwner : null;
   const selectedDynastyStartSeason = Object.prototype.hasOwnProperty.call(opts, 'selectedDynastyStartSeason') ? opts.selectedDynastyStartSeason : null;
@@ -174,6 +183,9 @@ function buildUrlFromState(opts = {}) {
   if (tab === 'current') {
     if (isFiniteInput(selectedCurrentSeason)) params.set('currentSeason', `${selectedCurrentSeason}`);
     if (isFiniteInput(selectedCurrentWeek)) params.set('currentWeek', `${selectedCurrentWeek}`);
+    if (selectedCurrentOwner) params.set('currentOwner', selectedCurrentOwner);
+    if (selectedCurrentView && selectedCurrentView !== 'command') params.set('currentView', selectedCurrentView);
+    if (selectedCurrentProjection && selectedCurrentProjection !== 'ifScoresHold') params.set('currentProjection', selectedCurrentProjection);
   }
   if (tab === 'trophy') {
     const selectedTrophyOwner = Object.prototype.hasOwnProperty.call(opts, 'selectedTrophyOwner')

@@ -1,5 +1,6 @@
 import './asset-validation.test.js';
 import './data-helpers.test.js';
+import './draft-spot-controls.test.js';
 import './draft-spot-data.test.js';
 import './draft-spot-renderers.test.js';
 import './dynasty-controls.test.js';

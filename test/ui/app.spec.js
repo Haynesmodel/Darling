@@ -432,7 +432,10 @@ test('draft spot url restores owner metric pick and normalization state', async 
   await expect(page.locator('#draftMinSampleSelect')).toHaveValue('2');
   await expect(page.locator('#draftNormalizeToggle')).toBeChecked();
   await expect(page.locator('#draftPickBoard .draft-pick-card[data-draft-pick="10"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#draftPickBoard').getByRole('button', { name: /Pick 10/ })).toBeVisible();
+  await expect(page.locator('#draftPickBoard')).toContainText('draft percentile');
   await expect(page.locator('#draftPickDetail')).toContainText('Pick 10');
+  await expect(page.locator('#draftRowsTable thead')).toContainText('Draft %');
   await expect(page.locator('#draftRowsTable tbody tr')).toHaveCount(1);
 });
 

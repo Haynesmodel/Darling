@@ -188,6 +188,7 @@ function summarizeDraftPicks(rows = []) {
     .map(([draftPick, group]) => ({
       draft_pick: draftPick,
       n: group.length,
+      avg_draft_percentile: avg(group, 'draft_percentile'),
       avg_finish: avg(group, 'finish'),
       avg_finish_score: avg(group, 'finish_score'),
       avg_wins_above_avg: avg(group, 'wins_above_avg'),
@@ -217,13 +218,16 @@ function summarizeDraftZones(rows = []) {
         zone: zone.label,
         n: group.length,
         avg_pick: avg(group, 'draft_pick'),
+        avg_draft_percentile: avg(group, 'draft_percentile'),
         avg_finish: avg(group, 'finish'),
         avg_finish_score: avg(group, 'finish_score'),
         avg_wins_above_avg: avg(group, 'wins_above_avg'),
         avg_points_z: avg(group, 'points_z'),
         top_three_rate: boolRate(group, 'top_three'),
         playoff_rate: boolRate(group, 'made_playoffs'),
+        championships: group.filter(row => row.champion).length,
         champion_rate: boolRate(group, 'champion'),
+        saunders_count: group.filter(row => row.saunders).length,
         saunders_rate: boolRate(group, 'saunders'),
       };
     })
@@ -254,8 +258,8 @@ function rankDraftPicks(summary = [], metric = 'avgFinish') {
 function rankDraftZones(summary = [], metric = 'avgFinish') {
   const def = DRAFT_METRICS[metric] || DRAFT_METRICS.avgFinish;
   return [...summary].sort((a, b) => {
-    const av = metric === 'championships' ? Number(a.champion_rate || 0) : draftMetricValue(a, metric);
-    const bv = metric === 'championships' ? Number(b.champion_rate || 0) : draftMetricValue(b, metric);
+    const av = draftMetricValue(a, metric);
+    const bv = draftMetricValue(b, metric);
     if (av !== bv) return def.lowerIsBetter ? av - bv : bv - av;
     if ((b.n || 0) !== (a.n || 0)) return (b.n || 0) - (a.n || 0);
     return DRAFT_ZONES.findIndex(zone => zone.key === a.zone_key) - DRAFT_ZONES.findIndex(zone => zone.key === b.zone_key);
@@ -289,6 +293,7 @@ function resolveDraftSpotState(assetInput, urlState = {}, currentState = {}) {
   const picks = draftPicks(asset);
   const minSeason = seasons[0] || null;
   const maxSeason = seasons[seasons.length - 1] || null;
+  const explicitMode = urlState?.draftMode ?? urlState?.mode ?? currentState?.draftMode ?? currentState?.mode ?? null;
   const merged = {
     ...DEFAULT_DRAFT_STATE,
     ...(currentState || {}),
@@ -312,13 +317,15 @@ function resolveDraftSpotState(assetInput, urlState = {}, currentState = {}) {
   const requestedMode = merged.draftMode ?? merged.mode;
   const requestedMinSample = merged.draftMinSample ?? merged.minSample;
   const metric = DRAFT_METRICS[requestedMetric] ? requestedMetric : DEFAULT_DRAFT_STATE.metric;
-  const mode = DRAFT_VIEW_MODES.some(item => item.key === requestedMode) ? requestedMode : DEFAULT_DRAFT_STATE.mode;
+  let mode = DRAFT_VIEW_MODES.some(item => item.key === requestedMode) ? requestedMode : DEFAULT_DRAFT_STATE.mode;
   const minSample = [1, 2, 3, 5].includes(Number(requestedMinSample))
     ? Number(requestedMinSample)
     : DEFAULT_DRAFT_STATE.minSample;
   const normalize = (merged.draftNormalize ?? merged.normalize) === 'percentile' ? 'percentile' : 'raw';
   const selectedPick = safePick(merged.draftPick ?? merged.selectedPick, picks);
   const selectedZone = selectedPick ? null : zoneKey(merged.draftZone ?? merged.selectedZone);
+  if (!explicitMode && selectedPick) mode = 'pick';
+  if (!explicitMode && !selectedPick && selectedZone) mode = 'zone';
 
   return {
     owner,
@@ -338,6 +345,26 @@ function qualified(summary, minSample) {
   return rows.length ? rows : summary;
 }
 
+function applyDraftMode(state, pickSummary, zoneSummary) {
+  const mode = state.mode || DEFAULT_DRAFT_STATE.mode;
+  const next = { ...state, mode };
+  if (mode === 'pick') {
+    const defaultPick = rankDraftPicks(qualified(pickSummary, next.minSample), next.metric)[0]?.draft_pick || null;
+    next.selectedPick = next.selectedPick || defaultPick;
+    next.selectedZone = null;
+    return next;
+  }
+  if (mode === 'zone') {
+    const defaultZone = rankDraftZones(qualified(zoneSummary, next.minSample), next.metric)[0]?.zone_key || null;
+    next.selectedPick = null;
+    next.selectedZone = next.selectedZone || defaultZone;
+    return next;
+  }
+  next.selectedPick = null;
+  next.selectedZone = null;
+  return next;
+}
+
 function buildHeroModel(baseRows, pickSummary, zoneSummary, state, asset) {
   const minSample = Number(state.minSample || 1);
   const qualifiedPicks = qualified(pickSummary, minSample);
@@ -349,9 +376,17 @@ function buildHeroModel(baseRows, pickSummary, zoneSummary, state, asset) {
   })[0] || null;
   const bestZone = rankDraftZones(qualified(zoneSummary, minSample), 'avgFinish')[0] || null;
   const seasons = [...new Set(baseRows.map(row => row.season))].sort((a, b) => a - b);
+  const modeLabel = DRAFT_VIEW_MODES.find(item => item.key === state.mode)?.label || 'League';
+  const title = state.mode === 'pick' && state.selectedPick
+    ? `Pick ${state.selectedPick} Draft Spot`
+    : state.mode === 'zone' && state.selectedZone
+      ? `${zoneLabel(state.selectedZone)} Draft Spot`
+      : state.owner && state.owner !== DRAFT_ALL_OWNERS
+        ? `${state.owner}'s Draft Spot Profile`
+        : 'Draft Spot Explorer';
   return {
-    title: state.owner && state.owner !== DRAFT_ALL_OWNERS ? `${state.owner}'s Draft Spot Profile` : 'Draft Spot Explorer',
-    subtitle: seasons.length ? `${seasons[0]}-${seasons[seasons.length - 1]}, ${baseRows.length} owner-seasons` : 'No draft rows',
+    title,
+    subtitle: seasons.length ? `${modeLabel} mode - ${seasons[0]}-${seasons[seasons.length - 1]}, ${baseRows.length} owner-seasons` : `${modeLabel} mode - no draft rows`,
     bestAvgPick,
     bestPlayoffPick,
     saundersPick,
@@ -364,18 +399,19 @@ function buildHeroModel(baseRows, pickSummary, zoneSummary, state, asset) {
 
 function buildDraftSpotModel(assetInput, opts = {}) {
   const asset = normalizeDraftAsset(assetInput);
-  const state = resolveDraftSpotState(asset, opts.state || opts.urlState || {}, opts.currentState || {});
+  const resolvedState = resolveDraftSpotState(asset, opts.state || opts.urlState || {}, opts.currentState || {});
   const baseRows = filterDraftRows(asset?.rows || [], {
-    owner: state.owner,
-    startSeason: state.startSeason,
-    endSeason: state.endSeason,
+    owner: resolvedState.owner,
+    startSeason: resolvedState.startSeason,
+    endSeason: resolvedState.endSeason,
   });
+  const pickSummary = summarizeDraftPicks(baseRows);
+  const zoneSummary = summarizeDraftZones(baseRows);
+  const state = applyDraftMode(resolvedState, pickSummary, zoneSummary);
   const rows = filterDraftRows(baseRows, {
     selectedPick: state.selectedPick,
     selectedZone: state.selectedZone,
   });
-  const pickSummary = summarizeDraftPicks(baseRows);
-  const zoneSummary = summarizeDraftZones(baseRows);
   const rankedPicks = rankDraftPicks(qualified(pickSummary, state.minSample), state.metric);
   const rankedZones = rankDraftZones(qualified(zoneSummary, state.minSample), state.metric);
   const selectedPickSummary = state.selectedPick ? pickSummary.find(row => row.draft_pick === state.selectedPick) || null : null;

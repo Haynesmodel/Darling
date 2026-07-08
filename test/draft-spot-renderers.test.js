@@ -25,9 +25,10 @@ test('draft spot renderers produce stable main sections', () => {
     },
   });
 
-  assert.match(draftSpotHeroHtml(model), /Draft Spot Explorer/);
+  assert.match(draftSpotHeroHtml(model), /Pick 10 Draft Spot/);
   assert.match(draftPickBoardHtml(model), /data-draft-pick="10"/);
   assert.match(draftPickBoardHtml(model), /low-sample/);
+  assert.doesNotMatch(draftPickBoardHtml(model), /role="listitem"|role="list"/);
   assert.match(draftZoneComparisonHtml(model), /data-draft-zone="late"/);
   assert.match(draftOwnerRecommendationsHtml(model), /draft-owner-card/);
   assert.match(draftPickDetailHtml(model), /Pick 10/);
@@ -65,4 +66,32 @@ test('draft spot renderers escape data-driven owner text', () => {
   assert.doesNotMatch(ownerHtml, /<script>/);
   assert.match(rowsHtml, /Bad &lt;Owner&gt;/);
   assert.doesNotMatch(rowsHtml, /Bad <Owner>/);
+});
+
+test('draft spot renderers show percentile mode and keep championship zone units as counts', () => {
+  const percentileModel = buildDraftSpotModel(asset, {
+    state: {
+      mode: 'pick',
+      normalize: 'percentile',
+      selectedPick: 10,
+      startSeason: 2021,
+      endSeason: 2025,
+    },
+  });
+  assert.match(draftPickBoardHtml(percentileModel), /draft percentile context/);
+  assert.match(draftRowsTableHtml(percentileModel), /Draft %/);
+  assert.match(draftPickDetailHtml(percentileModel), /Draft %/);
+
+  const championshipModel = buildDraftSpotModel(asset, {
+    state: {
+      metric: 'championships',
+      startSeason: 2017,
+      endSeason: 2025,
+    },
+  });
+  const zoneHtml = draftZoneComparisonHtml(championshipModel);
+  assert.match(zoneHtml, /Early \(1-3\)[\s\S]*?<strong>1<\/strong>/);
+  assert.match(zoneHtml, /Middle \(4-7\)[\s\S]*?<strong>3<\/strong>/);
+  assert.match(zoneHtml, /Late \(8\+\)[\s\S]*?<strong>5<\/strong>/);
+  assert.doesNotMatch(zoneHtml, /<strong>\d+%<\/strong>/);
 });

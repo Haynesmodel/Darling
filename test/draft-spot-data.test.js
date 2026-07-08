@@ -51,7 +51,10 @@ test('summaries recompute from filtered rows', () => {
 
   assert.equal(picks.length, 12);
   assert.equal(picks.every(row => row.n === 1), true);
+  assert.equal(Number.isFinite(picks[0].avg_draft_percentile), true);
   assert.deepEqual(zones.map(row => `${row.zone_key}:${row.n}`), ['early:3', 'middle:4', 'late:5']);
+  assert.equal(Number.isFinite(zones[0].avg_draft_percentile), true);
+  assert.equal(Number.isFinite(zones[0].championships), true);
 });
 
 test('ranking honors metric direction and sample fallback', () => {
@@ -104,4 +107,61 @@ test('buildDraftSpotModel returns selected pick and owner profile view models', 
   assert.equal(model.ownerProfile.owner, 'Joe');
   assert.equal(model.ownerProfile.rows.length, 9);
   assert.equal(model.rankedPicks[0].n >= 2, true);
+});
+
+test('buildDraftSpotModel applies mode-specific pick and zone selections', () => {
+  const pickMode = buildDraftSpotModel(asset, {
+    state: {
+      mode: 'pick',
+      startSeason: 2017,
+      endSeason: 2025,
+      metric: 'playoffRate',
+      minSample: 2,
+    },
+  });
+  assert.equal(pickMode.state.mode, 'pick');
+  assert.equal(Number.isFinite(pickMode.state.selectedPick), true);
+  assert.equal(pickMode.state.selectedZone, null);
+  assert.equal(pickMode.rows.every(row => row.draft_pick === pickMode.state.selectedPick), true);
+
+  const zoneMode = buildDraftSpotModel(asset, {
+    state: {
+      mode: 'zone',
+      startSeason: 2017,
+      endSeason: 2025,
+      metric: 'avgFinish',
+      minSample: 2,
+    },
+  });
+  assert.equal(zoneMode.state.mode, 'zone');
+  assert.equal(zoneMode.state.selectedPick, null);
+  assert.ok(['early', 'middle', 'late'].includes(zoneMode.state.selectedZone));
+  assert.equal(zoneMode.rows.every(row => row.zone_key === zoneMode.state.selectedZone), true);
+
+  const leagueMode = buildDraftSpotModel(asset, {
+    state: {
+      mode: 'league',
+      startSeason: 2017,
+      endSeason: 2025,
+      selectedPick: 10,
+      selectedZone: 'late',
+    },
+  });
+  assert.equal(leagueMode.state.selectedPick, null);
+  assert.equal(leagueMode.state.selectedZone, null);
+  assert.equal(leagueMode.rows.length, leagueMode.baseRows.length);
+});
+
+test('championship metric ranks zones by championship counts', () => {
+  const model = buildDraftSpotModel(asset, {
+    state: {
+      metric: 'championships',
+      startSeason: 2017,
+      endSeason: 2025,
+    },
+  });
+  const late = model.zoneSummary.find(row => row.zone_key === 'late');
+  assert.equal(late.championships, 5);
+  assert.equal(model.rankedZones[0].zone_key, 'late');
+  assert.equal(model.rankedZones[0].championships, 5);
 });

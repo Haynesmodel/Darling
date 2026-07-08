@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Added a Draft Spot Explorer tab backed by generated `assets/DraftSpot.json`, shareable Draft URLs, and UI/test coverage for pick, zone, and owner views.
+- Fixed Draft Spot review feedback by making mode and percentile controls visibly affect the explorer, keeping championship zone metrics in count units, and preserving native pick-card button semantics.
 - Kept `assets/LeaguePic.jpeg` as the header background and added static-asset hydration so iCloud-offloaded local placeholders are restored before serving or validating assets.
 - Added a visible loading state and a user-facing error banner for JSON fetch failures.
 - Added upfront season-anchor validation to `scripts/sleeper_to_h2h.py`.

@@ -20,6 +20,24 @@ function fmtPct(value, digits = 0) {
   return Number.isFinite(Number(value)) ? `${(Number(value) * 100).toFixed(digits)}%` : '-';
 }
 
+function draftPickLabel(row, normalize = 'raw') {
+  const pick = row?.draft_pick ?? row;
+  if (normalize === 'percentile' && Number.isFinite(Number(row?.draft_percentile))) {
+    return `P${pick} (${fmtPct(row.draft_percentile)})`;
+  }
+  return `P${pick}`;
+}
+
+function summaryDraftContext(summary, normalize = 'raw') {
+  if (!summary) return '';
+  if (normalize === 'percentile' && Number.isFinite(Number(summary.avg_draft_percentile))) {
+    return `Avg draft percentile ${fmtPct(summary.avg_draft_percentile)}`;
+  }
+  if (Number.isFinite(Number(summary.avg_pick))) return `Avg pick ${fmtNumber(summary.avg_pick)}`;
+  if (Number.isFinite(Number(summary.draft_pick))) return `Pick ${summary.draft_pick}`;
+  return '';
+}
+
 function fmtMetric(value, metric) {
   if (['playoffRate', 'topThreeRate', 'saundersRate'].includes(metric)) return fmtPct(value);
   if (metric === 'championships') return `${Number(value || 0)}`;
@@ -106,6 +124,7 @@ function metricIntensity(summary, summaries, metric) {
 function draftPickBoardHtml(view = {}) {
   const metric = view.state?.metric || 'avgFinish';
   const minSample = view.state?.minSample || 1;
+  const normalize = view.state?.normalize || 'raw';
   const maxPick = Math.max(12, ...(view.picks || [0]));
   const summaryByPick = new Map((view.pickSummary || []).map(row => [row.draft_pick, row]));
   const activePick = view.state?.selectedPick;
@@ -114,14 +133,14 @@ function draftPickBoardHtml(view = {}) {
   return `
     <div class="section-heading">
       <h3>Pick Board</h3>
-      <div class="muted">${escapeHtml(selectedMetricLabel)} with n badges; low-sample slots are marked.</div>
+      <div class="muted">${escapeHtml(selectedMetricLabel)} with n badges; ${normalize === 'percentile' ? 'draft percentile context is shown for cross-size seasons' : 'low-sample slots are marked'}.</div>
     </div>
-    <div class="draft-pick-board" role="list">
+    <div class="draft-pick-board">
       ${Array.from({ length: maxPick }, (_, idx) => idx + 1).map(pick => {
         const summary = summaryByPick.get(pick);
         if (!summary) {
           return `
-            <button type="button" class="draft-pick-card empty" disabled role="listitem">
+            <button type="button" class="draft-pick-card empty" disabled>
               <span class="draft-pick-number">Pick ${pick}</span>
               <span class="draft-pick-note">No data</span>
             </button>
@@ -136,13 +155,14 @@ function draftPickBoardHtml(view = {}) {
           sampleClass(summary.n, minSample).trim(),
         ].filter(Boolean).join(' ');
         return `
-          <button type="button" class="${classes}" data-draft-pick="${pick}" aria-pressed="${activePick === pick ? 'true' : 'false'}" style="--draft-intensity:${intensity.toFixed(3)}" role="listitem">
+          <button type="button" class="${classes}" data-draft-pick="${pick}" aria-pressed="${activePick === pick ? 'true' : 'false'}" style="--draft-intensity:${intensity.toFixed(3)}">
             <span class="draft-pick-top">
               <span class="draft-pick-number">Pick ${pick}</span>
               <span class="draft-sample">n=${summary.n}</span>
             </span>
             <strong>${escapeHtml(fmtMetric(metricValue, metric))}</strong>
             <span>Avg finish ${fmtNumber(summary.avg_finish)}</span>
+            ${normalize === 'percentile' ? `<span>${escapeHtml(summaryDraftContext(summary, normalize))}</span>` : ''}
             <span>${fmtPct(summary.playoff_rate)} playoff - ${summary.championships} titles</span>
             <span>${summary.saunders_count} Saunders</span>
           </button>
@@ -154,18 +174,19 @@ function draftPickBoardHtml(view = {}) {
 
 function draftZoneComparisonHtml(view = {}) {
   const metric = view.state?.metric || 'avgFinish';
+  const normalize = view.state?.normalize || 'raw';
   const topZone = view.rankedZones?.[0]?.zone_key || null;
   const byZone = new Map((view.zoneSummary || []).map(row => [row.zone_key, row]));
   return `
     <div class="draft-zone-grid">
       ${DRAFT_ZONES.map(zone => {
         const summary = byZone.get(zone.key);
-        const metricValue = summary ? (metric === 'championships' ? summary.champion_rate : draftMetricValue(summary, metric)) : 0;
+        const metricValue = summary ? draftMetricValue(summary, metric) : 0;
         return `
           <button type="button" class="draft-zone-card${topZone === zone.key ? ' top-zone' : ''}${view.state?.selectedZone === zone.key ? ' selected' : ''}" data-draft-zone="${zone.key}">
             <span>${escapeHtml(zone.label)}</span>
-            <strong>${summary ? fmtMetric(metricValue, metric === 'championships' ? 'playoffRate' : metric) : '-'}</strong>
-            <em>${summary ? `n=${summary.n}, avg pick ${fmtNumber(summary.avg_pick)}, avg finish ${fmtNumber(summary.avg_finish)}` : 'No data'}</em>
+            <strong>${summary ? fmtMetric(metricValue, metric) : '-'}</strong>
+            <em>${summary ? `n=${summary.n}, ${summaryDraftContext(summary, normalize).toLowerCase()}, avg finish ${fmtNumber(summary.avg_finish)}` : 'No data'}</em>
             <small>${summary ? `${fmtPct(summary.playoff_rate)} playoff, ${fmtPct(summary.champion_rate)} title, ${fmtPct(summary.saunders_rate)} Saunders` : ''}</small>
           </button>
         `;
@@ -214,6 +235,7 @@ function draftOwnerRecommendationsHtml(view = {}) {
 
 function draftOwnerTimelineHtml(view = {}) {
   const profile = view.ownerProfile;
+  const normalize = view.state?.normalize || 'raw';
   if (!profile || !profile.rows.length) {
     return '<p class="muted">Choose an owner to see the year-by-year draft timeline.</p>';
   }
@@ -222,7 +244,7 @@ function draftOwnerTimelineHtml(view = {}) {
       ${profile.rows.map(row => `
         <div class="draft-timeline-item${row.champion ? ' champion' : ''}${row.saunders ? ' saunders' : ''}${view.state?.selectedPick === row.draft_pick ? ' selected' : ''}" data-draft-pick="${row.draft_pick}">
           <span>${row.season}</span>
-          <strong>P${row.draft_pick} -> F${row.finish}</strong>
+          <strong>${escapeHtml(draftPickLabel(row, normalize))} -> F${row.finish}</strong>
           <em>${escapeHtml(outcomeText(row))}</em>
         </div>
       `).join('')}
@@ -230,13 +252,14 @@ function draftOwnerTimelineHtml(view = {}) {
   `;
 }
 
-function smallRowsTable(rows = []) {
+function smallRowsTable(rows = [], normalize = 'raw') {
   if (!rows.length) return '<p class="muted">No matching seasons.</p>';
+  const showPercentile = normalize === 'percentile';
   return `
     <div class="table-wrap draft-mini-table">
       <table>
         <thead>
-          <tr><th>Season</th><th>Owner</th><th>Pick</th><th>Finish</th><th>Record</th><th>PF</th><th>Outcome</th></tr>
+          <tr><th>Season</th><th>Owner</th><th>Pick</th>${showPercentile ? '<th>Draft %</th>' : ''}<th>Finish</th><th>Record</th><th>PF</th><th>Outcome</th></tr>
         </thead>
         <tbody>
           ${rows.map(row => `
@@ -244,6 +267,7 @@ function smallRowsTable(rows = []) {
               <td>${row.season}</td>
               <td>${escapeHtml(row.owner)}</td>
               <td>${row.draft_pick}</td>
+              ${showPercentile ? `<td>${fmtPct(row.draft_percentile)}</td>` : ''}
               <td>${row.finish}</td>
               <td>${fmtNumber(row.wins, 0)}-${fmtNumber(row.losses, 0)}${row.ties ? `-${fmtNumber(row.ties, 0)}` : ''}</td>
               <td>${fmtNumber(row.points_for, 1)}</td>
@@ -260,6 +284,7 @@ function draftPickDetailHtml(view = {}) {
   const rows = view.pickDetailRows || [];
   const selectedPick = view.state?.selectedPick;
   const selectedZone = view.state?.selectedZone;
+  const normalize = view.state?.normalize || 'raw';
   if (!selectedPick && !selectedZone) {
     return '<p class="muted">Select a pick or zone to inspect the receipts.</p>';
   }
@@ -294,7 +319,7 @@ function draftPickDetailHtml(view = {}) {
         <span>Top 3: ${topThree.length ? topThree.map(row => `${escapeHtml(row.owner)} ${row.season}`).join(', ') : 'none'}</span>
       </div>
       ${sampleClass(rows.length, view.state?.minSample).trim() ? '<p class="draft-warning">Low sample: this selection is below the current minimum sample threshold.</p>' : ''}
-      ${smallRowsTable(rows)}
+      ${smallRowsTable(rows, normalize)}
     </div>
   `;
 }
@@ -306,6 +331,7 @@ function zoneLabel(key) {
 function draftRowsTableHtml(view = {}) {
   const rows = [...(view.rows || [])].sort((a, b) => b.season - a.season || a.draft_pick - b.draft_pick || a.owner.localeCompare(b.owner));
   if (!rows.length) return '<p class="muted">No rows match the current Draft Spot filters.</p>';
+  const showPercentile = view.state?.normalize === 'percentile';
   return `
     <div class="table-wrap">
       <table id="draftRowsTable">
@@ -314,6 +340,7 @@ function draftRowsTableHtml(view = {}) {
             <th scope="col">Season</th>
             <th scope="col">Owner</th>
             <th scope="col">Draft Pick</th>
+            ${showPercentile ? '<th scope="col">Draft %</th>' : ''}
             <th scope="col">Zone</th>
             <th scope="col">Finish</th>
             <th scope="col">Record</th>
@@ -329,6 +356,7 @@ function draftRowsTableHtml(view = {}) {
               <td>${row.season}</td>
               <td>${escapeHtml(row.owner)}</td>
               <td>${row.draft_pick}</td>
+              ${showPercentile ? `<td>${fmtPct(row.draft_percentile)}</td>` : ''}
               <td>${escapeHtml(row.zone)}</td>
               <td>${row.finish}</td>
               <td>${fmtNumber(row.wins, 0)}-${fmtNumber(row.losses, 0)}${row.ties ? `-${fmtNumber(row.ties, 0)}` : ''}</td>

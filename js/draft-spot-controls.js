@@ -72,9 +72,10 @@ function buildDraftSpotControls(opts = {}) {
     </label>
   `;
 
-  container.onchange = () => {
+  container.onchange = (event) => {
     if (typeof opts.onChange === 'function') {
-      opts.onChange(readDraftSpotControls({ doc: root, previousState: state }));
+      const changedControl = typeof event?.target?.id === 'string' ? event.target.id : '';
+      opts.onChange(readDraftSpotControls({ doc: root, previousState: state, changedControl }));
     }
   };
 
@@ -84,14 +85,30 @@ function buildDraftSpotControls(opts = {}) {
 function readDraftSpotControls(opts = {}) {
   const root = opts.doc || (typeof document !== 'undefined' ? document : null);
   const previousState = opts.previousState || {};
-  const mode = root?.getElementById('draftModeSelect')?.value || previousState.mode || 'league';
+  const changedControl = opts.changedControl || '';
+  let mode = root?.getElementById('draftModeSelect')?.value || previousState.mode || 'league';
   const owner = root?.getElementById('draftOwnerSelect')?.value || previousState.owner || DRAFT_ALL_OWNERS;
   const startSeason = Number(root?.getElementById('draftStartSeason')?.value || previousState.startSeason);
   const endSeason = Number(root?.getElementById('draftEndSeason')?.value || previousState.endSeason);
   const metric = root?.getElementById('draftMetricSelect')?.value || previousState.metric || 'avgFinish';
   const minSample = Number(root?.getElementById('draftMinSampleSelect')?.value || previousState.minSample || 1);
   const normalize = root?.getElementById('draftNormalizeToggle')?.checked ? 'percentile' : 'raw';
-  const selectedZone = root?.getElementById('draftZoneSelect')?.value || null;
+  let selectedZone = root?.getElementById('draftZoneSelect')?.value || null;
+  let selectedPick = previousState.selectedPick || null;
+
+  if (changedControl === 'draftModeSelect') {
+    selectedPick = null;
+    selectedZone = null;
+  } else if (changedControl === 'draftOwnerSelect') {
+    mode = owner === DRAFT_ALL_OWNERS ? 'league' : 'owner';
+    selectedPick = null;
+    selectedZone = null;
+  } else if (changedControl === 'draftZoneSelect' && selectedZone) {
+    mode = 'zone';
+    selectedPick = null;
+  } else if (mode !== 'pick') {
+    selectedPick = null;
+  }
 
   return {
     ...previousState,
@@ -102,7 +119,7 @@ function readDraftSpotControls(opts = {}) {
     metric,
     minSample,
     normalize,
-    selectedPick: selectedZone ? null : previousState.selectedPick || null,
+    selectedPick: selectedZone ? null : selectedPick,
     selectedZone,
   };
 }

@@ -23,6 +23,7 @@ This repository is maintained as a static site backed by JSON assets. The annual
 
 ## Working Notes
 
+- Keep `assets/LeaguePic.jpeg` as a real tracked JPEG because it is the header background. `npm run serve` and `npm run test:assets` restore it from git when iCloud leaves only `.LeaguePic.jpeg.icloud` locally.
 - Keep generated draft data reviewable. Do not replace `assets/SeasonSummary.json` automatically.
 - `assets/DraftSpot.json` is generated from reviewed season summaries and intentionally excludes seasons without `draft_pick` values.
 - The Sleeper workflow needs the `SLEEPER_LEAGUE_ID` repository secret.

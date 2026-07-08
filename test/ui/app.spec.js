@@ -85,6 +85,7 @@ test('page loads and renders the history tables', async ({ page }) => {
 
   await expect(page.locator('#appStatus')).toBeHidden();
   await expect(page.locator('header h2')).toHaveText('Joe');
+  await expect(page.locator('header')).toHaveCSS('background-image', /LeaguePic\.jpeg/);
   expect(await page.evaluate(() => typeof window.triggerGroupEgg)).toBe('undefined');
   expect(await page.evaluate(() => typeof window.setGroupBackdrop)).toBe('undefined');
 

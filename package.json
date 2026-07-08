@@ -7,7 +7,7 @@
   },
   "scripts": {
     "test": "npm run test:data && npm run test:scripts",
-    "test:assets": "node scripts/validate_assets.cjs",
+    "test:assets": "node scripts/ensure_static_assets.cjs && node scripts/validate_assets.cjs",
     "test:data": "npm run test:assets && node test/data.test.js",
     "test:scripts": "node --test test/scripts.test.cjs test/app-state-controller.test.js && python3 -m unittest discover -s test -p 'test_*.py'",
     "test:hygiene": "node scripts/check_repo_hygiene.cjs",

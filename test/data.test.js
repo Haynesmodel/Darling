@@ -4,6 +4,7 @@ import './dynasty-controls.test.js';
 import './dynasty-renderers.test.js';
 import './gauntlet.test.js';
 import './state-helpers.test.js';
+import './curse-tracker.test.js';
 import './history-renderers.test.js';
 import './league-renderers.test.js';
 import './rivalry-renderers.test.js';

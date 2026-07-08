@@ -9,3 +9,4 @@ scripts/.update-*/
 assets/H2H.updated.json
 assets/H2H_backup.json
 .DS_Store
+*.icloud

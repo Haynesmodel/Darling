@@ -17,6 +17,7 @@ MANUAL_FIELDS = [
     'bye',
     'saunders_bye',
     'bagels_earned',
+    'draft_pick',
     'wild_card',
 ]
 

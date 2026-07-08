@@ -285,11 +285,15 @@ test('update workflow validation-only mode runs with a stub updater and leaves a
   const stubDir = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-python-stub-'));
   const stubPath = path.join(stubDir, 'python-stub.sh');
   const updatedPath = path.join(repoRoot, 'assets', 'H2H.updated.json');
+  const currentUpdatedPath = path.join(repoRoot, 'assets', 'CurrentSeason.updated.json');
   const before = fs.existsSync(updatedPath) ? fs.readFileSync(updatedPath, 'utf8') : null;
+  const currentBefore = fs.existsSync(currentUpdatedPath) ? fs.readFileSync(currentUpdatedPath, 'utf8') : null;
 
   fs.writeFileSync(stubPath, `#!/usr/bin/env bash
 set -euo pipefail
 
+script="$1"
+shift
 out=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -304,6 +308,33 @@ while [[ $# -gt 0 ]]; do
 done
 
 mkdir -p "$(dirname "$out")"
+if [[ "$script" == *"generate_current_season.py" ]]; then
+cat > "$out" <<'JSON'
+{
+  "source": "sleeper",
+  "league_id": "stub",
+  "season": 2025,
+  "generated_at": "2025-09-07T00:00:00Z",
+  "current_week": 1,
+  "games": [
+    {
+      "season": 2025,
+      "date": "2025-09-07",
+      "teamA": "Joe",
+      "teamB": "Shap",
+      "scoreA": null,
+      "scoreB": null,
+      "week": 1,
+      "round": "",
+      "type": "Regular",
+      "status": "scheduled"
+    }
+  ]
+}
+JSON
+exit 0
+fi
+
 cat > "$out" <<'JSON'
 [
   {
@@ -328,6 +359,8 @@ JSON
       {
         UPDATE_LIVE: '1',
         VALIDATE_ONLY: '1',
+        SEASON: '2025',
+        CURRENT_WEEK: '1',
         PYTHON: stubPath,
       },
       repoRoot,
@@ -341,6 +374,11 @@ JSON
       assert.equal(fs.existsSync(updatedPath), false);
     } else {
       assert.equal(fs.readFileSync(updatedPath, 'utf8'), before);
+    }
+    if (currentBefore === null) {
+      assert.equal(fs.existsSync(currentUpdatedPath), false);
+    } else {
+      assert.equal(fs.readFileSync(currentUpdatedPath, 'utf8'), currentBefore);
     }
   } finally {
     fs.rmSync(stubDir, { recursive: true, force: true });

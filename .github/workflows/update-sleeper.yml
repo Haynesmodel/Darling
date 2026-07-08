@@ -121,12 +121,25 @@ jobs:
             exit 0
           fi
 
-          if cmp -s assets/H2H.updated.json assets/H2H.json; then
-            echo "No H2H changes detected; nothing to commit."
-            exit 0
+          H2H_CHANGED=0
+          CURRENT_CHANGED=0
+
+          if ! cmp -s assets/H2H.updated.json assets/H2H.json; then
+            cp assets/H2H.updated.json assets/H2H.json
+            H2H_CHANGED=1
           fi
 
-          cp assets/H2H.updated.json assets/H2H.json
+          if [[ -f assets/CurrentSeason.updated.json ]]; then
+            if [[ ! -f assets/CurrentSeason.json ]] || ! cmp -s assets/CurrentSeason.updated.json assets/CurrentSeason.json; then
+              cp assets/CurrentSeason.updated.json assets/CurrentSeason.json
+              CURRENT_CHANGED=1
+            fi
+          fi
+
+          if [[ "${H2H_CHANGED}" == "0" && "${CURRENT_CHANGED}" == "0" ]]; then
+            echo "No Sleeper asset changes detected; nothing to commit."
+            exit 0
+          fi
 
           if [[ -f scripts/generate_season_summary_draft.py ]]; then
             python3 scripts/generate_season_summary_draft.py \
@@ -141,6 +154,9 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git add assets/H2H.json
+          if [[ -f assets/CurrentSeason.json ]]; then
+            git add assets/CurrentSeason.json
+          fi
           if [[ -f assets/SeasonSummary.draft.json ]]; then
             git add assets/SeasonSummary.draft.json
           fi

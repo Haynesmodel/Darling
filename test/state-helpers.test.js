@@ -39,10 +39,11 @@ test('url helpers parse and rebuild facet state', () => {
 });
 
 test('url helpers parse and rebuild rivalry state', () => {
-  const parsed = parseUrlState('?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel');
+  const parsed = parseUrlState('?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel&rivalryScope=currentSeason');
   assert.equal(parsed.tab, 'rivalry');
   assert.equal(parsed.rivalryTeamA, 'Joe');
   assert.equal(parsed.rivalryTeamB, 'Joel');
+  assert.equal(parsed.rivalryScope, 'currentSeason');
   assert.equal(parsed.hasRivalry, true);
   assert.equal(parsed.hasAny, false);
 
@@ -50,10 +51,29 @@ test('url helpers parse and rebuild rivalry state', () => {
     tab: 'rivalry',
     selectedRivalryTeamA: 'Joe',
     selectedRivalryTeamB: 'Joel',
+    selectedRivalryScope: 'currentSeason',
     pathname: '/index.html',
     allTeams: '__ALL__',
   });
-  assert.equal(next, '/index.html?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel');
+  assert.equal(next, '/index.html?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel&rivalryScope=currentSeason');
+});
+
+test('url helpers parse and rebuild current season state', () => {
+  const parsed = parseUrlState('?tab=current&currentSeason=2025&currentWeek=6');
+  assert.equal(parsed.tab, 'current');
+  assert.equal(parsed.currentSeason, 2025);
+  assert.equal(parsed.currentWeek, 6);
+  assert.equal(parsed.hasCurrent, true);
+  assert.equal(parsed.hasAny, true);
+
+  const next = buildUrlFromState({
+    tab: 'current',
+    selectedCurrentSeason: 2025,
+    selectedCurrentWeek: 6,
+    pathname: '/index.html',
+    allTeams: '__ALL__',
+  });
+  assert.equal(next, '/index.html?tab=current&currentSeason=2025&currentWeek=6');
 });
 
 test('url helpers parse and rebuild trophy state', () => {

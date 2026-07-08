@@ -428,10 +428,23 @@ function rivalryGameRows(teamA, teamB, games) {
     .filter(Boolean);
 }
 
-function buildRivalryViewModel(teamA, teamB, games) {
-  const summary = summarizeRivalry(teamA, teamB, games);
-  const seasonRows = rivalrySeasonBreakdown(teamA, teamB, games);
-  const gameRows = rivalryGameRows(teamA, teamB, games);
+function scopedRivalryGames(games, opts = {}) {
+  const scope = opts.scope || 'allTime';
+  const currentSeason = Number(opts.currentSeason);
+  if (scope === 'currentSeason' && Number.isFinite(currentSeason)) {
+    return games.filter(game => Number(game.season) === currentSeason);
+  }
+  if (scope === 'historic' && Number.isFinite(currentSeason)) {
+    return games.filter(game => Number(game.season) < currentSeason);
+  }
+  return games;
+}
+
+function buildRivalryViewModel(teamA, teamB, games, opts = {}) {
+  const scopedGames = scopedRivalryGames(games, opts);
+  const summary = summarizeRivalry(teamA, teamB, scopedGames);
+  const seasonRows = rivalrySeasonBreakdown(teamA, teamB, scopedGames);
+  const gameRows = rivalryGameRows(teamA, teamB, scopedGames);
   const marginStats = summarizeMargins(summary.games, teamA, teamB);
   const teamRunLabel = (team) => `Longest ${team} Run`;
   const leaderLabel = summary.overall.w > summary.overall.l
@@ -463,6 +476,8 @@ function buildRivalryViewModel(teamA, teamB, games) {
   return {
     teamA,
     teamB,
+    scope: opts.scope || 'allTime',
+    currentSeason: Number.isFinite(Number(opts.currentSeason)) ? Number(opts.currentSeason) : null,
     summary,
     tape,
     seasonRows,

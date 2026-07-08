@@ -103,6 +103,7 @@ function buildSeasonCalloutViewModel(team, opts = {}) {
   const record = `${rec.wins}-${rec.losses}-${rec.ties || 0}`;
   const pct = fmtPctFn(rec.wins, rec.losses, rec.ties || 0);
   const finish = Number.isFinite(+rec.finish) ? `${rec.finish}` : '\u2014';
+  const draftPick = Number.isFinite(+rec.draft_pick) ? `#${rec.draft_pick}` : '\u2014';
   const notes = [];
   const cN = champNoteFn(team, onlySeason);
   if (cN) notes.push(`${onlySeason} \u2014 ${cN}`);
@@ -118,6 +119,7 @@ function buildSeasonCalloutViewModel(team, opts = {}) {
     record,
     pct,
     finish,
+    draftPick,
     bits,
     notes,
     effectKey,
@@ -310,9 +312,11 @@ function seasonRecapRows(team, seasonSummaries, opts = {}) {
 function seasonRecapTableRowHtml(team, summaryRow, allGames) {
   const fmtPctFn = coreFn('fmtPct');
   const outcome = seasonRecapOutcome(team, summaryRow, allGames);
+  const draftPick = Number.isFinite(+summaryRow.draft_pick) ? `#${summaryRow.draft_pick}` : '\u2014';
   return `
   <tr>
     <td>${esc(summaryRow.season)}</td>
+    <td>${esc(draftPick)}</td>
     <td>${summaryRow.wins}-${summaryRow.losses}-${summaryRow.ties || 0}</td>
     <td>${fmtPctFn(summaryRow.wins, summaryRow.losses, summaryRow.ties || 0)}</td>
     <td>${Number.isFinite(+summaryRow.finish) ? summaryRow.finish : '\u2014'}</td>
@@ -325,7 +329,7 @@ function seasonRecapTableHtml(team, seasonSummaries, opts = {}) {
   const allTeams = opts.allTeams || '__ALL__';
   const allGames = opts.allGames || [];
   if (team === allTeams) {
-    return '<tr><td colspan="5" class="muted">Select a team to see season recap.</td></tr>';
+    return '<tr><td colspan="6" class="muted">Select a team to see season recap.</td></tr>';
   }
   return seasonRecapRows(team, seasonSummaries, opts)
     .map(r => seasonRecapTableRowHtml(team, r, allGames))
@@ -397,6 +401,7 @@ function seasonCalloutView(team, opts = {}) {
     <div>${esc(vm.team)} in <strong>${esc(vm.season)}</strong></div>
     <div>Record: <strong>${esc(vm.record)}</strong> (${esc(vm.pct)})</div>
     <div>Finish: <strong>${esc(vm.finish)}</strong></div>
+    <div>Draft Pick: <strong>${esc(vm.draftPick)}</strong></div>
     <div>${esc(vm.bits.join(' \u2022 ') || '\u2014')}</div>
     ${vm.notes.length ? `<div class="muted" style="margin-top:6px;font-size:12px">* ${esc(vm.notes.join(' \u2022 '))}</div>` : ''}
   </div>`,

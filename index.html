@@ -18,6 +18,7 @@
 
   <nav class="tabs">
     <button class="tab active" id="tabHistoryBtn">League History</button>
+    <button class="tab" id="tabCurrentBtn">Current Season</button>
     <button class="tab" id="tabRivalryBtn">Head to Head</button>
     <button class="tab" id="tabTrophyBtn">Trophy Case</button>
     <button class="tab" id="tabDynastyBtn">Dynasty Rankings</button>
@@ -85,6 +86,15 @@
         <div id="funLists" class="fun-lists"></div>
       </div>
 
+      <div class="card" id="curseTracker">
+        <div class="section-heading">
+          <h3>Curse Tracker</h3>
+          <div id="curseSummary" class="muted"></div>
+        </div>
+        <div id="curseControls" class="controls filters"></div>
+        <div id="curseGrid" class="curse-grid"></div>
+      </div>
+
       <div class="card">
         <h3 id="oppTableTitle">Opponent Breakdown</h3>
         <div id="rivalGroupCallouts" class="callouts"></div>
@@ -112,6 +122,7 @@
             <thead>
               <tr>
                 <th scope="col">Season</th>
+                <th scope="col">Draft Pick</th>
                 <th scope="col">Record</th>
                 <th scope="col">Win %</th>
                 <th scope="col">Finish</th>
@@ -166,12 +177,37 @@
       </div>
     </section>
 
+    <section id="page-current" class="page">
+      <div class="card">
+        <div class="controls filters current-controls">
+          <label>Season:
+            <select id="currentSeasonSelect"></select>
+          </label>
+          <label>Week:
+            <select id="currentWeekSelect"></select>
+          </label>
+        </div>
+      </div>
+
+      <section id="currentHero" class="card current-hero"></section>
+      <section id="currentMatchups" class="current-matchups"></section>
+      <section id="currentStandings" class="card"></section>
+      <section id="currentTeamSnapshots" class="current-team-snapshots"></section>
+    </section>
+
     <section id="page-rivalry" class="page">
       <div class="card">
         <div class="controls filters rivalry-controls">
           <select id="rivalryTeamA" aria-label="First team"></select>
           <span class="rivalry-vs">vs</span>
           <select id="rivalryTeamB" aria-label="Second team"></select>
+          <label>Scope:
+            <select id="rivalryScopeSelect">
+              <option value="allTime">All-Time</option>
+              <option value="currentSeason">Current Season</option>
+              <option value="historic">Historical Before Current Season</option>
+            </select>
+          </label>
         </div>
       </div>
 

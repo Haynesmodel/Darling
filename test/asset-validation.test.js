@@ -20,9 +20,11 @@ import {
 
 const {
   normalizeLeagueGame,
+  normalizeCurrentSeasonGame,
   normalizeSeasonSummary,
   normalizeRivalry,
   validateLeagueGames,
+  validateCurrentSeason,
   validateSeasonSummaries,
   validateRivalries,
   validateLeagueAssetBundle,
@@ -159,6 +161,13 @@ test('loadLeagueAssets fetches, dedupes, and derives weeks', async () => {
     ['assets/H2H.json', mockJsonResponse([game, { ...game }])],
     ['assets/SeasonSummary.json', mockJsonResponse([validSeasonRow({ season: 2025, owner: 'Joe', wins: 10, finish: 1 })])],
     ['assets/Rivalries.json', mockJsonResponse([{ name: ' Originals ', members: [' Joe ', ' Shap '], note: ' Founders ' }])],
+    ['assets/CurrentSeason.json', mockJsonResponse({
+      source: 'sleeper',
+      league_id: '1',
+      season: 2026,
+      current_week: 1,
+      games: [{ ...game, season: 2026, scoreA: null, scoreB: null, status: 'scheduled' }],
+    })],
   ]);
   const loaded = await loadLeagueAssets({
     fetchFn: async (url) => responses.get(url),
@@ -176,6 +185,9 @@ test('loadLeagueAssets fetches, dedupes, and derives weeks', async () => {
   assert.equal(loaded.rawGames[0].week, 1);
   assert.deepEqual(loaded.seasonSummaries, [validSeasonRow({ owner: 'Joe' })]);
   assert.deepEqual(loaded.rivalries, [{ name: 'Originals', members: ['Joe', 'Shap'], note: 'Founders' }]);
+  assert.equal(loaded.currentSeason.season, 2026);
+  assert.equal(loaded.currentSeason.games[0].scoreA, null);
+  assert.equal(loaded.currentSeason.games[0].status, 'scheduled');
 });
 
 test('asset normalizers coerce imported rows into canonical shapes', () => {
@@ -204,12 +216,38 @@ test('asset normalizers coerce imported rows into canonical shapes', () => {
     }
   );
   assert.deepEqual(
-    normalizeSeasonSummary(validSeasonRow({ season: '2025', owner: ' Joe ', wins: '10', finish: '', bagels_earned: '2' })),
-    validSeasonRow({ season: 2025, owner: 'Joe', wins: 10, finish: null, bagels_earned: 2 })
+    normalizeSeasonSummary(validSeasonRow({ season: '2025', owner: ' Joe ', wins: '10', finish: '', bagels_earned: '2', draft_pick: '4' })),
+    validSeasonRow({ season: 2025, owner: 'Joe', wins: 10, finish: null, bagels_earned: 2, draft_pick: 4 })
   );
   assert.deepEqual(
     normalizeRivalry({ name: ' Rivals ', members: [' Joe ', ' Shap '], type: ' group ', slug: ' rivals ', note: ' Legacy ' }),
     { name: 'Rivals', members: ['Joe', 'Shap'], type: 'group', slug: 'rivals', note: 'Legacy' }
+  );
+  assert.deepEqual(
+    normalizeCurrentSeasonGame({
+      season: '2026',
+      date: ' 2026-09-06 ',
+      teamA: ' Joe ',
+      teamB: ' Shap ',
+      scoreA: '',
+      scoreB: '90',
+      week: '1',
+      type: ' Regular ',
+      round: null,
+      status: ' scheduled ',
+    }),
+    {
+      season: 2026,
+      date: '2026-09-06',
+      teamA: 'Joe',
+      teamB: 'Shap',
+      scoreA: null,
+      scoreB: 90,
+      week: 1,
+      type: 'Regular',
+      round: '',
+      status: 'scheduled',
+    }
   );
 });
 
@@ -244,8 +282,40 @@ test('asset validation accepts optional fields and null-handling cases', () => {
         members: ['Joe', 'Shap'],
         note: '  Legacy  ',
       }],
+      currentSeason: {
+        source: 'sleeper',
+        season: 2026,
+        games: [{
+          season: 2026,
+          date: '2026-09-06',
+          teamA: 'Joe',
+          teamB: 'Shap',
+          scoreA: null,
+          scoreB: null,
+          week: 1,
+          type: 'Regular',
+          round: '',
+          status: 'scheduled',
+        }],
+      },
     })
   );
+  assert.doesNotThrow(() => validateCurrentSeason({
+    source: 'sleeper',
+    season: 2026,
+    games: [{
+      season: 2026,
+      date: '2026-09-06',
+      teamA: 'Joe',
+      teamB: 'Shap',
+      scoreA: null,
+      scoreB: null,
+      week: 1,
+      type: 'Regular',
+      round: '',
+      status: 'scheduled',
+    }],
+  }));
 });
 
 test('loadLeagueAssets defaults to globalThis.fetch', async () => {
@@ -298,8 +368,9 @@ test('loadLeagueAssets treats rivalry data as optional', async () => {
   });
 
   assert.deepEqual(loaded.rivalries, []);
-  assert.equal(warnings.length, 1);
-  assert.match(warnings[0], /Rivalries\.json missing/);
+  assert.equal(warnings.length, 2);
+  assert.ok(warnings.some(warning => /Rivalries\.json missing/.test(warning)));
+  assert.ok(warnings.some(warning => /CurrentSeason\.json missing/.test(warning)));
 });
 
 test('loadLeagueAssets fails clearly when required data is unavailable', async () => {

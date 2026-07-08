@@ -49,6 +49,7 @@ class GenerateSeasonSummaryDraftTests(unittest.TestCase):
                     'bye': True,
                     'saunders_bye': False,
                     'bagels_earned': 2,
+                    'draft_pick': 10,
                     'wild_card': True,
                 },
                 {
@@ -69,6 +70,7 @@ class GenerateSeasonSummaryDraftTests(unittest.TestCase):
                     'bye': True,
                     'saunders_bye': False,
                     'bagels_earned': 0,
+                    'draft_pick': 9,
                     'wild_card': True,
                 },
             ]
@@ -107,6 +109,7 @@ class GenerateSeasonSummaryDraftTests(unittest.TestCase):
             self.assertEqual(joe['bye'], True)
             self.assertEqual(joe['saunders_bye'], False)
             self.assertEqual(joe['bagels_earned'], 2)
+            self.assertEqual(joe['draft_pick'], 10)
             self.assertEqual(joe['wild_card'], True)
 
             self.assertEqual(shap['wins'], 0)
@@ -124,6 +127,7 @@ class GenerateSeasonSummaryDraftTests(unittest.TestCase):
             self.assertIsNone(shap['bye'])
             self.assertIsNone(shap['saunders_bye'])
             self.assertIsNone(shap['bagels_earned'])
+            self.assertIsNone(shap['draft_pick'])
             self.assertIsNone(shap['wild_card'])
 
 

@@ -172,6 +172,22 @@ test('rivalry season table marks sweeps with a broom emoji', () => {
   assert.match(rivalrySeasonTableHtml(vm), /🧹 Sweep/);
 });
 
+test('rivalry view model can scope to current season or historic games', () => {
+  const games = [
+    { season: 2024, date: '2024-09-07', teamA: 'Joe', teamB: 'Joel', scoreA: 90, scoreB: 100, type: 'Regular', round: '' },
+    { season: 2025, date: '2025-09-07', teamA: 'Joe', teamB: 'Joel', scoreA: 100, scoreB: 90, type: 'Regular', round: '' },
+    { season: 2025, date: '2025-09-14', teamA: 'Joel', teamB: 'Joe', scoreA: 80, scoreB: 85, type: 'Regular', round: '' },
+  ];
+
+  const current = buildRivalryViewModel('Joe', 'Joel', games, { scope: 'currentSeason', currentSeason: 2025 });
+  assert.equal(current.summary.overall.recordText, '2-0');
+  assert.equal(current.summary.overall.g, 2);
+
+  const historic = buildRivalryViewModel('Joe', 'Joel', games, { scope: 'historic', currentSeason: 2025 });
+  assert.equal(historic.summary.overall.recordText, '0-1');
+  assert.equal(historic.summary.overall.g, 1);
+});
+
 test('rivalry renderer escapes data and handles empty matchups', () => {
   const games = [
     {

@@ -44,6 +44,10 @@ import {
   seasonCalloutView,
 } from './history-renderers.js';
 import {
+  readCurseTrackerFilters,
+  renderCurseTracker,
+} from './curse-tracker.js';
+import {
   leagueFunFactsAllTeamsHtml,
   leagueFunListsAllTeamsHtml,
   leagueSummaryTablesHtml,
@@ -52,6 +56,19 @@ import {
 import {
   buildRivalryControls,
 } from './rivalry-controls.js';
+import {
+  buildCurrentSeasonControls,
+} from './current-season-controls.js';
+import {
+  latestLeagueSeason,
+} from './current-season-data.js';
+import {
+  buildCurrentSeasonViewModel,
+  renderCurrentMatchups,
+  renderCurrentSeasonHero,
+  renderCurrentStandings,
+  renderCurrentTeamSnapshots,
+} from './current-season-renderers.js';
 import {
   buildRivalryViewModel,
   renderRivalryHighlightBoard,
@@ -133,6 +150,7 @@ const CLOSE_GAME_MARGIN = 5;
 let leagueGames = [];
 let seasonSummaries = [];
 let rivalries = [];
+let currentSeason = null;
 let selectedTeam = DEFAULT_TEAM;
 let selectedSeasons = new Set();
 let selectedWeeks = new Set();
@@ -141,6 +159,8 @@ let selectedTypes = new Set();
 let selectedRounds = new Set();
 let selectedRivalryTeamA = DEFAULT_TEAM;
 let selectedRivalryTeamB = null;
+let selectedRivalryScope = 'allTime';
+let selectedCurrentSeasonState = null;
 let selectedTrophyOwner = DEFAULT_TEAM;
 let selectedDynastyState = null;
 let selectedGauntletState = null;
@@ -244,6 +264,24 @@ function handleRivalryChange(next) {
   renderRivalry();
 }
 
+function normalizeRivalryScope(scope) {
+  return ['allTime', 'currentSeason', 'historic'].includes(scope) ? scope : 'allTime';
+}
+
+function handleRivalryScopeChange() {
+  const scopeSelect = document.getElementById('rivalryScopeSelect');
+  selectedRivalryScope = normalizeRivalryScope(scopeSelect?.value);
+  renderRivalry();
+}
+
+function handleCurrentSeasonChange(next) {
+  selectedCurrentSeasonState = {
+    ...(selectedCurrentSeasonState || {}),
+    ...next,
+  };
+  renderCurrentSeason();
+}
+
 function handleTrophyChange(next) {
   selectedTrophyOwner = next.selectedOwner;
   renderTrophy();
@@ -263,9 +301,19 @@ function handleGauntletChange(next) {
 function ensureRivalryControls(initialState = {}) {
   const teamASelect = document.getElementById('rivalryTeamA');
   if (!teamASelect) return null;
+  const scopeSelect = document.getElementById('rivalryScopeSelect');
+  const urlState = parseUrlState();
+  const nextScope = normalizeRivalryScope(initialState.selectedScope || urlState.rivalryScope || selectedRivalryScope);
+  selectedRivalryScope = nextScope;
+  if (scopeSelect) {
+    scopeSelect.value = nextScope;
+    if (!scopeSelect.dataset.bound) {
+      scopeSelect.addEventListener('change', handleRivalryScopeChange);
+      scopeSelect.dataset.bound = '1';
+    }
+  }
 
   if (!teamASelect.dataset.ready) {
-    const urlState = parseUrlState();
     const built = buildRivalryControls({
       doc: document,
       leagueGames,
@@ -282,6 +330,50 @@ function ensureRivalryControls(initialState = {}) {
   }
 
   return teamASelect;
+}
+
+function ensureCurrentSeasonControls(initialState = {}) {
+  const seasonSelect = document.getElementById('currentSeasonSelect');
+  if (!seasonSelect) return null;
+
+  const urlState = parseUrlState();
+  const selectedState = {
+    ...(selectedCurrentSeasonState || {}),
+    ...initialState,
+  };
+
+  if (!seasonSelect.dataset.ready) {
+    const built = buildCurrentSeasonControls({
+      doc: document,
+      leagueGames,
+      seasonSummaries,
+      currentSeason,
+      selectedSeason: selectedState.selectedSeason || urlState.currentSeason,
+      selectedWeek: selectedState.selectedWeek || urlState.currentWeek,
+      onChange: handleCurrentSeasonChange,
+    });
+    selectedCurrentSeasonState = {
+      selectedSeason: built.selectedSeason,
+      selectedWeek: built.selectedWeek,
+    };
+    seasonSelect.dataset.ready = '1';
+  } else {
+    const built = buildCurrentSeasonControls({
+      doc: document,
+      leagueGames,
+      seasonSummaries,
+      currentSeason,
+      selectedSeason: selectedState.selectedSeason || urlState.currentSeason,
+      selectedWeek: selectedState.selectedWeek || urlState.currentWeek,
+      onChange: handleCurrentSeasonChange,
+    });
+    selectedCurrentSeasonState = {
+      selectedSeason: built.selectedSeason,
+      selectedWeek: built.selectedWeek,
+    };
+  }
+
+  return seasonSelect;
 }
 
 function ensureTrophyControls(initialState = {}) {
@@ -345,8 +437,12 @@ function ensureGauntletControls(initialState = {}) {
 function renderRivalry() {
   if (!selectedRivalryTeamA || !selectedRivalryTeamB) return;
 
-  const view = buildRivalryViewModel(selectedRivalryTeamA, selectedRivalryTeamB, leagueGames);
-  const signature = `${selectedRivalryTeamA}|${selectedRivalryTeamB}|${view.summary.overall.g}`;
+  const currentSeasonYear = selectedCurrentSeasonState?.selectedSeason || latestLeagueSeason(leagueGames, seasonSummaries, currentSeason);
+  const view = buildRivalryViewModel(selectedRivalryTeamA, selectedRivalryTeamB, leagueGames, {
+    scope: selectedRivalryScope,
+    currentSeason: currentSeasonYear,
+  });
+  const signature = `${selectedRivalryTeamA}|${selectedRivalryTeamB}|${selectedRivalryScope}|${currentSeasonYear}|${view.summary.overall.g}`;
   updateHeaderForTeam(selectedRivalryTeamA);
   renderIfChanged('rivalry', signature, () => {
     renderRivalryHeadline(view, { doc: document });
@@ -365,6 +461,55 @@ function renderRivalry() {
     tab: 'rivalry',
     selectedRivalryTeamA,
     selectedRivalryTeamB,
+    selectedRivalryScope,
+    isApplyingUrlState,
+  });
+}
+
+function updateHeaderForCurrentSeason(view) {
+  const h2 = document.querySelector('header h2');
+  if (h2) h2.textContent = view?.season ? `${view.season} Current Season` : 'Current Season';
+  renderHeaderBanners('', seasonSummaries);
+  if (document.title !== undefined) {
+    document.title = view?.season ? `${view.season} Current Season` : 'Current Season';
+  }
+}
+
+function renderCurrentSeason() {
+  const resolvedState = selectedCurrentSeasonState || {};
+  const view = buildCurrentSeasonViewModel({
+    leagueGames,
+    seasonSummaries,
+    currentSeason,
+    season: resolvedState.selectedSeason,
+    week: resolvedState.selectedWeek,
+  });
+
+  selectedCurrentSeasonState = {
+    selectedSeason: view.season,
+    selectedWeek: view.week,
+  };
+  updateHeaderForCurrentSeason(view);
+
+  const signature = JSON.stringify({
+    season: view.season,
+    week: view.week,
+    games: view.regularGames.length,
+    matchups: view.matchups.map(row => `${row.teamA}:${row.teamB}:${row.scoreA}:${row.scoreB}`).join('|'),
+    standings: view.standings.map(row => `${row.owner}:${row.record}:${row.pointsFor}:${row.pointsAgainst}`).join('|'),
+  });
+
+  renderIfChanged('current', signature, () => {
+    renderCurrentSeasonHero(view, { doc: document });
+    renderCurrentMatchups(view, { doc: document });
+    renderCurrentStandings(view, { doc: document });
+    renderCurrentTeamSnapshots(view, { doc: document });
+  });
+
+  updateUrlFromState({
+    tab: 'current',
+    selectedCurrentSeason: view.season,
+    selectedCurrentWeek: view.week,
     isApplyingUrlState,
   });
 }
@@ -490,11 +635,20 @@ function applyHistoryUrlState(urlState = parseUrlState()) {
 function applyUrlState(urlState = parseUrlState()) {
   isApplyingUrlState = true;
   try {
-    showPage(urlState.tab === 'rivalry' ? 'rivalry' : urlState.tab === 'trophy' ? 'trophy' : urlState.tab === 'dynasty' ? 'dynasty' : urlState.tab === 'gauntlet' ? 'gauntlet' : 'history');
+    showPage(urlState.tab === 'current' ? 'current' : urlState.tab === 'rivalry' ? 'rivalry' : urlState.tab === 'trophy' ? 'trophy' : urlState.tab === 'dynasty' ? 'dynasty' : urlState.tab === 'gauntlet' ? 'gauntlet' : 'history');
+    if (urlState.tab === 'current') {
+      ensureCurrentSeasonControls({
+        selectedSeason: urlState.currentSeason,
+        selectedWeek: urlState.currentWeek,
+      });
+      renderCurrentSeason();
+      return;
+    }
     if (urlState.tab === 'rivalry') {
       ensureRivalryControls({
         selectedTeamA: urlState.rivalryTeamA || selectedRivalryTeamA,
         selectedTeamB: urlState.rivalryTeamB || selectedRivalryTeamB,
+        selectedScope: urlState.rivalryScope || selectedRivalryScope,
       });
       renderRivalry();
       return;
@@ -710,16 +864,18 @@ async function loadLeagueJSON() {
   setAppStatus('loading', 'Loading league data...');
   try {
     const loaded = await loadLeagueAssets();
-    ({ leagueGames, derivedWeeksSet, seasonSummaries, rivalries } = setLoadedLeagueData({
+    ({ leagueGames, derivedWeeksSet, seasonSummaries, rivalries, currentSeason } = setLoadedLeagueData({
       leagueGames,
       derivedWeeksSet,
       seasonSummaries,
       rivalries,
+      currentSeason,
     }, loaded));
     seasonAggregatesCache = null;
     weeklyAwardsCache = null;
     teamsFromLeagueGamesCache = null;
     teamSeasonsCache = new Map();
+    selectedCurrentSeasonState = null;
     selectedGauntletState = null;
     headToHeadPairsCache.clear();
     renderSectionCache.clear();
@@ -1092,6 +1248,17 @@ function renderFunFacts(team, games) {
   lists.innerHTML = view.listsHtml;
 }
 
+function renderCurseTrackerSection() {
+  return renderCurseTracker({
+    doc: document,
+    leagueGames,
+    seasonSummaries,
+    selectedTeam,
+    allTeams: ALL_TEAMS,
+    onChange: renderCurseTrackerSection,
+  });
+}
+
 function renderOppBreakdown(team, games) {
   const titleEl = document.getElementById('oppTableTitle');
   const firstCol = document.getElementById('oppFirstCol');
@@ -1128,6 +1295,11 @@ function renderHistory() {
   updateHeaderForTeam(selectedTeam);
 
   const filtered = filteredGamesForCurrentState();
+  const curseFilters = readCurseTrackerFilters({
+    doc: document,
+    selectedTeam,
+    allTeams: ALL_TEAMS,
+  });
   const renderKeys = buildHistoryRenderKeys(currentFacetState(), filtered, {
     allTeams: ALL_TEAMS,
     canonicalGameKeyFn: canonicalGameKey,
@@ -1144,6 +1316,15 @@ function renderHistory() {
 
   renderIfChanged('funFacts', renderKeys.funFacts, () => {
     renderFunFacts(selectedTeam, filtered);
+  });
+  renderIfChanged('curseTracker', JSON.stringify({
+    team: selectedTeam,
+    owner: curseFilters.owner,
+    category: curseFilters.category,
+    status: curseFilters.status,
+    severity: curseFilters.severity,
+  }), () => {
+    renderCurseTrackerSection();
   });
   renderIfChanged('oppBreakdown', renderKeys.oppBreakdown, () => {
     renderOppBreakdown(selectedTeam, filtered);
@@ -1257,6 +1438,15 @@ function bindListeners() {
     });
   }
 
+  const currentTab = document.getElementById('tabCurrentBtn');
+  if (currentTab) {
+    currentTab.addEventListener('click', () => {
+      showPage('current');
+      ensureCurrentSeasonControls();
+      renderCurrentSeason();
+    });
+  }
+
   const rivalryTab = document.getElementById('tabRivalryBtn');
   if (rivalryTab) {
     rivalryTab.addEventListener('click', () => {
@@ -1340,7 +1530,7 @@ function bindListeners() {
 
 async function bootstrapHistoryApp() {
   const urlState = parseUrlState();
-  showPage(urlState.tab === 'rivalry' ? 'rivalry' : urlState.tab === 'trophy' ? 'trophy' : urlState.tab === 'dynasty' ? 'dynasty' : urlState.tab === 'gauntlet' ? 'gauntlet' : 'history');
+  showPage(urlState.tab === 'current' ? 'current' : urlState.tab === 'rivalry' ? 'rivalry' : urlState.tab === 'trophy' ? 'trophy' : urlState.tab === 'dynasty' ? 'dynasty' : urlState.tab === 'gauntlet' ? 'gauntlet' : 'history');
   const loaded = await loadLeagueJSON();
   if (!loaded) return;
   bindListeners();

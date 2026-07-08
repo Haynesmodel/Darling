@@ -76,9 +76,39 @@ test('current-season helpers prefer Sleeper current-season asset when present', 
   assert.equal(standings.find(row => row.owner === 'Nuss').record, '1-0');
 
   const rows = buildCurrentMatchupRows({ leagueGames: games, currentSeason: sleeperAsset });
+  const scheduled = rows.find(row => row.teamA === 'Joe');
   assert.equal(rows.length, 2);
-  assert.equal(rows.find(row => row.teamA === 'Joe').scoreA, null);
-  assert.equal(rows.find(row => row.teamA === 'Joe').resultA, 'T');
+  assert.equal(scheduled.scoreA, null);
+  assert.equal(scheduled.completed, false);
+  assert.equal(scheduled.resultA, '');
+  assert.equal(scheduled.currentSeasonContext.selected.games, 0);
+  assert.equal(scheduled.currentSeasonContext.selected.ties, 0);
+  assert.equal(scheduled.allTimeContext.allTime.ties, 0);
+  assert.equal(scheduled.lastMeeting.date, '2025-09-07');
+});
+
+test('current-season helpers do not count live games as completed standings results', () => {
+  const sleeperAsset = {
+    season: 2026,
+    current_week: 2,
+    games: [
+      { season: 2026, date: '2026-09-06', teamA: 'Nuss', teamB: 'Joel', scoreA: 100, scoreB: 90, week: 1, type: 'Regular', round: '', status: 'final' },
+      { season: 2026, date: '2026-09-13', teamA: 'Joe', teamB: 'Shap', scoreA: 25, scoreB: 20, week: 2, type: 'Regular', round: '', status: 'live' },
+    ],
+  };
+
+  const standings = buildCurrentSeasonStandings({ leagueGames: games, currentSeason: sleeperAsset });
+  assert.equal(standings.find(row => row.owner === 'Joe').games, 0);
+  assert.equal(standings.find(row => row.owner === 'Shap').games, 0);
+  assert.equal(standings.find(row => row.owner === 'Nuss').record, '1-0');
+
+  const rows = buildCurrentMatchupRows({ leagueGames: games, currentSeason: sleeperAsset, week: 2 });
+  const live = rows.find(row => row.teamA === 'Joe');
+  assert.equal(live.completed, false);
+  assert.equal(live.scoreA, 25);
+  assert.equal(live.resultA, '');
+  assert.equal(live.currentSeasonContext.selected.games, 0);
+  assert.equal(live.currentSeasonContext.selected.ties, 0);
 });
 
 test('team current-season snapshot includes ranks and extremes', () => {

@@ -72,9 +72,19 @@ function viewWeekLabel(view) {
 }
 
 function matchupWinner(row) {
+  if (!row.completed) {
+    return String(row.status || '').trim().toLowerCase() === 'live' ? 'In progress' : 'Pending';
+  }
   if (row.resultA === 'W') return row.teamA;
   if (row.resultB === 'W') return row.teamB;
   return 'Tie';
+}
+
+function resultClass(result) {
+  if (result === 'W') return 'result-win';
+  if (result === 'L') return 'result-loss';
+  if (result === 'T') return 'result-tie';
+  return '';
 }
 
 function highestScore(games) {
@@ -185,8 +195,8 @@ function currentMatchupCardHtml(row) {
         <a class="btn" href="${escapeHtml(row.rivalryUrl)}">Head to Head</a>
       </div>
       <div class="current-scoreline">
-        <span class="${row.resultA === 'W' ? 'result-win' : row.resultA === 'L' ? 'result-loss' : 'result-tie'}">${escapeHtml(row.teamA)} ${scoreFmt(row.scoreA)}</span>
-        <span>${escapeHtml(row.teamB)} ${scoreFmt(row.scoreB)}</span>
+        <span class="${resultClass(row.resultA)}">${escapeHtml(row.teamA)} ${scoreFmt(row.scoreA)}</span>
+        <span class="${resultClass(row.resultB)}">${escapeHtml(row.teamB)} ${scoreFmt(row.scoreB)}</span>
       </div>
       <div class="current-context-grid">
         <div>

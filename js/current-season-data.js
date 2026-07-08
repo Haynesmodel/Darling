@@ -126,9 +126,8 @@ function hasPlayedScore(game) {
 }
 
 function isCompletedGame(game) {
-  const status = String(game?.status || '').toLowerCase();
-  if (status === 'scheduled') return false;
-  if (status === 'final' || status === 'complete' || status === 'completed') return hasPlayedScore(game);
+  const status = String(game?.status || '').trim().toLowerCase();
+  if (status) return ['final', 'complete', 'completed'].includes(status) && hasPlayedScore(game);
   return hasPlayedScore(game) && !(Number(game.scoreA) === 0 && Number(game.scoreB) === 0);
 }
 
@@ -224,19 +223,21 @@ function dedupeContextGames(games = []) {
 
 function buildCurrentMatchupRows({ leagueGames = [], seasonSummaries = [], currentSeason = null, season = latestLeagueSeason(leagueGames, seasonSummaries, currentSeason), week = latestCompletedWeek(leagueGames, season, currentSeason) } = {}) {
   const sourceGames = currentSeasonSourceGames(leagueGames, season, currentSeason);
+  const completedSourceGames = sourceGames.filter(isCompletedGame);
   const contextGames = dedupeContextGames([
-    ...leagueGames.filter(game => numeric(game.season) !== numeric(season)),
-    ...sourceGames,
+    ...leagueGames.filter(game => numeric(game.season) !== numeric(season) && isCompletedGame(game)),
+    ...completedSourceGames,
   ]);
   const standings = new Map(buildCurrentSeasonStandings({ leagueGames, seasonSummaries, currentSeason, season }).map(row => [row.owner, row]));
   return gamesForSeasonWeek(leagueGames, season, week, currentSeason)
     .map(game => {
       const allTimeContext = headToHeadContext(game.teamA, game.teamB, contextGames);
-      const historicGames = leagueGames.filter(row => numeric(row.season) < numeric(season));
+      const historicGames = leagueGames.filter(row => numeric(row.season) < numeric(season) && isCompletedGame(row));
       const historicContext = headToHeadContext(game.teamA, game.teamB, historicGames);
-      const currentSeasonContext = headToHeadContext(game.teamA, game.teamB, sourceGames, [season]);
-      const sideA = sidesForTeam(game, game.teamA);
-      const sideB = sidesForTeam(game, game.teamB);
+      const currentSeasonContext = headToHeadContext(game.teamA, game.teamB, completedSourceGames, [season]);
+      const completed = isCompletedGame(game);
+      const sideA = completed ? sidesForTeam(game, game.teamA) : null;
+      const sideB = completed ? sidesForTeam(game, game.teamB) : null;
       return {
         season: numeric(game.season),
         week: weekForGame(game, game.teamA) || weekForGame(game, game.teamB) || weekForGame(game),
@@ -248,8 +249,9 @@ function buildCurrentMatchupRows({ leagueGames = [], seasonSummaries = [], curre
         type: game.type || '',
         round: game.round || '',
         status: game.status || '',
-        resultA: sideA?.result || 'T',
-        resultB: sideB?.result || 'T',
+        completed,
+        resultA: sideA?.result || '',
+        resultB: sideB?.result || '',
         standingA: standings.get(game.teamA) || emptyStanding(game.teamA, numeric(season)),
         standingB: standings.get(game.teamB) || emptyStanding(game.teamB, numeric(season)),
         allTimeContext,

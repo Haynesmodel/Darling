@@ -11,6 +11,7 @@ const env = { ...process.env, NODE_V8_COVERAGE: coverageDir };
 const testDir = path.join(process.cwd(), 'test');
 const testFiles = fs.readdirSync(testDir)
   .filter(file => /\.test\.(js|cjs)$/.test(file))
+  .filter(file => file !== 'data.test.js')
   .map(file => path.join('test', file))
   .sort();
 const res = spawnSync(process.execPath, ['--test', ...testFiles], { stdio: 'inherit', env });

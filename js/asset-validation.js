@@ -15,6 +15,8 @@
  * - `assets/Rivalries.json`: name, members[], type?, slug?, note?
  * - `assets/CurrentSeason.json`: source, league_id, season, generated_at, current_week?,
  *   games[] where each game is H2H-like plus status? and nullable scores for scheduled matchups.
+ * - `assets/DraftSpot.json`: generated draft-position analysis asset with rows, summaries,
+ *   correlations, and owner recommendations.
  */
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -243,11 +245,135 @@ function validateCurrentSeason(data, path = 'assets/CurrentSeason.json') {
   return data;
 }
 
+function assertObject(data, path) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error(`${path} must be a JSON object`);
+  }
+}
+
+function assertFiniteNumber(value, path) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new Error(`${path} must be a finite number`);
+  }
+}
+
+function assertFiniteInteger(value, path) {
+  assertFiniteNumber(value, path);
+  if (!Number.isInteger(value)) {
+    throw new Error(`${path} must be an integer`);
+  }
+}
+
+function assertRate(value, path) {
+  assertFiniteNumber(value, path);
+  if (value < 0 || value > 1) {
+    throw new Error(`${path} must be within 0..1`);
+  }
+}
+
+function validateDraftSpot(data, path = 'assets/DraftSpot.json', seasonSummaryRows = []) {
+  if (data === null || data === undefined) return null;
+  assertObject(data, path);
+
+  if (data.source !== 'SeasonSummary.json') throw new Error(`${path} invalid source`);
+  if (!data.season_range || typeof data.season_range !== 'object') throw new Error(`${path} missing season_range`);
+  assertFiniteInteger(data.season_range.start, `${path} season_range.start`);
+  assertFiniteInteger(data.season_range.end, `${path} season_range.end`);
+  assertFiniteInteger(data.team_seasons, `${path} team_seasons`);
+  assertObject(data.correlations, `${path} correlations`);
+  ['pick_finish', 'draft_percentile_finish_score', 'draft_percentile_points_z'].forEach(key => {
+    assertFiniteNumber(data.correlations[key], `${path} correlations.${key}`);
+  });
+  ['rows', 'pick_summary', 'zone_summary', 'owner_recommendations'].forEach(key => {
+    if (!Array.isArray(data[key])) throw new Error(`${path} missing ${key}`);
+  });
+  if (data.rows.length !== data.team_seasons) {
+    throw new Error(`${path} team_seasons must match rows length`);
+  }
+
+  const seasonOwnerToDraft = new Map();
+  const knownOwners = new Set();
+  seasonSummaryRows.forEach(row => {
+    knownOwners.add(row.owner);
+    if (row.draft_pick !== null && row.draft_pick !== undefined && row.draft_pick !== '') {
+      seasonOwnerToDraft.set(`${row.season}|${row.owner}`, +row.draft_pick);
+    }
+  });
+
+  data.rows.forEach((row, i) => {
+    assertObject(row, `${path} rows[${i}]`);
+    assertFiniteInteger(row.season, `${path} rows[${i}].season`);
+    if (typeof row.owner !== 'string' || row.owner.trim() === '') throw new Error(`${path} rows[${i}] missing owner`);
+    assertFiniteInteger(row.draft_pick, `${path} rows[${i}].draft_pick`);
+    assertFiniteInteger(row.team_count, `${path} rows[${i}].team_count`);
+    if (row.draft_pick < 1 || row.draft_pick > row.team_count) throw new Error(`${path} rows[${i}] invalid draft_pick`);
+    if (!['early', 'middle', 'late'].includes(row.zone_key)) throw new Error(`${path} rows[${i}] invalid zone_key`);
+    if (typeof row.zone !== 'string' || row.zone.trim() === '') throw new Error(`${path} rows[${i}] missing zone`);
+    ['wins', 'losses', 'ties', 'finish', 'points_for', 'points_against', 'win_pct', 'finish_score', 'draft_percentile', 'points_rank', 'points_score', 'points_z', 'wins_above_avg'].forEach(field => {
+      assertFiniteNumber(row[field], `${path} rows[${i}].${field}`);
+    });
+    assertRate(row.win_pct, `${path} rows[${i}].win_pct`);
+    assertRate(row.finish_score, `${path} rows[${i}].finish_score`);
+    assertRate(row.draft_percentile, `${path} rows[${i}].draft_percentile`);
+    assertRate(row.points_score, `${path} rows[${i}].points_score`);
+    ['champion', 'saunders', 'made_playoffs', 'top_three'].forEach(field => {
+      if (typeof row[field] !== 'boolean') throw new Error(`${path} rows[${i}] invalid ${field}`);
+    });
+    if (knownOwners.size && !knownOwners.has(row.owner)) throw new Error(`${path} rows[${i}] unknown owner ${row.owner}`);
+    if (seasonOwnerToDraft.size) {
+      const key = `${row.season}|${row.owner}`;
+      if (seasonOwnerToDraft.get(key) !== row.draft_pick) {
+        throw new Error(`${path} rows[${i}] does not match SeasonSummary draft_pick`);
+      }
+    }
+  });
+
+  data.pick_summary.forEach((row, i) => {
+    assertObject(row, `${path} pick_summary[${i}]`);
+    assertFiniteInteger(row.draft_pick, `${path} pick_summary[${i}].draft_pick`);
+    assertFiniteInteger(row.n, `${path} pick_summary[${i}].n`);
+    ['avg_finish', 'avg_finish_score', 'avg_wins_above_avg', 'avg_points_z'].forEach(field => {
+      assertFiniteNumber(row[field], `${path} pick_summary[${i}].${field}`);
+    });
+    ['top_three_rate', 'playoff_rate', 'champion_rate', 'saunders_rate'].forEach(field => {
+      assertRate(row[field], `${path} pick_summary[${i}].${field}`);
+    });
+    assertFiniteInteger(row.championships, `${path} pick_summary[${i}].championships`);
+    assertFiniteInteger(row.saunders_count, `${path} pick_summary[${i}].saunders_count`);
+  });
+
+  data.zone_summary.forEach((row, i) => {
+    assertObject(row, `${path} zone_summary[${i}]`);
+    if (!['early', 'middle', 'late'].includes(row.zone_key)) throw new Error(`${path} zone_summary[${i}] invalid zone_key`);
+    if (typeof row.zone !== 'string' || row.zone.trim() === '') throw new Error(`${path} zone_summary[${i}] missing zone`);
+    assertFiniteInteger(row.n, `${path} zone_summary[${i}].n`);
+    ['avg_pick', 'avg_finish', 'avg_finish_score', 'avg_wins_above_avg', 'avg_points_z'].forEach(field => {
+      assertFiniteNumber(row[field], `${path} zone_summary[${i}].${field}`);
+    });
+    ['top_three_rate', 'playoff_rate', 'champion_rate', 'saunders_rate'].forEach(field => {
+      assertRate(row[field], `${path} zone_summary[${i}].${field}`);
+    });
+  });
+
+  data.owner_recommendations.forEach((row, i) => {
+    assertObject(row, `${path} owner_recommendations[${i}]`);
+    if (typeof row.owner !== 'string' || row.owner.trim() === '') throw new Error(`${path} owner_recommendations[${i}] missing owner`);
+    if (knownOwners.size && !knownOwners.has(row.owner)) throw new Error(`${path} owner_recommendations[${i}] unknown owner ${row.owner}`);
+    ['target', 'recommendation', 'caution', 'confidence'].forEach(field => {
+      if (typeof row[field] !== 'string' || row[field].trim() === '') throw new Error(`${path} owner_recommendations[${i}] missing ${field}`);
+    });
+    if (!Array.isArray(row.history) || !row.history.length) throw new Error(`${path} owner_recommendations[${i}] missing history`);
+  });
+
+  return data;
+}
+
 function validateLeagueAssetBundle(opts = {}) {
   const paths = {
     h2h: LEAGUE_ASSET_CONTRACT.H2H.path,
     seasonSummary: LEAGUE_ASSET_CONTRACT.SeasonSummary.path,
     rivalries: LEAGUE_ASSET_CONTRACT.Rivalries.path,
+    draftSpot: 'assets/DraftSpot.json',
     ...(opts.paths || {}),
   };
   return {
@@ -255,6 +381,7 @@ function validateLeagueAssetBundle(opts = {}) {
     seasonSummaryRows: validateSeasonSummaries(opts.seasonSummaryRows, paths.seasonSummary),
     rivalriesRows: validateRivalries(opts.rivalriesRows, paths.rivalries),
     currentSeason: opts.currentSeason === undefined ? undefined : validateCurrentSeason(opts.currentSeason, paths.currentSeason || 'assets/CurrentSeason.json'),
+    draftSpot: opts.draftSpot === undefined ? undefined : validateDraftSpot(opts.draftSpot, paths.draftSpot || 'assets/DraftSpot.json', opts.seasonSummaryRows || []),
   };
 }
 
@@ -281,6 +408,7 @@ export {
   normalizeSeasonSummary,
   normalizeRivalry,
   validateCurrentSeason,
+  validateDraftSpot,
   validateLeagueGames,
   validateSeasonSummaries,
   validateRivalries,

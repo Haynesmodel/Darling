@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added a Draft Spot Explorer tab backed by generated `assets/DraftSpot.json`, shareable Draft URLs, and UI/test coverage for pick, zone, and owner views.
 - Added a visible loading state and a user-facing error banner for JSON fetch failures.
 - Added upfront season-anchor validation to `scripts/sleeper_to_h2h.py`.
 - Externalized Sleeper week-1 anchors into `scripts/sleeper_week1_anchors.json` and renamed the season update script.

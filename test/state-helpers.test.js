@@ -164,6 +164,49 @@ test('url helpers parse and rebuild gauntlet state', () => {
   assert.equal(next, '/index.html?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019&gm=hybrid&gp=1&gn=10000&gs=abc123');
 });
 
+test('url helpers parse and rebuild draft spot state', () => {
+  const parsed = parseUrlState('?tab=draft&draftOwner=Joe&draftMode=pick&draftStart=2021&draftEnd=2025&draftMetric=playoffRate&draftPick=10&draftMinSample=2&draftNormalize=percentile');
+  assert.equal(parsed.tab, 'draft');
+  assert.equal(parsed.draftOwner, 'Joe');
+  assert.equal(parsed.draftMode, 'pick');
+  assert.equal(parsed.draftStart, 2021);
+  assert.equal(parsed.draftEnd, 2025);
+  assert.equal(parsed.draftMetric, 'playoffRate');
+  assert.equal(parsed.draftPick, 10);
+  assert.equal(parsed.draftMinSample, 2);
+  assert.equal(parsed.draftNormalize, 'percentile');
+  assert.equal(parsed.hasDraft, true);
+  assert.equal(parsed.hasAny, true);
+
+  const next = buildUrlFromState({
+    tab: 'draft',
+    selectedDraftOwner: 'Joe',
+    selectedDraftMode: 'pick',
+    selectedDraftStartSeason: 2021,
+    selectedDraftEndSeason: 2025,
+    selectedDraftMetric: 'playoffRate',
+    selectedDraftPick: 10,
+    selectedDraftMinSample: 2,
+    selectedDraftNormalize: 'percentile',
+    selectedTeam: 'Joel',
+    selectedSeasons: new Set([2024]),
+    universe: { seasons: [2024, 2025] },
+    pathname: '/index.html',
+    allTeams: '__ALL__',
+  });
+  assert.equal(next, '/index.html?tab=draft&draftMode=pick&draftOwner=Joe&draftStart=2021&draftEnd=2025&draftMetric=playoffRate&draftMinSample=2&draftNormalize=percentile&draftPick=10');
+
+  const zoneUrl = buildUrlFromState({
+    tab: 'draft',
+    selectedDraftStartSeason: 2017,
+    selectedDraftEndSeason: 2025,
+    selectedDraftZone: 'late',
+    pathname: '/index.html',
+    allTeams: '__ALL__',
+  });
+  assert.equal(zoneUrl, '/index.html?tab=draft&draftStart=2017&draftEnd=2025&draftZone=late');
+});
+
 test('url helpers preserve opponent selections with spaces and punctuation', () => {
   const next = buildUrlFromState({
     selectedTeam: 'Joe',

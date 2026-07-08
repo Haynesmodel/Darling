@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import * as data from '../js/data-helpers.js';
 import { canonicalGameKey, dedupeGames, deriveWeeksInPlace } from '../js/core-helpers.js';
 import {
+  draftSpotPath,
   h2hPath,
   seasonPath,
   rivalPath,
@@ -25,6 +26,7 @@ const {
   normalizeRivalry,
   validateLeagueGames,
   validateCurrentSeason,
+  validateDraftSpot,
   validateSeasonSummaries,
   validateRivalries,
   validateLeagueAssetBundle,
@@ -35,14 +37,17 @@ test('assets JSON loads', () => {
   assert.ok(fsExists(h2hPath));
   assert.ok(fsExists(seasonPath));
   assert.ok(fsExists(rivalPath));
+  assert.ok(fsExists(draftSpotPath));
 
   const h2h = readJson(h2hPath);
   const seasons = readJson(seasonPath);
   const rivals = readJson(rivalPath);
+  const draftSpot = readJson(draftSpotPath);
 
   assert.ok(Array.isArray(h2h));
   assert.ok(Array.isArray(seasons));
   assert.ok(Array.isArray(rivals));
+  assert.ok(Array.isArray(draftSpot.rows));
 });
 
 test('H2H rows have required shape', () => {
@@ -87,6 +92,14 @@ test('SeasonSummary points_for values stay numeric and positive', () => {
     assert.ok(isNum(r.points_for), `row ${i} missing points_for`);
     assert.ok(+r.points_for > 0, `row ${i} points_for must be positive`);
   }
+});
+
+test('DraftSpot asset validates against SeasonSummary rows', () => {
+  const seasons = readJson(seasonPath);
+  const draftSpot = readJson(draftSpotPath);
+  assert.doesNotThrow(() => validateDraftSpot(draftSpot, draftSpotPath, seasons));
+  assert.equal(draftSpot.rows.length, draftSpot.team_seasons);
+  assert.equal(draftSpot.rows.every(row => row.draft_pick >= 1 && row.draft_pick <= row.team_count), true);
 });
 
 test('H2H has no duplicate games (canonical key)', () => {
@@ -368,9 +381,10 @@ test('loadLeagueAssets treats rivalry data as optional', async () => {
   });
 
   assert.deepEqual(loaded.rivalries, []);
-  assert.equal(warnings.length, 2);
+  assert.equal(warnings.length, 3);
   assert.ok(warnings.some(warning => /Rivalries\.json missing/.test(warning)));
   assert.ok(warnings.some(warning => /CurrentSeason\.json missing/.test(warning)));
+  assert.ok(warnings.some(warning => /DraftSpot\.json missing/.test(warning)));
 });
 
 test('loadLeagueAssets fails clearly when required data is unavailable', async () => {

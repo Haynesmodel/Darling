@@ -54,6 +54,7 @@
     <button class="tab" id="tabTrophyBtn">Trophy Case</button>
     <button class="tab" id="tabDynastyBtn">Dynasty Rankings</button>
     <button class="tab" id="tabGauntletBtn">Historical Matchup</button>
+    <div id="globalSearchRoot" class="global-search-mount"></div>
   </nav>
 
   <main>
@@ -187,12 +188,14 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" id="historyGamesCard">
         <h3>All Games</h3>
+        <p id="historyGamesQuerySummary" class="muted history-games-query-summary" aria-live="polite"></p>
         <div class="table-wrap">
           <table id="historyGamesTable">
             <thead>
               <tr>
+                <th scope="col" id="historyGamesTeamHeader" hidden>Team</th>
                 <th scope="col">Date</th>
                 <th scope="col">Opponent</th>
                 <th scope="col">Result</th>
@@ -481,6 +484,7 @@
   <div id="fxCrown" class="fx-layer"></div>
   <div id="fxSaunders" class="fx-layer"></div>
   <div id="fxGroup" class="fx-layer"></div>
+  <div id="globalSearchPortal"></div>
 
   <script type="module" src="/src/main.tsx"></script>
 </body>

@@ -4,10 +4,14 @@ import '../js/app.js';
 
 import { render } from 'preact';
 import ThemeToggle from './components/theme/ThemeToggle';
+import GlobalSearch from './components/search/GlobalSearch';
 import { createDarlingThemeRuntime, type DarlingThemeRuntime } from './theme/apply-theme';
+import { createSearchRuntime } from './search/search-runtime';
+import type { DarlingSearchRuntime } from './search/search-types';
 
 interface BrowserWindow {
   darlingTheme?: DarlingThemeRuntime;
+  darlingSearch?: DarlingSearchRuntime;
 }
 
 interface BrowserDocument {
@@ -17,6 +21,7 @@ interface BrowserDocument {
 }
 
 const themeRuntime = createDarlingThemeRuntime();
+const searchRuntime = createSearchRuntime();
 const browser = globalThis as unknown as {
   window?: BrowserWindow;
   document?: BrowserDocument;
@@ -24,6 +29,7 @@ const browser = globalThis as unknown as {
 
 if (browser.window) {
   browser.window.darlingTheme = themeRuntime;
+  browser.window.darlingSearch = searchRuntime;
 }
 
 function mountThemeControls() {
@@ -32,8 +38,20 @@ function mountThemeControls() {
   render(<ThemeToggle runtime={themeRuntime} />, mount as Parameters<typeof render>[1]);
 }
 
-if (browser.document?.readyState === 'loading') {
-  browser.document.addEventListener('DOMContentLoaded', mountThemeControls, { once: true });
-} else {
+function mountGlobalSearch() {
+  const mount = browser.document?.getElementById('globalSearchRoot');
+  const portal = browser.document?.getElementById('globalSearchPortal');
+  if (!mount || !portal) return;
+  render(<GlobalSearch runtime={searchRuntime} portal={portal as any} />, mount as Parameters<typeof render>[1]);
+}
+
+function mountShell() {
   mountThemeControls();
+  mountGlobalSearch();
+}
+
+if (browser.document?.readyState === 'loading') {
+  browser.document.addEventListener('DOMContentLoaded', mountShell, { once: true });
+} else {
+  mountShell();
 }

@@ -1,6 +1,7 @@
 import * as core from './core-helpers.js';
 import * as render from './render-helpers.js';
 import * as stats from './stats-helpers.js';
+import { queryHistoryGames } from './history-game-query.js';
 function coreFn(name) {
   const fn = core[name] || stats[name];
   if (typeof fn !== 'function') {
@@ -148,18 +149,32 @@ function historyGamesTableRowHtml(game, team) {
   </tr>`;
 }
 
+function historyGamePerspectiveRowHtml(row, opts = {}) {
+  const includeTeam = !!opts.includeTeam;
+  const resClass = row.result === 'W' ? 'result-win' : row.result === 'L' ? 'result-loss' : 'result-tie';
+  const postClass = row.type !== 'Regular' ? 'postseason' : '';
+  return `<tr class="${resClass} ${postClass}">
+    ${includeTeam ? `<td>${esc(row.team)}</td>` : ''}
+    <td>${esc(row.date)}</td>
+    <td>${esc(row.opponent)}</td>
+    <td>${row.result}</td>
+    <td>${row.score.toFixed(2)} - ${row.opponentScore.toFixed(2)}</td>
+    <td>${esc(row.type)}</td>
+    <td>${esc(row.round)}</td>
+    <td>${esc(row.season)}</td>
+  </tr>`;
+}
+
 function historyGamesTableHtml(team, games, opts = {}) {
   const allTeams = opts.allTeams || '__ALL__';
-  const byDateDescFn = coreFn('byDateDesc');
-  if (team === allTeams) {
-    return '<tr><td colspan="7" class="muted">Select a team to see full game list.</td></tr>';
-  }
-  return games
-    .slice()
-    .sort(byDateDescFn)
-    .map(g => historyGamesTableRowHtml(g, team))
-    .filter(Boolean)
-    .join('');
+  const view = queryHistoryGames(games, {
+    selectedTeam: team,
+    allTeams,
+    query: opts.query || {},
+  });
+  const includeTeam = team === allTeams;
+  if (!view.rows.length) return '';
+  return view.rows.map(row => historyGamePerspectiveRowHtml(row, { includeTeam })).join('');
 }
 
 function renderGamesTable(team, games, opts = {}) {
@@ -168,6 +183,21 @@ function renderGamesTable(team, games, opts = {}) {
   const tbody = root.querySelector('#historyGamesTable tbody');
   if (!tbody) return;
   tbody.innerHTML = historyGamesTableHtml(team, games, opts);
+  const allTeams = opts.allTeams || '__ALL__';
+  const includeTeam = team === allTeams;
+  const teamHeader = root.getElementById('historyGamesTeamHeader');
+  if (teamHeader) teamHeader.hidden = !includeTeam;
+  const view = queryHistoryGames(games, {
+    selectedTeam: team,
+    allTeams,
+    query: opts.query || {},
+  });
+  const summary = root.getElementById('historyGamesQuerySummary');
+  if (summary) {
+    summary.textContent = (includeTeam || opts.query?.gameResult || Number.isFinite(opts.query?.gameMinScore) || Number.isFinite(opts.query?.gameMaxScore) || opts.query?.gameSort || opts.query?.gameLimit)
+      ? view.summary
+      : '';
+  }
 }
 
 function weekByWeekRows(team, games, opts = {}) {
@@ -616,6 +646,7 @@ export {
   buildTopHighlightsViewModel,
   buildSeasonCalloutViewModel,
   historyGamesTableRowHtml,
+  historyGamePerspectiveRowHtml,
   historyGamesTableHtml,
   renderGamesTable,
   weekByWeekRows,

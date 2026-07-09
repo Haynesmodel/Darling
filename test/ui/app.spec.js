@@ -52,7 +52,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
   });
   page.on('response', (response) => {
     const url = response.url();
-    if (response.status() >= 400 && /\.(json|js|css|jpeg|jpg|png)$/.test(url)) {
+    if (response.status() >= 400 && /\.(json|js|css|jpeg|jpg|png|webp|avif)$/.test(url)) {
       browserErrors.push(`asset ${response.status()}: ${url}`);
     }
   });
@@ -85,6 +85,10 @@ test('page loads and renders the history tables', async ({ page }) => {
 
   await expect(page.locator('#appStatus')).toBeHidden();
   await expect(page.locator('header h2')).toHaveText('Joe');
+  await expect(page.locator('.site-hero-media img')).toBeVisible();
+  const heroBox = await page.locator('.site-hero-media img').boundingBox();
+  expect(heroBox?.width).toBeGreaterThan(0);
+  expect(heroBox?.height).toBeGreaterThan(0);
   expect(await page.evaluate(() => typeof window.triggerGroupEgg)).toBe('undefined');
   expect(await page.evaluate(() => typeof window.setGroupBackdrop)).toBe('undefined');
 
@@ -96,6 +100,24 @@ test('page loads and renders the history tables', async ({ page }) => {
   expect(weekCount).toBeGreaterThan(0);
   expect(historyCount).toBeGreaterThan(0);
   expect(weekCount).toBe(historyCount);
+});
+
+test('theme toggle switches color scheme and persists after reload', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#themeControls .theme-toggle')).toBeVisible();
+  await page.getByRole('button', { name: 'Dark' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-color-scheme', 'dark');
+  await expect(page.locator('html')).toHaveAttribute('data-color-scheme-preference', 'dark');
+
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('html')).toHaveAttribute('data-color-scheme', 'dark');
+  await expect(page.locator('html')).toHaveAttribute('data-color-scheme-preference', 'dark');
+
+  await page.getByRole('button', { name: 'Light' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-color-scheme', 'light');
 });
 
 test('changing the team updates the rendered rows and url state', async ({ page }) => {
@@ -119,6 +141,8 @@ test('changing the team updates the rendered rows and url state', async ({ page 
   const nextHistoryCount = await page.locator('#historyGamesTable tbody tr').count();
 
   expect(page.url()).toContain(`team=${encodeURIComponent(nextTeam)}`);
+  await expect(page.locator('html')).toHaveAttribute('data-accent-theme', 'owner');
+  await expect(page.locator('html')).toHaveAttribute('data-owner-theme', nextTeam);
   expect(nextWeekCount).toBe(nextHistoryCount);
   expect(nextWeekCount).not.toBe(originalWeekCount);
 });
@@ -140,6 +164,7 @@ test('current season tab renders matchups and links to head to head context', as
   await expect(page.locator('#currentWeekNeeds')).toContainText('This Week Needs');
   await expect(page.locator('#currentProjectedStandings')).toContainText('Projected Standings');
   await expect(page.locator('#currentProjectedStandings')).toContainText('Method:');
+  await expect(page.locator('html')).toHaveAttribute('data-season-mode', 'saunders');
 
   const matchupCount = await page.locator('.current-matchup-card').count();
   const standingsRows = await page.locator('#currentStandings tbody tr').count();
@@ -157,6 +182,8 @@ test('current season tab renders matchups and links to head to head context', as
   await page.waitForLoadState('networkidle');
   await expect(page.locator('#currentOwnerSelect')).toHaveValue('Joe');
   await expect(page.locator('#currentViewSelect')).toHaveValue('owners');
+  await expect(page.locator('html')).toHaveAttribute('data-accent-theme', 'owner');
+  await expect(page.locator('html')).toHaveAttribute('data-owner-theme', 'Joe');
   await expect(page.locator('#currentWeekNeeds .current-owner-focus')).toContainText('Joe');
 
   await page.goto('/?tab=current&currentProjection=current');
@@ -256,6 +283,9 @@ test('head to head url restores the rivalry page and selected teams', async ({ p
   await expect(page.locator('#tabRivalryBtn')).toHaveClass(/active/);
   await expect(page.locator('#rivalryTeamA')).toHaveValue('Joe');
   await expect(page.locator('#rivalryTeamB')).toHaveValue('Joel');
+  await expect(page.locator('html')).toHaveAttribute('data-accent-theme', 'rivalry');
+  await expect(page.locator('html')).toHaveAttribute('data-rivalry-a', 'Joe');
+  await expect(page.locator('html')).toHaveAttribute('data-rivalry-b', 'Joel');
   await expect(page.locator('#rivalryHeadline')).toContainText('Joe vs Joel');
   await expect.poll(async () => page.evaluate(() => {
     const params = new URL(location.href).searchParams;

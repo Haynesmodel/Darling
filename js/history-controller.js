@@ -148,6 +148,92 @@ const HIGH_SCORE_THRESHOLD = 150;
 const SUB_SCORE_THRESHOLD = 70;
 const CLOSE_GAME_MARGIN = 5;
 
+function ownerOrNull(owner) {
+  const value = String(owner || '').trim();
+  return value && value !== ALL_TEAMS ? value : null;
+}
+
+function seasonModeFromLabels(labels = []) {
+  let sawPostseason = false;
+  let sawSaunders = false;
+  labels.forEach((label) => {
+    const value = String(label || '').trim().toLowerCase();
+    if (!value || value === 'regular') return;
+    if (value.includes('saunders')) sawSaunders = true;
+    if (
+      value.includes('playoff') ||
+      value.includes('championship') ||
+      value.includes('wild card') ||
+      value.includes('semi final') ||
+      value.includes('final')
+    ) {
+      sawPostseason = true;
+    }
+  });
+  if (sawSaunders) return 'saunders';
+  if (sawPostseason) return 'postseason';
+  return 'regular';
+}
+
+function applyAppThemeContext(context = {}) {
+  const fallback = {
+    accentKind: 'league',
+    seasonMode: 'regular',
+    ...context,
+  };
+  if (typeof window !== 'undefined' && window.darlingTheme?.applyAppContext) {
+    window.darlingTheme.applyAppContext(fallback);
+    return;
+  }
+  if (typeof document === 'undefined') return;
+  const root = document.documentElement;
+  root.dataset.accentTheme = fallback.accentKind || 'league';
+  root.dataset.seasonMode = fallback.seasonMode || 'regular';
+  if (fallback.owner) root.dataset.ownerTheme = fallback.owner;
+  else delete root.dataset.ownerTheme;
+  if (fallback.rivalryA) root.dataset.rivalryA = fallback.rivalryA;
+  else delete root.dataset.rivalryA;
+  if (fallback.rivalryB) root.dataset.rivalryB = fallback.rivalryB;
+  else delete root.dataset.rivalryB;
+}
+
+function historySeasonMode() {
+  return seasonModeFromLabels([
+    ...selectedTypes,
+    ...selectedRounds,
+  ]);
+}
+
+function currentSeasonMode(view) {
+  const week = Number(view?.week);
+  const season = Number(view?.season);
+  const selectedGames = [...(currentSeason?.games || []), ...leagueGames]
+    .filter(game => Number(game.season) === season && Number(game.week) === week);
+  const labelMode = seasonModeFromLabels(selectedGames.flatMap(game => [game.type, game.round]));
+  if (labelMode !== 'regular') return labelMode;
+  const regularSeasonMaxWeek = Number(currentSeason?.playoff_rules?.regular_season_max_week);
+  return Number.isFinite(week) && Number.isFinite(regularSeasonMaxWeek) && week > regularSeasonMaxWeek
+    ? 'postseason'
+    : 'regular';
+}
+
+function applyOwnerThemeContext(owner, seasonMode = 'regular') {
+  const normalizedOwner = ownerOrNull(owner);
+  applyAppThemeContext(normalizedOwner
+    ? { accentKind: 'owner', owner: normalizedOwner, seasonMode }
+    : { accentKind: 'league', seasonMode });
+}
+
+function applyRivalryThemeContext(ownerA, ownerB, seasonMode = 'regular') {
+  const rivalryA = ownerOrNull(ownerA);
+  const rivalryB = ownerOrNull(ownerB);
+  if (rivalryA && rivalryB && rivalryA !== rivalryB) {
+    applyAppThemeContext({ accentKind: 'rivalry', rivalryA, rivalryB, seasonMode });
+    return;
+  }
+  applyOwnerThemeContext(rivalryA || rivalryB, seasonMode);
+}
+
 let leagueGames = [];
 let seasonSummaries = [];
 let rivalries = [];
@@ -457,6 +543,7 @@ function renderRivalry() {
   });
   const signature = `${selectedRivalryTeamA}|${selectedRivalryTeamB}|${selectedRivalryScope}|${currentSeasonYear}|${view.summary.overall.g}`;
   updateHeaderForTeam(selectedRivalryTeamA);
+  applyRivalryThemeContext(selectedRivalryTeamA, selectedRivalryTeamB);
   renderIfChanged('rivalry', signature, () => {
     renderRivalryHeadline(view, { doc: document });
     renderRivalryLeadMeter(view, { doc: document });
@@ -509,6 +596,7 @@ function renderCurrentSeason() {
     selectedProjectionMode: view.commandCenter.selectedProjectionMode,
   };
   updateHeaderForCurrentSeason(view);
+  applyOwnerThemeContext(view.commandCenter.selectedOwner, currentSeasonMode(view));
 
   const signature = JSON.stringify({
     season: view.season,
@@ -546,6 +634,7 @@ function renderTrophy() {
 
   const signature = selectedTrophyOwner;
   updateHeaderForTrophy(selectedTrophyOwner);
+  applyOwnerThemeContext(selectedTrophyOwner);
   renderIfChanged('trophy', signature, () => {
     const view = buildTrophyCaseViewModel(selectedTrophyOwner, {
       leagueGames,
@@ -830,6 +919,7 @@ function renderDynasty() {
   });
   const score = view.selectedScore;
   updateHeaderForDynasty(score);
+  applyOwnerThemeContext(view.controls.mode === 'calculator' ? view.controls.owner : null, selectedDynastyState?.selectedWindowKind === 'saunders' ? 'saunders' : 'regular');
   const selectedWindowKey = selectedDynastyState?.selectedWindowKey || '';
   const selectedWindowKind = selectedDynastyState?.selectedWindowKind || 'playoffs';
   const selectedWindow = selectedWindowKind === 'saunders'
@@ -983,6 +1073,7 @@ function renderGauntlet() {
   const teamSeasonB = seasons.find(teamSeason => teamSeason.id === teamSeasonId(resolvedState.selectedOwnerB, resolvedState.selectedSeasonB)) || null;
 
   updateHeaderForGauntlet(teamSeasonA, teamSeasonB);
+  applyRivalryThemeContext(teamSeasonA?.owner, teamSeasonB?.owner, resolvedState.selectedIncludePostseason ? 'postseason' : 'regular');
   if (!teamSeasonA || !teamSeasonB) {
     renderGauntletView({
       teamSeasonA,
@@ -1323,6 +1414,7 @@ function renderHistory() {
   const teamSel = document.getElementById('teamSelect');
   if (teamSel && selectedTeam !== teamSel.value) selectedTeam = teamSel.value;
   updateHeaderForTeam(selectedTeam);
+  applyOwnerThemeContext(selectedTeam, historySeasonMode());
 
   const filtered = filteredGamesForCurrentState();
   const curseFilters = readCurseTrackerFilters({
@@ -1569,4 +1661,5 @@ async function bootstrapHistoryApp() {
 
 export {
   bootstrapHistoryApp,
+  seasonModeFromLabels,
 };

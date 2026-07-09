@@ -1,15 +1,19 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { spawnSync } = require('node:child_process');
+const esbuild = require('esbuild');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const sharp = require('sharp');
 
 const { checkRepoHygiene } = require('../scripts/check_repo_hygiene.cjs');
+const { FORMATS, HERO_WIDTHS, generateHeroImages, resolveSource } = require('../scripts/generate_hero_images.cjs');
 const { createStaticServer, normalizeBasePath, resolvePath } = require('../scripts/serve_static.cjs');
 const { syncPublicAssets } = require('../scripts/sync_public_assets.cjs');
-const { buildCoverageSummary } = require('../scripts/v8_coverage_report.cjs');
+const { validateHeroAssets } = require('../scripts/validate_assets.cjs');
+const { buildCoverageSummary, isTypeOnlySourceFile } = require('../scripts/v8_coverage_report.cjs');
 
 async function withTempRepo(fn) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-hygiene-'));
@@ -165,6 +169,9 @@ test('asset sync copies source assets into Vite public assets', async () => {
     fs.writeFileSync(path.join(root, 'assets', 'H2H.updated.json'), '[]\n');
     fs.writeFileSync(path.join(root, 'assets', 'H2H_backup.json'), '[]\n');
     fs.writeFileSync(path.join(root, 'assets', 'LeaguePic.jpeg'), 'image\n');
+    fs.mkdirSync(path.join(root, 'assets', 'hero'));
+    fs.writeFileSync(path.join(root, 'assets', 'hero', 'league-1280.jpg'), 'image\n');
+    fs.writeFileSync(path.join(root, 'assets', 'hero', 'source.txt'), 'skip\n');
     fs.writeFileSync(path.join(root, 'assets', '.DS_Store'), 'local\n');
     fs.mkdirSync(path.join(root, 'public', 'assets'), { recursive: true });
     fs.writeFileSync(path.join(root, 'public', 'assets', 'stale.json'), '{}\n');
@@ -176,9 +183,69 @@ test('asset sync copies source assets into Vite public assets', async () => {
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'H2H.updated.json')), false);
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'H2H_backup.json')), false);
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'LeaguePic.jpeg')), false);
+    assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'hero', 'league-1280.jpg')), true);
+    assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'hero', 'source.txt')), false);
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', '.DS_Store')), false);
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'stale.json')), false);
   });
+});
+
+test('hero asset validation checks required responsive variants', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-hero-assets-'));
+  try {
+    const heroDir = path.join(root, 'assets', 'hero');
+    fs.mkdirSync(heroDir, { recursive: true });
+    const files = [
+      'league-480.avif',
+      'league-768.avif',
+      'league-1280.avif',
+      'league-1920.avif',
+      'league-480.webp',
+      'league-768.webp',
+      'league-1280.webp',
+      'league-1920.webp',
+      'league-480.jpg',
+      'league-768.jpg',
+      'league-1280.jpg',
+      'league-1920.jpg',
+    ];
+    files.forEach(file => fs.writeFileSync(path.join(heroDir, file), 'image\n'));
+    assert.doesNotThrow(() => validateHeroAssets(root));
+    fs.rmSync(path.join(heroDir, 'league-480.avif'));
+    assert.throws(() => validateHeroAssets(root), /Missing hero image/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('hero image generator creates every responsive format from a source image', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-hero-generate-'));
+  try {
+    const sourcePath = path.join(root, 'source.jpg');
+    await sharp({
+      create: {
+        width: 32,
+        height: 20,
+        channels: 3,
+        background: '#2563eb',
+      },
+    }).jpeg().toFile(sourcePath);
+
+    const resolved = resolveSource(root, sourcePath);
+    assert.equal(resolved.label, 'source.jpg');
+
+    const result = await generateHeroImages(root, sourcePath);
+    assert.equal(result.outputs.length, HERO_WIDTHS.length * FORMATS.length);
+    for (const width of HERO_WIDTHS) {
+      for (const format of FORMATS) {
+        const output = path.join(root, 'assets', 'hero', `league-${width}.${format.ext}`);
+        assert.equal(fs.existsSync(output), true, output);
+        assert.ok(fs.statSync(output).size > 0, output);
+      }
+    }
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('coverage reporter measures source files and excludes tests', async () => {
@@ -223,6 +290,75 @@ test('coverage reporter measures source files and excludes tests', async () => {
       ['js/app.js', 'js/helpers.js', 'scripts/tool.cjs', 'src/main.tsx']
     );
     assert.equal(summary.total.lines.pct, 100);
+  });
+});
+
+test('coverage reporter maps inline source maps back to original TypeScript files', async () => {
+  await withTempRepo(async (root) => {
+    fs.mkdirSync(path.join(root, 'coverage', '.v8'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'src', 'theme'), { recursive: true });
+
+    const entryPointPath = path.join(root, 'js', 'app.js');
+    const helperPath = path.join(root, 'js', 'helpers.js');
+    const sourcePath = path.join(root, 'src', 'theme', 'mapped.ts');
+    fs.writeFileSync(entryPointPath, "import './helpers.js';\n");
+    fs.writeFileSync(helperPath, 'const covered = true;\nexport { covered };\n');
+    fs.writeFileSync(sourcePath, 'export function answer(){\n  return 42;\n}\nanswer();\n');
+
+    const outPath = path.join(root, 'coverage', 'mapped.mjs');
+    await esbuild.build({
+      entryPoints: [sourcePath],
+      outfile: outPath,
+      bundle: true,
+      format: 'esm',
+      platform: 'browser',
+      sourcemap: 'inline',
+      sourcesContent: true,
+    });
+    const generated = fs.readFileSync(outPath, 'utf8');
+    fs.writeFileSync(path.join(root, 'coverage', '.v8', 'coverage.json'), JSON.stringify({
+      result: [entryPointPath, helperPath].map(filePath => ({
+        url: pathToFileURL(filePath).href,
+        functions: [{
+          ranges: [{ startOffset: 0, endOffset: fs.readFileSync(filePath, 'utf8').length, count: 1 }],
+        }],
+      })).concat([{
+        url: pathToFileURL(outPath).href,
+        functions: [{
+          ranges: [{ startOffset: 0, endOffset: generated.length, count: 1 }],
+        }],
+      }]),
+    }));
+
+    const summary = buildCoverageSummary(root);
+    const mapped = summary.files.find(file => file.file === 'src/theme/mapped.ts');
+    assert.ok(mapped);
+    assert.equal(mapped.pct, 100);
+  });
+});
+
+test('coverage reporter excludes type-only TypeScript files', async () => {
+  await withTempRepo((root) => {
+    fs.mkdirSync(path.join(root, 'coverage', '.v8'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'src', 'theme'), { recursive: true });
+    const entryPointPath = path.join(root, 'js', 'app.js');
+    const helperPath = path.join(root, 'js', 'helpers.js');
+    const typeOnlyPath = path.join(root, 'src', 'theme', 'theme-types.ts');
+    fs.writeFileSync(entryPointPath, "import './helpers.js';\n");
+    fs.writeFileSync(helperPath, 'const covered = true;\nexport { covered };\n');
+    fs.writeFileSync(typeOnlyPath, 'export type Mode = \"dark\" | \"light\";\nexport interface ThemeShape {\n  mode: Mode;\n}\n');
+    fs.writeFileSync(path.join(root, 'coverage', '.v8', 'coverage.json'), JSON.stringify({
+      result: [entryPointPath, helperPath].map(filePath => ({
+        url: pathToFileURL(filePath).href,
+        functions: [{
+          ranges: [{ startOffset: 0, endOffset: fs.readFileSync(filePath, 'utf8').length, count: 1 }],
+        }],
+      })),
+    }));
+
+    assert.equal(isTypeOnlySourceFile(typeOnlyPath), true);
+    const summary = buildCoverageSummary(root);
+    assert.equal(summary.files.some(file => file.file === 'src/theme/theme-types.ts'), false);
   });
 });
 
@@ -315,6 +451,21 @@ test('asset validation cli accepts the canonical bundle', async () => {
       name: 'Founders',
       members: ['Joe', 'Shap'],
     }]));
+    fs.mkdirSync(path.join(root, 'assets', 'hero'));
+    [
+      'league-480.avif',
+      'league-768.avif',
+      'league-1280.avif',
+      'league-1920.avif',
+      'league-480.webp',
+      'league-768.webp',
+      'league-1280.webp',
+      'league-1920.webp',
+      'league-480.jpg',
+      'league-768.jpg',
+      'league-1280.jpg',
+      'league-1920.jpg',
+    ].forEach(file => fs.writeFileSync(path.join(root, 'assets', 'hero', file), 'image\n'));
 
     const result = runNode(path.join(__dirname, '..', 'scripts', 'validate_assets.cjs'), [], root);
     assert.equal(result.status, 0);

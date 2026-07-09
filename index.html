@@ -6,7 +6,40 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 </head>
 <body>
-  <header>
+  <header class="site-hero">
+    <picture class="site-hero-media" aria-hidden="true">
+      <source
+        type="image/avif"
+        srcset="assets/hero/league-480.avif 480w,
+                assets/hero/league-768.avif 768w,
+                assets/hero/league-1280.avif 1280w,
+                assets/hero/league-1920.avif 1920w"
+        sizes="100vw"
+      />
+      <source
+        type="image/webp"
+        srcset="assets/hero/league-480.webp 480w,
+                assets/hero/league-768.webp 768w,
+                assets/hero/league-1280.webp 1280w,
+                assets/hero/league-1920.webp 1920w"
+        sizes="100vw"
+      />
+      <img
+        src="assets/hero/league-1280.jpg"
+        srcset="assets/hero/league-480.jpg 480w,
+                assets/hero/league-768.jpg 768w,
+                assets/hero/league-1280.jpg 1280w,
+                assets/hero/league-1920.jpg 1920w"
+        sizes="100vw"
+        alt=""
+        decoding="async"
+        fetchpriority="high"
+      />
+    </picture>
+    <div class="site-hero-overlay"></div>
+    <div class="site-hero-toolbar">
+      <div id="themeControls"></div>
+    </div>
     <div class="inner">
       <h1>The Darling</h1>
       <h2>The Darling</h2>

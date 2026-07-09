@@ -11,6 +11,9 @@ import {
   setTeamAndKeepOpponents,
   snapshotFacetState,
 } from '../js/app-state-controller.js';
+import {
+  seasonModeFromLabels,
+} from '../js/history-controller.js';
 
 test('snapshotFacetState clones selections and universe arrays', () => {
   const state = snapshotFacetState({
@@ -155,4 +158,12 @@ test('setTeamAndKeepOpponents changes team without clearing selections', () => {
   assert.equal(next.selectedTeam, 'Shap');
   assert.deepEqual([...next.selectedOpponents], ['Shap']);
   assert.deepEqual(next.universe.opponents, ['Joe', 'Joe']);
+});
+
+test('seasonModeFromLabels prioritizes Saunders rounds over generic postseason labels', () => {
+  assert.equal(seasonModeFromLabels(['Regular']), 'regular');
+  assert.equal(seasonModeFromLabels(['Championship']), 'postseason');
+  assert.equal(seasonModeFromLabels(['Saunders Wild Card']), 'saunders');
+  assert.equal(seasonModeFromLabels(['Saunders Semi Final']), 'saunders');
+  assert.equal(seasonModeFromLabels(['Saunders Final']), 'saunders');
 });

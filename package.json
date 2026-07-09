@@ -7,6 +7,7 @@
   },
   "scripts": {
     "build:charts": "node scripts/build_chart_vendor.cjs",
+    "build:hero": "node scripts/generate_hero_images.cjs",
     "predev": "node scripts/sync_public_assets.cjs",
     "dev": "vite --host 127.0.0.1",
     "prebuild": "node scripts/sync_public_assets.cjs",
@@ -17,7 +18,7 @@
     "test:assets": "node scripts/validate_assets.cjs",
     "test:charts": "node --test test/charting-*.test.js",
     "test:data": "npm run test:assets && node test/data.test.js",
-    "test:scripts": "node --test test/scripts.test.cjs test/app-state-controller.test.js && python3 -m unittest discover -s test -p 'test_*.py'",
+    "test:scripts": "node --test test/scripts.test.cjs test/app-state-controller.test.js test/theme-system.test.cjs && python3 -m unittest discover -s test -p 'test_*.py'",
     "test:hygiene": "node scripts/check_repo_hygiene.cjs",
     "test:unit": "npm run build:charts && npm run typecheck && npm run test:hygiene && npm run test:data && npm run test:charts && npm run test:scripts",
     "test:coverage": "npm run test:assets && node scripts/run_tests_with_coverage.cjs && npm run test:ui && node scripts/v8_coverage_report.cjs && node scripts/check_coverage.cjs",
@@ -27,10 +28,12 @@
     "test:ci": "npm run test:unit && VITE_BASE_PATH=/Darling/ npm run build && npm run test:ui:preview"
   },
   "devDependencies": {
+    "@jridgewell/trace-mapping": "^0.3.31",
     "@playwright/test": "^1.60.0",
     "@preact/preset-vite": "^2.10.5",
     "@types/node": "^26.1.1",
     "esbuild": "^0.28.1",
+    "sharp": "^0.35.3",
     "typescript": "^7.0.2",
     "vite": "^8.1.4"
   },

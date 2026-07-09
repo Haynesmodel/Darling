@@ -35,7 +35,7 @@ jobs:
         run: npm run test:unit
 
       - name: Run production build
-        run: npm run build
+        run: VITE_BASE_PATH=/Darling/ npm run build
 
   ui:
     name: ui
@@ -61,8 +61,11 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
-      - name: Run UI test suite
-        run: npm run test:ui
+      - name: Build production site
+        run: VITE_BASE_PATH=/Darling/ npm run build
+
+      - name: Run UI test suite against built output
+        run: npm run test:ui:preview
 
       - name: Upload Playwright report
         if: failure()

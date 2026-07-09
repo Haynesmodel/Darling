@@ -1,11 +1,12 @@
 /* Generate a basic line coverage summary from V8 coverage output. */
+const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const { fileURLToPath } = require('node:url');
 
 const defaultRoot = process.cwd();
-const sourceDirs = new Set(['js', 'scripts']);
-const sourceExts = new Set(['.js', '.cjs']);
+const sourceDirs = new Set(['js', 'scripts', 'src']);
+const sourceExts = new Set(['.js', '.cjs', '.ts', '.tsx']);
 const ignoredSourceSegments = [
   path.join('js', 'charting', 'vendor'),
 ];
@@ -32,6 +33,19 @@ function offsetToLine(starts, offset){
 }
 
 function collectSourceFiles(root = defaultRoot) {
+  const gitFiles = spawnSync('git', ['ls-files', ...sourceDirs], {
+    cwd: root,
+    encoding: 'utf8',
+  });
+  if (gitFiles.status === 0) {
+    return gitFiles.stdout
+      .split('\n')
+      .filter(Boolean)
+      .map(relPath => path.join(root, relPath))
+      .filter(filePath => fs.existsSync(filePath) && isSourceFile(root, filePath))
+      .sort();
+  }
+
   const files = [];
   const ignoredDirs = new Set(['test', 'node_modules', '__pycache__', 'venv', '.venv', 'env', 'ENV']);
   for (const dir of sourceDirs) {
@@ -52,7 +66,7 @@ function collectSourceFiles(root = defaultRoot) {
           stack.push(absPath);
           continue;
         }
-        if (sourceExts.has(path.extname(entry.name))) {
+        if (!entry.name.endsWith('.d.ts') && sourceExts.has(path.extname(entry.name))) {
           files.push(absPath);
         }
       }
@@ -68,6 +82,7 @@ function isSourceFile(root, filePath) {
   if (ignoredSourceFiles.has(relPath)) return false;
   if (relPath.split(path.sep).includes('test')) return false;
   if (!sourceDirs.has(relPath.split(path.sep)[0])) return false;
+  if (filePath.endsWith('.d.ts')) return false;
   return sourceExts.has(path.extname(filePath));
 }
 

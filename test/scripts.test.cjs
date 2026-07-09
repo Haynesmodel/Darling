@@ -7,7 +7,7 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
 const { checkRepoHygiene } = require('../scripts/check_repo_hygiene.cjs');
-const { createStaticServer, resolvePath } = require('../scripts/serve_static.cjs');
+const { createStaticServer, normalizeBasePath, resolvePath } = require('../scripts/serve_static.cjs');
 const { syncPublicAssets } = require('../scripts/sync_public_assets.cjs');
 const { buildCoverageSummary } = require('../scripts/v8_coverage_report.cjs');
 
@@ -97,6 +97,16 @@ test('static server resolves only files under the configured root', async () => 
   });
 });
 
+test('static server resolves project-page base paths', async () => {
+  await withTempRepo((root) => {
+    assert.equal(normalizeBasePath('Darling'), '/Darling/');
+    assert.equal(normalizeBasePath('/'), '/');
+    assert.equal(resolvePath(root, '/Darling/', '/Darling/'), path.join(root, 'index.html'));
+    assert.equal(resolvePath(root, '/Darling/js/app.js?cache=1', '/Darling/'), path.join(root, 'js', 'app.js'));
+    assert.equal(resolvePath(root, '/js/app.js', '/Darling/'), null);
+  });
+});
+
 test('static server serves files, no-store headers, and rejects unsupported methods', async () => {
   await withTempRepo(async (root) => {
     const server = createStaticServer(root);
@@ -125,12 +135,36 @@ test('static server serves files, no-store headers, and rejects unsupported meth
   });
 });
 
+test('static server redirects root into the configured base path', async () => {
+  await withTempRepo(async (root) => {
+    const server = createStaticServer(root, { basePath: '/Darling/' });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const { port } = server.address();
+
+    try {
+      const redirect = await request(port, '/?tab=current', { redirect: 'manual' });
+      assert.equal(redirect.status, 302);
+      assert.equal(redirect.headers.get('location'), '/Darling/?tab=current');
+
+      const app = await request(port, '/Darling/js/app.js');
+      assert.equal(app.status, 200);
+      assert.match(app.headers.get('content-type'), /text\/javascript/);
+
+      const outsideBase = await request(port, '/js/app.js');
+      assert.equal(outsideBase.status, 404);
+    } finally {
+      await new Promise(resolve => server.close(resolve));
+    }
+  });
+});
+
 test('asset sync copies source assets into Vite public assets', async () => {
   await withTempRepo((root) => {
     fs.mkdirSync(path.join(root, 'assets'));
     fs.writeFileSync(path.join(root, 'assets', 'H2H.json'), '[{"season":2025}]\n');
     fs.writeFileSync(path.join(root, 'assets', 'H2H.updated.json'), '[]\n');
     fs.writeFileSync(path.join(root, 'assets', 'H2H_backup.json'), '[]\n');
+    fs.writeFileSync(path.join(root, 'assets', 'LeaguePic.jpeg'), 'image\n');
     fs.writeFileSync(path.join(root, 'assets', '.DS_Store'), 'local\n');
     fs.mkdirSync(path.join(root, 'public', 'assets'), { recursive: true });
     fs.writeFileSync(path.join(root, 'public', 'assets', 'stale.json'), '{}\n');
@@ -141,6 +175,7 @@ test('asset sync copies source assets into Vite public assets', async () => {
     assert.equal(fs.readFileSync(path.join(root, 'public', 'assets', 'H2H.json'), 'utf8'), '[{"season":2025}]\n');
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'H2H.updated.json')), false);
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'H2H_backup.json')), false);
+    assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'LeaguePic.jpeg')), false);
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', '.DS_Store')), false);
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'stale.json')), false);
   });
@@ -150,22 +185,26 @@ test('coverage reporter measures source files and excludes tests', async () => {
   await withTempRepo((root) => {
     fs.mkdirSync(path.join(root, 'coverage', '.v8'), { recursive: true });
     fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'src'), { recursive: true });
     fs.mkdirSync(path.join(root, 'test'), { recursive: true });
 
     const appSource = 'const app = true;\nexport { app };\n';
+    const srcSource = "import '../js/app.js';\n";
     const entryPointPath = path.join(root, 'js', 'app.js');
     const scriptSource = 'module.exports = { ok: true };\n';
     const testSource = 'assert.equal(1, 1);\n';
     const appPath = path.join(root, 'js', 'helpers.js');
     const scriptPath = path.join(root, 'scripts', 'tool.cjs');
+    const srcPath = path.join(root, 'src', 'main.tsx');
     const testPath = path.join(root, 'test', 'data.test.js');
     fs.writeFileSync(entryPointPath, "import './helpers.js';\n");
     fs.writeFileSync(appPath, appSource);
     fs.writeFileSync(scriptPath, scriptSource);
+    fs.writeFileSync(srcPath, srcSource);
     fs.writeFileSync(testPath, testSource);
 
     fs.writeFileSync(path.join(root, 'coverage', '.v8', 'coverage.json'), JSON.stringify({
-      result: [appPath, scriptPath, testPath].map(filePath => ({
+      result: [appPath, scriptPath, srcPath, testPath].map(filePath => ({
         url: pathToFileURL(filePath).href,
         functions: [{
           ranges: [{ startOffset: 0, endOffset: fs.readFileSync(filePath, 'utf8').length, count: 1 }],
@@ -181,7 +220,7 @@ test('coverage reporter measures source files and excludes tests', async () => {
     const summary = buildCoverageSummary(root);
     assert.deepEqual(
       summary.files.map(file => file.file).sort(),
-      ['js/app.js', 'js/helpers.js', 'scripts/tool.cjs']
+      ['js/app.js', 'js/helpers.js', 'scripts/tool.cjs', 'src/main.tsx']
     );
     assert.equal(summary.total.lines.pct, 100);
   });

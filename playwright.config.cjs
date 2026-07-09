@@ -1,16 +1,27 @@
 const { defineConfig } = require('@playwright/test');
 
+const usePreview = process.env.PLAYWRIGHT_SERVER === 'preview';
+const host = 'http://127.0.0.1:8000';
+const basePath = process.env.PLAYWRIGHT_BASE_PATH || '/Darling/';
+const strippedBasePath = basePath.replace(/^\/+|\/+$/g, '');
+const normalizedBasePath = strippedBasePath ? `/${strippedBasePath}/` : '/';
+const baseURL = usePreview ? `${host}${normalizedBasePath}` : host;
+const serverURL = usePreview ? `${host}${normalizedBasePath}` : `${host}/index.html`;
+const serverCommand = usePreview
+  ? `node scripts/serve_static.cjs 8000 127.0.0.1 dist ${normalizedBasePath}`
+  : 'npm run dev -- --port 8000';
+
 module.exports = defineConfig({
   testDir: './test/ui',
   timeout: 30_000,
   retries: process.env.CI ? 1 : 0,
   use: {
-    baseURL: 'http://127.0.0.1:8000',
+    baseURL,
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'npm run dev -- --port 8000',
-    url: 'http://127.0.0.1:8000/index.html',
+    command: serverCommand,
+    url: serverURL,
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
   },

@@ -21,11 +21,12 @@ This repository is maintained as a static site backed by JSON assets. The annual
    - `npm run test:scripts`
    - `npm run build`
    - `npm run test:ui`
+   - `npm run test:ui:preview`
    - `npm run test:ci`
 
 ## Working Notes
 
 - Keep generated draft data reviewable. Do not replace `assets/SeasonSummary.json` automatically.
-- Keep `assets/` as the source of truth. Vite dev/build copies it into ignored `public/assets/`.
+- Keep `assets/` as the source of truth. Vite dev/build copies deployable JSON into ignored `public/assets/`.
 - The Sleeper workflow needs the `SLEEPER_LEAGUE_ID` repository secret.
 - `docs/plans/README.md` is the index for the implementation plans.

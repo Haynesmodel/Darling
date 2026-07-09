@@ -1,4 +1,4 @@
-/* Copy generated source assets into Vite's public directory before dev/build. */
+/* Copy generated JSON source assets into Vite's public directory before dev/build. */
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -7,6 +7,9 @@ function isDeployableAsset(sourceDir, filePath) {
   if (!relPath) return true;
 
   const name = path.basename(filePath);
+  const ext = path.extname(filePath);
+
+  if (ext && ext !== '.json') return false;
   if (name.startsWith('.')) return false;
   if (/\.updated\.json$/.test(name)) return false;
   if (/\.draft\.json$/.test(name)) return false;

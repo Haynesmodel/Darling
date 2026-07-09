@@ -14,12 +14,32 @@ const types = {
   '.svg': 'image/svg+xml; charset=utf-8',
 };
 
-function resolvePath(root, urlPath) {
+function normalizeBasePath(basePath = '/') {
+  const stripped = String(basePath || '/').replace(/^\/+|\/+$/g, '');
+  return stripped ? `/${stripped}/` : '/';
+}
+
+function splitUrlPath(urlPath) {
   let decoded;
   try {
     decoded = decodeURIComponent(urlPath.split('?')[0]);
   } catch {
     return null;
+  }
+
+  return decoded;
+}
+
+function resolvePath(root, urlPath, basePath = '/') {
+  let decoded = splitUrlPath(urlPath);
+  if (decoded === null) return null;
+
+  const normalizedBasePath = normalizeBasePath(basePath);
+  if (normalizedBasePath !== '/') {
+    const baseWithoutTrailingSlash = normalizedBasePath.slice(0, -1);
+    if (decoded === baseWithoutTrailingSlash) decoded = normalizedBasePath;
+    if (!decoded.startsWith(normalizedBasePath)) return null;
+    decoded = `/${decoded.slice(normalizedBasePath.length)}`;
   }
 
   const requestPath = decoded === '/' ? 'index.html' : decoded.replace(/^\/+/, '');
@@ -34,7 +54,9 @@ function resolvePath(root, urlPath) {
   return filePath;
 }
 
-function createStaticServer(root = process.cwd()) {
+function createStaticServer(root = process.cwd(), opts = {}) {
+  const basePath = normalizeBasePath(opts.basePath || '/');
+
   return http.createServer((req, res) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.writeHead(405);
@@ -42,10 +64,18 @@ function createStaticServer(root = process.cwd()) {
       return;
     }
 
-    const filePath = resolvePath(root, req.url || '/');
+    const decodedPath = splitUrlPath(req.url || '/');
+    if (basePath !== '/' && decodedPath === '/') {
+      const query = (req.url || '').includes('?') ? `?${(req.url || '').split('?').slice(1).join('?')}` : '';
+      res.writeHead(302, { location: `${basePath}${query}` });
+      res.end();
+      return;
+    }
+
+    const filePath = resolvePath(root, req.url || '/', basePath);
     if (!filePath) {
-      res.writeHead(403);
-      res.end('Forbidden');
+      res.writeHead(404);
+      res.end('Not Found');
       return;
     }
 
@@ -67,24 +97,26 @@ function createStaticServer(root = process.cwd()) {
   });
 }
 
-function startServer({ root = process.cwd(), port = 8000, host = '127.0.0.1' } = {}) {
-  const server = createStaticServer(root);
+function startServer({ root = process.cwd(), port = 8000, host = '127.0.0.1', basePath = '/' } = {}) {
+  const server = createStaticServer(root, { basePath });
   server.listen(port, host, () => {
-    console.log(`Serving ${root} at http://${host}:${port}/`);
+    console.log(`Serving ${root} at http://${host}:${port}${normalizeBasePath(basePath)}`);
   });
   return server;
 }
 
 if (require.main === module) {
   startServer({
-    root: process.cwd(),
+    root: process.argv[4] ? path.resolve(process.argv[4]) : process.cwd(),
     port: Number(process.argv[2] || 8000),
     host: process.argv[3] || '127.0.0.1',
+    basePath: process.argv[5] || '/',
   });
 }
 
 module.exports = {
   createStaticServer,
+  normalizeBasePath,
   resolvePath,
   startServer,
   types,

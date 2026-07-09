@@ -8,7 +8,6 @@ esbuild.build({
   stdin: {
     contents: [
       "export * as Plot from '@observablehq/plot';",
-      "export * as d3 from 'd3';",
     ].join('\n'),
     resolveDir: repoRoot,
     sourcefile: 'charting-vendor-entry.js',
@@ -19,7 +18,8 @@ esbuild.build({
   format: 'esm',
   platform: 'browser',
   target: ['es2020'],
-  legalComments: 'none',
+  minify: true,
+  legalComments: 'linked',
   logLevel: 'info',
 }).catch(error => {
   console.error(error);

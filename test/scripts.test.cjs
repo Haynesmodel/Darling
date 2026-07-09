@@ -67,6 +67,19 @@ test('repo hygiene reports classic scripts and CommonJS helper regressions', asy
   });
 });
 
+test('repo hygiene scans nested source modules and ignores generated vendor code', async () => {
+  await withTempRepo((root) => {
+    fs.mkdirSync(path.join(root, 'js', 'charting'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'js', 'charting', 'chart-data.js'), 'const bad = require("bad");\n');
+    fs.writeFileSync(path.join(root, 'js', 'charting', 'vendor', 'charting-vendor.js'), 'module.exports = {};\n');
+
+    const failures = checkRepoHygiene(root);
+    assert.ok(failures.some(failure => failure.includes('js/charting/chart-data.js must not use CommonJS require')));
+    assert.ok(failures.some(failure => failure.includes('js/charting/chart-data.js must export named helper APIs')));
+    assert.ok(!failures.some(failure => failure.includes('js/charting/vendor/charting-vendor.js')));
+  });
+});
+
 test('static server resolves only files under the configured root', async () => {
   await withTempRepo((root) => {
     assert.equal(resolvePath(root, '/'), path.join(root, 'index.html'));

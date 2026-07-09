@@ -109,6 +109,8 @@ function rivalryLeadPlotOptions(rows = [], view = {}, opts = {}) {
 
 function currentSeedMovementPlotOptions(rows = [], opts = {}) {
   const color = row => row.isSelected ? CHART_COLORS.violet : row.seedChange > 0 ? CHART_COLORS.green : row.seedChange < 0 ? CHART_COLORS.red : CHART_COLORS.slate;
+  const positiveLabelRows = rows.filter(row => row.seedChange >= 0);
+  const negativeLabelRows = rows.filter(row => row.seedChange < 0);
   return {
     ...basePlotOptions({ ...opts, height: opts.height || 240, marginLeft: 112, marginBottom: 36 }),
     ariaLabel: 'Live seed movement by owner',
@@ -119,7 +121,8 @@ function currentSeedMovementPlotOptions(rows = [], opts = {}) {
     marks: [
       { type: 'ruleX', data: [0], stroke: CHART_COLORS.slate },
       { type: 'barX', data: rows, x: 'seedChange', y: 'owner', fill: color, title: 'title', className: 'current-seed-movement-bar' },
-      { type: 'text', data: rows, x: 'seedChange', y: 'owner', text: row => `${row.projectedSeed}`, dx: row => row.seedChange >= 0 ? 10 : -10 },
+      { type: 'text', data: positiveLabelRows, x: 'seedChange', y: 'owner', text: row => `${row.projectedSeed}`, dx: 10, className: 'current-seed-movement-label' },
+      { type: 'text', data: negativeLabelRows, x: 'seedChange', y: 'owner', text: row => `${row.projectedSeed}`, dx: -10, className: 'current-seed-movement-label' },
     ],
   };
 }

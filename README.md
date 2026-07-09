@@ -11,7 +11,7 @@ Run locally:
 - open `http://127.0.0.1:8000/`
 
 Test locally:
-- `npm run build:charts` regenerates the committed Observable Plot/D3 vendor bundle used by the static site.
+- `npm run build:charts` regenerates the committed Observable Plot vendor bundle used by the static site.
 - `npm test` runs the data and helper tests.
 - `npm run test:assets` validates `assets/H2H.json`, `assets/SeasonSummary.json`, `assets/Rivalries.json`, and optional `assets/CurrentSeason.json`.
 - `npm run test:charts` runs the chart data/spec smoke tests.

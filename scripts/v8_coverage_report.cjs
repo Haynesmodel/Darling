@@ -9,6 +9,9 @@ const sourceExts = new Set(['.js', '.cjs']);
 const ignoredSourceSegments = [
   path.join('js', 'charting', 'vendor'),
 ];
+const ignoredSourceFiles = new Set([
+  path.join('scripts', 'build_chart_vendor.cjs'),
+]);
 
 function getLineStarts(src){
   const starts = [0];
@@ -43,6 +46,7 @@ function collectSourceFiles(root = defaultRoot) {
         if (ignoredSourceSegments.some(segment => relPath === segment || relPath.startsWith(segment + path.sep))) {
           continue;
         }
+        if (!entry.isDirectory() && ignoredSourceFiles.has(relPath)) continue;
         if (entry.isDirectory()) {
           if (ignoredDirs.has(entry.name)) continue;
           stack.push(absPath);
@@ -61,6 +65,7 @@ function isSourceFile(root, filePath) {
   const relPath = path.relative(root, filePath);
   if (relPath.startsWith('..' + path.sep) || path.isAbsolute(relPath)) return false;
   if (ignoredSourceSegments.some(segment => relPath === segment || relPath.startsWith(segment + path.sep))) return false;
+  if (ignoredSourceFiles.has(relPath)) return false;
   if (relPath.split(path.sep).includes('test')) return false;
   if (!sourceDirs.has(relPath.split(path.sep)[0])) return false;
   return sourceExts.has(path.extname(filePath));

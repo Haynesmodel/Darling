@@ -1,4 +1,6 @@
 node_modules/
+dist/
+public/assets/
 coverage/
 playwright-report/
 test-results/

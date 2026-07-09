@@ -34,6 +34,9 @@ jobs:
       - name: Run unit/data test suite
         run: npm run test:unit
 
+      - name: Run production build
+        run: npm run build
+
   ui:
     name: ui
     runs-on: ubuntu-latest

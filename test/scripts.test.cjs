@@ -8,6 +8,7 @@ const { pathToFileURL } = require('node:url');
 
 const { checkRepoHygiene } = require('../scripts/check_repo_hygiene.cjs');
 const { createStaticServer, resolvePath } = require('../scripts/serve_static.cjs');
+const { syncPublicAssets } = require('../scripts/sync_public_assets.cjs');
 const { buildCoverageSummary } = require('../scripts/v8_coverage_report.cjs');
 
 async function withTempRepo(fn) {
@@ -54,6 +55,14 @@ test('repo hygiene accepts the expected ESM app shape', async () => {
   });
 });
 
+test('repo hygiene accepts the Vite TypeScript app entrypoint', async () => {
+  await withTempRepo((root) => {
+    fs.writeFileSync(path.join(root, 'index.html'), '<script type="module" src="/src/main.tsx"></script>');
+
+    assert.deepEqual(checkRepoHygiene(root), []);
+  });
+});
+
 test('repo hygiene reports classic scripts and CommonJS helper regressions', async () => {
   await withTempRepo((root) => {
     fs.writeFileSync(path.join(root, 'index.html'), '<script src="js/helpers.js"></script>');
@@ -61,7 +70,7 @@ test('repo hygiene reports classic scripts and CommonJS helper regressions', asy
 
     const failures = checkRepoHygiene(root);
     assert.ok(failures.some(failure => failure.includes('classic JavaScript scripts')));
-    assert.ok(failures.some(failure => failure.includes('single module entrypoint')));
+    assert.ok(failures.some(failure => failure.includes('module entrypoint')));
     assert.ok(failures.some(failure => failure.includes('CommonJS exports')));
     assert.ok(failures.some(failure => failure.includes('named helper APIs')));
   });
@@ -113,6 +122,27 @@ test('static server serves files, no-store headers, and rejects unsupported meth
     } finally {
       await new Promise(resolve => server.close(resolve));
     }
+  });
+});
+
+test('asset sync copies source assets into Vite public assets', async () => {
+  await withTempRepo((root) => {
+    fs.mkdirSync(path.join(root, 'assets'));
+    fs.writeFileSync(path.join(root, 'assets', 'H2H.json'), '[{"season":2025}]\n');
+    fs.writeFileSync(path.join(root, 'assets', 'H2H.updated.json'), '[]\n');
+    fs.writeFileSync(path.join(root, 'assets', 'H2H_backup.json'), '[]\n');
+    fs.writeFileSync(path.join(root, 'assets', '.DS_Store'), 'local\n');
+    fs.mkdirSync(path.join(root, 'public', 'assets'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'public', 'assets', 'stale.json'), '{}\n');
+
+    const targetDir = syncPublicAssets(root);
+
+    assert.equal(targetDir, path.join(root, 'public', 'assets'));
+    assert.equal(fs.readFileSync(path.join(root, 'public', 'assets', 'H2H.json'), 'utf8'), '[{"season":2025}]\n');
+    assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'H2H.updated.json')), false);
+    assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'H2H_backup.json')), false);
+    assert.equal(fs.existsSync(path.join(root, 'public', 'assets', '.DS_Store')), false);
+    assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'stale.json')), false);
   });
 });
 

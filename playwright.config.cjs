@@ -9,7 +9,7 @@ module.exports = defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'node scripts/serve_static.cjs 8000 127.0.0.1',
+    command: 'npm run dev -- --port 8000',
     url: 'http://127.0.0.1:8000/index.html',
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,

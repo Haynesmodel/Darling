@@ -42,8 +42,12 @@ function checkRepoHygiene(root = process.cwd()) {
   if (classicScripts.length) {
     fail(`index.html must not load classic JavaScript scripts: ${classicScripts.map(match => match[0]).join(', ')}`);
   }
-  if (!/<script\s+type=["']module["']\s+src=["']js\/app\.js["']><\/script>/.test(indexHtml)) {
-    fail('index.html must load js/app.js as the single module entrypoint.');
+  const moduleScripts = [...indexHtml.matchAll(/<script\b(?=[^>]*\btype=["']module["'])(?=[^>]*\bsrc=["']([^"']+)["'])[^>]*><\/script>/g)];
+  const allowedEntrypoints = new Set(['js/app.js', '/src/main.tsx', 'src/main.tsx']);
+  if (moduleScripts.length !== 1) {
+    fail(`index.html must load exactly one module entrypoint; found ${moduleScripts.length}.`);
+  } else if (!allowedEntrypoints.has(moduleScripts[0][1])) {
+    fail('index.html must load js/app.js or /src/main.tsx as the single module entrypoint.');
   }
   if (!fs.existsSync(path.join(root, 'js/charting/vendor/charting-vendor.js'))) {
     fail('js/charting/vendor/charting-vendor.js must exist. Run npm run build:charts after changing chart dependencies.');

@@ -9,6 +9,7 @@ const { pathToFileURL } = require('node:url');
 const { checkRepoHygiene } = require('../scripts/check_repo_hygiene.cjs');
 const { createStaticServer, normalizeBasePath, resolvePath } = require('../scripts/serve_static.cjs');
 const { syncPublicAssets } = require('../scripts/sync_public_assets.cjs');
+const { validateHeroAssets } = require('../scripts/validate_assets.cjs');
 const { buildCoverageSummary } = require('../scripts/v8_coverage_report.cjs');
 
 async function withTempRepo(fn) {
@@ -165,6 +166,9 @@ test('asset sync copies source assets into Vite public assets', async () => {
     fs.writeFileSync(path.join(root, 'assets', 'H2H.updated.json'), '[]\n');
     fs.writeFileSync(path.join(root, 'assets', 'H2H_backup.json'), '[]\n');
     fs.writeFileSync(path.join(root, 'assets', 'LeaguePic.jpeg'), 'image\n');
+    fs.mkdirSync(path.join(root, 'assets', 'hero'));
+    fs.writeFileSync(path.join(root, 'assets', 'hero', 'league-1280.jpg'), 'image\n');
+    fs.writeFileSync(path.join(root, 'assets', 'hero', 'source.txt'), 'skip\n');
     fs.writeFileSync(path.join(root, 'assets', '.DS_Store'), 'local\n');
     fs.mkdirSync(path.join(root, 'public', 'assets'), { recursive: true });
     fs.writeFileSync(path.join(root, 'public', 'assets', 'stale.json'), '{}\n');
@@ -176,9 +180,39 @@ test('asset sync copies source assets into Vite public assets', async () => {
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'H2H.updated.json')), false);
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'H2H_backup.json')), false);
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'LeaguePic.jpeg')), false);
+    assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'hero', 'league-1280.jpg')), true);
+    assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'hero', 'source.txt')), false);
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', '.DS_Store')), false);
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'stale.json')), false);
   });
+});
+
+test('hero asset validation checks required responsive variants', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-hero-assets-'));
+  try {
+    const heroDir = path.join(root, 'assets', 'hero');
+    fs.mkdirSync(heroDir, { recursive: true });
+    const files = [
+      'league-480.avif',
+      'league-768.avif',
+      'league-1280.avif',
+      'league-1920.avif',
+      'league-480.webp',
+      'league-768.webp',
+      'league-1280.webp',
+      'league-1920.webp',
+      'league-480.jpg',
+      'league-768.jpg',
+      'league-1280.jpg',
+      'league-1920.jpg',
+    ];
+    files.forEach(file => fs.writeFileSync(path.join(heroDir, file), 'image\n'));
+    assert.doesNotThrow(() => validateHeroAssets(root));
+    fs.rmSync(path.join(heroDir, 'league-480.avif'));
+    assert.throws(() => validateHeroAssets(root), /Missing hero image/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('coverage reporter measures source files and excludes tests', async () => {
@@ -315,6 +349,21 @@ test('asset validation cli accepts the canonical bundle', async () => {
       name: 'Founders',
       members: ['Joe', 'Shap'],
     }]));
+    fs.mkdirSync(path.join(root, 'assets', 'hero'));
+    [
+      'league-480.avif',
+      'league-768.avif',
+      'league-1280.avif',
+      'league-1920.avif',
+      'league-480.webp',
+      'league-768.webp',
+      'league-1280.webp',
+      'league-1920.webp',
+      'league-480.jpg',
+      'league-768.jpg',
+      'league-1280.jpg',
+      'league-1920.jpg',
+    ].forEach(file => fs.writeFileSync(path.join(root, 'assets', 'hero', file), 'image\n'));
 
     const result = runNode(path.join(__dirname, '..', 'scripts', 'validate_assets.cjs'), [], root);
     assert.equal(result.status, 0);

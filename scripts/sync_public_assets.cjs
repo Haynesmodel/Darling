@@ -8,6 +8,11 @@ function isDeployableAsset(sourceDir, filePath) {
 
   const name = path.basename(filePath);
   const ext = path.extname(filePath);
+  const normalizedRel = relPath.split(path.sep).join('/');
+
+  if (normalizedRel.startsWith('hero/')) {
+    return ['.avif', '.webp', '.jpg', '.jpeg'].includes(ext.toLowerCase());
+  }
 
   if (ext && ext !== '.json') return false;
   if (name.startsWith('.')) return false;

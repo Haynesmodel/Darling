@@ -8,6 +8,38 @@ function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
+const HERO_REQUIREMENTS = [
+  { file: 'league-480.avif', maxBytes: 90 * 1024 },
+  { file: 'league-768.avif', maxBytes: 150 * 1024 },
+  { file: 'league-1280.avif', maxBytes: 300 * 1024 },
+  { file: 'league-1920.avif', maxBytes: 520 * 1024 },
+  { file: 'league-480.webp', maxBytes: 110 * 1024 },
+  { file: 'league-768.webp', maxBytes: 180 * 1024 },
+  { file: 'league-1280.webp', maxBytes: 360 * 1024 },
+  { file: 'league-1920.webp', maxBytes: 640 * 1024 },
+  { file: 'league-480.jpg', maxBytes: 130 * 1024 },
+  { file: 'league-768.jpg', maxBytes: 220 * 1024 },
+  { file: 'league-1280.jpg', maxBytes: 430 * 1024 },
+  { file: 'league-1920.jpg', maxBytes: 760 * 1024 },
+];
+
+function validateHeroAssets(root = process.cwd()) {
+  const heroDir = path.join(root, 'assets', 'hero');
+  if (!fs.existsSync(heroDir)) {
+    throw new Error(`Missing hero asset directory: ${path.relative(root, heroDir)}`);
+  }
+  for (const requirement of HERO_REQUIREMENTS) {
+    const filePath = path.join(heroDir, requirement.file);
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`Missing hero image: ${path.relative(root, filePath)}`);
+    }
+    const size = fs.statSync(filePath).size;
+    if (size > requirement.maxBytes) {
+      throw new Error(`Hero image too large: ${path.relative(root, filePath)} ${(size / 1024).toFixed(1)} KB > ${(requirement.maxBytes / 1024).toFixed(0)} KB`);
+    }
+  }
+}
+
 function resolveAssetPaths(argv) {
   const defaults = [
     path.join(process.cwd(), 'assets', 'H2H.json'),
@@ -39,11 +71,19 @@ async function main() {
       currentSeason: currentSeasonPath,
     },
   });
+  validateHeroAssets();
 
   console.log('Asset validation passed.');
 }
 
-main().catch((err) => {
-  console.error(err.message || err);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(err.message || err);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  HERO_REQUIREMENTS,
+  validateHeroAssets,
+};

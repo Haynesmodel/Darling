@@ -27,6 +27,8 @@ This repository is maintained as a static site backed by JSON assets. The annual
 ## Working Notes
 
 - Keep generated draft data reviewable. Do not replace `assets/SeasonSummary.json` automatically.
-- Keep `assets/` as the source of truth. Vite dev/build copies deployable JSON into ignored `public/assets/`.
+- Keep `assets/` as the source of truth. Vite dev/build copies deployable JSON and `assets/hero` media into ignored `public/assets/`.
+- Add or update owner palettes in `src/theme/owner-themes.ts` when the league membership changes.
+- Regenerate the responsive hero set with `npm run build:hero` after changing the league identity photo, then run `npm run test:assets`.
 - The Sleeper workflow needs the `SLEEPER_LEAGUE_ID` repository secret.
 - `docs/plans/README.md` is the index for the implementation plans.

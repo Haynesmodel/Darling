@@ -737,7 +737,10 @@ function buildLiveMovement({
   const baselineGames = Number.isFinite(selectedWeek)
     ? regularGames.filter(game => isCompletedGame(game) && (numeric(weekForGame(game)) || 0) < selectedWeek)
     : completedRegularSeasonGames({ leagueGames, currentSeason, season, rules: resolvedRules });
-  const baselineStandings = standingsFromGames({ games: baselineGames, leagueGames, seasonSummaries, currentSeason, season });
+  const baselineStandings = sortAndRankStandings(
+    standingsFromGames({ games: baselineGames, leagueGames, seasonSummaries, currentSeason, season }),
+    resolvedRules
+  );
   const projected = projectedStandings || buildProjectedStandings({
     leagueGames,
     seasonSummaries,

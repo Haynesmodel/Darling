@@ -163,6 +163,7 @@ test('current season tab renders matchups and links to head to head context', as
   await page.waitForLoadState('networkidle');
   await expect(page.locator('#currentProjectionSelect')).toHaveValue('current');
   await expect(page.locator('#currentProjectedStandings')).toContainText('Completed games only');
+  await expect(page.locator('#currentLiveMovement')).toContainText('Completed games only');
 
   await page.locator('#currentProjectionSelect').selectOption('ifScoresHold');
   await expect(page.locator('#currentProjectionSelect')).toHaveValue('ifScoresHold');

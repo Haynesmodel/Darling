@@ -512,10 +512,11 @@ function currentLiveMovementHtml(view) {
   const command = view.commandCenter;
   const rows = (command?.liveMovement || []).slice(0, 6);
   if (!rows.length) return '<h3>Live Movement</h3><p class="muted">No movement available.</p>';
+  const projectionLabel = command.selectedProjectionMode === 'current' ? 'Completed games only' : 'If scores hold';
   return `
     <div class="section-heading current-section-heading">
       <h3>Live Movement</h3>
-      <div class="muted">Baseline: previous completed week &middot; If scores hold</div>
+      <div class="muted">Baseline: previous completed week &middot; ${escapeHtml(projectionLabel)}</div>
     </div>
     <div class="current-movement-grid">
       ${rows.map(row => `

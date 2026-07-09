@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   buildCommandCenterModel,
+  buildLiveMovement,
   buildOwnerWeekNeeds,
   buildProjectedStandings,
   buildScenarioStandings,
@@ -71,6 +72,32 @@ test('scenario standings honor configured non-default tiebreakers', () => {
   assert.equal(standings[0].pointsAgainst, 70);
   assert.equal(standings.find(row => row.owner === 'Nuss').rank, 1);
   assert.equal(standings.find(row => row.owner === 'Joe').rank, 2);
+});
+
+test('live movement baseline honors configured non-default tiebreakers', () => {
+  const customTiebreakerSeason = {
+    season: 2026,
+    current_week: 2,
+    playoff_rules: {
+      regular_season_max_week: 2,
+      playoff_slots: 2,
+      bye_slots: 1,
+      standings_tiebreakers: ['win_pct', 'points_against', 'owner'],
+      saunders_slots: 2,
+    },
+    games: [
+      { season: 2026, date: '2026-09-06', teamA: 'Joe', teamB: 'Shap', scoreA: 100, scoreB: 90, week: 1, type: 'Regular', round: '', status: 'final' },
+      { season: 2026, date: '2026-09-06', teamA: 'Nuss', teamB: 'Joel', scoreA: 80, scoreB: 70, week: 1, type: 'Regular', round: '', status: 'final' },
+    ],
+  };
+
+  const movement = buildLiveMovement({ currentSeason: customTiebreakerSeason, season: 2026, week: 2 });
+  const nuss = movement.find(row => row.owner === 'Nuss');
+  const joe = movement.find(row => row.owner === 'Joe');
+  assert.equal(nuss.previousSeed, 1);
+  assert.equal(nuss.projectedSeed, 1);
+  assert.equal(nuss.seedChange, 0);
+  assert.equal(joe.previousSeed, 2);
 });
 
 test('command model builds playoff picture, needs, movement, and owner focus', () => {

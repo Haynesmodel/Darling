@@ -139,6 +139,8 @@ test('current-season view standings use configured tiebreakers and projection mo
   assert.equal(view.standings[0].owner, 'Nuss');
   assert.equal(view.commandCenter.selectedProjectionMode, 'current');
   assert.match(currentProjectedStandingsHtml(view), /Completed games only/);
+  assert.match(currentLiveMovementHtml(view), /Completed games only/);
+  assert.doesNotMatch(currentLiveMovementHtml(view), /If scores hold/);
 });
 
 test('current-season renderer escapes team names in matchup html', () => {

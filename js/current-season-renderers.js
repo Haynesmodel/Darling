@@ -2,13 +2,16 @@ import { byDateDesc, sidesForTeam } from './core-helpers.js';
 import { escapeHtml, nfmt } from './render-helpers.js';
 import {
   buildCurrentMatchupRows,
-  buildCurrentSeasonStandings,
   buildTeamCurrentSeasonSnapshot,
   currentSeasonSourceGames,
   isCompletedGame,
   latestCompletedWeek,
   latestLeagueSeason,
 } from './current-season-data.js';
+import {
+  buildCommandCenterModel,
+  matchupKey,
+} from './current-season-command-data.js';
 
 function docOrDefault(doc) {
   return doc || (typeof document !== 'undefined' ? document : null);
@@ -29,6 +32,62 @@ function scoreline(a, b) {
 
 function scoreFmt(value) {
   return value === null || value === undefined || value === '' ? '-' : nfmt(value, 2);
+}
+
+function signedSeedChange(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n === 0) return 'No change';
+  return n > 0 ? `Up ${n}` : `Down ${Math.abs(n)}`;
+}
+
+function gapText(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '-';
+  if (n === 0) return 'At line';
+  if (n < 0) return `${nfmt(Math.abs(n), 1)} lead`;
+  return `${nfmt(n, 1)} back`;
+}
+
+function statusClass(status) {
+  const tone = status?.tone || 'neutral';
+  return `current-status-badge current-status-${tone}`;
+}
+
+function yesNo(value) {
+  return value ? 'yes' : 'no';
+}
+
+function methodologyNoteHtml(command) {
+  const meta = command?.methodology;
+  if (!meta) return '';
+  const generated = meta.generatedAt ? formattedGeneratedAt(meta.generatedAt) : 'Unavailable';
+  const source = `${meta.sourceMode || 'unknown'}${meta.updateMode ? `/${meta.updateMode}` : ''}`;
+  return `
+    <div class="current-methodology-note">
+      <strong>Method:</strong> ${escapeHtml(meta.modelType || command.modelLabel || 'Deterministic path model')}
+      &middot; Generated ${escapeHtml(generated)}
+      &middot; Source ${escapeHtml(source)}
+      &middot; Live scores ${escapeHtml(yesNo(meta.containsLiveScores))}
+      &middot; Projected scores ${escapeHtml(yesNo(meta.containsProjectedScores))}
+      ${meta.cutoffDate ? `&middot; Cutoff ${escapeHtml(meta.cutoffDate)}` : ''}
+    </div>
+  `;
+}
+
+function selectedViewAllows(view, section) {
+  const mode = view.commandCenter?.selectedView || 'command';
+  if (mode === 'command') return true;
+  if (mode === 'matchups') return section === 'matchups';
+  if (mode === 'standings') return ['playoff', 'movement', 'projection', 'standings'].includes(section);
+  if (mode === 'owners') return ['needs', 'snapshots'].includes(section);
+  return true;
+}
+
+function setSectionHtml(el, html) {
+  if (!el) return;
+  const content = String(html || '');
+  el.innerHTML = content;
+  el.hidden = content.trim() === '';
 }
 
 function formattedGeneratedAt(value) {
@@ -108,21 +167,52 @@ function buildCurrentSeasonViewModel({
   currentSeason = null,
   season = latestLeagueSeason(leagueGames, seasonSummaries, currentSeason),
   week = latestCompletedWeek(leagueGames, season, currentSeason),
+  selectedOwner = '',
+  selectedView = 'command',
+  projectionMode = 'ifScoresHold',
 } = {}) {
   const selectedSeason = Number.isFinite(Number(season)) ? Number(season) : latestLeagueSeason(leagueGames, seasonSummaries, currentSeason);
   const selectedWeek = Number.isFinite(Number(week)) ? Number(week) : latestCompletedWeek(leagueGames, selectedSeason, currentSeason);
   const seasonGames = currentSeasonSourceGames(leagueGames, selectedSeason, currentSeason);
   const regularGames = seasonGames.filter(game => String(game.type || '').trim() === 'Regular');
   const completedRegularGames = regularGames.filter(isCompletedGame);
-  const standings = buildCurrentSeasonStandings({ leagueGames, seasonSummaries, currentSeason, season: selectedSeason });
   const matchups = buildCurrentMatchupRows({ leagueGames, seasonSummaries, currentSeason, season: selectedSeason, week: selectedWeek });
+  const commandCenter = buildCommandCenterModel({
+    leagueGames,
+    seasonSummaries,
+    currentSeason,
+    season: selectedSeason,
+    week: selectedWeek,
+    selectedOwner,
+    selectedView,
+    projectionMode,
+  });
+  const standings = commandCenter.playoffPicture.map(row => ({
+    owner: row.owner,
+    season: row.season,
+    games: row.games,
+    wins: row.wins,
+    losses: row.losses,
+    ties: row.ties,
+    pointsFor: row.pointsFor,
+    pointsAgainst: row.pointsAgainst,
+    differential: row.differential,
+    pct: row.pct,
+    streak: row.streak,
+    record: row.record,
+    rank: row.currentSeed,
+  }));
   const teams = standings.map(row => row.owner);
+  const standingsByOwner = new Map(standings.map(row => [row.owner, row]));
   const snapshots = teams.map(owner => buildTeamCurrentSeasonSnapshot({
     owner,
     leagueGames,
-      seasonSummaries,
+    seasonSummaries,
     currentSeason,
     season: selectedSeason,
+  })).map(snapshot => ({
+    ...snapshot,
+    standing: standingsByOwner.get(snapshot.owner) || snapshot.standing,
   }));
 
   return {
@@ -135,6 +225,7 @@ function buildCurrentSeasonViewModel({
     snapshots,
     source: currentSeason && Number(currentSeason.season) === Number(selectedSeason) ? 'sleeper' : 'history',
     generatedAt: currentSeason && Number(currentSeason.season) === Number(selectedSeason) ? currentSeason.generated_at || null : null,
+    commandCenter,
     summary: {
       teamCount: teams.length,
       gameCount: regularGames.length,
@@ -151,40 +242,51 @@ function currentSeasonHeroHtml(view) {
   const closeGame = close?.game;
   const generatedAt = formattedGeneratedAt(view.generatedAt);
   const weekLabel = viewWeekLabel(view);
+  const command = view.commandCenter;
+  const commandHigh = command?.summary?.highestLiveScore;
+  const commandClose = command?.summary?.closestLiveMatchup;
+  const biggestMover = command?.summary?.biggestMover;
+  const selectedNeed = command?.selectedOwner
+    ? command.ownerNeeds.find(row => row.owner === command.selectedOwner)
+    : null;
   return `
     <div class="current-hero-inner">
       <div>
         <div class="card-kicker">Current Season</div>
         <h3>${escapeHtml(view.season || 'Season')}</h3>
-        <p class="muted">${escapeHtml(weekLabel)} context from ${escapeHtml(view.summary.completedGameCount)} completed regular-season games.</p>
+        <p class="muted">${escapeHtml(weekLabel)} command center from ${escapeHtml(command?.summary?.completedGameCount ?? view.summary.completedGameCount)} completed regular-season games.</p>
         ${view.source === 'sleeper' ? `<p class="muted">Source: Sleeper${generatedAt ? ` &middot; Last updated ${escapeHtml(generatedAt)}` : ''}</p>` : '<p class="muted">Source: historical JSON fallback</p>'}
+        ${command ? `<p class="muted">Model: ${escapeHtml(command.modelLabel)} &middot; ${escapeHtml(command.rules.playoff_slots)} playoff spots, ${escapeHtml(command.rules.bye_slots)} byes</p>` : ''}
+        ${selectedNeed ? `<p class="current-owner-focus-note"><strong>${escapeHtml(selectedNeed.owner)}:</strong> ${escapeHtml(selectedNeed.mainNeed)}</p>` : ''}
       </div>
       <div class="current-hero-stats">
         <div class="stat">
-          <div class="label">Teams</div>
-          <div class="value">${escapeHtml(view.summary.teamCount)}</div>
+          <div class="label">Alive</div>
+          <div class="value">${escapeHtml(command?.summary?.aliveCount ?? view.summary.teamCount)}</div>
+          <div class="sub">${escapeHtml(command?.summary?.clinchedCount ?? 0)} clinched &middot; ${escapeHtml(command?.summary?.eliminatedCount ?? 0)} eliminated</div>
         </div>
         <div class="stat">
           <div class="label">High Score</div>
-          <div class="value">${high ? `${escapeHtml(high.owner)} ${nfmt(high.score, 2)}` : '-'}</div>
-          ${high ? `<div class="sub">${escapeHtml(high.game.date)}</div>` : ''}
+          <div class="value">${commandHigh ? `${escapeHtml(commandHigh.owner)} ${nfmt(commandHigh.score, 2)}` : high ? `${escapeHtml(high.owner)} ${nfmt(high.score, 2)}` : '-'}</div>
+          ${commandHigh ? `<div class="sub">${escapeHtml(commandHigh.game.teamA)} vs ${escapeHtml(commandHigh.game.teamB)}</div>` : high ? `<div class="sub">${escapeHtml(high.game.date)}</div>` : ''}
         </div>
         <div class="stat">
-          <div class="label">Closest Game</div>
-          <div class="value">${close ? nfmt(close.margin, 2) : '-'}</div>
-          ${closeGame ? `<div class="sub">${escapeHtml(closeGame.teamA)} vs ${escapeHtml(closeGame.teamB)}</div>` : ''}
+          <div class="label">${biggestMover ? 'Biggest Mover' : 'Closest Game'}</div>
+          <div class="value">${biggestMover ? `${escapeHtml(biggestMover.owner)} ${escapeHtml(signedSeedChange(biggestMover.seedChange))}` : commandClose ? nfmt(commandClose.margin, 2) : close ? nfmt(close.margin, 2) : '-'}</div>
+          ${biggestMover ? `<div class="sub">Projected seed ${escapeHtml(biggestMover.projectedSeed)}</div>` : commandClose ? `<div class="sub">${escapeHtml(commandClose.game.teamA)} vs ${escapeHtml(commandClose.game.teamB)}</div>` : closeGame ? `<div class="sub">${escapeHtml(closeGame.teamA)} vs ${escapeHtml(closeGame.teamB)}</div>` : ''}
         </div>
       </div>
     </div>
   `;
 }
 
-function currentMatchupCardHtml(row) {
+function currentMatchupCardHtml(row, view = {}) {
   const allTime = row.allTimeContext?.allTime;
   const current = row.currentSeasonContext?.selected;
   const last = row.lastMeeting;
   const winner = matchupWinner(row);
   const status = String(row.status || '').trim();
+  const impact = view.commandCenter?.matchupImpacts?.get(matchupKey(row));
   return `
     <article class="current-matchup-card">
       <div class="current-matchup-top">
@@ -199,6 +301,18 @@ function currentMatchupCardHtml(row) {
         <span class="${resultClass(row.resultB)}">${escapeHtml(row.teamB)} ${scoreFmt(row.scoreB)}</span>
       </div>
       <div class="current-context-grid">
+        ${impact ? `
+        <div>
+          <div class="label">Swing</div>
+          <div class="value">${escapeHtml(impact.label)}</div>
+          <div class="sub">${impact.leader ? `If held: ${escapeHtml(impact.leader)}` : 'Pre-game path'}</div>
+        </div>
+        <div>
+          <div class="label">Seeds</div>
+          <div class="value">${escapeHtml(row.teamA)} ${escapeHtml(impact.teamASeed || '-')} / ${escapeHtml(row.teamB)} ${escapeHtml(impact.teamBSeed || '-')}</div>
+          <div class="sub">If held: ${escapeHtml(impact.teamAProjectedSeed || '-')} / ${escapeHtml(impact.teamBProjectedSeed || '-')}</div>
+        </div>
+        ` : ''}
         <div>
           <div class="label">Winner</div>
           <div class="value">${escapeHtml(winner)}</div>
@@ -227,6 +341,7 @@ function currentMatchupCardHtml(row) {
 }
 
 function currentMatchupsHtml(view) {
+  if (!selectedViewAllows(view, 'matchups')) return '';
   if (!view.matchups.length) {
     return '<div class="card"><h3>This Week</h3><p class="muted">No current-season matchups found for this week.</p></div>';
   }
@@ -237,12 +352,13 @@ function currentMatchupsHtml(view) {
       <div class="muted">${escapeHtml(view.matchups.length)} games</div>
     </div>
     <div class="current-matchup-grid">
-      ${view.matchups.map(currentMatchupCardHtml).join('')}
+      ${view.matchups.map(row => currentMatchupCardHtml(row, view)).join('')}
     </div>
   `;
 }
 
 function currentStandingsHtml(view) {
+  if (!selectedViewAllows(view, 'standings')) return '';
   if (!view.standings.length) {
     return '<h3>Standings</h3><p class="muted">No standings available.</p>';
   }
@@ -287,6 +403,7 @@ function describeExtreme(row) {
 }
 
 function currentTeamSnapshotsHtml(view) {
+  if (!selectedViewAllows(view, 'snapshots')) return '';
   if (!view.snapshots.length) {
     return '<div class="card"><h3>Team Snapshots</h3><p class="muted">No team snapshots available.</p></div>';
   }
@@ -324,6 +441,135 @@ function currentTeamSnapshotsHtml(view) {
   `;
 }
 
+function currentPlayoffPictureHtml(view) {
+  if (!selectedViewAllows(view, 'playoff')) return '';
+  const command = view.commandCenter;
+  const rows = command?.playoffPicture || [];
+  if (!rows.length) return '<h3>Playoff Picture</h3><p class="muted">No playoff picture available.</p>';
+  const saundersLine = command.summary?.saundersLineSeed || null;
+  return `
+    <div class="section-heading current-section-heading">
+      <h3>Playoff Picture</h3>
+      <div class="muted">Top ${escapeHtml(command.rules.playoff_slots)} make playoffs &middot; Top ${escapeHtml(command.rules.bye_slots)} earn byes${saundersLine ? ` &middot; Saunders danger starts at seed ${escapeHtml(saundersLine)}` : ''}</div>
+    </div>
+    <div class="current-playoff-grid">
+      ${rows.map(row => `
+        ${row.currentSeed === command.rules.bye_slots + 1 ? '<div class="current-cutline">Bye line</div>' : ''}
+        ${row.currentSeed === command.rules.playoff_slots + 1 ? '<div class="current-cutline current-cutline-playoff">Playoff line</div>' : ''}
+        ${saundersLine && row.currentSeed === saundersLine ? '<div class="current-cutline current-cutline-saunders">Saunders danger line</div>' : ''}
+        <div class="current-seed-row${row.owner === command.selectedOwner ? ' current-owner-focus' : ''}">
+          <div class="current-seed-badge">${escapeHtml(row.currentSeed)}</div>
+          <div class="current-seed-main">
+            <strong>${escapeHtml(row.owner)}</strong>
+            <span>${escapeHtml(row.record)} &middot; PF rank ${escapeHtml(row.pointsForRank || '-')}</span>
+          </div>
+          <div class="current-seed-meta">
+            <span class="${statusClass(row.status)}">${escapeHtml(row.status.label)}</span>
+            <span>${escapeHtml(gapText(row.playoffGap))}</span>
+            <span>Projected ${escapeHtml(row.projectedSeed)} (${escapeHtml(signedSeedChange(row.seedChange))})</span>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    ${saundersLine ? `<p class="current-boundary-note">The Saunders boundary marks the bottom ${escapeHtml(command.rules.saunders_slots)} seed${command.rules.saunders_slots === 1 ? '' : 's'} entering the consolation danger zone.</p>` : ''}
+  `;
+}
+
+function currentWeekNeedsHtml(view) {
+  if (!selectedViewAllows(view, 'needs')) return '';
+  const command = view.commandCenter;
+  const rows = command?.ownerNeeds || [];
+  if (!rows.length) return '<div class="card"><h3>This Week Needs</h3><p class="muted">No owner paths available.</p></div>';
+  return `
+    <div class="section-heading current-section-heading">
+      <h3>This Week Needs</h3>
+      <div class="muted">${command.selectedOwner ? `${escapeHtml(command.selectedOwner)} focus` : 'All owners'}</div>
+    </div>
+    <div class="current-needs-grid">
+      ${rows.map(row => `
+        <article class="card current-needs-card${row.isSelected ? ' current-owner-focus' : ''}">
+          <div class="current-needs-head">
+            <div>
+              <div class="card-kicker">Seed ${escapeHtml(row.currentSeed)}${row.opponent ? ` &middot; vs ${escapeHtml(row.opponent)}` : ''}</div>
+              <div class="card-kicker">Goal: ${escapeHtml(row.goalLabel || 'Seeding')}</div>
+              <h3>${escapeHtml(row.owner)}</h3>
+            </div>
+            <span class="${statusClass(row.status)}">${escapeHtml(row.status.label)}</span>
+          </div>
+          <p><strong>${escapeHtml(row.mainNeed)}</strong></p>
+          <p class="muted">${escapeHtml(row.helpNeeded)}</p>
+          <p class="muted">${escapeHtml(row.pathSummary)}</p>
+          <p class="current-risk-text">${escapeHtml(row.riskSummary)}</p>
+          ${row.saundersSummary && row.saundersSummary !== row.riskSummary ? `<p class="current-saunders-text">${escapeHtml(row.saundersSummary)}</p>` : ''}
+        </article>
+      `).join('')}
+    </div>
+  `;
+}
+
+function currentLiveMovementHtml(view) {
+  if (!selectedViewAllows(view, 'movement')) return '';
+  const command = view.commandCenter;
+  const rows = (command?.liveMovement || []).slice(0, 6);
+  if (!rows.length) return '<h3>Live Movement</h3><p class="muted">No movement available.</p>';
+  const projectionLabel = command.selectedProjectionMode === 'current' ? 'Completed games only' : 'If scores hold';
+  return `
+    <div class="section-heading current-section-heading">
+      <h3>Live Movement</h3>
+      <div class="muted">Baseline: previous completed week &middot; ${escapeHtml(projectionLabel)}</div>
+    </div>
+    <div class="current-movement-grid">
+      ${rows.map(row => `
+        <div class="current-movement-card${row.owner === command.selectedOwner ? ' current-owner-focus' : ''}">
+          <div class="current-movement-owner">${escapeHtml(row.owner)}</div>
+          <div class="current-movement-value ${row.seedChange > 0 ? 'current-movement-up' : row.seedChange < 0 ? 'current-movement-down' : ''}">${escapeHtml(signedSeedChange(row.seedChange))}</div>
+          <div class="muted">Seed ${escapeHtml(row.previousSeed)} to ${escapeHtml(row.projectedSeed)} &middot; ${escapeHtml(row.projectedRecord)}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function currentProjectedStandingsHtml(view) {
+  if (!selectedViewAllows(view, 'projection')) return '';
+  const command = view.commandCenter;
+  const rows = command?.projectedStandings || [];
+  if (!rows.length) return '<h3>Projected Standings</h3><p class="muted">No projection available.</p>';
+  return `
+    <div class="section-heading current-section-heading">
+      <h3>Projected Standings</h3>
+      <div class="muted">${escapeHtml(command.modelLabel)} &middot; ${command.selectedProjectionMode === 'ifScoresHold' ? 'If scores hold' : 'Completed games only'}</div>
+    </div>
+    ${methodologyNoteHtml(command)}
+    <div class="table-wrap current-projection-table">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Projected Seed</th>
+            <th scope="col">Owner</th>
+            <th scope="col">Projected Record</th>
+            <th scope="col">Current Record</th>
+            <th scope="col">Projected PF</th>
+            <th scope="col">Seed Change</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(row => `
+            <tr class="${row.owner === command.selectedOwner ? 'current-owner-focus-row' : ''}">
+              <td>${escapeHtml(row.projectedRank)}</td>
+              <td>${escapeHtml(row.owner)}</td>
+              <td>${escapeHtml(row.projectedRecord)}</td>
+              <td>${escapeHtml(row.currentRecord)}</td>
+              <td>${nfmt(row.projectedPointsFor, 2)}</td>
+              <td>${escapeHtml(signedSeedChange(row.seedChange))}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
 function renderCurrentSeasonHero(view, opts = {}) {
   const root = docOrDefault(opts.doc);
   const el = root?.getElementById('currentHero');
@@ -333,28 +579,47 @@ function renderCurrentSeasonHero(view, opts = {}) {
 function renderCurrentMatchups(view, opts = {}) {
   const root = docOrDefault(opts.doc);
   const el = root?.getElementById('currentMatchups');
-  if (el) el.innerHTML = currentMatchupsHtml(view);
+  setSectionHtml(el, currentMatchupsHtml(view));
 }
 
 function renderCurrentStandings(view, opts = {}) {
   const root = docOrDefault(opts.doc);
   const el = root?.getElementById('currentStandings');
-  if (el) el.innerHTML = currentStandingsHtml(view);
+  setSectionHtml(el, currentStandingsHtml(view));
 }
 
 function renderCurrentTeamSnapshots(view, opts = {}) {
   const root = docOrDefault(opts.doc);
   const el = root?.getElementById('currentTeamSnapshots');
-  if (el) el.innerHTML = currentTeamSnapshotsHtml(view);
+  setSectionHtml(el, currentTeamSnapshotsHtml(view));
+}
+
+function renderCurrentCommandCenter(view, opts = {}) {
+  const root = docOrDefault(opts.doc);
+  const sections = [
+    ['currentPlayoffPicture', currentPlayoffPictureHtml],
+    ['currentWeekNeeds', currentWeekNeedsHtml],
+    ['currentLiveMovement', currentLiveMovementHtml],
+    ['currentProjectedStandings', currentProjectedStandingsHtml],
+  ];
+  for (const [id, htmlFn] of sections) {
+    const el = root?.getElementById(id);
+    setSectionHtml(el, htmlFn(view));
+  }
 }
 
 export {
   buildCurrentSeasonViewModel,
+  currentLiveMovementHtml,
   currentMatchupsHtml,
+  currentPlayoffPictureHtml,
+  currentProjectedStandingsHtml,
   currentSeasonHeroHtml,
   currentStandingsHtml,
   currentTeamSnapshotsHtml,
+  currentWeekNeedsHtml,
   formattedGeneratedAt,
+  renderCurrentCommandCenter,
   renderCurrentMatchups,
   renderCurrentSeasonHero,
   renderCurrentStandings,

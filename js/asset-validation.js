@@ -239,8 +239,58 @@ function validateCurrentSeason(data, path = 'assets/CurrentSeason.json') {
   }
   if (!isRequiredFiniteNumber(data.season)) throw new Error(`${path} missing numeric season`);
   if (!Array.isArray(data.games)) throw new Error(`${path} missing games`);
+  validateCurrentSeasonRules(data.playoff_rules, `${path} playoff_rules`);
+  validateCurrentSeasonUpdateContext(data.update_context, `${path} update_context`);
   validateRows(data.games, 'CurrentSeasonGame', `${path} games`);
   return data;
+}
+
+function validatePositiveNumber(value, path, field) {
+  if (value === undefined) return;
+  if (!isRequiredFiniteNumber(value) || Number(value) <= 0) {
+    throw new Error(`${path} invalid ${field}`);
+  }
+}
+
+function validateCurrentSeasonRules(rules, path = 'assets/CurrentSeason.json playoff_rules') {
+  if (rules === undefined || rules === null) return null;
+  if (!rules || typeof rules !== 'object' || Array.isArray(rules)) {
+    throw new Error(`${path} must be an object`);
+  }
+  validatePositiveNumber(rules.regular_season_max_week, path, 'regular_season_max_week');
+  validatePositiveNumber(rules.playoff_slots, path, 'playoff_slots');
+  validatePositiveNumber(rules.bye_slots, path, 'bye_slots');
+  validatePositiveNumber(rules.saunders_slots, path, 'saunders_slots');
+  if (rules.standings_tiebreakers !== undefined) {
+    if (!Array.isArray(rules.standings_tiebreakers) || rules.standings_tiebreakers.length === 0) {
+      throw new Error(`${path} invalid standings_tiebreakers`);
+    }
+    rules.standings_tiebreakers.forEach((value, idx) => {
+      if (typeof value !== 'string' || value.trim() === '') {
+        throw new Error(`${path} invalid standings_tiebreakers[${idx}]`);
+      }
+    });
+  }
+  return rules;
+}
+
+function validateCurrentSeasonUpdateContext(context, path = 'assets/CurrentSeason.json update_context') {
+  if (context === undefined || context === null) return null;
+  if (!context || typeof context !== 'object' || Array.isArray(context)) {
+    throw new Error(`${path} must be an object`);
+  }
+  if (context.mode !== undefined && (typeof context.mode !== 'string' || context.mode.trim() === '')) {
+    throw new Error(`${path} invalid mode`);
+  }
+  if (context.cutoff_date !== undefined && (typeof context.cutoff_date !== 'string' || !DATE_RE.test(context.cutoff_date))) {
+    throw new Error(`${path} invalid cutoff_date`);
+  }
+  for (const field of ['contains_live_scores', 'contains_projected_scores']) {
+    if (context[field] !== undefined && typeof context[field] !== 'boolean') {
+      throw new Error(`${path} invalid ${field}`);
+    }
+  }
+  return context;
 }
 
 function validateLeagueAssetBundle(opts = {}) {
@@ -281,6 +331,8 @@ export {
   normalizeSeasonSummary,
   normalizeRivalry,
   validateCurrentSeason,
+  validateCurrentSeasonRules,
+  validateCurrentSeasonUpdateContext,
   validateLeagueGames,
   validateSeasonSummaries,
   validateRivalries,

@@ -130,7 +130,16 @@ test('current season tab renders matchups and links to head to head context', as
   await expect(page.locator('#tabCurrentBtn')).toHaveClass(/active/);
   await expect(page.locator('#currentSeasonSelect')).toBeVisible();
   await expect(page.locator('#currentWeekSelect')).toBeVisible();
+  await expect(page.locator('#currentViewSelect')).toBeVisible();
+  await expect(page.locator('#currentOwnerSelect')).toBeVisible();
+  await expect(page.locator('#currentProjectionSelect')).toBeVisible();
+  await expect(page.locator('#currentProjectionSelect')).toHaveValue('ifScoresHold');
   await expect(page.locator('#currentHero')).toContainText('Current Season');
+  await expect(page.locator('#currentPlayoffPicture')).toContainText('Playoff Picture');
+  await expect(page.locator('#currentPlayoffPicture')).toContainText('Saunders danger');
+  await expect(page.locator('#currentWeekNeeds')).toContainText('This Week Needs');
+  await expect(page.locator('#currentProjectedStandings')).toContainText('Projected Standings');
+  await expect(page.locator('#currentProjectedStandings')).toContainText('Method:');
 
   const matchupCount = await page.locator('.current-matchup-card').count();
   const standingsRows = await page.locator('#currentStandings tbody tr').count();
@@ -143,6 +152,51 @@ test('current season tab renders matchups and links to head to head context', as
   await expect(page.locator('#tabRivalryBtn')).toHaveClass(/active/);
   await expect(page.locator('#rivalryHeadline')).toBeVisible();
   await expect(page.locator('#rivalryScopeSelect')).toHaveValue('allTime');
+
+  await page.goto('/?tab=current&currentOwner=Joe&currentView=owners');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('#currentOwnerSelect')).toHaveValue('Joe');
+  await expect(page.locator('#currentViewSelect')).toHaveValue('owners');
+  await expect(page.locator('#currentWeekNeeds .current-owner-focus')).toContainText('Joe');
+
+  await page.goto('/?tab=current&currentProjection=current');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('#currentProjectionSelect')).toHaveValue('current');
+  await expect(page.locator('#currentProjectedStandings')).toContainText('Completed games only');
+  await expect(page.locator('#currentLiveMovement')).toContainText('Completed games only');
+
+  await page.locator('#currentProjectionSelect').selectOption('ifScoresHold');
+  await expect(page.locator('#currentProjectionSelect')).toHaveValue('ifScoresHold');
+  await expect(page).not.toHaveURL(/currentProjection=current/);
+});
+
+test('current season view modes hide filtered section containers', async ({ page }) => {
+  await page.goto('/?tab=current&currentView=matchups');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('#currentMatchups')).toBeVisible();
+  await expect(page.locator('#currentPlayoffPicture')).toBeHidden();
+  await expect(page.locator('#currentWeekNeeds')).toBeHidden();
+  await expect(page.locator('#currentProjectedStandings')).toBeHidden();
+  await expect(page.locator('#currentStandings')).toBeHidden();
+
+  await page.goto('/?tab=current&currentView=standings');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('#currentPlayoffPicture')).toBeVisible();
+  await expect(page.locator('#currentLiveMovement')).toBeVisible();
+  await expect(page.locator('#currentProjectedStandings')).toBeVisible();
+  await expect(page.locator('#currentStandings')).toBeVisible();
+  await expect(page.locator('#currentMatchups')).toBeHidden();
+  await expect(page.locator('#currentTeamSnapshots')).toBeHidden();
+
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto('/?tab=current&currentView=owners&currentOwner=Joe');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('#currentWeekNeeds')).toBeVisible();
+  await expect(page.locator('#currentTeamSnapshots')).toBeVisible();
+  await expect(page.locator('#currentPlayoffPicture')).toBeHidden();
+  await expect(page.locator('#currentProjectedStandings')).toBeHidden();
+  const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+  expect(hasHorizontalOverflow).toBe(false);
 });
 
 test('rivalry tab renders a tale of the tape and saved rivalry selection', async ({ page }) => {

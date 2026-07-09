@@ -303,6 +303,19 @@ test('asset validation accepts optional fields and null-handling cases', () => {
   assert.doesNotThrow(() => validateCurrentSeason({
     source: 'sleeper',
     season: 2026,
+    playoff_rules: {
+      regular_season_max_week: 14,
+      playoff_slots: 6,
+      bye_slots: 2,
+      standings_tiebreakers: ['win_pct', 'points_for', 'points_differential', 'owner'],
+      saunders_slots: 6,
+    },
+    update_context: {
+      mode: 'manual',
+      cutoff_date: '2026-07-08',
+      contains_live_scores: false,
+      contains_projected_scores: false,
+    },
     games: [{
       season: 2026,
       date: '2026-09-06',
@@ -316,6 +329,24 @@ test('asset validation accepts optional fields and null-handling cases', () => {
       status: 'scheduled',
     }],
   }));
+  assert.throws(
+    () => validateCurrentSeason({
+      source: 'sleeper',
+      season: 2026,
+      playoff_rules: { playoff_slots: 0 },
+      games: [],
+    }),
+    /playoff_rules invalid playoff_slots/
+  );
+  assert.throws(
+    () => validateCurrentSeason({
+      source: 'sleeper',
+      season: 2026,
+      update_context: { contains_live_scores: 'yes' },
+      games: [],
+    }),
+    /update_context invalid contains_live_scores/
+  );
 });
 
 test('loadLeagueAssets defaults to globalThis.fetch', async () => {

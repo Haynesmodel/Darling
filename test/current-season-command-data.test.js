@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   buildCommandCenterModel,
+  buildOwnerWeekNeeds,
   buildProjectedStandings,
   buildScenarioStandings,
   classifyOwnerStatus,
@@ -86,9 +87,79 @@ test('command model builds playoff picture, needs, movement, and owner focus', (
   assert.equal(model.playoffPicture.length, 4);
   assert.ok(model.ownerNeeds.some(row => row.owner === 'Shap' && row.isSelected));
   assert.match(model.ownerNeeds.find(row => row.owner === 'Shap').pathSummary, /Joel/);
+  assert.equal(model.ownerNeeds.find(row => row.owner === 'Shap').status.key, 'bubble');
+  assert.equal(model.ownerNeeds.find(row => row.owner === 'Shap').goalLabel, 'Saunders danger');
   assert.ok(model.liveMovement.some(row => row.owner === 'Shap'));
   assert.equal(model.summary.highestLiveScore.owner, 'Joe');
   assert.equal(model.matchupImpacts.size, 2);
+});
+
+test('owner needs describe exact bubble help and Saunders danger paths', () => {
+  const finalWeekSeason = {
+    season: 2026,
+    current_week: 2,
+    playoff_rules: {
+      regular_season_max_week: 3,
+      playoff_slots: 2,
+      bye_slots: 1,
+      standings_tiebreakers: ['win_pct', 'points_for', 'points_differential', 'owner'],
+      saunders_slots: 2,
+    },
+    games: [
+      { season: 2026, date: '2026-09-06', teamA: 'Joe', teamB: 'Nuss', scoreA: 140, scoreB: 90, week: 1, type: 'Regular', round: '', status: 'final' },
+      { season: 2026, date: '2026-09-06', teamA: 'Joel', teamB: 'Shap', scoreA: 130, scoreB: 120, week: 1, type: 'Regular', round: '', status: 'final' },
+      { season: 2026, date: '2026-09-13', teamA: 'Nuss', teamB: 'Joel', scoreA: 100, scoreB: 50, week: 2, type: 'Regular', round: '', status: 'live' },
+      { season: 2026, date: '2026-09-13', teamA: 'Shap', teamB: 'Joe', scoreA: 80, scoreB: 75, week: 2, type: 'Regular', round: '', status: 'live' },
+    ],
+  };
+
+  const needs = buildOwnerWeekNeeds({ currentSeason: finalWeekSeason, season: 2026, week: 2 });
+  const nuss = needs.find(row => row.owner === 'Nuss');
+  assert.equal(nuss.goalLabel, 'Saunders danger');
+  assert.match(nuss.mainNeed, /Clinches a playoff spot if Nuss beats Joel and Shap loses to Joe\./);
+  assert.match(nuss.riskSummary, /Saunders danger/);
+});
+
+test('owner needs cover clinched, eliminated, and no-matchup owners', () => {
+  const completeSeason = {
+    season: 2026,
+    current_week: 1,
+    playoff_rules: {
+      regular_season_max_week: 1,
+      playoff_slots: 2,
+      bye_slots: 1,
+      standings_tiebreakers: ['win_pct', 'points_for', 'points_differential', 'owner'],
+      saunders_slots: 2,
+    },
+    games: [
+      { season: 2026, date: '2026-09-06', teamA: 'Joe', teamB: 'Shap', scoreA: 120, scoreB: 100, week: 1, type: 'Regular', round: '', status: 'final' },
+      { season: 2026, date: '2026-09-06', teamA: 'Joel', teamB: 'Nuss', scoreA: 110, scoreB: 90, week: 1, type: 'Regular', round: '', status: 'final' },
+    ],
+  };
+  const completeNeeds = buildOwnerWeekNeeds({ currentSeason: completeSeason, season: 2026, week: 1 });
+  assert.equal(completeNeeds.find(row => row.owner === 'Joe').status.key, 'clinched-bye');
+  assert.match(completeNeeds.find(row => row.owner === 'Joe').mainNeed, /Already clinched a bye/);
+  assert.equal(completeNeeds.find(row => row.owner === 'Nuss').status.key, 'eliminated');
+
+  const noMatchupSeason = {
+    season: 2026,
+    current_week: 2,
+    playoff_rules: {
+      regular_season_max_week: 3,
+      playoff_slots: 2,
+      bye_slots: 1,
+      standings_tiebreakers: ['win_pct', 'points_for', 'points_differential', 'owner'],
+      saunders_slots: 2,
+    },
+    games: [
+      { season: 2026, date: '2026-09-06', teamA: 'Joe', teamB: 'Nuss', scoreA: 120, scoreB: 90, week: 1, type: 'Regular', round: '', status: 'final' },
+      { season: 2026, date: '2026-09-06', teamA: 'Joel', teamB: 'Shap', scoreA: 110, scoreB: 100, week: 1, type: 'Regular', round: '', status: 'final' },
+      { season: 2026, date: '2026-09-13', teamA: 'Joe', teamB: 'Shap', scoreA: null, scoreB: null, week: 2, type: 'Regular', round: '', status: 'scheduled' },
+      { season: 2026, date: '2026-09-20', teamA: 'Nuss', teamB: 'Joel', scoreA: null, scoreB: null, week: 3, type: 'Regular', round: '', status: 'scheduled' },
+    ],
+  };
+  const noMatchupNeeds = buildOwnerWeekNeeds({ currentSeason: noMatchupSeason, season: 2026, week: 2 });
+  assert.match(noMatchupNeeds.find(row => row.owner === 'Nuss').mainNeed, /No regular-season matchup found for Week 2/);
 });
 
 test('remaining schedule and completed-season statuses are deterministic', () => {

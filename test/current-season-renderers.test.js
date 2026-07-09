@@ -45,6 +45,13 @@ test('current-season renderer emits hero, matchup, standings, and snapshot html'
     currentSeason: {
       season: 2025,
       generated_at: '2026-06-17T14:22:30Z',
+      source: 'sleeper',
+      update_context: {
+        mode: 'manual',
+        cutoff_date: '2026-06-17',
+        contains_live_scores: false,
+        contains_projected_scores: false,
+      },
       playoff_rules: {
         regular_season_max_week: 2,
         playoff_slots: 2,
@@ -69,10 +76,13 @@ test('current-season renderer emits hero, matchup, standings, and snapshot html'
   const playoff = currentPlayoffPictureHtml(view);
   assert.match(playoff, /Playoff Picture/);
   assert.match(playoff, /Playoff line/);
+  assert.match(playoff, /Saunders danger line/);
+  assert.match(playoff, /bottom 2 seeds/);
 
   const needs = currentWeekNeedsHtml(view);
   assert.match(needs, /This Week Needs/);
   assert.match(needs, /Joe/);
+  assert.match(needs, /Goal:/);
 
   const movement = currentLiveMovementHtml(view);
   assert.match(movement, /Live Movement/);
@@ -80,6 +90,9 @@ test('current-season renderer emits hero, matchup, standings, and snapshot html'
   const projection = currentProjectedStandingsHtml(view);
   assert.match(projection, /Projected Standings/);
   assert.match(projection, /If scores hold/);
+  assert.match(projection, /Generated Jun 17, 2026, 2:22 PM UTC/);
+  assert.match(projection, /Live scores no/);
+  assert.match(projection, /Projected scores no/);
 
   const matchups = currentMatchupsHtml(view);
   assert.match(matchups, /Week 1 Matchups/);
@@ -98,6 +111,34 @@ test('current-season renderer emits hero, matchup, standings, and snapshot html'
   assert.match(snapshots, /Team Snapshots/);
   assert.match(snapshots, /Scoring Rank/);
   assert.match(snapshots, /Best Win/);
+});
+
+test('current-season view standings use configured tiebreakers and projection mode', () => {
+  const customTiebreakerSeason = {
+    season: 2026,
+    current_week: 1,
+    playoff_rules: {
+      regular_season_max_week: 1,
+      playoff_slots: 2,
+      bye_slots: 1,
+      standings_tiebreakers: ['win_pct', 'points_against', 'owner'],
+      saunders_slots: 2,
+    },
+    games: [
+      { season: 2026, date: '2026-09-06', teamA: 'Joe', teamB: 'Shap', scoreA: 100, scoreB: 90, week: 1, type: 'Regular', round: '', status: 'final' },
+      { season: 2026, date: '2026-09-06', teamA: 'Nuss', teamB: 'Joel', scoreA: 80, scoreB: 70, week: 1, type: 'Regular', round: '', status: 'final' },
+    ],
+  };
+  const view = buildCurrentSeasonViewModel({
+    currentSeason: customTiebreakerSeason,
+    season: 2026,
+    week: 1,
+    projectionMode: 'current',
+  });
+
+  assert.equal(view.standings[0].owner, 'Nuss');
+  assert.equal(view.commandCenter.selectedProjectionMode, 'current');
+  assert.match(currentProjectedStandingsHtml(view), /Completed games only/);
 });
 
 test('current-season renderer escapes team names in matchup html', () => {

@@ -5,7 +5,9 @@ import {
   latestLeagueSeason,
 } from './current-season-data.js';
 import {
+  CURRENT_PROJECTION_MODES,
   CURRENT_VIEW_MODES,
+  normalizeProjectionMode,
   normalizeCurrentView,
 } from './current-season-command-data.js';
 
@@ -68,6 +70,18 @@ function renderViewOptions(selectedValue) {
   }).join('');
 }
 
+function renderProjectionOptions(selectedValue) {
+  const labels = {
+    ifScoresHold: 'If Scores Hold',
+    current: 'Completed Only',
+  };
+  const selectedMode = normalizeProjectionMode(selectedValue);
+  return CURRENT_PROJECTION_MODES.map(value => {
+    const selected = value === selectedMode ? ' selected' : '';
+    return `<option value="${escapeHtml(value)}"${selected}>${escapeHtml(labels[value] || value)}</option>`;
+  }).join('');
+}
+
 function resolveCurrentSeasonState({
   leagueGames = [],
   seasonSummaries = [],
@@ -76,6 +90,7 @@ function resolveCurrentSeasonState({
   selectedWeek = null,
   selectedOwner = '',
   selectedView = 'command',
+  selectedProjectionMode = 'ifScoresHold',
 } = {}) {
   const seasons = availableSeasons(leagueGames, seasonSummaries, currentSeason);
   const fallbackSeason = latestLeagueSeason(leagueGames, seasonSummaries, currentSeason);
@@ -86,7 +101,8 @@ function resolveCurrentSeasonState({
   const owners = availableOwners(leagueGames, seasonSummaries, currentSeason, season);
   const owner = owners.includes(selectedOwner) ? selectedOwner : '';
   const view = normalizeCurrentView(selectedView);
-  return { selectedSeason: season, selectedWeek: week, selectedOwner: owner, selectedView: view, seasons, weeks, owners };
+  const projectionMode = normalizeProjectionMode(selectedProjectionMode);
+  return { selectedSeason: season, selectedWeek: week, selectedOwner: owner, selectedView: view, selectedProjectionMode: projectionMode, seasons, weeks, owners };
 }
 
 function buildCurrentSeasonControls({
@@ -98,18 +114,20 @@ function buildCurrentSeasonControls({
   selectedWeek = null,
   selectedOwner = '',
   selectedView = 'command',
+  selectedProjectionMode = 'ifScoresHold',
   onChange,
 } = {}) {
   const root = docOrDefault(doc);
   if (!root) {
-    return resolveCurrentSeasonState({ leagueGames, seasonSummaries, currentSeason, selectedSeason, selectedWeek });
+    return resolveCurrentSeasonState({ leagueGames, seasonSummaries, currentSeason, selectedSeason, selectedWeek, selectedOwner, selectedView, selectedProjectionMode });
   }
 
   const seasonSelect = root.getElementById('currentSeasonSelect');
   const weekSelect = root.getElementById('currentWeekSelect');
   const ownerSelect = root.getElementById('currentOwnerSelect');
   const viewSelect = root.getElementById('currentViewSelect');
-  const state = resolveCurrentSeasonState({ leagueGames, seasonSummaries, currentSeason, selectedSeason, selectedWeek, selectedOwner, selectedView });
+  const projectionSelect = root.getElementById('currentProjectionSelect');
+  const state = resolveCurrentSeasonState({ leagueGames, seasonSummaries, currentSeason, selectedSeason, selectedWeek, selectedOwner, selectedView, selectedProjectionMode });
 
   const syncSecondaryOptions = (season, preferredWeek = null, preferredOwner = '') => {
     const weeks = currentSeasonWeeks(leagueGames, season, currentSeason);
@@ -139,6 +157,10 @@ function buildCurrentSeasonControls({
     viewSelect.innerHTML = renderViewOptions(state.selectedView);
     viewSelect.value = state.selectedView;
   }
+  if (projectionSelect) {
+    projectionSelect.innerHTML = renderProjectionOptions(state.selectedProjectionMode);
+    projectionSelect.value = state.selectedProjectionMode;
+  }
 
   const emitChange = () => {
     const nextSeason = Number(seasonSelect?.value || state.selectedSeason);
@@ -146,12 +168,14 @@ function buildCurrentSeasonControls({
     const nextWeek = Number(weekSelect?.value || synced.week);
     const nextOwner = synced.owners.includes(ownerSelect?.value) ? ownerSelect.value : '';
     const nextView = normalizeCurrentView(viewSelect?.value || state.selectedView);
+    const nextProjectionMode = normalizeProjectionMode(projectionSelect?.value || state.selectedProjectionMode);
     if (typeof onChange === 'function') {
       onChange({
         selectedSeason: Number.isFinite(nextSeason) ? nextSeason : null,
         selectedWeek: Number.isFinite(nextWeek) ? nextWeek : null,
         selectedOwner: nextOwner,
         selectedView: nextView,
+        selectedProjectionMode: nextProjectionMode,
       });
     }
   };
@@ -172,6 +196,10 @@ function buildCurrentSeasonControls({
     viewSelect.addEventListener('change', emitChange);
     viewSelect.dataset.bound = '1';
   }
+  if (projectionSelect && !projectionSelect.dataset.bound) {
+    projectionSelect.addEventListener('change', emitChange);
+    projectionSelect.dataset.bound = '1';
+  }
 
   return {
     ...state,
@@ -179,6 +207,7 @@ function buildCurrentSeasonControls({
     weekSelect,
     ownerSelect,
     viewSelect,
+    projectionSelect,
   };
 }
 

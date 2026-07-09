@@ -219,16 +219,25 @@ function buildScenarioStandings({
   rules = null,
   owner = null,
   outcome = null,
+  forcedOutcomes = [],
   includeLiveLeaders = false,
 } = {}) {
   const resolvedRules = rules || resolveCurrentSeasonRules(currentSeason);
   const targetWeek = numeric(week);
+  const forces = [
+    ...(owner && outcome ? [{ owner, outcome }] : []),
+    ...forcedOutcomes,
+  ].filter(force => force?.owner && ['win', 'loss'].includes(force.outcome));
   const scenarioGames = regularSeasonGamesFor({ leagueGames, currentSeason, season, rules: resolvedRules })
     .map(game => {
       if (isCompletedGame(game)) return game;
       const gameWeek = numeric(weekForGame(game));
-      if (owner && outcome && (!Number.isFinite(targetWeek) || gameWeek === targetWeek) && sidesForTeam(game, owner)) {
-        return forceGameOutcome(game, owner, outcome);
+      const force = forces.find(item => (
+        (!Number.isFinite(targetWeek) || gameWeek === targetWeek) &&
+        sidesForTeam(game, item.owner)
+      ));
+      if (force) {
+        return forceGameOutcome(game, force.owner, force.outcome);
       }
       if (includeLiveLeaders) return holdLiveScore(game);
       return game;
@@ -369,6 +378,36 @@ function cutlineGap(row, standings, slot) {
   return gamesBackValue(row, standings[slot - 1]);
 }
 
+function saundersLineSeed(rules = DEFAULT_PLAYOFF_RULES, teamCount = 0) {
+  const count = positiveInt(teamCount, 0);
+  const saundersSlots = Math.max(positiveInt(rules?.saunders_slots, DEFAULT_PLAYOFF_RULES.saunders_slots), 0);
+  if (!count || !saundersSlots) return null;
+  return Math.max(1, count - Math.min(saundersSlots, count) + 1);
+}
+
+function ownerGoalLabel(row, rules = DEFAULT_PLAYOFF_RULES, teamCount = 0) {
+  if (!row) return 'No data';
+  const lineSeed = saundersLineSeed(rules, teamCount);
+  if (row.status?.key === 'clinched-bye') return 'Bye locked';
+  if (row.status?.key === 'clinched-playoff') return 'Bye race';
+  if (row.status?.key === 'eliminated') return lineSeed && row.currentSeed >= lineSeed ? 'Saunders danger' : 'Placement';
+  if (row.currentSeed <= rules.bye_slots) return 'Bye race';
+  if (row.currentSeed <= rules.playoff_slots) return 'Playoff line';
+  if (lineSeed && row.currentSeed >= lineSeed) return 'Saunders danger';
+  return 'Playoff chase';
+}
+
+function saundersSummary(row, rules = DEFAULT_PLAYOFF_RULES, teamCount = 0) {
+  const lineSeed = saundersLineSeed(rules, teamCount);
+  if (!row || !lineSeed) return '';
+  if (row.currentSeed >= lineSeed) {
+    const safeSeed = Math.max(1, lineSeed - 1);
+    return `In Saunders danger; climb to seed ${safeSeed} or better to clear the boundary.`;
+  }
+  if (lineSeed === 1) return 'Every seed is inside the Saunders boundary.';
+  return `Above Saunders danger; boundary starts at seed ${lineSeed}.`;
+}
+
 function pointsForRanks(standings = []) {
   return new Map(standings
     .slice()
@@ -398,12 +437,13 @@ function buildPlayoffPicture({
       pointsForRank: pfRanks.get(row.owner) || null,
       playoffGap: cutlineGap(row, currentStandings, rules.playoff_slots),
       byeGap: cutlineGap(row, currentStandings, rules.bye_slots),
+      saundersGap: cutlineGap(row, currentStandings, (saundersLineSeed(rules, currentStandings.length) || 1) - 1),
       remainingGames: remaining.get(row.owner)?.length || 0,
     };
   });
 }
 
-function scenarioRank({ owner, outcome, leagueGames, seasonSummaries, currentSeason, season, week, rules }) {
+function scenarioRank({ owner, outcome, forcedOutcomes = [], leagueGames, seasonSummaries, currentSeason, season, week, rules }) {
   const standings = buildScenarioStandings({
     leagueGames,
     seasonSummaries,
@@ -413,6 +453,7 @@ function scenarioRank({ owner, outcome, leagueGames, seasonSummaries, currentSea
     rules,
     owner,
     outcome,
+    forcedOutcomes,
     includeLiveLeaders: true,
   });
   return standings.find(row => row.owner === owner) || null;
@@ -439,6 +480,88 @@ function helpTargetsForOwner(row, standings, rules) {
     .map(item => item.owner);
 }
 
+function sentenceStart(text) {
+  return text ? `${text.charAt(0).toUpperCase()}${text.slice(1)}` : '';
+}
+
+function outcomePhrase(game, owner, outcome = 'win') {
+  const side = sidesForTeam(game, owner);
+  if (!side) return '';
+  return outcome === 'loss'
+    ? `${owner} loses to ${side.opp}`
+    : `${owner} beats ${side.opp}`;
+}
+
+function ownerHasFutureGames(owner, opts = {}) {
+  const selectedWeek = numeric(opts.week);
+  return remainingScheduleForOwner({ ...opts, owner })
+    .some(game => {
+      const gameWeek = numeric(weekForGame(game));
+      return Number.isFinite(selectedWeek) && Number.isFinite(gameWeek) ? gameWeek > selectedWeek : false;
+    });
+}
+
+function exactPathToSlot({
+  row,
+  matchup,
+  currentWeekMatchups = [],
+  currentStandings = [],
+  targetSlot,
+  targetLabel,
+  leagueGames = [],
+  seasonSummaries = [],
+  currentSeason = null,
+  season,
+  week,
+  rules,
+} = {}) {
+  if (!row || !matchup || isCompletedGame(matchup) || !targetSlot) return null;
+  const ownerWinPhrase = outcomePhrase(matchup, row.owner, 'win');
+  if (!ownerWinPhrase) return null;
+  const hasFuture = ownerHasFutureGames(row.owner, { leagueGames, currentSeason, season, rules, week });
+  const verb = hasFuture ? `moves into ${targetLabel}` : `clinches ${targetLabel}`;
+  const ownerWinForce = { owner: row.owner, outcome: 'win' };
+  const ownerWinRow = scenarioRank({
+    owner: row.owner,
+    forcedOutcomes: [ownerWinForce],
+    leagueGames,
+    seasonSummaries,
+    currentSeason,
+    season,
+    week,
+    rules,
+  });
+  if (ownerWinRow && ownerWinRow.rank <= targetSlot) {
+    return `${sentenceStart(verb)} if ${ownerWinPhrase}.`;
+  }
+
+  const standingsByOwner = new Map(currentStandings.map(item => [item.owner, item]));
+  const candidateLosses = currentWeekMatchups
+    .filter(game => !isCompletedGame(game) && !sidesForTeam(game, row.owner))
+    .flatMap(game => [game.teamA, game.teamB].map(owner => ({ game, owner, standing: standingsByOwner.get(owner) })))
+    .filter(candidate => candidate.standing)
+    .sort((a, b) => (a.standing.rank || 99) - (b.standing.rank || 99) || a.owner.localeCompare(b.owner));
+
+  for (const candidate of candidateLosses) {
+    const lossPhrase = outcomePhrase(candidate.game, candidate.owner, 'loss');
+    if (!lossPhrase) continue;
+    const helpedRow = scenarioRank({
+      owner: row.owner,
+      forcedOutcomes: [ownerWinForce, { owner: candidate.owner, outcome: 'loss' }],
+      leagueGames,
+      seasonSummaries,
+      currentSeason,
+      season,
+      week,
+      rules,
+    });
+    if (helpedRow && helpedRow.rank <= targetSlot) {
+      return `${sentenceStart(verb)} if ${ownerWinPhrase} and ${lossPhrase}.`;
+    }
+  }
+  return null;
+}
+
 function buildOwnerWeekNeeds({
   leagueGames = [],
   seasonSummaries = [],
@@ -458,6 +581,11 @@ function buildOwnerWeekNeeds({
     rules: resolvedRules,
     remaining,
   });
+  const currentWeekMatchups = Number.isFinite(numeric(week))
+    ? gamesForSeasonWeek(leagueGames, season, week, currentSeason).filter(isRegularGame)
+    : [];
+  const teamCount = pictureRows.length || currentStandings.length;
+  const saundersSeed = saundersLineSeed(resolvedRules, teamCount);
 
   return pictureRows.map(row => {
     const matchup = ownerMatchupForWeek(row.owner, { leagueGames, currentSeason, season, week });
@@ -470,6 +598,52 @@ function buildOwnerWeekNeeds({
       ? scenarioRank({ owner: row.owner, outcome: 'loss', leagueGames, seasonSummaries, currentSeason, season, week, rules: resolvedRules })
       : null;
     const helpTargets = helpTargetsForOwner(row, currentStandings, resolvedRules);
+    const goalLabel = ownerGoalLabel(row, resolvedRules, teamCount);
+    const playoffPath = exactPathToSlot({
+      row,
+      matchup,
+      currentWeekMatchups,
+      currentStandings,
+      targetSlot: resolvedRules.playoff_slots,
+      targetLabel: 'a playoff spot',
+      leagueGames,
+      seasonSummaries,
+      currentSeason,
+      season,
+      week,
+      rules: resolvedRules,
+    });
+    const byePath = exactPathToSlot({
+      row,
+      matchup,
+      currentWeekMatchups,
+      currentStandings,
+      targetSlot: resolvedRules.bye_slots,
+      targetLabel: 'a bye',
+      leagueGames,
+      seasonSummaries,
+      currentSeason,
+      season,
+      week,
+      rules: resolvedRules,
+    });
+    const saundersPath = saundersSeed && saundersSeed > 1
+      ? exactPathToSlot({
+          row,
+          matchup,
+          currentWeekMatchups,
+          currentStandings,
+          targetSlot: saundersSeed - 1,
+          targetLabel: 'Saunders safety',
+          leagueGames,
+          seasonSummaries,
+          currentSeason,
+          season,
+          week,
+          rules: resolvedRules,
+        })
+      : null;
+    const saundersNote = saundersSummary(row, resolvedRules, teamCount);
     let mainNeed = '';
     let helpNeeded = '';
     let pathSummary = '';
@@ -482,44 +656,46 @@ function buildOwnerWeekNeeds({
       riskSummary = 'Seeding risk is already handled.';
     } else if (row.status.key === 'clinched-playoff') {
       mainNeed = 'Already clinched a playoff spot.';
-      helpNeeded = 'Help only matters for bye positioning.';
+      helpNeeded = byePath || 'Help only matters for bye positioning.';
       pathSummary = opponent ? `A win over ${opponent} keeps bye pressure on.` : 'A win keeps bye pressure on.';
       riskSummary = 'A loss can affect seed, not playoff access.';
     } else if (row.status.key === 'eliminated') {
       mainNeed = 'Eliminated from the playoff race.';
       helpNeeded = 'No playoff help remains.';
       pathSummary = 'Focus is Saunders positioning and final placement.';
-      riskSummary = 'Losses still affect the consolation bracket path.';
+      riskSummary = saundersNote || 'Losses still affect the consolation bracket path.';
     } else if (!matchup) {
       mainNeed = `No regular-season matchup found for Week ${week || '-'}.`;
       helpNeeded = helpTargets.length ? `${helpTargets.join(', ')} slipping helps the cutline.` : 'No clear outside help target.';
       pathSummary = `Current seed ${row.currentSeed}.`;
-      riskSummary = 'Path depends on remaining scheduled games.';
+      riskSummary = saundersNote || 'Path depends on remaining scheduled games.';
     } else if (isCompletedGame(matchup)) {
       mainNeed = `Week ${week || '-'} is final: ${resultWord(matchup, row.owner)} against ${opponent}.`;
       helpNeeded = helpTargets.length ? `${helpTargets.join(', ')} results still shape the cutline.` : 'No urgent outside help from this week.';
       pathSummary = `Current seed ${row.currentSeed} with ${row.remainingGames} regular-season game${row.remainingGames === 1 ? '' : 's'} left.`;
-      riskSummary = row.currentSeed <= resolvedRules.playoff_slots ? 'Stay above the playoff line.' : 'Needs future wins and help to climb above the line.';
+      riskSummary = saundersNote || (row.currentSeed <= resolvedRules.playoff_slots ? 'Stay above the playoff line.' : 'Needs future wins and help to climb above the line.');
     } else {
       const winSeed = winRow?.rank || row.currentSeed;
       const lossSeed = lossRow?.rank || row.currentSeed;
       if (row.currentSeed <= resolvedRules.playoff_slots) {
-        mainNeed = `Win and protect seed ${row.currentSeed}.`;
+        mainNeed = byePath || `Win and protect seed ${row.currentSeed}.`;
         helpNeeded = lossSeed > resolvedRules.playoff_slots
           ? 'A loss can drop this path below the playoff line.'
           : 'Outside help mostly improves seeding.';
       } else {
-        mainNeed = winSeed <= resolvedRules.playoff_slots
+        mainNeed = playoffPath || (winSeed <= resolvedRules.playoff_slots
           ? `Win and move into the playoff picture if scores hold.`
-          : `Win to keep pressure on the playoff line.`;
+          : `Win to keep pressure on the playoff line.`);
         helpNeeded = helpTargets.length
           ? `Needs help from ${helpTargets.join(', ')}.`
           : 'Needs teams above the cutline to slip.';
       }
-      pathSummary = `Against ${opponent}: win projects seed ${winSeed}, loss projects seed ${lossSeed}.`;
-      riskSummary = lossSeed > row.currentSeed
+      pathSummary = saundersPath && goalLabel === 'Saunders danger'
+        ? saundersPath
+        : `Against ${opponent}: win projects seed ${winSeed}, loss projects seed ${lossSeed}.`;
+      riskSummary = saundersNote || (lossSeed > row.currentSeed
         ? `A loss projects a drop to seed ${lossSeed}.`
-        : `A loss leaves the path at seed ${lossSeed}.`;
+        : `A loss leaves the path at seed ${lossSeed}.`);
     }
 
     return {
@@ -530,10 +706,12 @@ function buildOwnerWeekNeeds({
       status: row.status,
       opponent,
       matchup,
+      goalLabel,
       mainNeed,
       helpNeeded,
       pathSummary,
       riskSummary,
+      saundersSummary: saundersNote,
       winSeed: winRow?.rank || null,
       lossSeed: lossRow?.rank || null,
       isSelected: selectedOwner === row.owner,
@@ -613,10 +791,15 @@ function matchupKey(game) {
 function impactLabelForMatchup(game, pictureByOwner, rules) {
   const rows = [pictureByOwner.get(game.teamA), pictureByOwner.get(game.teamB)].filter(Boolean);
   if (!rows.length) return 'Seeding only';
+  const lineSeed = saundersLineSeed(rules, pictureByOwner.size);
+  const hasBubble = rows.some(row => Math.abs(row.currentSeed - rules.playoff_slots) <= 1);
+  const hasSaundersDanger = lineSeed && rows.some(row => row.currentSeed >= lineSeed || row.projectedSeed >= lineSeed);
   if (rows.some(row => row.currentSeed <= rules.bye_slots + 1)) return 'Bye race';
-  if (rows.some(row => Math.abs(row.currentSeed - rules.playoff_slots) <= 1)) return 'Bubble swing';
+  if (hasBubble && hasSaundersDanger) return 'Bubble / Saunders danger';
+  if (hasBubble) return 'Bubble swing';
+  if (hasSaundersDanger) return 'Saunders danger';
   if (rows.some(row => row.status.key === 'eliminated')) return 'Seeding only';
-  if (rows.some(row => row.currentSeed > rules.playoff_slots)) return 'Saunders trap';
+  if (rows.some(row => row.currentSeed > rules.playoff_slots)) return 'Playoff chase';
   return 'Seeding only';
 }
 
@@ -704,6 +887,16 @@ function buildCommandCenterModel({
   const clinched = playoffPicture.filter(row => row.status.key === 'clinched-bye' || row.status.key === 'clinched-playoff');
   const eliminated = playoffPicture.filter(row => row.status.key === 'eliminated');
   const biggestMover = liveMovement.find(row => row.seedChange !== 0) || null;
+  const generatedAt = currentSeason && Number(currentSeason.season) === Number(season) ? currentSeason.generated_at || null : null;
+  const updateContext = currentSeason && Number(currentSeason.season) === Number(season)
+    ? currentSeason.update_context || {}
+    : {};
+  const sourceMode = currentSeason && Number(currentSeason.season) === Number(season)
+    ? currentSeason.source || 'current-season asset'
+    : 'historical JSON fallback';
+  const containsLiveScores = Boolean(updateContext.contains_live_scores);
+  const containsProjectedScores = Boolean(updateContext.contains_projected_scores);
+  const modelLabel = 'Deterministic path model';
 
   return {
     season,
@@ -713,8 +906,19 @@ function buildCommandCenterModel({
     selectedProjectionMode: normalizeProjectionMode(projectionMode),
     ownerOptions: owners,
     rules,
-    modelLabel: 'Deterministic path model',
-    generatedAt: currentSeason && Number(currentSeason.season) === Number(season) ? currentSeason.generated_at || null : null,
+    modelLabel,
+    generatedAt,
+    methodology: {
+      generatedAt,
+      sourceMode,
+      updateMode: updateContext.mode || 'unknown',
+      cutoffDate: updateContext.cutoff_date || null,
+      containsLiveScores,
+      containsProjectedScores,
+      liveScoreAvailability: containsLiveScores || liveGames.length > 0 ? 'Live scores available' : 'No live scores in asset',
+      projectedScoreAvailability: containsProjectedScores ? 'Projected scores available' : 'No projected scores in asset',
+      modelType: modelLabel,
+    },
     playoffPicture,
     ownerNeeds,
     liveMovement,
@@ -732,6 +936,8 @@ function buildCommandCenterModel({
       biggestMover,
       highestLiveScore: topLiveScore(liveGames.length ? liveGames : selectedWeekMatchups),
       closestLiveMatchup: closestLiveGame(liveGames.length ? liveGames : selectedWeekMatchups),
+      saundersLineSeed: saundersLineSeed(rules, playoffPicture.length),
+      saundersSlots: rules.saunders_slots,
     },
   };
 }

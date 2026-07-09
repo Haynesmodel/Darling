@@ -353,6 +353,7 @@ function ensureCurrentSeasonControls(initialState = {}) {
       selectedWeek: selectedState.selectedWeek || urlState.currentWeek,
       selectedOwner: selectedState.selectedOwner ?? urlState.currentOwner ?? '',
       selectedView: selectedState.selectedView || urlState.currentView || 'command',
+      selectedProjectionMode: selectedState.selectedProjectionMode || urlState.currentProjection || 'ifScoresHold',
       onChange: handleCurrentSeasonChange,
     });
     selectedCurrentSeasonState = {
@@ -360,7 +361,7 @@ function ensureCurrentSeasonControls(initialState = {}) {
       selectedWeek: built.selectedWeek,
       selectedOwner: built.selectedOwner,
       selectedView: built.selectedView,
-      selectedProjectionMode: selectedState.selectedProjectionMode || urlState.currentProjection || 'ifScoresHold',
+      selectedProjectionMode: built.selectedProjectionMode,
     };
     seasonSelect.dataset.ready = '1';
   } else {
@@ -373,6 +374,7 @@ function ensureCurrentSeasonControls(initialState = {}) {
       selectedWeek: selectedState.selectedWeek || urlState.currentWeek,
       selectedOwner: selectedState.selectedOwner ?? urlState.currentOwner ?? '',
       selectedView: selectedState.selectedView || urlState.currentView || 'command',
+      selectedProjectionMode: selectedState.selectedProjectionMode || urlState.currentProjection || 'ifScoresHold',
       onChange: handleCurrentSeasonChange,
     });
     selectedCurrentSeasonState = {
@@ -380,7 +382,7 @@ function ensureCurrentSeasonControls(initialState = {}) {
       selectedWeek: built.selectedWeek,
       selectedOwner: built.selectedOwner,
       selectedView: built.selectedView,
-      selectedProjectionMode: selectedState.selectedProjectionMode || urlState.currentProjection || 'ifScoresHold',
+      selectedProjectionMode: built.selectedProjectionMode,
     };
   }
 

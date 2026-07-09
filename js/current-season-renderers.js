@@ -2,7 +2,6 @@ import { byDateDesc, sidesForTeam } from './core-helpers.js';
 import { escapeHtml, nfmt } from './render-helpers.js';
 import {
   buildCurrentMatchupRows,
-  buildCurrentSeasonStandings,
   buildTeamCurrentSeasonSnapshot,
   currentSeasonSourceGames,
   isCompletedGame,
@@ -52,6 +51,27 @@ function gapText(value) {
 function statusClass(status) {
   const tone = status?.tone || 'neutral';
   return `current-status-badge current-status-${tone}`;
+}
+
+function yesNo(value) {
+  return value ? 'yes' : 'no';
+}
+
+function methodologyNoteHtml(command) {
+  const meta = command?.methodology;
+  if (!meta) return '';
+  const generated = meta.generatedAt ? formattedGeneratedAt(meta.generatedAt) : 'Unavailable';
+  const source = `${meta.sourceMode || 'unknown'}${meta.updateMode ? `/${meta.updateMode}` : ''}`;
+  return `
+    <div class="current-methodology-note">
+      <strong>Method:</strong> ${escapeHtml(meta.modelType || command.modelLabel || 'Deterministic path model')}
+      &middot; Generated ${escapeHtml(generated)}
+      &middot; Source ${escapeHtml(source)}
+      &middot; Live scores ${escapeHtml(yesNo(meta.containsLiveScores))}
+      &middot; Projected scores ${escapeHtml(yesNo(meta.containsProjectedScores))}
+      ${meta.cutoffDate ? `&middot; Cutoff ${escapeHtml(meta.cutoffDate)}` : ''}
+    </div>
+  `;
 }
 
 function selectedViewAllows(view, section) {
@@ -156,16 +176,7 @@ function buildCurrentSeasonViewModel({
   const seasonGames = currentSeasonSourceGames(leagueGames, selectedSeason, currentSeason);
   const regularGames = seasonGames.filter(game => String(game.type || '').trim() === 'Regular');
   const completedRegularGames = regularGames.filter(isCompletedGame);
-  const standings = buildCurrentSeasonStandings({ leagueGames, seasonSummaries, currentSeason, season: selectedSeason });
   const matchups = buildCurrentMatchupRows({ leagueGames, seasonSummaries, currentSeason, season: selectedSeason, week: selectedWeek });
-  const teams = standings.map(row => row.owner);
-  const snapshots = teams.map(owner => buildTeamCurrentSeasonSnapshot({
-    owner,
-    leagueGames,
-      seasonSummaries,
-    currentSeason,
-    season: selectedSeason,
-  }));
   const commandCenter = buildCommandCenterModel({
     leagueGames,
     seasonSummaries,
@@ -176,6 +187,33 @@ function buildCurrentSeasonViewModel({
     selectedView,
     projectionMode,
   });
+  const standings = commandCenter.playoffPicture.map(row => ({
+    owner: row.owner,
+    season: row.season,
+    games: row.games,
+    wins: row.wins,
+    losses: row.losses,
+    ties: row.ties,
+    pointsFor: row.pointsFor,
+    pointsAgainst: row.pointsAgainst,
+    differential: row.differential,
+    pct: row.pct,
+    streak: row.streak,
+    record: row.record,
+    rank: row.currentSeed,
+  }));
+  const teams = standings.map(row => row.owner);
+  const standingsByOwner = new Map(standings.map(row => [row.owner, row]));
+  const snapshots = teams.map(owner => buildTeamCurrentSeasonSnapshot({
+    owner,
+    leagueGames,
+    seasonSummaries,
+    currentSeason,
+    season: selectedSeason,
+  })).map(snapshot => ({
+    ...snapshot,
+    standing: standingsByOwner.get(snapshot.owner) || snapshot.standing,
+  }));
 
   return {
     season: selectedSeason,
@@ -408,15 +446,17 @@ function currentPlayoffPictureHtml(view) {
   const command = view.commandCenter;
   const rows = command?.playoffPicture || [];
   if (!rows.length) return '<h3>Playoff Picture</h3><p class="muted">No playoff picture available.</p>';
+  const saundersLine = command.summary?.saundersLineSeed || null;
   return `
     <div class="section-heading current-section-heading">
       <h3>Playoff Picture</h3>
-      <div class="muted">Top ${escapeHtml(command.rules.playoff_slots)} make playoffs &middot; Top ${escapeHtml(command.rules.bye_slots)} earn byes</div>
+      <div class="muted">Top ${escapeHtml(command.rules.playoff_slots)} make playoffs &middot; Top ${escapeHtml(command.rules.bye_slots)} earn byes${saundersLine ? ` &middot; Saunders danger starts at seed ${escapeHtml(saundersLine)}` : ''}</div>
     </div>
     <div class="current-playoff-grid">
       ${rows.map(row => `
         ${row.currentSeed === command.rules.bye_slots + 1 ? '<div class="current-cutline">Bye line</div>' : ''}
         ${row.currentSeed === command.rules.playoff_slots + 1 ? '<div class="current-cutline current-cutline-playoff">Playoff line</div>' : ''}
+        ${saundersLine && row.currentSeed === saundersLine ? '<div class="current-cutline current-cutline-saunders">Saunders danger line</div>' : ''}
         <div class="current-seed-row${row.owner === command.selectedOwner ? ' current-owner-focus' : ''}">
           <div class="current-seed-badge">${escapeHtml(row.currentSeed)}</div>
           <div class="current-seed-main">
@@ -431,6 +471,7 @@ function currentPlayoffPictureHtml(view) {
         </div>
       `).join('')}
     </div>
+    ${saundersLine ? `<p class="current-boundary-note">The Saunders boundary marks the bottom ${escapeHtml(command.rules.saunders_slots)} seed${command.rules.saunders_slots === 1 ? '' : 's'} entering the consolation danger zone.</p>` : ''}
   `;
 }
 
@@ -450,6 +491,7 @@ function currentWeekNeedsHtml(view) {
           <div class="current-needs-head">
             <div>
               <div class="card-kicker">Seed ${escapeHtml(row.currentSeed)}${row.opponent ? ` &middot; vs ${escapeHtml(row.opponent)}` : ''}</div>
+              <div class="card-kicker">Goal: ${escapeHtml(row.goalLabel || 'Seeding')}</div>
               <h3>${escapeHtml(row.owner)}</h3>
             </div>
             <span class="${statusClass(row.status)}">${escapeHtml(row.status.label)}</span>
@@ -458,6 +500,7 @@ function currentWeekNeedsHtml(view) {
           <p class="muted">${escapeHtml(row.helpNeeded)}</p>
           <p class="muted">${escapeHtml(row.pathSummary)}</p>
           <p class="current-risk-text">${escapeHtml(row.riskSummary)}</p>
+          ${row.saundersSummary && row.saundersSummary !== row.riskSummary ? `<p class="current-saunders-text">${escapeHtml(row.saundersSummary)}</p>` : ''}
         </article>
       `).join('')}
     </div>
@@ -496,6 +539,7 @@ function currentProjectedStandingsHtml(view) {
       <h3>Projected Standings</h3>
       <div class="muted">${escapeHtml(command.modelLabel)} &middot; ${command.selectedProjectionMode === 'ifScoresHold' ? 'If scores hold' : 'Completed games only'}</div>
     </div>
+    ${methodologyNoteHtml(command)}
     <div class="table-wrap current-projection-table">
       <table>
         <thead>

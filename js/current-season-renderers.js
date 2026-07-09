@@ -63,6 +63,13 @@ function selectedViewAllows(view, section) {
   return true;
 }
 
+function setSectionHtml(el, html) {
+  if (!el) return;
+  const content = String(html || '');
+  el.innerHTML = content;
+  el.hidden = content.trim() === '';
+}
+
 function formattedGeneratedAt(value) {
   if (!value) return '';
   const date = new Date(value);
@@ -527,19 +534,19 @@ function renderCurrentSeasonHero(view, opts = {}) {
 function renderCurrentMatchups(view, opts = {}) {
   const root = docOrDefault(opts.doc);
   const el = root?.getElementById('currentMatchups');
-  if (el) el.innerHTML = currentMatchupsHtml(view);
+  setSectionHtml(el, currentMatchupsHtml(view));
 }
 
 function renderCurrentStandings(view, opts = {}) {
   const root = docOrDefault(opts.doc);
   const el = root?.getElementById('currentStandings');
-  if (el) el.innerHTML = currentStandingsHtml(view);
+  setSectionHtml(el, currentStandingsHtml(view));
 }
 
 function renderCurrentTeamSnapshots(view, opts = {}) {
   const root = docOrDefault(opts.doc);
   const el = root?.getElementById('currentTeamSnapshots');
-  if (el) el.innerHTML = currentTeamSnapshotsHtml(view);
+  setSectionHtml(el, currentTeamSnapshotsHtml(view));
 }
 
 function renderCurrentCommandCenter(view, opts = {}) {
@@ -552,7 +559,7 @@ function renderCurrentCommandCenter(view, opts = {}) {
   ];
   for (const [id, htmlFn] of sections) {
     const el = root?.getElementById(id);
-    if (el) el.innerHTML = htmlFn(view);
+    setSectionHtml(el, htmlFn(view));
   }
 }
 

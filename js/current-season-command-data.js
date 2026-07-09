@@ -131,6 +131,54 @@ function standingsFromGames({
   });
 }
 
+function tiebreakerValue(row, key) {
+  const normalized = String(key || '').trim().toLowerCase();
+  if (normalized === 'win_pct' || normalized === 'pct') return row.pct;
+  if (normalized === 'wins') return row.wins;
+  if (normalized === 'losses') return row.losses;
+  if (normalized === 'points_for' || normalized === 'pf') return row.pointsFor;
+  if (normalized === 'points_against' || normalized === 'pa') return row.pointsAgainst;
+  if (normalized === 'points_differential' || normalized === 'differential' || normalized === 'diff') return row.differential;
+  if (normalized === 'owner') return row.owner;
+  return null;
+}
+
+function compareTiebreakerValue(a, b, key) {
+  const normalized = String(key || '').trim().toLowerCase();
+  const av = tiebreakerValue(a, normalized);
+  const bv = tiebreakerValue(b, normalized);
+  if (normalized === 'owner') return String(av || '').localeCompare(String(bv || ''));
+  if (normalized === 'losses' || normalized === 'points_against' || normalized === 'pa') {
+    const aNumber = Number(av);
+    const bNumber = Number(bv);
+    if (!Number.isFinite(aNumber) && !Number.isFinite(bNumber)) return 0;
+    return (Number.isFinite(aNumber) ? aNumber : Infinity) - (Number.isFinite(bNumber) ? bNumber : Infinity);
+  }
+  const aNumber = Number(av);
+  const bNumber = Number(bv);
+  if (Number.isFinite(aNumber) || Number.isFinite(bNumber)) {
+    return (Number.isFinite(bNumber) ? bNumber : -Infinity) - (Number.isFinite(aNumber) ? aNumber : -Infinity);
+  }
+  return 0;
+}
+
+function sortAndRankStandings(rows = [], rules = DEFAULT_PLAYOFF_RULES) {
+  const tiebreakers = Array.isArray(rules?.standings_tiebreakers) && rules.standings_tiebreakers.length
+    ? rules.standings_tiebreakers
+    : DEFAULT_PLAYOFF_RULES.standings_tiebreakers;
+  const ranked = rows
+    .map(row => ({ ...row }))
+    .sort((a, b) => {
+      for (const key of tiebreakers) {
+        const result = compareTiebreakerValue(a, b, key);
+        if (result !== 0) return result;
+      }
+      return a.owner.localeCompare(b.owner);
+    });
+  ranked.forEach((row, index) => { row.rank = index + 1; });
+  return ranked;
+}
+
 function forceGameOutcome(game, owner, outcome) {
   const side = sidesForTeam(game, owner);
   if (!side || !['win', 'loss'].includes(outcome)) return game;
@@ -186,13 +234,13 @@ function buildScenarioStandings({
       return game;
     });
 
-  return standingsFromGames({
+  return sortAndRankStandings(standingsFromGames({
     games: scenarioGames,
     leagueGames,
     seasonSummaries,
     currentSeason,
     season,
-  });
+  }), resolvedRules);
 }
 
 function buildProjectedStandings({

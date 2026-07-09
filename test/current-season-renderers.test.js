@@ -13,6 +13,8 @@ import {
   currentTeamSnapshotsHtml,
   currentWeekNeedsHtml,
   formattedGeneratedAt,
+  renderCurrentCommandCenter,
+  renderCurrentStandings,
   viewWeekLabel,
 } from '../js/current-season-renderers.js';
 
@@ -128,4 +130,31 @@ test('current-season renderer labels postseason weeks', () => {
   assert.match(html, /Saunders Week 16/);
   assert.match(html, /live/);
   assert.equal(formattedGeneratedAt('2026-06-17T14:22:30Z'), 'Jun 17, 2026, 2:22 PM UTC');
+});
+
+test('current-season renderers hide containers when view mode filters sections', () => {
+  const elements = new Map([
+    ['currentPlayoffPicture', { innerHTML: '', hidden: false }],
+    ['currentWeekNeeds', { innerHTML: '', hidden: false }],
+    ['currentLiveMovement', { innerHTML: '', hidden: false }],
+    ['currentProjectedStandings', { innerHTML: '', hidden: false }],
+    ['currentStandings', { innerHTML: '', hidden: false }],
+  ]);
+  const doc = { getElementById(id) { return elements.get(id) || null; } };
+  const ownersView = buildCurrentSeasonViewModel({ leagueGames: games, season: 2025, week: 1, selectedView: 'owners' });
+
+  renderCurrentCommandCenter(ownersView, { doc });
+  renderCurrentStandings(ownersView, { doc });
+  assert.equal(elements.get('currentPlayoffPicture').hidden, true);
+  assert.equal(elements.get('currentWeekNeeds').hidden, false);
+  assert.equal(elements.get('currentLiveMovement').hidden, true);
+  assert.equal(elements.get('currentProjectedStandings').hidden, true);
+  assert.equal(elements.get('currentStandings').hidden, true);
+
+  const commandView = buildCurrentSeasonViewModel({ leagueGames: games, season: 2025, week: 1, selectedView: 'command' });
+  renderCurrentCommandCenter(commandView, { doc });
+  renderCurrentStandings(commandView, { doc });
+  assert.equal(elements.get('currentPlayoffPicture').hidden, false);
+  assert.equal(elements.get('currentProjectedStandings').hidden, false);
+  assert.equal(elements.get('currentStandings').hidden, false);
 });

@@ -164,7 +164,7 @@ test('current season tab renders matchups and links to head to head context', as
   await expect(page.locator('#currentWeekNeeds')).toContainText('This Week Needs');
   await expect(page.locator('#currentProjectedStandings')).toContainText('Projected Standings');
   await expect(page.locator('#currentProjectedStandings')).toContainText('Method:');
-  await expect(page.locator('html')).toHaveAttribute('data-season-mode', 'postseason');
+  await expect(page.locator('html')).toHaveAttribute('data-season-mode', 'saunders');
 
   const matchupCount = await page.locator('.current-matchup-card').count();
   const standingsRows = await page.locator('#currentStandings tbody tr').count();

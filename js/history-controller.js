@@ -170,8 +170,8 @@ function seasonModeFromLabels(labels = []) {
       sawPostseason = true;
     }
   });
-  if (sawPostseason) return 'postseason';
   if (sawSaunders) return 'saunders';
+  if (sawPostseason) return 'postseason';
   return 'regular';
 }
 
@@ -1661,4 +1661,5 @@ async function bootstrapHistoryApp() {
 
 export {
   bootstrapHistoryApp,
+  seasonModeFromLabels,
 };

@@ -15,6 +15,8 @@ async function loadTsModule(entry) {
     bundle: true,
     format: 'esm',
     platform: 'browser',
+    sourcemap: 'inline',
+    sourcesContent: true,
   });
   return import(`${pathToFileURL(outfile).href}?v=${Date.now()}`);
 }

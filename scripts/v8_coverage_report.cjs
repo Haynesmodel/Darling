@@ -3,6 +3,7 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const { fileURLToPath } = require('node:url');
+const { TraceMap, originalPositionFor } = require('@jridgewell/trace-mapping');
 
 const defaultRoot = process.cwd();
 const sourceDirs = new Set(['js', 'scripts', 'src']);
@@ -12,7 +13,45 @@ const ignoredSourceSegments = [
 ];
 const ignoredSourceFiles = new Set([
   path.join('scripts', 'build_chart_vendor.cjs'),
+  path.join('src', 'theme', 'theme-types.ts'),
 ]);
+
+function realPathSafe(filePath) {
+  try {
+    return fs.realpathSync.native(filePath);
+  } catch {
+    return path.normalize(filePath);
+  }
+}
+
+function relativeSourcePath(root, filePath) {
+  return path.relative(realPathSafe(root), realPathSafe(filePath));
+}
+
+function stripComments(src) {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|\s)\/\/.*$/gm, '');
+}
+
+function isTypeOnlySourceFile(filePath) {
+  const ext = path.extname(filePath);
+  if (ext !== '.ts' && ext !== '.tsx') return false;
+  if (!fs.existsSync(filePath)) return false;
+
+  let src = stripComments(fs.readFileSync(filePath, 'utf8')).trim();
+  if (!src) return false;
+
+  src = src
+    .replace(/import\s+type[\s\S]*?;\s*/g, '')
+    .replace(/export\s+interface\s+\w+[^{]*\{[\s\S]*?^\s*\}\s*/gm, '')
+    .replace(/interface\s+\w+[^{]*\{[\s\S]*?^\s*\}\s*/gm, '')
+    .replace(/export\s+type\s+\w+[\s\S]*?;\s*/g, '')
+    .replace(/type\s+\w+[\s\S]*?;\s*/g, '')
+    .replace(/export\s+type\s+\{[\s\S]*?\};?\s*/g, '');
+
+  return src.trim() === '';
+}
 
 function getLineStarts(src){
   const starts = [0];
@@ -43,6 +82,7 @@ function collectSourceFiles(root = defaultRoot) {
       .filter(Boolean)
       .map(relPath => path.join(root, relPath))
       .filter(filePath => fs.existsSync(filePath) && isSourceFile(root, filePath))
+      .map(realPathSafe)
       .sort();
   }
 
@@ -67,7 +107,7 @@ function collectSourceFiles(root = defaultRoot) {
           continue;
         }
         if (!entry.name.endsWith('.d.ts') && sourceExts.has(path.extname(entry.name))) {
-          files.push(absPath);
+          files.push(realPathSafe(absPath));
         }
       }
     }
@@ -76,14 +116,16 @@ function collectSourceFiles(root = defaultRoot) {
 }
 
 function isSourceFile(root, filePath) {
-  const relPath = path.relative(root, filePath);
+  const sourcePath = realPathSafe(filePath);
+  const relPath = relativeSourcePath(root, sourcePath);
   if (relPath.startsWith('..' + path.sep) || path.isAbsolute(relPath)) return false;
   if (ignoredSourceSegments.some(segment => relPath === segment || relPath.startsWith(segment + path.sep))) return false;
   if (ignoredSourceFiles.has(relPath)) return false;
   if (relPath.split(path.sep).includes('test')) return false;
   if (!sourceDirs.has(relPath.split(path.sep)[0])) return false;
-  if (filePath.endsWith('.d.ts')) return false;
-  return sourceExts.has(path.extname(filePath));
+  if (sourcePath.endsWith('.d.ts')) return false;
+  if (isTypeOnlySourceFile(sourcePath)) return false;
+  return sourceExts.has(path.extname(sourcePath));
 }
 
 function resolveCoverageUrl(root, url) {
@@ -108,6 +150,72 @@ function resolveCoverageUrl(root, url) {
   return null;
 }
 
+function readInlineSourceMap(filePath) {
+  if (!filePath || !fs.existsSync(filePath)) return null;
+  const src = fs.readFileSync(filePath, 'utf8');
+  const match = src.match(/\/\/[#@]\s*sourceMappingURL=data:application\/json(?:;charset=utf-8)?;base64,([A-Za-z0-9+/=]+)\s*$/m);
+  if (!match) return null;
+  try {
+    return JSON.parse(Buffer.from(match[1], 'base64').toString('utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function resolveSourceMapPath(root, generatedFilePath, sourcePath) {
+  if (!sourcePath) return null;
+  if (sourcePath.startsWith('file://')) {
+    return fileURLToPath(sourcePath);
+  }
+  if (path.isAbsolute(sourcePath)) return path.normalize(sourcePath);
+
+  const rootRelative = path.normalize(path.join(root, sourcePath));
+  if (fs.existsSync(rootRelative)) return rootRelative;
+
+  const generatedRelative = path.normalize(path.join(path.dirname(generatedFilePath), sourcePath));
+  if (fs.existsSync(generatedRelative)) return generatedRelative;
+
+  return rootRelative;
+}
+
+function addMappedCoverage(root, fileData, generatedFilePath, ranges) {
+  const mapData = readInlineSourceMap(generatedFilePath);
+  if (!mapData) return false;
+
+  const traceMap = new TraceMap(mapData);
+  const generatedSource = fs.readFileSync(generatedFilePath, 'utf8');
+  const starts = getLineStarts(generatedSource);
+  const generatedLines = generatedSource.split('\n');
+  let mappedAny = false;
+
+  for (const range of ranges) {
+    const startLine = offsetToLine(starts, range.startOffset);
+    const endLine = offsetToLine(starts, Math.max(range.endOffset - 1, range.startOffset));
+    for (let line = startLine; line <= endLine; line += 1) {
+      const generatedText = generatedLines[line] || '';
+      const firstCodeColumn = Math.max(0, generatedText.search(/\S/));
+      let position = originalPositionFor(traceMap, { line: line + 1, column: firstCodeColumn });
+      if (!position.source) {
+        position = originalPositionFor(traceMap, { line: line + 1, column: 0 });
+      }
+      if (!position.source || !Number.isFinite(position.line)) continue;
+
+      const resolvedSourceFile = resolveSourceMapPath(root, generatedFilePath, position.source);
+      if (!resolvedSourceFile) continue;
+      const sourceFile = realPathSafe(resolvedSourceFile);
+      if (!isSourceFile(root, sourceFile)) continue;
+
+      const entry = fileData.get(sourceFile) || { ranges: [], mappedLines: new Set() };
+      if (!entry.mappedLines) entry.mappedLines = new Set();
+      entry.mappedLines.add(position.line - 1);
+      fileData.set(sourceFile, entry);
+      mappedAny = true;
+    }
+  }
+
+  return mappedAny;
+}
+
 function buildCoverageSummary(root = defaultRoot) {
   const v8Dir = path.join(root, 'coverage', '.v8');
   if (!fs.existsSync(v8Dir)) {
@@ -121,23 +229,31 @@ function buildCoverageSummary(root = defaultRoot) {
     const results = data.result || [];
     for (const r of results){
       const filePath = resolveCoverageUrl(root, r.url);
-      if (!filePath) continue;
-      if (!isSourceFile(root, filePath)) continue;
-
-      const entry = fileData.get(filePath) || { ranges: [] };
+      const positiveRanges = [];
       for (const fn of r.functions || []){
         for (const range of fn.ranges || []){
-          if (range.count > 0) entry.ranges.push(range);
+          if (range.count > 0) positiveRanges.push(range);
         }
       }
-      fileData.set(filePath, entry);
+      if (!positiveRanges.length) continue;
+
+      if (!filePath) continue;
+      if (!isSourceFile(root, filePath)) {
+        addMappedCoverage(root, fileData, filePath, positiveRanges);
+        continue;
+      }
+
+      const sourceFile = realPathSafe(filePath);
+      const entry = fileData.get(sourceFile) || { ranges: [], mappedLines: new Set() };
+      entry.ranges.push(...positiveRanges);
+      fileData.set(sourceFile, entry);
     }
   }
 
   const sourceFiles = collectSourceFiles(root);
   const missingFiles = sourceFiles.filter(filePath => !fileData.has(filePath));
   if (missingFiles.length) {
-    throw new Error(`Missing coverage for source files: ${missingFiles.map(filePath => path.relative(root, filePath)).join(', ')}`);
+    throw new Error(`Missing coverage for source files: ${missingFiles.map(filePath => relativeSourcePath(root, filePath)).join(', ')}`);
   }
 
   let totalLines = 0;
@@ -154,6 +270,9 @@ function buildCoverageSummary(root = defaultRoot) {
     lines.forEach((line, idx)=>{ if (line.trim().length > 0) codeLines.add(idx); });
 
     const covered = new Set();
+    for (const ln of info.mappedLines || []) {
+      covered.add(ln);
+    }
     for (const range of info.ranges){
       const startLine = offsetToLine(starts, range.startOffset);
       const endLine = offsetToLine(starts, Math.max(range.endOffset-1, range.startOffset));
@@ -168,7 +287,7 @@ function buildCoverageSummary(root = defaultRoot) {
 
     totalLines += fileTotal;
     coveredLines += fileCovered;
-    perFile.push({ file: path.relative(root, filePath), total: fileTotal, covered: fileCovered, pct });
+    perFile.push({ file: relativeSourcePath(root, filePath), total: fileTotal, covered: fileCovered, pct });
   }
 
   const totalPct = totalLines ? (coveredLines / totalLines) * 100 : 100;
@@ -218,6 +337,7 @@ module.exports = {
   buildCoverageSummary,
   collectSourceFiles,
   isSourceFile,
+  isTypeOnlySourceFile,
   runCli,
   resolveCoverageUrl,
   writeCoverageReport,

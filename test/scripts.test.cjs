@@ -1,16 +1,19 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { spawnSync } = require('node:child_process');
+const esbuild = require('esbuild');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const sharp = require('sharp');
 
 const { checkRepoHygiene } = require('../scripts/check_repo_hygiene.cjs');
+const { FORMATS, HERO_WIDTHS, generateHeroImages, resolveSource } = require('../scripts/generate_hero_images.cjs');
 const { createStaticServer, normalizeBasePath, resolvePath } = require('../scripts/serve_static.cjs');
 const { syncPublicAssets } = require('../scripts/sync_public_assets.cjs');
 const { validateHeroAssets } = require('../scripts/validate_assets.cjs');
-const { buildCoverageSummary } = require('../scripts/v8_coverage_report.cjs');
+const { buildCoverageSummary, isTypeOnlySourceFile } = require('../scripts/v8_coverage_report.cjs');
 
 async function withTempRepo(fn) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-hygiene-'));
@@ -215,6 +218,36 @@ test('hero asset validation checks required responsive variants', () => {
   }
 });
 
+test('hero image generator creates every responsive format from a source image', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-hero-generate-'));
+  try {
+    const sourcePath = path.join(root, 'source.jpg');
+    await sharp({
+      create: {
+        width: 32,
+        height: 20,
+        channels: 3,
+        background: '#2563eb',
+      },
+    }).jpeg().toFile(sourcePath);
+
+    const resolved = resolveSource(root, sourcePath);
+    assert.equal(resolved.label, 'source.jpg');
+
+    const result = await generateHeroImages(root, sourcePath);
+    assert.equal(result.outputs.length, HERO_WIDTHS.length * FORMATS.length);
+    for (const width of HERO_WIDTHS) {
+      for (const format of FORMATS) {
+        const output = path.join(root, 'assets', 'hero', `league-${width}.${format.ext}`);
+        assert.equal(fs.existsSync(output), true, output);
+        assert.ok(fs.statSync(output).size > 0, output);
+      }
+    }
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('coverage reporter measures source files and excludes tests', async () => {
   await withTempRepo((root) => {
     fs.mkdirSync(path.join(root, 'coverage', '.v8'), { recursive: true });
@@ -257,6 +290,75 @@ test('coverage reporter measures source files and excludes tests', async () => {
       ['js/app.js', 'js/helpers.js', 'scripts/tool.cjs', 'src/main.tsx']
     );
     assert.equal(summary.total.lines.pct, 100);
+  });
+});
+
+test('coverage reporter maps inline source maps back to original TypeScript files', async () => {
+  await withTempRepo(async (root) => {
+    fs.mkdirSync(path.join(root, 'coverage', '.v8'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'src', 'theme'), { recursive: true });
+
+    const entryPointPath = path.join(root, 'js', 'app.js');
+    const helperPath = path.join(root, 'js', 'helpers.js');
+    const sourcePath = path.join(root, 'src', 'theme', 'mapped.ts');
+    fs.writeFileSync(entryPointPath, "import './helpers.js';\n");
+    fs.writeFileSync(helperPath, 'const covered = true;\nexport { covered };\n');
+    fs.writeFileSync(sourcePath, 'export function answer(){\n  return 42;\n}\nanswer();\n');
+
+    const outPath = path.join(root, 'coverage', 'mapped.mjs');
+    await esbuild.build({
+      entryPoints: [sourcePath],
+      outfile: outPath,
+      bundle: true,
+      format: 'esm',
+      platform: 'browser',
+      sourcemap: 'inline',
+      sourcesContent: true,
+    });
+    const generated = fs.readFileSync(outPath, 'utf8');
+    fs.writeFileSync(path.join(root, 'coverage', '.v8', 'coverage.json'), JSON.stringify({
+      result: [entryPointPath, helperPath].map(filePath => ({
+        url: pathToFileURL(filePath).href,
+        functions: [{
+          ranges: [{ startOffset: 0, endOffset: fs.readFileSync(filePath, 'utf8').length, count: 1 }],
+        }],
+      })).concat([{
+        url: pathToFileURL(outPath).href,
+        functions: [{
+          ranges: [{ startOffset: 0, endOffset: generated.length, count: 1 }],
+        }],
+      }]),
+    }));
+
+    const summary = buildCoverageSummary(root);
+    const mapped = summary.files.find(file => file.file === 'src/theme/mapped.ts');
+    assert.ok(mapped);
+    assert.equal(mapped.pct, 100);
+  });
+});
+
+test('coverage reporter excludes type-only TypeScript files', async () => {
+  await withTempRepo((root) => {
+    fs.mkdirSync(path.join(root, 'coverage', '.v8'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'src', 'theme'), { recursive: true });
+    const entryPointPath = path.join(root, 'js', 'app.js');
+    const helperPath = path.join(root, 'js', 'helpers.js');
+    const typeOnlyPath = path.join(root, 'src', 'theme', 'theme-types.ts');
+    fs.writeFileSync(entryPointPath, "import './helpers.js';\n");
+    fs.writeFileSync(helperPath, 'const covered = true;\nexport { covered };\n');
+    fs.writeFileSync(typeOnlyPath, 'export type Mode = \"dark\" | \"light\";\nexport interface ThemeShape {\n  mode: Mode;\n}\n');
+    fs.writeFileSync(path.join(root, 'coverage', '.v8', 'coverage.json'), JSON.stringify({
+      result: [entryPointPath, helperPath].map(filePath => ({
+        url: pathToFileURL(filePath).href,
+        functions: [{
+          ranges: [{ startOffset: 0, endOffset: fs.readFileSync(filePath, 'utf8').length, count: 1 }],
+        }],
+      })),
+    }));
+
+    assert.equal(isTypeOnlySourceFile(typeOnlyPath), true);
+    const summary = buildCoverageSummary(root);
+    assert.equal(summary.files.some(file => file.file === 'src/theme/theme-types.ts'), false);
   });
 });
 

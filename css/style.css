@@ -2659,7 +2659,7 @@ tbody tr:nth-child(even){background:var(--row-alt)}
 .fun-grid .stat{background:#fff}
 .fun-lists{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin-top:10px}
 .mini{background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px}
-.mini-title{font-size:13px;font-weight:700;margin:2px 4px 6px;color:#111827}
+.mini-title{font-size:13px;font-weight:700;margin:2px 4px 6px;color:var(--text-primary)}
 .table-wrap.mini-table thead th{background:#1f2937}
 .table-wrap.mini-table tbody td{font-size:13px}
 

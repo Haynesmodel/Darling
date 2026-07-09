@@ -6,10 +6,26 @@ function read(root, relPath) {
   return fs.readFileSync(path.join(root, relPath), 'utf8');
 }
 
-function jsFiles(root, dir) {
-  return fs.readdirSync(path.join(root, dir))
-    .filter(name => name.endsWith('.js'))
-    .map(name => path.join(dir, name));
+function jsFiles(root, dir, opts = {}) {
+  const files = [];
+  const excludedDirs = new Set(opts.excludedDirs || []);
+  const start = path.join(root, dir);
+  const stack = [start];
+  while (stack.length) {
+    const current = stack.pop();
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const absPath = path.join(current, entry.name);
+      const relPath = path.relative(root, absPath);
+      if (entry.isDirectory()) {
+        if (!excludedDirs.has(relPath)) stack.push(absPath);
+        continue;
+      }
+      if (entry.isFile() && entry.name.endsWith('.js')) {
+        files.push(relPath);
+      }
+    }
+  }
+  return files.sort();
 }
 
 function checkRepoHygiene(root = process.cwd()) {
@@ -29,8 +45,15 @@ function checkRepoHygiene(root = process.cwd()) {
   if (!/<script\s+type=["']module["']\s+src=["']js\/app\.js["']><\/script>/.test(indexHtml)) {
     fail('index.html must load js/app.js as the single module entrypoint.');
   }
+  if (!fs.existsSync(path.join(root, 'js/charting/vendor/charting-vendor.js'))) {
+    fail('js/charting/vendor/charting-vendor.js must exist. Run npm run build:charts after changing chart dependencies.');
+  }
 
-  for (const relPath of jsFiles(root, 'js')) {
+  const sourceJsFiles = jsFiles(root, 'js', {
+    excludedDirs: [path.join('js', 'charting', 'vendor')],
+  });
+
+  for (const relPath of sourceJsFiles) {
     const src = read(root, relPath);
     for (const pattern of [
       { re: /\bmodule\.exports\b/, label: 'CommonJS exports' },
@@ -44,7 +67,7 @@ function checkRepoHygiene(root = process.cwd()) {
     }
   }
 
-  for (const relPath of jsFiles(root, 'js').filter(file => file !== 'js/app.js')) {
+  for (const relPath of sourceJsFiles.filter(file => file !== 'js/app.js')) {
     const src = read(root, relPath);
     if (!/\bexport\s*\{/.test(src)) {
       fail(`${relPath} must export named helper APIs.`);

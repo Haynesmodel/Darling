@@ -12,6 +12,10 @@ import {
   buildCommandCenterModel,
   matchupKey,
 } from './current-season-command-data.js';
+import {
+  renderCurrentProjectedStandingsPlot,
+  renderCurrentSeedMovementPlot,
+} from './charting/plot-charts.js';
 
 function docOrDefault(doc) {
   return doc || (typeof document !== 'undefined' ? document : null);
@@ -518,7 +522,10 @@ function currentLiveMovementHtml(view) {
       <h3>Live Movement</h3>
       <div class="muted">Baseline: previous completed week &middot; ${escapeHtml(projectionLabel)}</div>
     </div>
-    <div class="current-movement-grid">
+    <div class="current-command-chart chart-shell">
+      <div id="currentSeedMovementPlot" class="chart-host current-seed-movement-host" aria-label="Live seed movement by owner"></div>
+    </div>
+    <div class="current-movement-grid chart-fallback">
       ${rows.map(row => `
         <div class="current-movement-card${row.owner === command.selectedOwner ? ' current-owner-focus' : ''}">
           <div class="current-movement-owner">${escapeHtml(row.owner)}</div>
@@ -541,6 +548,9 @@ function currentProjectedStandingsHtml(view) {
       <div class="muted">${escapeHtml(command.modelLabel)} &middot; ${command.selectedProjectionMode === 'ifScoresHold' ? 'If scores hold' : 'Completed games only'}</div>
     </div>
     ${methodologyNoteHtml(command)}
+    <div class="current-command-chart chart-shell">
+      <div id="currentProjectedStandingsPlot" class="chart-host current-projected-standings-host" aria-label="Projected standings seed by owner"></div>
+    </div>
     <div class="table-wrap current-projection-table">
       <table>
         <thead>
@@ -606,6 +616,10 @@ function renderCurrentCommandCenter(view, opts = {}) {
     const el = root?.getElementById(id);
     setSectionHtml(el, htmlFn(view));
   }
+  const movementHost = typeof root?.getElementById === 'function' ? root.getElementById('currentSeedMovementPlot') : null;
+  const projectionHost = typeof root?.getElementById === 'function' ? root.getElementById('currentProjectedStandingsPlot') : null;
+  renderCurrentSeedMovementPlot(movementHost, view);
+  renderCurrentProjectedStandingsPlot(projectionHost, view);
 }
 
 export {

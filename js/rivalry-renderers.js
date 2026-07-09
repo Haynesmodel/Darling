@@ -1,5 +1,6 @@
 import * as core from './core-helpers.js';
 import * as render from './render-helpers.js';
+import { renderRivalryLeadPlot } from './charting/plot-charts.js';
 
 function coreFn(name) {
   const fn = core[name];
@@ -606,20 +607,7 @@ function rivalryLeadTrendHtml(view) {
     return '<div class="muted">No recorded games between these teams.</div>';
   }
 
-  const width = 1000;
-  const height = 250;
-  const padLeft = 140;
-  const padRight = 24;
-  const padTop = 28;
-  const padBottom = 74;
-  const innerW = width - padLeft - padRight;
-  const innerH = height - padTop - padBottom;
   const maxAbsLead = Math.max(1, ...points.map(p => Math.abs(p.lead)));
-  const stepX = points.length === 1 ? 0 : innerW / (points.length - 1);
-  const xFor = (idx) => padLeft + (stepX * idx);
-  const midY = padTop + (innerH / 2);
-  const yFor = (lead) => midY - ((lead / maxAbsLead) * (innerH / 2));
-  const path = points.map((p, idx) => `${idx === 0 ? 'M' : 'L'}${xFor(idx).toFixed(2)} ${yFor(p.lead).toFixed(2)}`).join(' ');
   const current = points[points.length - 1];
   const leaderText = current.lead > 0
     ? `${esc(view.teamA)} leads +${current.lead}`
@@ -631,14 +619,13 @@ function rivalryLeadTrendHtml(view) {
     const gameNumber = idx + 1;
     if (gameNumber === 1 || gameNumber % 5 === 0) ticks.push(idx);
   }
-  const yLabels = [
-    { y: yFor(maxAbsLead), text: `${view.teamA} +${maxAbsLead}` },
-    { y: midY, text: '.500' },
-    { y: yFor(-maxAbsLead), text: `${view.teamB} +${maxAbsLead}` },
-  ];
+  const fallbackRows = points.map((p, idx) => {
+    const spread = formatSeriesSpread(p.lead, view.teamA, view.teamB);
+    return `<li><span>G${idx + 1} ${esc(formatAxisDate(p.date))}</span><strong>Series spread: ${esc(spread)}</strong><span>${esc(p.winner)} ${esc(p.score)}</span></li>`;
+  }).join('');
 
   return `
-    <div class="rivalry-trend">
+    <div class="rivalry-trend chart-shell">
       <div class="rivalry-trend-top">
         <div>
           <div class="rivalry-trend-label">Series lead relative to .500</div>
@@ -646,40 +633,17 @@ function rivalryLeadTrendHtml(view) {
         </div>
         <div class="rivalry-trend-sub">Game index across the rivalry</div>
       </div>
-      <svg class="rivalry-trend-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Series lead over time relative to .500">
-        <line x1="${padLeft}" y1="${midY.toFixed(2)}" x2="${width - padRight}" y2="${midY.toFixed(2)}" class="rivalry-trend-zero" />
-        <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${height - padBottom}" class="rivalry-trend-axis" />
-        <line x1="${padLeft}" y1="${height - padBottom}" x2="${width - padRight}" y2="${height - padBottom}" class="rivalry-trend-axis" />
-        ${yLabels.map(label => `
-          <text x="${padLeft - 12}" y="${label.y.toFixed(2)}" class="rivalry-trend-y-label" text-anchor="end" dominant-baseline="middle">${esc(label.text)}</text>
-        `).join('')}
-        <path d="${path}" class="rivalry-trend-path" />
-        ${points.map((p, idx) => {
-          const cx = xFor(idx);
-          const cy = yFor(p.lead);
-          const spread = formatSeriesSpread(p.lead, view.teamA, view.teamB);
-          return `
-            <g>
-              <circle cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="6" class="rivalry-trend-dot ${p.result === 'W' ? 'lead-win' : p.result === 'L' ? 'lead-loss' : 'lead-tie'}" />
-              <title>${esc(`${p.date} • ${p.type}${p.round && p.round !== '—' ? ` • ${p.round}` : ''} • ${p.winner} ${p.score} • Series spread: ${spread}`)}</title>
-            </g>
-          `;
-        }).join('')}
-        ${ticks.map(idx => {
-          const p = points[idx];
-          const cx = xFor(idx);
-          return `
-            <g>
-              <line x1="${cx.toFixed(2)}" y1="${height - padBottom}" x2="${cx.toFixed(2)}" y2="${height - padBottom + 8}" class="rivalry-trend-tick" />
-              <text x="${cx.toFixed(2)}" y="${height - padBottom + 24}" class="rivalry-trend-x-label" text-anchor="middle">
-                <tspan x="${cx.toFixed(2)}" dy="0">G${idx + 1}</tspan>
-                <tspan x="${cx.toFixed(2)}" dy="14">${esc(formatAxisDate(p.date))}</tspan>
-              </text>
-            </g>
-          `;
-        }).join('')}
-      </svg>
+      <div class="rivalry-trend-scale" aria-hidden="true">
+        <span>${esc(view.teamA)} +${maxAbsLead}</span>
+        <span>.500</span>
+        <span>${esc(view.teamB)} +${maxAbsLead}</span>
+      </div>
+      <div id="rivalryLeadPlot" class="chart-host rivalry-trend-host" aria-label="Series lead over time relative to .500"></div>
+      <div class="rivalry-trend-ticks" aria-hidden="true">
+        ${ticks.map(idx => `<span>G${idx + 1} ${esc(formatAxisDate(points[idx].date))}</span>`).join('')}
+      </div>
       <div class="rivalry-trend-note">Each point is the running series lead after that matchup, centered on .500. Positive values favor ${esc(view.teamA)}; negative values favor ${esc(view.teamB)}.</div>
+      <ol class="chart-fallback rivalry-trend-fallback" aria-label="Running series lead values">${fallbackRows}</ol>
     </div>
   `;
 }
@@ -847,6 +811,8 @@ function renderRivalryLeadTrend(view, opts = {}) {
   const el = doc.getElementById('rivalryLeadTrend');
   if (!el) return;
   el.innerHTML = rivalryLeadTrendHtml(view);
+  const host = typeof doc.getElementById === 'function' ? doc.getElementById('rivalryLeadPlot') : null;
+  renderRivalryLeadPlot(host, view, { points: buildLeadTrendPoints(view) });
 }
 
 function renderRivalryHighlightBoard(view, opts = {}) {

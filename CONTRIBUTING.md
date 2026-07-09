@@ -13,7 +13,9 @@ This repository is maintained as a static site backed by JSON assets. The annual
 6. Verify the regular season and postseason rows look correct in the updated H2H output.
 7. After playoffs, generate or review `assets/SeasonSummary.draft.json` and fill in the manual fields before replacing the canonical summary.
 8. Run the local checks before pushing:
+   - `npm run build:charts`
    - `npm run test:hygiene`
+   - `npm run test:charts`
    - `npm run test:data`
    - `npm run test:scripts`
    - `npm run test:ui`

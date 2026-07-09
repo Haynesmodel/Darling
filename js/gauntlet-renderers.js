@@ -1,5 +1,6 @@
 import { escapeHtml, fmtTrimmed, nfmt } from './render-helpers.js';
-import { histogramBins, DEFAULT_BLOWOUT_MARGIN, DEFAULT_CLOSE_GAME_MARGIN } from './gauntlet-simulator.js';
+import { DEFAULT_BLOWOUT_MARGIN, DEFAULT_CLOSE_GAME_MARGIN } from './gauntlet-simulator.js';
+import { renderGauntletHistogramPlot } from './charting/plot-charts.js';
 
 function fmtSigned(value, digits = 1) {
   const rounded = Number.isFinite(value) ? value.toFixed(digits) : '0.0';
@@ -76,102 +77,8 @@ function gauntletProbabilityHtml(result, teamSeasonA, teamSeasonB) {
   `;
 }
 
-function histogramPoints(bins, scaleX, scaleY) {
-  if (!bins.length) return [];
-  return bins.map((bin) => {
-    const center = (bin.start + bin.end) / 2;
-    return {
-      x: scaleX(center),
-      y: scaleY(bin.count),
-    };
-  });
-}
-
-function histogramLinePath(points) {
-  if (!points.length) return '';
-  return points
-    .map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x.toFixed(2)},${point.y.toFixed(2)}`)
-    .join(' ');
-}
-
-function histogramAreaPath(points, plotBottom) {
-  if (!points.length) return '';
-  const line = histogramLinePath(points);
-  const first = points[0];
-  const last = points[points.length - 1];
-  return `${line} L ${last.x.toFixed(2)},${plotBottom.toFixed(2)} L ${first.x.toFixed(2)},${plotBottom.toFixed(2)} Z`;
-}
-
-function histogramTickValues(maxCount) {
-  const safeMax = Math.max(0, Math.ceil(maxCount));
-  const ticks = [0, 0.25, 0.5, 0.75, 1]
-    .map(fraction => Math.round(safeMax * fraction));
-  return [...new Set(ticks)].sort((a, b) => a - b);
-}
-
-function histogramOverlayChartSvg({ binsA, binsB, maxCount, teamSeasonA, teamSeasonB, min, max, colorA, colorB, width, height }) {
-  const plotLeft = 62;
-  const plotRight = width - 26;
-  const plotTop = 20;
-  const plotBottom = height - 40;
-  const plotWidth = plotRight - plotLeft;
-  const plotHeight = plotBottom - plotTop;
-  const yTicks = histogramTickValues(maxCount);
-  const scaleX = value => {
-    if (max === min) return (plotLeft + plotRight) / 2;
-    return plotLeft + ((value - min) / (max - min)) * plotWidth;
-  };
-  const scaleY = value => plotBottom - (maxCount ? (value / maxCount) * plotHeight : 0);
-  const pointsA = histogramPoints(binsA, scaleX, scaleY);
-  const pointsB = histogramPoints(binsB, scaleX, scaleY);
-  const areaPathA = histogramAreaPath(pointsA, plotBottom);
-  const areaPathB = histogramAreaPath(pointsB, plotBottom);
-  const linePathA = histogramLinePath(pointsA);
-  const linePathB = histogramLinePath(pointsB);
-  const meanAX = scaleX(teamSeasonA.mean);
-  const meanBX = scaleX(teamSeasonB.mean);
-
-  return `
-    <div class="gauntlet-histogram-panel">
-      <svg class="gauntlet-histogram-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Overlaid score distribution histogram for ${escapeHtml(teamSeasonA.owner)} and ${escapeHtml(teamSeasonB.owner)}">
-        <rect x="0" y="0" width="${width}" height="${height}" rx="10" fill="#fff" stroke="#e5e7eb" />
-        <rect x="${plotLeft}" y="${plotTop}" width="${plotWidth}" height="${plotHeight}" rx="8" fill="#f8fafc" stroke="#e5e7eb" />
-        ${yTicks.map(tick => {
-          const y = scaleY(tick);
-          return `
-            <line x1="${plotLeft}" y1="${y.toFixed(2)}" x2="${plotRight}" y2="${y.toFixed(2)}" class="gauntlet-histogram-grid-line" />
-            <text x="${plotLeft - 10}" y="${(y + 4).toFixed(2)}" text-anchor="end" class="gauntlet-histogram-y-axis">${escapeHtml(nfmt(tick, 0))}</text>
-          `;
-        }).join('')}
-        <line x1="${plotLeft}" y1="${plotBottom}" x2="${plotRight}" y2="${plotBottom}" stroke="#cbd5e1" stroke-width="1.25" />
-        <path d="${areaPathA}" fill="${colorA}" fill-opacity="0.16" stroke="none"></path>
-        <path d="${areaPathB}" fill="${colorB}" fill-opacity="0.16" stroke="none"></path>
-        <path d="${linePathA}" fill="none" stroke="${colorA}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"></path>
-        <path d="${linePathB}" fill="none" stroke="${colorB}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"></path>
-        <line x1="${meanAX.toFixed(2)}" y1="${plotTop}" x2="${meanAX.toFixed(2)}" y2="${plotBottom}" stroke="${colorA}" stroke-width="2" stroke-dasharray="5 4" opacity="0.9" />
-        <line x1="${meanBX.toFixed(2)}" y1="${plotTop}" x2="${meanBX.toFixed(2)}" y2="${plotBottom}" stroke="${colorB}" stroke-width="2" stroke-dasharray="5 4" opacity="0.9" />
-        <text x="${plotLeft}" y="${height - 10}" class="gauntlet-histogram-axis">${escapeHtml(nfmt(min, 1))}</text>
-        <text x="${plotRight}" y="${height - 10}" text-anchor="end" class="gauntlet-histogram-axis">${escapeHtml(nfmt(max, 1))}</text>
-      </svg>
-      <div class="gauntlet-histogram-foot">
-        <span><strong>${escapeHtml(teamSeasonA.owner)}</strong> min ${nfmt(teamSeasonA.min, 1)} · mean ${nfmt(teamSeasonA.mean, 1)} · max ${nfmt(teamSeasonA.max, 1)}</span>
-        <span><strong>${escapeHtml(teamSeasonB.owner)}</strong> min ${nfmt(teamSeasonB.min, 1)} · mean ${nfmt(teamSeasonB.mean, 1)} · max ${nfmt(teamSeasonB.max, 1)}</span>
-      </div>
-    </div>
-  `;
-}
-
 function gauntletHistogramSvg(result, teamSeasonA, teamSeasonB) {
   if (!result || !teamSeasonA || !teamSeasonB) return '<div class="gauntlet-empty">No simulation data available.</div>';
-
-  const combined = result.scoresA.concat(result.scoresB);
-  const min = combined.reduce((acc, value) => Math.min(acc, value), combined[0]);
-  const max = combined.reduce((acc, value) => Math.max(acc, value), combined[0]);
-  const binsA = histogramBins(result.scoresA, { bins: 18, min, max });
-  const binsB = histogramBins(result.scoresB, { bins: 18, min, max });
-  const maxCount = Math.max(...binsA.map(bin => bin.count), ...binsB.map(bin => bin.count), 1);
-  const width = 1000;
-  const height = 260;
   return `
     <div class="gauntlet-histogram-wrap">
       <div class="gauntlet-histogram-legend">
@@ -179,19 +86,13 @@ function gauntletHistogramSvg(result, teamSeasonA, teamSeasonB) {
         <span><i class="gauntlet-legend-swatch gauntlet-legend-b"></i>${escapeHtml(teamSeasonB.owner)} ${escapeHtml(teamSeasonB.season)}</span>
         <span class="gauntlet-histogram-note">Overlaid score frequencies by simulation bin</span>
       </div>
-      ${histogramOverlayChartSvg({
-        binsA,
-        binsB,
-        maxCount,
-        teamSeasonA,
-        teamSeasonB,
-        min,
-        max,
-        colorA: '#2563eb',
-        colorB: '#f59e0b',
-        width,
-        height,
-      })}
+      <div class="gauntlet-histogram-panel chart-shell">
+        <div id="gauntletHistogramPlot" class="chart-host gauntlet-histogram-host" aria-label="Overlaid score distribution histogram for ${escapeHtml(teamSeasonA.owner)} and ${escapeHtml(teamSeasonB.owner)}"></div>
+        <div class="gauntlet-histogram-foot chart-fallback">
+          <span><strong>${escapeHtml(teamSeasonA.owner)}</strong> min ${nfmt(teamSeasonA.min, 1)} · mean ${nfmt(teamSeasonA.mean, 1)} · max ${nfmt(teamSeasonA.max, 1)}</span>
+          <span><strong>${escapeHtml(teamSeasonB.owner)}</strong> min ${nfmt(teamSeasonB.min, 1)} · mean ${nfmt(teamSeasonB.mean, 1)} · max ${nfmt(teamSeasonB.max, 1)}</span>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -320,7 +221,11 @@ function renderGauntlet(view, { doc } = {}) {
   }
 
   if (probability) probability.innerHTML = gauntletProbabilityHtml(view.result, view.teamSeasonA, view.teamSeasonB);
-  if (histogram) histogram.innerHTML = gauntletHistogramSvg(view.result, view.teamSeasonA, view.teamSeasonB);
+  if (histogram) {
+    histogram.innerHTML = gauntletHistogramSvg(view.result, view.teamSeasonA, view.teamSeasonB);
+    const host = typeof root.getElementById === 'function' ? root.getElementById('gauntletHistogramPlot') : null;
+    renderGauntletHistogramPlot(host, view.result, view.teamSeasonA, view.teamSeasonB);
+  }
   if (stats) stats.innerHTML = gauntletStatsTableHtml(view.result, view.teamSeasonA, view.teamSeasonB);
   if (context) context.innerHTML = gauntletHeadToHeadHtml(view.context);
   if (narrative) narrative.textContent = view.narrative || '';

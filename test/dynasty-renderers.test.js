@@ -419,7 +419,8 @@ test('renderer html includes the selected owner, breakdown, leaderboard, heatmap
 
   const trendHtml = dynastyTrendChartHtml(vm.trendChart);
   assert.match(trendHtml, /All-Time Dynasty Trend/);
-  assert.match(trendHtml, /dynasty-trend-svg/);
+  assert.match(trendHtml, /dynastyTrendPlot/);
+  assert.match(trendHtml, /dynasty-trend-fallback/);
   assert.match(trendHtml, /data-dynasty-trend-toggle/);
 
   const slumpsHtml = dynastySlumpsHtml(vm.slumps);

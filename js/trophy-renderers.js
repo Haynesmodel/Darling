@@ -14,6 +14,7 @@ import {
   computeLuckSummary,
   computeWeeklyAwards,
 } from './stats-helpers.js';
+import { renderTrophyCareerPlot } from './charting/plot-charts.js';
 
 function docOrDefault(doc) {
   return doc || (typeof document !== 'undefined' ? document : null);
@@ -1149,34 +1150,16 @@ function trophyCareerShapeHtml(view) {
   if (!rows.length) {
     return '<div class="trophy-empty">No seasons recorded.</div>';
   }
-  const width = 760;
-  const height = 330;
-  const margin = { top: 38, right: 22, bottom: 48, left: 46 };
-  const innerW = width - margin.left - margin.right;
-  const innerH = height - margin.top - margin.bottom;
-  const finishValues = rows.map(row => Number.isFinite(+row.finish) ? +row.finish : null).filter(v => v !== null);
-  const maxFinish = Math.max(6, ...finishValues, 6);
-  const minFinish = 1;
-  const xFor = (index) => rows.length === 1
-    ? margin.left + innerW / 2
-    : margin.left + (index * innerW / Math.max(1, rows.length - 1));
-  const yFor = (finish) => {
-    const n = Math.max(minFinish, Math.min(maxFinish, +finish || maxFinish));
-    return margin.top + ((n - minFinish) / Math.max(1, maxFinish - minFinish)) * innerH;
-  };
-  const points = rows.map((row, index) => ({
-    row,
-    x: xFor(index),
-    y: yFor(row.finish),
-    finish: Number.isFinite(+row.finish) ? +row.finish : maxFinish,
-  }));
-  const linePath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' ');
-  const baselineY = margin.top + innerH;
-  const playoffY = yFor(6);
-  const tickValues = uniquePreserveOrder([1, 2, 4, 6, maxFinish]).sort((a, b) => a - b);
   const has2014 = rows.some(row => +row.season === 2014);
+  const fallbackRows = rows.map(row => `
+    <li>
+      <span>${esc(row.season)}</span>
+      <strong>${esc(row.finish)}</strong>
+      <span>${esc(row.label)} · ${esc(row.record)}</span>
+    </li>
+  `).join('');
   return `
-    <div class="trophy-career-chart">
+    <div class="trophy-career-chart chart-shell">
       <div class="trophy-career-header">
         <div>
           <div class="trophy-career-title">Season finish trend</div>
@@ -1189,53 +1172,8 @@ function trophyCareerShapeHtml(view) {
           <span><span class="legend-swatch miss"></span> Missed playoffs</span>
         </div>
       </div>
-      <svg class="trophy-career-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Season finish trend">
-        <defs>
-          <linearGradient id="trophyCareerGradient" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stop-color="rgba(37,99,235,.05)" />
-            <stop offset="100%" stop-color="rgba(37,99,235,.01)" />
-          </linearGradient>
-        </defs>
-        <rect x="0" y="0" width="${width}" height="${height}" rx="18" fill="url(#trophyCareerGradient)" />
-        <line x1="${margin.left}" y1="${playoffY}" x2="${width - margin.right}" y2="${playoffY}" class="trophy-career-playoff-line" />
-        <text x="${width - margin.right}" y="${playoffY - 8}" text-anchor="end" class="trophy-career-playoff-label">Playoff cutoff</text>
-        ${tickValues.map(value => {
-          const y = yFor(value);
-          return `
-            <line x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" class="trophy-career-grid" />
-            <text x="${margin.left - 8}" y="${y + 4}" text-anchor="end" class="trophy-career-axis-label">${esc(value)}</text>
-          `;
-        }).join('')}
-        ${rows.map((row, index) => {
-          const x = xFor(index);
-          return `
-            <line x1="${x}" y1="${margin.top}" x2="${x}" y2="${baselineY}" class="trophy-career-xgrid" />
-            <text x="${x}" y="${height - 15}" text-anchor="middle" class="trophy-career-year-label">${esc(row.season)}</text>
-          `;
-        }).join('')}
-        ${linePath ? `<path d="${linePath}" class="trophy-career-line" />` : ''}
-        ${points.map(point => {
-          const cutoff = Number.isFinite(+point.row.playoffCutoff) ? +point.row.playoffCutoff : 6;
-          const madePlayoffs = point.finish <= cutoff;
-          const tierClass = point.row.champion
-            ? 'champion'
-            : point.row.saunders
-              ? 'saunders'
-              : madePlayoffs
-                ? 'playoff'
-                : 'miss';
-          const icon = point.row.champion ? 'trophy' : point.row.saunders ? 'turd' : null;
-          return `
-            <g class="trophy-career-point-group">
-              ${icon ? `<image href="${esc(hardwareArt(icon))}" x="${point.x - 12}" y="${point.y - 36}" width="24" height="24" preserveAspectRatio="xMidYMid meet" />` : ''}
-              <circle cx="${point.x}" cy="${point.y}" r="9" class="trophy-career-point ${tierClass}" />
-              <circle cx="${point.x}" cy="${point.y}" r="3.5" class="trophy-career-point-core ${tierClass}" />
-              <text x="${point.x}" y="${point.y - 14}" text-anchor="middle" class="trophy-career-point-label">${esc(point.finish)}</text>
-              <title>${esc(`${point.row.title} | Playoff cutoff ${cutoff}`)}</title>
-            </g>
-          `;
-        }).join('')}
-      </svg>
+      <div id="trophyCareerPlot" class="chart-host trophy-career-host" aria-label="Season finish trend"></div>
+      <ol class="chart-fallback trophy-career-fallback" aria-label="Season finish values">${fallbackRows}</ol>
     </div>
     <div class="trophy-career-summary">${esc(view.careerShape?.summary || '')}${has2014 ? ' 2014 used a top-4 playoff cutoff.' : ''}</div>
   `;
@@ -1340,7 +1278,13 @@ function renderTrophyRankStrip(view, opts = {}) {
 }
 
 function renderTrophyCareerShape(view, opts = {}) {
-  renderInto('#trophyCareerShape', trophyCareerShapeHtml(view), opts.doc);
+  const root = docOrDefault(opts.doc);
+  if (!root) return;
+  const el = typeof root.querySelector === 'function' ? root.querySelector('#trophyCareerShape') : null;
+  if (!el) return;
+  el.innerHTML = trophyCareerShapeHtml(view);
+  const host = typeof root.getElementById === 'function' ? root.getElementById('trophyCareerPlot') : null;
+  renderTrophyCareerPlot(host, view);
 }
 
 function renderTrophySignatureSeasons(view, opts = {}) {

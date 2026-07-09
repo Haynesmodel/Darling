@@ -13,10 +13,12 @@ const { buildCoverageSummary } = require('../scripts/v8_coverage_report.cjs');
 async function withTempRepo(fn) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-hygiene-'));
   fs.mkdirSync(path.join(root, 'js'));
+  fs.mkdirSync(path.join(root, 'js', 'charting', 'vendor'), { recursive: true });
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ type: 'module' }));
   fs.writeFileSync(path.join(root, 'index.html'), '<script type="module" src="js/app.js"></script>');
   fs.writeFileSync(path.join(root, 'js', 'app.js'), "import './helpers.js';\n");
   fs.writeFileSync(path.join(root, 'js', 'helpers.js'), 'function ok() {}\nexport { ok };\n');
+  fs.writeFileSync(path.join(root, 'js', 'charting', 'vendor', 'charting-vendor.js'), 'export {};\n');
   try {
     return await fn(root);
   } finally {
@@ -62,6 +64,19 @@ test('repo hygiene reports classic scripts and CommonJS helper regressions', asy
     assert.ok(failures.some(failure => failure.includes('single module entrypoint')));
     assert.ok(failures.some(failure => failure.includes('CommonJS exports')));
     assert.ok(failures.some(failure => failure.includes('named helper APIs')));
+  });
+});
+
+test('repo hygiene scans nested source modules and ignores generated vendor code', async () => {
+  await withTempRepo((root) => {
+    fs.mkdirSync(path.join(root, 'js', 'charting'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'js', 'charting', 'chart-data.js'), 'const bad = require("bad");\n');
+    fs.writeFileSync(path.join(root, 'js', 'charting', 'vendor', 'charting-vendor.js'), 'module.exports = {};\n');
+
+    const failures = checkRepoHygiene(root);
+    assert.ok(failures.some(failure => failure.includes('js/charting/chart-data.js must not use CommonJS require')));
+    assert.ok(failures.some(failure => failure.includes('js/charting/chart-data.js must export named helper APIs')));
+    assert.ok(!failures.some(failure => failure.includes('js/charting/vendor/charting-vendor.js')));
   });
 });
 

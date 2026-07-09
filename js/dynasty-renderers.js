@@ -2,6 +2,7 @@ import {
   escapeHtml,
   fmtTrimmed,
 } from './render-helpers.js';
+import { renderDynastyTrendPlot } from './charting/plot-charts.js';
 import {
   isPlayoffGame as isPlayoffGameFn,
   isSaundersGame as isSaundersGameFn,
@@ -1303,20 +1304,6 @@ function dynastyTrendChartHtml(chart = {}, opts = {}) {
   if (!seasons.length || !series.length) return `<div class="dynasty-empty">No dynasty trend data available.</div>`;
 
   const visibleSeries = series.filter(row => !row.hidden);
-  const width = 1100;
-  const height = 380;
-  const margin = { top: 28, right: 28, bottom: 42, left: 58 };
-  const innerWidth = width - margin.left - margin.right;
-  const innerHeight = height - margin.top - margin.bottom;
-  const xForIndex = index => margin.left + (seasons.length === 1 ? innerWidth / 2 : (index / (seasons.length - 1)) * innerWidth);
-  const yForValue = value => margin.top + ((chart.maxScore - value) / Math.max(0.0001, chart.maxScore - chart.minScore)) * innerHeight;
-
-  const yTicks = 5;
-  const tickValues = [];
-  for (let i = 0; i <= yTicks; i += 1) {
-    tickValues.push(chart.minScore + ((chart.maxScore - chart.minScore) * (i / yTicks)));
-  }
-
   const legendHtml = series.map(row => `
     <button
       type="button"
@@ -1332,44 +1319,17 @@ function dynastyTrendChartHtml(chart = {}, opts = {}) {
       <span class="dynasty-facet-action">${row.hidden ? 'Show' : 'Hide'}</span>
     </button>
   `).join('');
-
-  const svgSeries = visibleSeries.map(row => {
-    const points = row.points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${xForIndex(index).toFixed(2)} ${yForValue(point.cumulativeScore).toFixed(2)}`).join(' ');
-    const finalPoint = row.points[row.points.length - 1];
-    const lastX = xForIndex(row.points.length - 1).toFixed(2);
-    const lastY = yForValue(finalPoint.cumulativeScore).toFixed(2);
-    const seasonLabel = finalPoint?.season ?? '—';
-    return `
-      <g class="dynasty-trend-series">
-        <title>${escapeHtml(`${row.owner}: ${fmtTrimmed(row.finalScore)} through ${seasonLabel}`)}</title>
-        <path d="${points}" class="dynasty-trend-path" style="stroke:${row.color}" />
-        <circle cx="${lastX}" cy="${lastY}" r="3.6" fill="${row.color}" />
-      </g>
-    `;
-  }).join('');
-
-  const gridLines = tickValues.map(value => {
-    const y = yForValue(value).toFixed(2);
-    return `
-      <line x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" class="dynasty-trend-grid" />
-      <text x="${margin.left - 10}" y="${y}" text-anchor="end" dominant-baseline="middle" class="dynasty-trend-y-label">${fmtTrimmed(value)}</text>
-    `;
-  }).join('');
-
-  const xLabels = seasons.map((season, index) => {
-    const x = xForIndex(index).toFixed(2);
-    return `
-      <text x="${x}" y="${height - 14}" text-anchor="middle" class="dynasty-trend-x-label">${season}</text>
-      <line x1="${x}" y1="${height - margin.bottom}" x2="${x}" y2="${height - margin.bottom + 6}" class="dynasty-trend-tick" />
-    `;
-  }).join('');
-
   const emptyOverlay = visibleSeries.length
     ? ''
     : `<div class="dynasty-trend-empty">All teams are hidden. Click a team in the key to bring it back.</div>`;
+  const fallbackRows = series
+    .slice()
+    .sort((a, b) => b.finalScore - a.finalScore || a.owner.localeCompare(b.owner))
+    .map(row => `<li><span>${escapeHtml(row.owner)}</span><strong>${fmtTrimmed(row.finalScore)}</strong></li>`)
+    .join('');
 
   return `
-    <div class="dynasty-trend-chart">
+    <div class="dynasty-trend-chart chart-shell">
       <div class="dynasty-trend-header">
         <div>
           <h4 class="dynasty-grid-title">All-Time Dynasty Trend</h4>
@@ -1379,14 +1339,9 @@ function dynastyTrendChartHtml(chart = {}, opts = {}) {
       <div class="dynasty-trend-legend">${legendHtml}</div>
       <div class="dynasty-trend-body">
         ${emptyOverlay}
-        <svg class="dynasty-trend-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="All-time dynasty score through the years">
-          <line x1="${margin.left}" y1="${height - margin.bottom}" x2="${width - margin.right}" y2="${height - margin.bottom}" class="dynasty-trend-axis" />
-          <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${height - margin.bottom}" class="dynasty-trend-axis" />
-          ${gridLines}
-          ${svgSeries}
-          ${xLabels}
-        </svg>
+        <div id="dynastyTrendPlot" class="chart-host dynasty-trend-host" aria-label="All-time dynasty score through the years"></div>
       </div>
+      <ol class="chart-fallback dynasty-trend-fallback" aria-label="Final dynasty trend scores">${fallbackRows}</ol>
     </div>
   `;
 }
@@ -1510,6 +1465,9 @@ function renderDynastyTrendChart(chart, opts = {}) {
   const el = docOrDefault(opts.doc)?.getElementById('dynastyTrendChart');
   if (!el) return;
   el.innerHTML = dynastyTrendChartHtml(chart, opts);
+  const root = docOrDefault(opts.doc);
+  const host = typeof root?.getElementById === 'function' ? root.getElementById('dynastyTrendPlot') : null;
+  renderDynastyTrendPlot(host, chart, opts);
 }
 
 function renderDynastySlumps(slumps, opts = {}) {

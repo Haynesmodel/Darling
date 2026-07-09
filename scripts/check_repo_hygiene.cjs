@@ -29,6 +29,9 @@ function checkRepoHygiene(root = process.cwd()) {
   if (!/<script\s+type=["']module["']\s+src=["']js\/app\.js["']><\/script>/.test(indexHtml)) {
     fail('index.html must load js/app.js as the single module entrypoint.');
   }
+  if (!fs.existsSync(path.join(root, 'js/charting/vendor/charting-vendor.js'))) {
+    fail('js/charting/vendor/charting-vendor.js must exist. Run npm run build:charts after changing chart dependencies.');
+  }
 
   for (const relPath of jsFiles(root, 'js')) {
     const src = read(root, relPath);

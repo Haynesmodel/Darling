@@ -109,7 +109,8 @@ test('rivalry renderer summarizes games and tape from team A perspective', () =>
   assert.match(leadTrend, /09\/01\/2024/);
   assert.match(leadTrend, /Series spread: Joel \+ 1/);
   assert.match(leadTrend, /series lead over time/i);
-  assert.match(leadTrend, /rivalry-trend-dot/);
+  assert.match(leadTrend, /rivalryLeadPlot/);
+  assert.match(leadTrend, /rivalry-trend-fallback/);
 
   const highlights = rivalryHighlightBoardHtml(vm);
   assert.match(highlights, /Biggest Blowout/);

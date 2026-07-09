@@ -299,7 +299,8 @@ test('buildTrophyCaseViewModel renders the visual profile sections', () => {
   assert.match(trophyCareerShapeHtml(vm), /Playoff cutoff is 6th/);
   assert.match(trophyCareerShapeHtml(vm), /Champion/);
   assert.match(trophyCareerShapeHtml(vm), /Saunders/);
-  assert.equal((trophyCareerShapeHtml(vm).match(/trophy-career-point-group/g) || []).length, 3);
+  assert.match(trophyCareerShapeHtml(vm), /trophyCareerPlot/);
+  assert.equal((trophyCareerShapeHtml(vm).match(/<li>/g) || []).length, 3);
   assert.match(trophyAchievementListHtml(vm), /Best regular season|Highest weekly score|Best win margin/);
   assert.match(trophyScarListHtml(vm), /Most unlucky season|Worst weekly score|Biggest loss|Record 11-3-0|Luck \+0\.00/);
   assert.equal(vm.seasonLedger.length, 3);

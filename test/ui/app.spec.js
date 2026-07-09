@@ -387,11 +387,12 @@ test('dynasty tab renders controls and responds to calculator changes', async ({
   await expect(page.locator('#dynastyWindowModal')).toBeHidden();
   await expect(page.locator('#dynastyTrendChart .dynasty-trend-svg')).toBeVisible();
   expect(await page.locator('#dynastyTrendChart [data-dynasty-trend-toggle="1"]').count()).toBeGreaterThan(0);
-  const initialTrendSeriesCount = await page.locator('#dynastyTrendChart .dynasty-trend-series').count();
-  expect(initialTrendSeriesCount).toBeGreaterThan(0);
+  const firstTrendOwner = await page.locator('#dynastyTrendChart [data-dynasty-trend-toggle="1"]').first().getAttribute('data-owner');
+  const firstOwnerTitles = page.locator('#dynastyTrendChart svg title').filter({ hasText: `${firstTrendOwner}:` });
+  expect(await firstOwnerTitles.count()).toBeGreaterThan(0);
   await page.locator('#dynastyTrendChart [data-dynasty-trend-toggle="1"]').first().click();
   await expect(page.locator('#dynastyTrendChart [data-dynasty-trend-toggle="1"]').first()).toHaveAttribute('aria-pressed', 'false');
-  await expect.poll(async () => page.locator('#dynastyTrendChart .dynasty-trend-series').count()).toBe(initialTrendSeriesCount - 1);
+  await expect.poll(async () => firstOwnerTitles.count()).toBe(0);
   expect(await page.locator('#dynastyHeatmap .dynasty-heatmap-row').count()).toBeGreaterThan(0);
   await page.locator('#dynastyStartSeason').selectOption('2014');
   await page.locator('#dynastyEndSeason').selectOption('2023');

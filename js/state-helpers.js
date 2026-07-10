@@ -1,4 +1,5 @@
 import * as core from './core-helpers.js';
+import { queryHistoryGames } from './history-game-query.js';
 function emptyUniverse() {
   return { seasons: [], weeks: [], opponents: [], types: [], rounds: [] };
 }
@@ -340,6 +341,31 @@ function buildHistoryCsvText(games, opts = {}) {
   const header = ['date', 'season', 'team', 'opponent', 'result', 'pf', 'pa', 'type', 'round', 'week', 'xw'];
   const quoteRow = (values) => values.map(csvEscapeFn).map(v => `"${v}"`).join(',');
   const lines = [header.join(',')];
+
+  if (opts.gameQuery) {
+    const rows = queryHistoryGames(games, {
+      selectedTeam,
+      allTeams,
+      query: opts.gameQuery,
+    }).rows;
+    for (const row of rows) {
+      const xw = isRegularGameFn(row.sourceGame) ? expectedWinForGameFn(row.team, row.sourceGame) : null;
+      lines.push(quoteRow([
+        row.date,
+        row.season,
+        row.team,
+        row.opponent,
+        row.result,
+        row.score.toFixed(2),
+        row.opponentScore.toFixed(2),
+        row.type,
+        row.round,
+        row.week,
+        xw ?? '',
+      ]));
+    }
+    return lines.join('\n');
+  }
 
   if (selectedTeam === allTeams) {
     const useWeek = isRestrictiveFn(selectedWeeks, universeWeeks);

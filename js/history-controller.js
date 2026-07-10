@@ -1227,14 +1227,18 @@ function ensureHistoryControls() {
     }
 
     if (urlState.hasAny) {
+      const wasApplyingUrlState = isApplyingUrlState;
       isApplyingUrlState = true;
-      setFacetSelections('seasonFilters', 'season', urlState.seasons, document);
-      setFacetSelections('weekFilters', 'week', urlState.weeks, document);
-      setFacetSelections('oppFilters', 'opp', urlState.opps, document);
-      setFacetSelections('typeFilters', 'type', urlState.types, document);
-      setFacetSelections('roundFilters', 'round', urlState.rounds, document);
-      syncFacetStateFromDom();
-      isApplyingUrlState = false;
+      try {
+        setFacetSelections('seasonFilters', 'season', urlState.seasons, document);
+        setFacetSelections('weekFilters', 'week', urlState.weeks, document);
+        setFacetSelections('oppFilters', 'opp', urlState.opps, document);
+        setFacetSelections('typeFilters', 'type', urlState.types, document);
+        setFacetSelections('roundFilters', 'round', urlState.rounds, document);
+        syncFacetStateFromDom();
+      } finally {
+        isApplyingUrlState = wasApplyingUrlState;
+      }
     } else {
       resetAllFacetsToAll();
     }
@@ -1504,12 +1508,20 @@ function applyFocusTarget(focus) {
 
 function exportHistoryCsv() {
   const filtered = applyFacetFilters(leagueGames, currentFacetState()).sort(byDateDesc);
+  const urlState = parseUrlState();
   const csv = buildHistoryCsvText(filtered, {
     allTeams: ALL_TEAMS,
     selectedTeam,
     selectedWeeks,
     universeWeeks: universe.weeks,
     expectedWinForGameFn: expectedWinForGame,
+    gameQuery: urlState.hasGameQuery ? {
+      gameResult: urlState.gameResult,
+      gameMinScore: urlState.gameMinScore,
+      gameMaxScore: urlState.gameMaxScore,
+      gameSort: urlState.gameSort,
+      gameLimit: urlState.gameLimit,
+    } : null,
   });
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);

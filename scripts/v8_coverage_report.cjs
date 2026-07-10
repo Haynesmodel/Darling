@@ -13,6 +13,7 @@ const ignoredSourceSegments = [
 ];
 const ignoredSourceFiles = new Set([
   path.join('scripts', 'build_chart_vendor.cjs'),
+  path.join('src', 'search', 'search-types.ts'),
   path.join('src', 'theme', 'theme-types.ts'),
 ]);
 

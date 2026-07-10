@@ -11,10 +11,20 @@ function includesPhrase(query: string, phrase: string): boolean {
   return (` ${query} `).includes(` ${phrase} `);
 }
 
-function ownersInQuery(query: string, context: SearchIntentContext): string[] {
-  return context.owners.filter(owner => {
+interface OwnerQueryMatch {
+  owner: string;
+  index: number;
+}
+
+function ownersInQuery(query: string, context: SearchIntentContext): OwnerQueryMatch[] {
+  return context.owners.flatMap(owner => {
     const aliases = context.ownerAliases.get(owner) || [owner];
-    return aliases.some(alias => includesPhrase(query, normalizeSearchText(alias)));
+    const indices = aliases
+      .map(alias => normalizeSearchText(alias))
+      .filter(alias => includesPhrase(query, alias))
+      .map(alias => query.indexOf(alias))
+      .filter(index => index >= 0);
+    return indices.length ? [{ owner, index: Math.min(...indices) }] : [];
   });
 }
 
@@ -44,7 +54,8 @@ function commandInQuery(query: string): SearchCommand | undefined {
 export function parseSearchIntents(rawQuery: string, context: SearchIntentContext): SearchIntent[] {
   const query = normalizeSearchText(rawQuery);
   if (!query) return [];
-  const owners = ownersInQuery(query, context);
+  const ownerMatches = ownersInQuery(query, context);
+  const owners = ownerMatches.map(match => match.owner);
   const year = yearInQuery(query, context.seasons);
   const gameType = gameTypeInQuery(query);
   const command = commandInQuery(query);
@@ -54,11 +65,7 @@ export function parseSearchIntents(rawQuery: string, context: SearchIntentContex
   if (versus && owners.length === 2 && owners[0] !== owners[1]) {
     const marker = query.match(/\b(?:vs|v|versus|against|head to head|h2h)\b/);
     const markerIndex = marker?.index ?? -1;
-    const ordered = owners.slice().sort((a, b) => {
-      const aIndex = query.indexOf(normalizeSearchText(a));
-      const bIndex = query.indexOf(normalizeSearchText(b));
-      return aIndex - bIndex;
-    });
+    const ordered = ownerMatches.slice().sort((a, b) => a.index - b.index).map(match => match.owner);
     if (markerIndex >= 0) return [{ kind: 'rivalry', ownerA: ordered[0], ownerB: ordered[1] }];
   }
 

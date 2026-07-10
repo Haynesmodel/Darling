@@ -19,6 +19,8 @@ function perspectiveRow(game, team, opponent, score, opponentScore, index) {
     combinedScore: Number(score) + Number(opponentScore),
     type: normType(game.type),
     round: normRound(game.round),
+    week: game._weekByTeam?.[team] ?? game.week ?? '',
+    sourceGame: game,
   };
 }
 

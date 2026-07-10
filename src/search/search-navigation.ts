@@ -16,7 +16,8 @@ export function executeSearchAction(action: SearchAction): void {
       window.darlingTheme.setColorSchemePreference(preference);
       return;
     }
-    document.querySelector(`[data-theme-preference="${preference}"]`)?.click();
+    const toggle = document.querySelector(`[data-theme-preference="${preference}"]`);
+    if (toggle && 'click' in toggle && typeof toggle.click === 'function') toggle.click();
   };
   if (action.command === 'theme-dark') setTheme('dark');
   if (action.command === 'theme-light') setTheme('light');

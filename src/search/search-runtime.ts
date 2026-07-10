@@ -1,4 +1,4 @@
-import { buildIntentDocument } from './search-actions';
+import { buildIntentDocument, rebuildSearchDocument } from './search-actions';
 import { buildSearchIndex, type BuiltSearchIndex } from './search-index';
 import { parseSearchIntents } from './search-intents';
 import { executeSearchAction } from './search-navigation';
@@ -27,8 +27,11 @@ export function createSearchRuntime(): DarlingSearchRuntime {
 
   function recentDocuments(): SearchDocument[] {
     const byId = new Map(index.documents.map(document => [document.id, document]));
-    recentIds = recentIds.filter(id => byId.has(id));
-    return recentIds.map(id => byId.get(id) as SearchDocument);
+    const documents = recentIds
+      .map(id => byId.get(id) || (data ? rebuildSearchDocument(id, data) : null))
+      .filter(Boolean) as SearchDocument[];
+    recentIds = documents.map(document => document.id);
+    return documents;
   }
 
   return {

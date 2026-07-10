@@ -291,4 +291,14 @@ test('buildHistoryCsvText exports single-team and all-team rows', () => {
   assert.equal(allTeams.length, 3);
   assert.equal(allTeams[1], '"2025-09-07","2025","Joe","Shap","W","100.00","90.00","Regular","","1","0.75"');
   assert.equal(allTeams[2], '"2025-09-07","2025","Shap","Joe","L","90.00","100.00","Regular","","1","0.25"');
+
+  const queried = buildHistoryCsvText(games, {
+    allTeams: '__ALL__',
+    selectedTeam: '__ALL__',
+    gameQuery: { gameMinScore: 90, gameSort: 'scoreDesc', gameLimit: 2 },
+    expectedWinForGameFn: () => 0.5,
+  }).split('\n');
+  assert.equal(queried.length, 3);
+  assert.equal(queried[1], '"2025-09-07","2025","Joe","Shap","W","100.00","90.00","Regular","","1","0.5"');
+  assert.equal(queried[2], '"2025-09-07","2025","Shap","Joe","L","90.00","100.00","Regular","","1","0.5"');
 });

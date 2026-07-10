@@ -226,3 +226,51 @@ export function buildIntentDocument(intent: SearchIntent, data: SearchHydrationD
   }
   return null;
 }
+
+function optionalToken(value: string | undefined): string | undefined {
+  return value && value !== 'all' ? value : undefined;
+}
+
+function optionalNumber(value: string | undefined): number | undefined {
+  if (!value || value === 'all') return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+export function rebuildSearchDocument(id: string, data: SearchHydrationData): SearchDocument | null {
+  const [kind, ...parts] = id.split(':');
+  if (kind === 'owner-season' && parts[0]) {
+    return buildIntentDocument({
+      kind: 'owner-season',
+      owner: parts[0],
+      season: optionalNumber(parts[1]),
+      gameType: optionalToken(parts[2]),
+    }, data);
+  }
+  if (kind === 'score') {
+    return buildIntentDocument({
+      kind: 'score-threshold',
+      owner: optionalToken(parts[0]),
+      season: optionalNumber(parts[1]),
+      min: optionalNumber(parts[2]),
+      max: optionalNumber(parts[3]),
+    }, data);
+  }
+  if (kind === 'games' && ['W', 'L', 'T'].includes(parts[2])) {
+    return buildIntentDocument({
+      kind: 'game-filter',
+      owner: optionalToken(parts[0]),
+      season: optionalNumber(parts[1]),
+      result: parts[2] as 'W' | 'L' | 'T',
+    }, data);
+  }
+  if (kind === 'record' && ['largest-loss-margin', 'largest-win-margin', 'highest-score', 'lowest-score'].includes(parts[0])) {
+    return buildIntentDocument({
+      kind: 'game-extreme',
+      metric: parts[0] as Extract<SearchIntent, { kind: 'game-extreme' }>['metric'],
+      owner: optionalToken(parts[1]),
+      season: optionalNumber(parts[2]),
+    }, data);
+  }
+  return null;
+}

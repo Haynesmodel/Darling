@@ -7,8 +7,8 @@ export interface SearchIntentContext {
   seasons: number[];
 }
 
-function includesPhrase(query: string, phrase: string): boolean {
-  return (` ${query} `).includes(` ${phrase} `);
+function phraseIndex(query: string, phrase: string): number {
+  return (` ${query} `).indexOf(` ${phrase} `);
 }
 
 interface OwnerQueryMatch {
@@ -22,8 +22,7 @@ function ownersInQuery(query: string, context: SearchIntentContext): OwnerQueryM
     const aliases = context.ownerAliases.get(owner) || [owner];
     const matches = aliases
       .map(alias => normalizeSearchText(alias))
-      .filter(alias => includesPhrase(query, alias))
-      .map(alias => ({ alias, index: query.indexOf(alias) }))
+      .map(alias => ({ alias, index: phraseIndex(query, alias) }))
       .filter(match => match.index >= 0)
       .sort((a, b) => a.index - b.index || b.alias.length - a.alias.length);
     return matches.length ? [{ owner, ...matches[0] }] : [];

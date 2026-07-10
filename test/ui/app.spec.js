@@ -797,6 +797,8 @@ test('global search parser recognizes supported league phrases without guessing 
       '2021 Joe',
       'Zubs versus Joel',
       'Plot Joel head to head',
+      'Joel versus Joe',
+      'Joel Joe h2h',
       '2024 Saunders',
       'games over 140',
       'Joe biggest loss',
@@ -822,6 +824,8 @@ test('global search parser recognizes supported league phrases without guessing 
   expect(results['2021 Joe'].title).toContain('Joe - 2021 season');
   expect(results['Zubs versus Joel'].title).toBe('Zubs vs Joel');
   expect(results['Plot Joel head to head'].title).toBe('Plot vs Joel');
+  expect(results['Joel versus Joe'].title).toBe('Joel vs Joe');
+  expect(results['Joel Joe h2h'].title).toBe('Joel vs Joe');
   expect(results['2024 Saunders'].title).toContain('2024 Saunders games');
   expect(results['games over 140'].title).toContain('140+ point games');
   expect(results['Joe biggest loss'].title).toContain('Joe Biggest loss');

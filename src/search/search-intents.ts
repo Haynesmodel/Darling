@@ -30,6 +30,20 @@ function ownersInQuery(query: string, context: SearchIntentContext): OwnerQueryM
   });
 }
 
+function rivalryOwnersInQuery(query: string, matches: OwnerQueryMatch[]): [string, string] | null {
+  if (matches.length !== 2 || matches[0].owner === matches[1].owner) return null;
+  const ordered = matches.slice().sort((a, b) => a.index - b.index);
+  const [first, second] = ordered;
+  const before = query.slice(0, first.index).trim();
+  const between = query.slice(first.index + first.alias.length, second.index).trim();
+  const after = query.slice(second.index + second.alias.length).trim();
+  const infixSeparator = /^(?:vs|v|versus|against|head to head|h2h)$/;
+  const suffixSeparator = /^(?:head to head|h2h)$/;
+  const isInfix = before === '' && after === '' && infixSeparator.test(between);
+  const isSuffix = before === '' && between === '' && suffixSeparator.test(after);
+  return isInfix || isSuffix ? [first.owner, second.owner] : null;
+}
+
 function removePhrase(query: string, phrase: string): string {
   return (` ${query} `)
     .replace(` ${phrase} `, ' ')
@@ -106,13 +120,8 @@ export function parseSearchIntents(rawQuery: string, context: SearchIntentContex
   const command = commandInQuery(query);
   if (command) return [{ kind: 'command', command }];
 
-  const versus = /\b(vs|v|versus|against|head to head|h2h)\b/.test(query);
-  if (versus && owners.length === 2 && owners[0] !== owners[1]) {
-    const marker = query.match(/\b(?:vs|v|versus|against|head to head|h2h)\b/);
-    const markerIndex = marker?.index ?? -1;
-    const ordered = ownerMatches.slice().sort((a, b) => a.index - b.index).map(match => match.owner);
-    if (markerIndex >= 0) return [{ kind: 'rivalry', ownerA: ordered[0], ownerB: ordered[1] }];
-  }
+  const rivalryOwners = rivalryOwnersInQuery(query, ownerMatches);
+  if (rivalryOwners) return [{ kind: 'rivalry', ownerA: rivalryOwners[0], ownerB: rivalryOwners[1] }];
 
   const owner = owners.length === 1 ? owners[0] : undefined;
   const scopedQuery = owners.length <= 1

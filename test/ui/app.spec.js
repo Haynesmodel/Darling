@@ -125,7 +125,7 @@ test('changing the team updates the rendered rows and url state', async ({ page 
   await page.waitForLoadState('networkidle');
 
   const teamSelect = page.locator('#teamSelect');
-  const originalWeekCount = await page.locator('#weekTable tbody tr').count();
+  const originalFirstWeek = await page.locator('#weekTable tbody tr').first().innerText();
 
   const optionValues = await teamSelect.locator('option').evaluateAll(options =>
     options.map(option => option.value).filter(value => value && value !== '__ALL__')
@@ -144,7 +144,7 @@ test('changing the team updates the rendered rows and url state', async ({ page 
   await expect(page.locator('html')).toHaveAttribute('data-accent-theme', 'owner');
   await expect(page.locator('html')).toHaveAttribute('data-owner-theme', nextTeam);
   expect(nextWeekCount).toBe(nextHistoryCount);
-  expect(nextWeekCount).not.toBe(originalWeekCount);
+  await expect(page.locator('#weekTable tbody tr').first()).not.toHaveText(originalFirstWeek);
 });
 
 test('current season tab renders matchups and links to head to head context', async ({ page }) => {
@@ -721,6 +721,88 @@ test('global search navigates to season, score threshold, and record deep links'
   await expect(page).toHaveURL(/gameSort=marginAsc/);
   await expect(page).toHaveURL(/gameLimit=1/);
   await expect(page.locator('#historyGamesTable tbody tr')).toHaveCount(1);
+});
+
+test('interactive history games sort, filter, expand, and persist saved views', async ({ page }) => {
+  await page.goto('/?tab=history&team=Joe');
+  await page.waitForLoadState('networkidle');
+  await page.evaluate(() => localStorage.removeItem('darling.tableViews.v1'));
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+
+  const shell = page.locator('[data-table-id="history-games"]');
+  await shell.getByRole('button', { name: 'Sort Score; currently unsorted' }).click();
+  await expect(page).toHaveURL(/gameSort=scoreDesc/);
+  await expect(shell.locator('th').filter({ hasText: 'Score' })).toHaveAttribute('aria-sort', 'descending');
+
+  await shell.getByRole('button', { name: '150+' }).click();
+  await expect(page).toHaveURL(/gameMinScore=150/);
+  const scoreCells = await shell.locator('tbody > tr:not(.table-expanded-row) td:nth-child(4)').allTextContents();
+  expect(scoreCells.length).toBeGreaterThan(0);
+  expect(scoreCells.every(value => Number(value.split(' - ')[0]) >= 150)).toBe(true);
+
+  await shell.locator('.table-filter-menu > summary').click();
+  await shell.getByPlaceholder('Search opponent').fill('Singer');
+  await expect(shell.locator('tbody > tr:not(.table-expanded-row)')).not.toHaveCount(0);
+  const opponents = await shell.locator('tbody > tr:not(.table-expanded-row) td:nth-child(2)').allTextContents();
+  expect(opponents.every(value => value.includes('Singer'))).toBe(true);
+
+  await shell.locator('.table-expand-button').first().click();
+  await expect(shell.locator('.table-expanded-row')).toHaveCount(1);
+  await expect(shell.locator('.table-expanded-row')).toContainText('Combined score');
+  await expect(shell.locator('.table-expand-button').first()).toHaveAttribute('aria-expanded', 'true');
+
+  await shell.locator('.table-view-menu > summary').click();
+  await shell.getByPlaceholder('View name').fill('Singer 150 audit');
+  await shell.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(shell.locator('.table-menu-message')).toContainText('Saved');
+
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+  const reloaded = page.locator('[data-table-id="history-games"]');
+  await expect(reloaded.locator('.table-view-menu')).toContainText('Singer 150 audit');
+  await expect(reloaded.locator('.table-expanded-row')).toHaveCount(0);
+});
+
+test('interactive tables mount across rivalry, current season, and trophy pages', async ({ page }) => {
+  await page.goto('/?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('[data-table-id="rivalry-seasons"] tbody tr')).not.toHaveCount(0);
+  const rivalryGames = page.locator('[data-table-id="rivalry-games"]');
+  await expect(rivalryGames.locator('tbody tr')).not.toHaveCount(0);
+  await rivalryGames.getByRole('button', { name: 'Last five meetings' }).click();
+  await expect(rivalryGames.locator('tbody > tr:not(.table-expanded-row)')).toHaveCount(5);
+  await rivalryGames.locator('.table-expand-button').first().click();
+  await expect(rivalryGames.locator('.table-expanded-row')).toContainText('Running series record');
+
+  await page.goto('/?tab=current&currentOwner=Joe');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('[data-table-id="current-standings"] tbody tr')).not.toHaveCount(0);
+  await expect(page.locator('[data-table-id="current-projected"] tbody tr')).not.toHaveCount(0);
+  await expect(page.locator('[data-table-id="current-standings"] .current-owner-focus-row')).toHaveCount(1);
+
+  await page.goto('/?tab=trophy&trophyOwner=Joe');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('[data-table-id="trophy-seasons"] tbody tr')).toHaveCount(12);
+  await expect(page.locator('[data-table-id="trophy-seasons"] .trophy-chip').first()).toBeVisible();
+});
+
+test('interactive tables keep sticky identity cells readable on mobile and dark mode', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?tab=history&team=Joe');
+  await page.waitForLoadState('networkidle');
+
+  const shell = page.locator('[data-table-id="history-games"]');
+  const scroller = shell.locator('.interactive-table-scroll');
+  expect(await scroller.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true);
+  const pinned = shell.locator('tbody .table-column-pinned').first();
+  expect(await pinned.evaluate(element => getComputedStyle(element).position)).toBe('sticky');
+  expect(await pinned.evaluate(element => getComputedStyle(element).left)).toBe('0px');
+
+  await page.getByRole('button', { name: 'Dark' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-color-scheme', 'dark');
+  expect(await pinned.evaluate(element => getComputedStyle(element).backgroundColor)).not.toContain('rgba');
+  expect(await pinned.evaluate(element => getComputedStyle(element).color)).toBe('rgb(248, 250, 252)');
 });
 
 test('history game-query deep links survive direct loads and reloads', async ({ page }) => {

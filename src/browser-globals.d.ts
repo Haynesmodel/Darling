@@ -4,3 +4,7 @@ declare function requestAnimationFrame(callback: (...args: any[]) => void): numb
 declare class PopStateEvent {
   constructor(type: string, eventInitDict?: any);
 }
+
+interface Window {
+  darlingTables?: import('./tables/table-types').DarlingTableRuntime;
+}

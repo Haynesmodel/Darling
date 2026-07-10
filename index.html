@@ -130,84 +130,23 @@
       <div class="card">
         <h3 id="oppTableTitle">Opponent Breakdown</h3>
         <div id="rivalGroupCallouts" class="callouts"></div>
-        <div class="table-wrap">
-          <table id="oppTable">
-            <thead>
-              <tr>
-                <th scope="col" id="oppFirstCol">Opponent</th>
-                <th scope="col">Record</th>
-                <th scope="col">Win %</th>
-                <th scope="col">PPG</th>
-                <th scope="col">OPPG</th>
-                <th scope="col">Games</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
+        <div id="oppTableRoot"></div>
       </div>
 
       <div class="card">
         <h3>Season Recap</h3>
-        <div class="table-wrap">
-          <table id="seasonRecapTable">
-            <thead>
-              <tr>
-                <th scope="col">Season</th>
-                <th scope="col">Draft Pick</th>
-                <th scope="col">Record</th>
-                <th scope="col">Win %</th>
-                <th scope="col">Finish</th>
-                <th scope="col">Outcome</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
+        <div id="seasonRecapTableRoot"></div>
       </div>
 
       <div class="card">
         <h3>Week-by-Week</h3>
-        <div class="table-wrap">
-          <table id="weekTable">
-            <thead>
-              <tr>
-                <th scope="col">Season</th>
-                <th scope="col">Week</th>
-                <th scope="col">Date</th>
-                <th scope="col">Opponent</th>
-                <th scope="col">Result</th>
-                <th scope="col">Score</th>
-                <th scope="col">XW</th>
-                <th scope="col">Type</th>
-                <th scope="col">Round</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
+        <div id="weekTableRoot"></div>
       </div>
 
       <div class="card" id="historyGamesCard">
         <h3>All Games</h3>
         <p id="historyGamesQuerySummary" class="muted history-games-query-summary" aria-live="polite"></p>
-        <div class="table-wrap">
-          <table id="historyGamesTable">
-            <thead>
-              <tr>
-                <th scope="col" id="historyGamesTeamHeader" hidden>Team</th>
-                <th scope="col">Date</th>
-                <th scope="col">Opponent</th>
-                <th scope="col">Result</th>
-                <th scope="col">Score</th>
-                <th scope="col">Type</th>
-                <th scope="col">Round</th>
-                <th scope="col">Season</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
+        <div id="historyGamesTableRoot"></div>
       </div>
     </section>
 
@@ -287,42 +226,12 @@
 
       <div class="card">
         <h3>Season Breakdown</h3>
-        <div class="table-wrap">
-          <table id="rivalrySeasonTable">
-            <thead>
-              <tr>
-                <th scope="col">Season</th>
-                <th scope="col">Record</th>
-                <th scope="col">PF</th>
-                <th scope="col">PA</th>
-                <th scope="col">Diff</th>
-                <th scope="col">Notes</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
+        <div id="rivalrySeasonTableRoot"></div>
       </div>
 
       <div class="card">
         <h3>Game Log</h3>
-        <div class="table-wrap">
-          <table id="rivalryGameTable">
-            <thead>
-              <tr>
-                <th scope="col">Date</th>
-                <th scope="col">Season</th>
-                <th scope="col">Week</th>
-                <th scope="col">Type</th>
-                <th scope="col">Round</th>
-                <th scope="col">Winner</th>
-                <th scope="col">Score</th>
-                <th scope="col">Margin</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
+        <div id="rivalryGameTableRoot"></div>
       </div>
     </section>
 
@@ -361,22 +270,7 @@
 
       <section class="card">
         <h3>Season Ledger</h3>
-        <div class="table-wrap trophy-ledger">
-          <table id="trophySeasonTable">
-            <thead>
-              <tr>
-                <th scope="col">Season</th>
-                <th scope="col">Record</th>
-                <th scope="col">Finish</th>
-                <th scope="col">PF</th>
-                <th scope="col">PA</th>
-                <th scope="col">Diff</th>
-                <th scope="col">Notes</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
+        <div id="trophySeasonTableRoot" class="trophy-ledger"></div>
       </section>
     </section>
 

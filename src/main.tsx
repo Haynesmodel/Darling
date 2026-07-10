@@ -5,13 +5,17 @@ import '../js/app.js';
 import { render } from 'preact';
 import ThemeToggle from './components/theme/ThemeToggle';
 import GlobalSearch from './components/search/GlobalSearch';
+import './components/tables/table.css';
 import { createDarlingThemeRuntime, type DarlingThemeRuntime } from './theme/apply-theme';
 import { createSearchRuntime } from './search/search-runtime';
 import type { DarlingSearchRuntime } from './search/search-types';
+import { createTableRuntime } from './tables/table-runtime';
+import type { DarlingTableRuntime } from './tables/table-types';
 
 interface BrowserWindow {
   darlingTheme?: DarlingThemeRuntime;
   darlingSearch?: DarlingSearchRuntime;
+  darlingTables?: DarlingTableRuntime;
 }
 
 interface BrowserDocument {
@@ -22,6 +26,7 @@ interface BrowserDocument {
 
 const themeRuntime = createDarlingThemeRuntime();
 const searchRuntime = createSearchRuntime();
+const tableRuntime = createTableRuntime();
 const browser = globalThis as unknown as {
   window?: BrowserWindow;
   document?: BrowserDocument;
@@ -30,6 +35,7 @@ const browser = globalThis as unknown as {
 if (browser.window) {
   browser.window.darlingTheme = themeRuntime;
   browser.window.darlingSearch = searchRuntime;
+  browser.window.darlingTables = tableRuntime;
 }
 
 function mountThemeControls() {

@@ -1,6 +1,10 @@
 import { byDateDesc, canonicalGameKey } from './core-helpers.js';
 import { loadLeagueAssets } from './data-helpers.js';
 import {
+  buildHistoryGameRows,
+  queryHistoryGames,
+} from './history-game-query.js';
+import {
   bestStreakForTeam,
   computeBottomNWeeklyScoresAllTeams,
   computeExpectedWinForGame,
@@ -37,11 +41,12 @@ import {
 } from './app-state-controller.js';
 import {
   opponentBreakdownView,
-  renderGamesTable,
-  renderSeasonRecap,
+  opponentBreakdownRows,
   renderTopHighlights,
-  renderWeekByWeek,
+  seasonRecapOutcome,
+  seasonRecapRows,
   seasonCalloutView,
+  weekByWeekRows,
 } from './history-renderers.js';
 import {
   readCurseTrackerFilters,
@@ -75,9 +80,7 @@ import {
   renderRivalryHighlightBoard,
   renderRivalryLeadMeter,
   renderRivalryLeadTrend,
-  renderRivalryGameTable,
   renderRivalryHeadline,
-  renderRivalrySeasonTable,
   renderRivalryTimeline,
   renderRivalryTape,
 } from './rivalry-renderers.js';
@@ -104,7 +107,6 @@ import {
   renderTrophyCareerShape,
   renderTrophyAchievementList,
   renderTrophyScarList,
-  renderTrophySeasonLedger,
 } from './trophy-renderers.js';
 import {
   buildDynastyControls,
@@ -551,8 +553,16 @@ function renderRivalry() {
     renderRivalryTape(view, { doc: document });
     renderRivalryLeadTrend(view, { doc: document });
     renderRivalryTimeline(view, { doc: document });
-    renderRivalrySeasonTable(view, { doc: document });
-    renderRivalryGameTable(view, { doc: document });
+    window.darlingTables?.render?.('rivalry-seasons', {
+      rows: view.seasonRows,
+      context: { rivalryA: view.teamA, rivalryB: view.teamB },
+      instanceKey: `${view.teamA}|${view.teamB}|${view.scope}`,
+    });
+    window.darlingTables?.render?.('rivalry-games', {
+      rows: view.gameRows,
+      context: { rivalryA: view.teamA, rivalryB: view.teamB },
+      instanceKey: `${view.teamA}|${view.teamB}|${view.scope}`,
+    });
     if (document.title !== undefined) {
       document.title = `${selectedRivalryTeamA} vs ${selectedRivalryTeamB} \u2014 Head to Head`;
     }
@@ -616,6 +626,24 @@ function renderCurrentSeason() {
     renderCurrentMatchups(view, { doc: document });
     renderCurrentStandings(view, { doc: document });
     renderCurrentTeamSnapshots(view, { doc: document });
+    window.darlingTables?.render?.('current-standings', {
+      rows: view.standings,
+      context: {
+        season: view.season,
+        selectedOwner: view.commandCenter.selectedOwner,
+        playoffPicture: view.commandCenter.playoffPicture,
+      },
+      instanceKey: `${view.season}|${view.commandCenter.selectedView}`,
+    });
+    window.darlingTables?.render?.('current-projected', {
+      rows: view.commandCenter.projectedStandings,
+      context: {
+        season: view.season,
+        selectedOwner: view.commandCenter.selectedOwner,
+        modelLabel: view.commandCenter.modelLabel,
+      },
+      instanceKey: `${view.season}|${view.commandCenter.selectedView}|${view.commandCenter.selectedProjectionMode}`,
+    });
   });
 
   updateUrlFromState({
@@ -649,7 +677,11 @@ function renderTrophy() {
     renderTrophyCareerShape(view, { doc: document });
     renderTrophyAchievementList(view, { doc: document });
     renderTrophyScarList(view, { doc: document });
-    renderTrophySeasonLedger(view, { doc: document });
+    window.darlingTables?.render?.('trophy-seasons', {
+      rows: view.seasonLedger,
+      context: { owner: view.owner },
+      instanceKey: view.owner,
+    });
   });
 
   updateUrlFromState({
@@ -1393,9 +1425,7 @@ function renderCurseTrackerSection() {
 
 function renderOppBreakdown(team, games) {
   const titleEl = document.getElementById('oppTableTitle');
-  const firstCol = document.getElementById('oppFirstCol');
-  const tb = document.querySelector('#oppTable tbody');
-  if (!tb || !titleEl || !firstCol) return;
+  if (!titleEl) return;
 
   const calloutsBox = document.getElementById('rivalGroupCallouts');
 
@@ -1409,8 +1439,20 @@ function renderOppBreakdown(team, games) {
   });
 
   titleEl.textContent = view.title;
-  firstCol.textContent = view.firstCol;
-  tb.innerHTML = view.tableHtml;
+  const rows = opponentBreakdownRows(team, games, {
+    allTeams: ALL_TEAMS,
+    selectedWeeks,
+    universeWeeks: universe.weeks,
+  });
+  window.darlingTables?.render?.('history-opponents', {
+    rows,
+    context: {
+      owner: team === ALL_TEAMS ? null : team,
+      games,
+      isLeague: team === ALL_TEAMS,
+    },
+    instanceKey: `${team}|${renderKeysForGames(games)}`,
+  });
 
   if (calloutsBox) {
     calloutsBox.innerHTML = view.calloutsHtml;
@@ -1419,6 +1461,38 @@ function renderOppBreakdown(team, games) {
       setGroupBackdrop(view.backdropSlug || null);
     }
   }
+}
+
+function renderKeysForGames(games = []) {
+  if (!games.length) return 'empty';
+  return `${games.length}|${canonicalGameKey(games[0])}|${canonicalGameKey(games[games.length - 1])}`;
+}
+
+function updateHistoryGamesSummary(team, games, gameQuery) {
+  const summary = document.getElementById('historyGamesQuerySummary');
+  if (!summary) return;
+  const includeTeam = team === ALL_TEAMS;
+  const view = queryHistoryGames(games, {
+    selectedTeam: team,
+    allTeams: ALL_TEAMS,
+    query: gameQuery,
+  });
+  summary.textContent = (includeTeam || gameQuery?.gameResult || Number.isFinite(gameQuery?.gameMinScore) || Number.isFinite(gameQuery?.gameMaxScore) || gameQuery?.gameSort || gameQuery?.gameLimit)
+    ? view.summary
+    : '';
+}
+
+function handleHistoryGameTableUrlState(gameQuery = {}) {
+  updateUrlFromState({
+    ...currentFacetState(),
+    selectedGameResult: gameQuery.gameResult,
+    selectedGameMinScore: gameQuery.gameMinScore,
+    selectedGameMaxScore: gameQuery.gameMaxScore,
+    selectedGameSort: gameQuery.gameSort,
+    selectedGameLimit: gameQuery.gameLimit,
+    isApplyingUrlState,
+  });
+  updateHistoryGamesSummary(selectedTeam, filteredGamesForCurrentState(), gameQuery);
 }
 
 function renderHistory() {
@@ -1471,21 +1545,50 @@ function renderHistory() {
     renderOppBreakdown(selectedTeam, filtered);
   });
   renderIfChanged('seasonRecap', renderKeys.seasonRecap, () => {
-    renderSeasonRecap(selectedTeam, seasonSummaries, {
-      allTeams: ALL_TEAMS,
-      allGames: leagueGames,
+    const rows = selectedTeam === ALL_TEAMS ? [] : seasonRecapRows(selectedTeam, seasonSummaries, {
       selectedSeasons,
       universeSeasons: universe.seasons,
+    }).map(row => ({
+      ...row,
+      outcome: seasonRecapOutcome(selectedTeam, row, leagueGames),
+    }));
+    window.darlingTables?.render?.('history-seasons', {
+      rows,
+      context: {
+        owner: selectedTeam === ALL_TEAMS ? null : selectedTeam,
+        latestSeason: Math.max(...universe.seasons),
+      },
+      instanceKey: `${selectedTeam}|${[...selectedSeasons].join(',')}`,
     });
   });
   renderIfChanged('seasonCallout', renderKeys.seasonCallout, () => {
     renderSeasonCallout(selectedTeam);
   });
   renderIfChanged('weekByWeek', renderKeys.weekByWeek, () => {
-    renderWeekByWeek(selectedTeam, filtered, { allTeams: ALL_TEAMS, allGames: leagueGames });
+    const rows = selectedTeam === ALL_TEAMS ? [] : weekByWeekRows(selectedTeam, filtered, { allGames: leagueGames });
+    window.darlingTables?.render?.('history-weeks', {
+      rows,
+      context: { owner: selectedTeam === ALL_TEAMS ? null : selectedTeam },
+      instanceKey: `${selectedTeam}|${renderKeys.weekByWeek}`,
+    });
   });
   renderIfChanged('gamesTable', `${renderKeys.gamesTable}|${JSON.stringify(gameQuery)}`, () => {
-    renderGamesTable(selectedTeam, filtered, { allTeams: ALL_TEAMS, query: gameQuery });
+    const rows = buildHistoryGameRows(filtered, {
+      selectedTeam,
+      allTeams: ALL_TEAMS,
+    });
+    window.darlingTables?.render?.('history-games', {
+      rows,
+      context: { owner: selectedTeam === ALL_TEAMS ? null : selectedTeam },
+      initialState: {
+        columnVisibility: { team: selectedTeam === ALL_TEAMS },
+        columnPinning: { left: [selectedTeam === ALL_TEAMS ? 'team' : 'date'], right: [] },
+      },
+      urlState: gameQuery,
+      onUrlStateChange: handleHistoryGameTableUrlState,
+      instanceKey: `${selectedTeam}|${renderKeys.gamesTable}|${JSON.stringify(gameQuery)}`,
+    });
+    updateHistoryGamesSummary(selectedTeam, filtered, gameQuery);
   });
 }
 

@@ -19,6 +19,7 @@ Test locally:
 - `npm test` runs the data and helper tests.
 - `npm run test:assets` validates `assets/H2H.json`, `assets/SeasonSummary.json`, `assets/Rivalries.json`, and optional `assets/CurrentSeason.json`.
 - `npm run test:charts` runs the chart data/spec smoke tests.
+- `npm run test:tables` runs the interactive table engine, row-adapter, quick-filter, and saved-view schema tests.
 - `npm run test:unit` regenerates the chart bundle, then runs typecheck, hygiene, asset validation, chart tests, Node unit tests, and Python tests.
 - `npm run test:scripts` runs the script helper tests, including the Python update helpers.
 - `npm run test:ui` runs the Playwright browser tests against the Vite dev server.
@@ -46,6 +47,12 @@ Global search and command palette:
 - Search is local-only. It hydrates from the existing league JSON assets, stores only up to eight executed result IDs in `localStorage["darling.search.recent"]`, and navigates through canonical URL state.
 - History record URLs support `gameResult`, `gameMinScore`, `gameMaxScore`, `gameSort`, `gameLimit`, and `focus`. Invalid values are ignored and limits are capped at 100.
 - See [`docs/SEARCH_COMMAND_PALETTE.md`](./docs/SEARCH_COMMAND_PALETTE.md) before adding aliases, intent families, or commands.
+
+Interactive tables:
+- Primary History, Head to Head, Current Season, and Trophy tables share sortable headers, typed filters, quick filters, sticky identity columns, row details, pagination, visibility/pinning controls, and local saved views.
+- History game filters and supported sorting continue to use canonical Global Search URL fields; presentation preferences remain local.
+- Saved views are local-only in `localStorage["darling.tableViews.v1"]` and are schema-validated when restored.
+- See [`docs/INTERACTIVE_TABLES.md`](./docs/INTERACTIVE_TABLES.md) before adding a table ID, column, adapter, quick filter, or saved-state field.
 
 Current Season command-center assumptions:
 - `assets/CurrentSeason.json` can include `playoff_rules`; if omitted, the app assumes 14 regular-season weeks, 6 playoff teams, 2 byes, 6 Saunders slots, and standings sorted by win rate, points for, points differential, then owner.

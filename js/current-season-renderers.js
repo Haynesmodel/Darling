@@ -368,36 +368,7 @@ function currentStandingsHtml(view) {
   }
   return `
     <h3>Standings</h3>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th scope="col">Rank</th>
-            <th scope="col">Owner</th>
-            <th scope="col">Record</th>
-            <th scope="col">Win %</th>
-            <th scope="col">PF</th>
-            <th scope="col">PA</th>
-            <th scope="col">Diff</th>
-            <th scope="col">Streak</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${view.standings.map(row => `
-            <tr>
-              <td>${escapeHtml(row.rank)}</td>
-              <td>${escapeHtml(row.owner)}</td>
-              <td>${escapeHtml(row.record)}</td>
-              <td>${escapeHtml(fmtPct(row.pct))}</td>
-              <td>${nfmt(row.pointsFor, 2)}</td>
-              <td>${nfmt(row.pointsAgainst, 2)}</td>
-              <td>${row.differential >= 0 ? '+' : ''}${nfmt(row.differential, 2)}</td>
-              <td>${escapeHtml(row.streak || '-')}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
+    <div id="currentStandingsTableRoot"></div>
   `;
 }
 
@@ -551,32 +522,7 @@ function currentProjectedStandingsHtml(view) {
     <div class="current-command-chart chart-shell">
       <div id="currentProjectedStandingsPlot" class="chart-host current-projected-standings-host" aria-label="Projected standings seed by owner"></div>
     </div>
-    <div class="table-wrap current-projection-table">
-      <table>
-        <thead>
-          <tr>
-            <th scope="col">Projected Seed</th>
-            <th scope="col">Owner</th>
-            <th scope="col">Projected Record</th>
-            <th scope="col">Current Record</th>
-            <th scope="col">Projected PF</th>
-            <th scope="col">Seed Change</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows.map(row => `
-            <tr class="${row.owner === command.selectedOwner ? 'current-owner-focus-row' : ''}">
-              <td>${escapeHtml(row.projectedRank)}</td>
-              <td>${escapeHtml(row.owner)}</td>
-              <td>${escapeHtml(row.projectedRecord)}</td>
-              <td>${escapeHtml(row.currentRecord)}</td>
-              <td>${nfmt(row.projectedPointsFor, 2)}</td>
-              <td>${escapeHtml(signedSeedChange(row.seedChange))}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
+    <div id="currentProjectedTableRoot" class="current-projection-table"></div>
   `;
 }
 

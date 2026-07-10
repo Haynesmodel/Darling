@@ -93,6 +93,7 @@ test('current-season renderer emits hero, matchup, standings, and snapshot html'
   assert.match(projection, /Generated Jun 17, 2026, 2:22 PM UTC/);
   assert.match(projection, /Live scores no/);
   assert.match(projection, /Projected scores no/);
+  assert.match(projection, /currentProjectedTableRoot/);
 
   const matchups = currentMatchupsHtml(view);
   assert.match(matchups, /Week 1 Matchups/);
@@ -104,8 +105,8 @@ test('current-season renderer emits hero, matchup, standings, and snapshot html'
 
   const standings = currentStandingsHtml(view);
   assert.match(standings, /Standings/);
-  assert.match(standings, /Win %/);
-  assert.match(standings, /Shap/);
+  assert.match(standings, /currentStandingsTableRoot/);
+  assert.ok(view.standings.some(row => row.owner === 'Shap'));
 
   const snapshots = currentTeamSnapshotsHtml(view);
   assert.match(snapshots, /Team Snapshots/);

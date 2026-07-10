@@ -13,19 +13,64 @@ function includesPhrase(query: string, phrase: string): boolean {
 
 interface OwnerQueryMatch {
   owner: string;
+  alias: string;
   index: number;
 }
 
 function ownersInQuery(query: string, context: SearchIntentContext): OwnerQueryMatch[] {
   return context.owners.flatMap(owner => {
     const aliases = context.ownerAliases.get(owner) || [owner];
-    const indices = aliases
+    const matches = aliases
       .map(alias => normalizeSearchText(alias))
       .filter(alias => includesPhrase(query, alias))
-      .map(alias => query.indexOf(alias))
-      .filter(index => index >= 0);
-    return indices.length ? [{ owner, index: Math.min(...indices) }] : [];
+      .map(alias => ({ alias, index: query.indexOf(alias) }))
+      .filter(match => match.index >= 0)
+      .sort((a, b) => a.index - b.index || b.alias.length - a.alias.length);
+    return matches.length ? [{ owner, ...matches[0] }] : [];
   });
+}
+
+function removePhrase(query: string, phrase: string): string {
+  return (` ${query} `)
+    .replace(` ${phrase} `, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function removeYear(query: string, year?: number): string {
+  return year ? removePhrase(query, `${year}`) : query;
+}
+
+function removeGameType(query: string, gameType?: string): string {
+  const patterns: Record<string, RegExp> = {
+    Playoff: /\b(?:playoff|playoffs|postseason)\b/,
+    Saunders: /\bsaunders(?: bowl)?\b/,
+    Championship: /\bchampionship\b/,
+    Regular: /\bregular(?: season)?\b/,
+  };
+  const pattern = gameType ? patterns[gameType] : null;
+  return pattern ? query.replace(pattern, ' ').replace(/\s+/g, ' ').trim() : query;
+}
+
+function scoreThresholdInQuery(query: string): { min?: number; max?: number } | null {
+  const number = '(\\d+(?:\\.\\d+)?)';
+  const minPatterns = [
+    new RegExp(`^(?:games?|scores?)\\s+(?:over|above|at least)\\s+${number}(?:\\s+(?:points?|scores?))?$`),
+    new RegExp(`^${number}\\s*(?:\\+|plus|point games?|points? games?|scores?)$`),
+  ];
+  const maxPatterns = [
+    new RegExp(`^(?:games?|scores?)\\s+(?:under|below|at most)\\s+${number}(?:\\s+(?:points?|scores?))?$`),
+    new RegExp(`^${number}\\s+(?:points?\\s+)?(?:or less|or fewer)$`),
+  ];
+  for (const pattern of minPatterns) {
+    const match = query.match(pattern);
+    if (match) return { min: Number(match[1]) };
+  }
+  for (const pattern of maxPatterns) {
+    const match = query.match(pattern);
+    if (match) return { max: Number(match[1]) };
+  }
+  return null;
 }
 
 function yearInQuery(query: string, seasons: number[]): number | undefined {
@@ -70,36 +115,37 @@ export function parseSearchIntents(rawQuery: string, context: SearchIntentContex
   }
 
   const owner = owners.length === 1 ? owners[0] : undefined;
-  if (/\b(trophy|trophies|hardware|trophy case)\b/.test(query)) return [{ kind: 'feature', feature: 'trophy', owner }];
-  if (/\bdynasty(?: rankings?)?\b/.test(query)) return [{ kind: 'feature', feature: 'dynasty', owner }];
-  if (/\b(historical matchup|gauntlet)\b/.test(query)) return [{ kind: 'feature', feature: 'gauntlet' }];
-  if (/\bplayoff picture\b/.test(query)) return [{ kind: 'feature', feature: 'playoff-picture' }];
-  if (/\bcurrent season\b/.test(query)) return [{ kind: 'feature', feature: 'current' }];
+  const scopedQuery = owners.length <= 1
+    ? ownerMatches.reduce((value, match) => removePhrase(value, match.alias), query)
+    : null;
+  if (scopedQuery && /^(?:trophy|trophies|hardware|trophy case)$/.test(scopedQuery)) return [{ kind: 'feature', feature: 'trophy', owner }];
+  if (scopedQuery && /^dynasty(?: rankings?)?$/.test(scopedQuery)) return [{ kind: 'feature', feature: 'dynasty', owner }];
+  if (!owners.length && /^(?:historical matchup|gauntlet)$/.test(query)) return [{ kind: 'feature', feature: 'gauntlet' }];
+  if (!owners.length && query === 'playoff picture') return [{ kind: 'feature', feature: 'playoff-picture' }];
+  if (!owners.length && query === 'current season') return [{ kind: 'feature', feature: 'current' }];
   if (query === 'league history' || query === 'history') return [{ kind: 'feature', feature: 'history' }];
 
+  const recordQuery = scopedQuery === null ? null : removeYear(scopedQuery, year);
   let metric: 'largest-loss-margin' | 'largest-win-margin' | 'highest-score' | 'lowest-score' | undefined;
-  if (/\b(biggest|largest|worst) loss\b/.test(query)) metric = 'largest-loss-margin';
-  else if (/\b(biggest|largest) win\b/.test(query)) metric = 'largest-win-margin';
-  else if (/\b(highest|top|most) (?:score|scoring)\b/.test(query)) metric = 'highest-score';
-  else if (/\b(lowest|bottom|least) (?:score|scoring)\b/.test(query)) metric = 'lowest-score';
+  if (recordQuery && /^(?:biggest|largest|worst) loss$/.test(recordQuery)) metric = 'largest-loss-margin';
+  else if (recordQuery && /^(?:biggest|largest) win$/.test(recordQuery)) metric = 'largest-win-margin';
+  else if (recordQuery && /^(?:highest|top|most) (?:score|scoring)$/.test(recordQuery)) metric = 'highest-score';
+  else if (recordQuery && /^(?:lowest|bottom|least) (?:score|scoring)$/.test(recordQuery)) metric = 'lowest-score';
   if (metric) return [{ kind: 'game-extreme', metric, owner, season: year }];
 
-  const thresholdNumber = [...query.matchAll(/\b(\d+(?:\.\d+)?)\b/g)]
-    .map(match => Number(match[1]))
-    .find(value => value < 1900 || value > 2100);
-  if (thresholdNumber !== undefined && /\b(point|points|score|scores|game|games|over|above|under|below|least|most|less|plus)\b/.test(query)) {
-    const isMax = /\b(under|below|at most|or less)\b/.test(query);
-    const isMin = /\b(over|above|at least|plus|point games?|scores?)\b/.test(query);
-    if (isMax || isMin) {
-      return [{ kind: 'score-threshold', owner, season: year, ...(isMax ? { max: thresholdNumber } : { min: thresholdNumber }) }];
-    }
+  const gameQuery = scopedQuery === null ? null : removeYear(scopedQuery, year);
+  const threshold = gameQuery ? scoreThresholdInQuery(gameQuery) : null;
+  if (threshold) {
+    return [{ kind: 'score-threshold', owner, season: year, ...threshold }];
   }
 
-  if (owner && /\bloss(?:es)?\b/.test(query)) return [{ kind: 'game-filter', owner, season: year, result: 'L' }];
-  if (owner && /\bwins?\b/.test(query)) return [{ kind: 'game-filter', owner, season: year, result: 'W' }];
-  if (owner && (year || gameType || query === normalizeSearchText(owner))) {
+  const ownerQuery = scopedQuery === null ? null : removeGameType(removeYear(scopedQuery, year), gameType);
+  const ownerResultQuery = scopedQuery === null ? null : removeYear(scopedQuery, year);
+  if (owner && ownerResultQuery && /^loss(?:es)?$/.test(ownerResultQuery)) return [{ kind: 'game-filter', owner, season: year, result: 'L' }];
+  if (owner && ownerResultQuery && /^wins?$/.test(ownerResultQuery)) return [{ kind: 'game-filter', owner, season: year, result: 'W' }];
+  if (owner && ownerQuery === '' && (year || gameType || scopedQuery === '')) {
     return [{ kind: 'owner-season', owner, season: year, gameType }];
   }
-  if (year && gameType) return [{ kind: 'season-type', season: year, gameType }];
+  if (!owner && owners.length === 0 && year && gameType && ownerQuery === '') return [{ kind: 'season-type', season: year, gameType }];
   return [];
 }

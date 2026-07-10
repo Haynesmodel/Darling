@@ -19,6 +19,19 @@ export default function GlobalSearch({ runtime, portal }: GlobalSearchProps) {
   const [snapshot, setSnapshot] = useState(runtime.getSnapshot());
   const triggerRef = useRef<any>(null);
   const openRef = useRef(false);
+  const returnFocusRef = useRef<any>(null);
+
+  const rememberFocus = () => {
+    returnFocusRef.current = document.activeElement;
+  };
+  const restoreFocus = () => {
+    requestAnimationFrame(() => {
+      const target = returnFocusRef.current;
+      if (target?.isConnected && typeof target.focus === 'function') target.focus();
+      else triggerRef.current?.focus();
+      returnFocusRef.current = null;
+    });
+  };
 
   useEffect(() => runtime.subscribe(setSnapshot), [runtime]);
   useEffect(() => {
@@ -27,7 +40,7 @@ export default function GlobalSearch({ runtime, portal }: GlobalSearchProps) {
         event.preventDefault();
         openRef.current = false;
         setOpen(false);
-        requestAnimationFrame(() => triggerRef.current?.focus());
+        restoreFocus();
         return;
       }
       const commandK = event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey);
@@ -35,6 +48,7 @@ export default function GlobalSearch({ runtime, portal }: GlobalSearchProps) {
       if (!commandK && !slash) return;
       event.preventDefault();
       if (snapshot.hydrated) {
+        rememberFocus();
         openRef.current = true;
         setOpen(true);
       }
@@ -44,6 +58,7 @@ export default function GlobalSearch({ runtime, portal }: GlobalSearchProps) {
   }, [snapshot.hydrated]);
 
   const openSearch = () => {
+    rememberFocus();
     openRef.current = true;
     setOpen(true);
   };
@@ -51,7 +66,7 @@ export default function GlobalSearch({ runtime, portal }: GlobalSearchProps) {
   const close = () => {
     openRef.current = false;
     setOpen(false);
-    requestAnimationFrame(() => triggerRef.current?.focus());
+    restoreFocus();
   };
 
   return (

@@ -7,7 +7,8 @@ export function normalizeSearchText(value: unknown): string {
     .replace(CURLY_PUNCTUATION, "'")
     .replace(CURLY_QUOTES, '"')
     .toLowerCase()
-    .replace(/[^a-z0-9'+\-\s]/g, ' ')
+    .replace(/[^a-z0-9'.+\-\s]/g, ' ')
+    .replace(/(?<!\d)\.|\.(?!\d)/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }

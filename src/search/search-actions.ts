@@ -247,6 +247,16 @@ export function rebuildSearchDocument(id: string, data: SearchHydrationData): Se
       gameType: optionalToken(parts[2]),
     }, data);
   }
+  if (kind === 'rivalry' && parts[0] && parts[1]) {
+    return buildIntentDocument({ kind: 'rivalry', ownerA: parts[0], ownerB: parts[1] }, data);
+  }
+  if (kind === 'season-type' && optionalNumber(parts[0]) && parts[1]) {
+    return buildIntentDocument({
+      kind: 'season-type',
+      season: optionalNumber(parts[0]) as number,
+      gameType: parts[1],
+    }, data);
+  }
   if (kind === 'score') {
     return buildIntentDocument({
       kind: 'score-threshold',

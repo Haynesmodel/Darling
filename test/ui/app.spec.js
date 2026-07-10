@@ -771,6 +771,20 @@ test('dynamic structured results remain in recents after reopen and reload', asy
   await trigger.click();
   dialog = page.getByRole('dialog', { name: 'Search The Darling' });
   await expect(dialog.getByRole('option').first()).toContainText('140+ point games');
+
+  await page.keyboard.press('Escape');
+  const dynamicIds = await page.evaluate(() => {
+    window.darlingSearch.clearRecent();
+    const results = ['2024 regular season', 'Zubs vs Joe'].map(query => window.darlingSearch.search(query)[0]);
+    results.forEach(result => window.darlingSearch.execute(result));
+    return results.map(result => result.id);
+  });
+  expect(dynamicIds).toEqual(['season-type:2024:Regular', 'rivalry:Zubs:Joe']);
+
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+  const restoredIds = await page.evaluate(() => window.darlingSearch.search('').map(result => result.id));
+  expect(restoredIds).toEqual(expect.arrayContaining(dynamicIds));
 });
 
 test('global search parser recognizes supported league phrases without guessing invalid entities', async ({ page }) => {
@@ -788,6 +802,9 @@ test('global search parser recognizes supported league phrases without guessing 
       'Joe trophy case',
       'Joe dynasty',
       'The Browns vs When it Haynes, it Pours',
+      'games over 100.38',
+      'DefinitelyNotAnOwner trophy case',
+      'Joe Shap biggest loss',
       'DefinitelyNotAnOwner 2022',
       'Joe vs Joe',
     ];
@@ -806,6 +823,9 @@ test('global search parser recognizes supported league phrases without guessing 
   expect(results['Joe trophy case'].title).toContain('Joe Trophy Case');
   expect(results['Joe dynasty'].title).toContain('Joe Dynasty Rankings');
   expect(results['The Browns vs When it Haynes, it Pours'].title).toBe('Zubs vs Joe');
+  expect(results['games over 100.38'].title).toContain('100.38+ point games');
+  expect(results['DefinitelyNotAnOwner trophy case']?.score || 0).toBeLessThan(1000);
+  expect(results['Joe Shap biggest loss']?.score || 0).toBeLessThan(1000);
   expect(results['DefinitelyNotAnOwner 2022']?.score || 0).toBeLessThan(1000);
   expect(results['Joe vs Joe']?.score || 0).toBeLessThan(1000);
 });
@@ -832,6 +852,19 @@ test('global search executes theme commands and uses a keyboard-safe mobile shee
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
   await expect(trigger).toBeFocused();
+});
+
+test('global search restores focus to the keyboard shortcut invoker', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+  const teamSelect = page.locator('#teamSelect');
+  await teamSelect.focus();
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+K' : 'Control+K');
+  const dialog = page.getByRole('dialog', { name: 'Search The Darling' });
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(teamSelect).toBeFocused();
 });
 
 test('facet dropdowns keep expanded state in sync and close with escape', async ({ page }) => {

@@ -42,7 +42,9 @@ test('history renderer builds all-games table html for selected team', () => {
   assert.match(html, /Semi Final/);
 
   const allHtml = historyGamesTableHtml('__ALL__', games, { allTeams: '__ALL__' });
-  assert.match(allHtml, /Select a team to see full game list/);
+  assert.match(allHtml, /<td>Joe<\/td>/);
+  assert.match(allHtml, /<td>Shap<\/td>/);
+  assert.equal((allHtml.match(/<tr/g) || []).length, 4);
 });
 
 test('history renderer builds week-by-week table html for selected team', () => {

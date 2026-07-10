@@ -718,9 +718,15 @@ function applyHistoryUrlState(urlState = parseUrlState()) {
 
   const teams = teamOptions(seasonSummaries, leagueGames, ALL_TEAMS);
   const defaultTeam = teams.find(t => t.value === DEFAULT_TEAM)?.value || teams[0]?.value || DEFAULT_TEAM;
+  const leagueWideGameSearch = !urlState.team && (
+    urlState.hasGameQuery
+    || (urlState.focus === 'games' && (urlState.seasons?.size || urlState.types?.size || urlState.rounds?.size))
+  );
   const nextTeam = (urlState.team && teams.some(t => t.value === urlState.team))
     ? urlState.team
-    : defaultTeam;
+    : leagueWideGameSearch
+      ? ALL_TEAMS
+      : defaultTeam;
 
   selectedTeam = nextTeam;
   teamSelect.value = nextTeam;
@@ -815,6 +821,7 @@ function applyUrlState(urlState = parseUrlState()) {
     }
   } finally {
     isApplyingUrlState = false;
+    if (urlState.focus) applyFocusTarget(urlState.focus);
   }
 }
 
@@ -1163,8 +1170,8 @@ function syncFacetStateFromDom() {
     selectedRounds,
     universe,
   });
-  renderHistory();
   updateUrlFromState({ ...currentFacetState(), isApplyingUrlState });
+  renderHistory();
 }
 
 function resetAllFacetsToAll() {
@@ -1220,14 +1227,18 @@ function ensureHistoryControls() {
     }
 
     if (urlState.hasAny) {
+      const wasApplyingUrlState = isApplyingUrlState;
       isApplyingUrlState = true;
-      setFacetSelections('seasonFilters', 'season', urlState.seasons, document);
-      setFacetSelections('weekFilters', 'week', urlState.weeks, document);
-      setFacetSelections('oppFilters', 'opp', urlState.opps, document);
-      setFacetSelections('typeFilters', 'type', urlState.types, document);
-      setFacetSelections('roundFilters', 'round', urlState.rounds, document);
-      syncFacetStateFromDom();
-      isApplyingUrlState = false;
+      try {
+        setFacetSelections('seasonFilters', 'season', urlState.seasons, document);
+        setFacetSelections('weekFilters', 'week', urlState.weeks, document);
+        setFacetSelections('oppFilters', 'opp', urlState.opps, document);
+        setFacetSelections('typeFilters', 'type', urlState.types, document);
+        setFacetSelections('roundFilters', 'round', urlState.rounds, document);
+        syncFacetStateFromDom();
+      } finally {
+        isApplyingUrlState = wasApplyingUrlState;
+      }
     } else {
       resetAllFacetsToAll();
     }
@@ -1417,6 +1428,14 @@ function renderHistory() {
   applyOwnerThemeContext(selectedTeam, historySeasonMode());
 
   const filtered = filteredGamesForCurrentState();
+  const urlState = parseUrlState();
+  const gameQuery = {
+    gameResult: urlState.gameResult,
+    gameMinScore: urlState.gameMinScore,
+    gameMaxScore: urlState.gameMaxScore,
+    gameSort: urlState.gameSort,
+    gameLimit: urlState.gameLimit,
+  };
   const curseFilters = readCurseTrackerFilters({
     doc: document,
     selectedTeam,
@@ -1465,19 +1484,44 @@ function renderHistory() {
   renderIfChanged('weekByWeek', renderKeys.weekByWeek, () => {
     renderWeekByWeek(selectedTeam, filtered, { allTeams: ALL_TEAMS, allGames: leagueGames });
   });
-  renderIfChanged('gamesTable', renderKeys.gamesTable, () => {
-    renderGamesTable(selectedTeam, filtered);
+  renderIfChanged('gamesTable', `${renderKeys.gamesTable}|${JSON.stringify(gameQuery)}`, () => {
+    renderGamesTable(selectedTeam, filtered, { allTeams: ALL_TEAMS, query: gameQuery });
+  });
+}
+
+function applyFocusTarget(focus) {
+  const targets = {
+    top: 'page-history',
+    overview: 'teamOverview',
+    games: 'historyGamesCard',
+    standings: 'currentStandings',
+    'playoff-picture': 'currentPlayoffPicture',
+  };
+  const element = document.getElementById(targets[focus]);
+  if (!element) return;
+  element.setAttribute('tabindex', '-1');
+  requestAnimationFrame(() => {
+    element.scrollIntoView({ block: 'start', behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    element.focus({ preventScroll: true });
   });
 }
 
 function exportHistoryCsv() {
   const filtered = applyFacetFilters(leagueGames, currentFacetState()).sort(byDateDesc);
+  const urlState = parseUrlState();
   const csv = buildHistoryCsvText(filtered, {
     allTeams: ALL_TEAMS,
     selectedTeam,
     selectedWeeks,
     universeWeeks: universe.weeks,
     expectedWinForGameFn: expectedWinForGame,
+    gameQuery: urlState.hasGameQuery ? {
+      gameResult: urlState.gameResult,
+      gameMinScore: urlState.gameMinScore,
+      gameMaxScore: urlState.gameMaxScore,
+      gameSort: urlState.gameSort,
+      gameLimit: urlState.gameLimit,
+    } : null,
   });
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
@@ -1656,6 +1700,12 @@ async function bootstrapHistoryApp() {
   const loaded = await loadLeagueJSON();
   if (!loaded) return;
   bindListeners();
+  window.darlingSearch?.hydrate?.({
+    leagueGames,
+    seasonSummaries,
+    rivalries,
+    currentSeason,
+  });
   applyUrlState(urlState);
 }
 

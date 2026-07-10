@@ -24,6 +24,7 @@ export default function ThemeToggle({ runtime }: ThemeToggleProps) {
           key={option.value}
           type="button"
           class={theme.colorSchemePreference === option.value ? 'theme-toggle-option active' : 'theme-toggle-option'}
+          data-theme-preference={option.value}
           aria-pressed={theme.colorSchemePreference === option.value}
           title={option.title}
           onClick={() => runtime.setColorSchemePreference(option.value)}

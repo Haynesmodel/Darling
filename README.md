@@ -40,6 +40,13 @@ Theme and hero assets:
 - The default hero remains the league identity photo, served from optimized responsive files under `assets/hero/`.
 - Run `npm run build:hero` after replacing the league photo. By default the script uses `assets/LeaguePic.jpeg`, `assets/hero/league-1920.jpg`, or the previous git blob as a fallback source.
 
+Global search and command palette:
+- Open Search from the sticky navigation, with `Command+K` / `Control+K`, or with `/` while focus is outside an editable field.
+- Structured phrases include owner seasons (`Joe 2021`), rivalries (`Zubs vs Joel`), season types (`2024 playoffs`), thresholds (`150 point games`), records (`biggest loss`), feature destinations, and color-scheme commands.
+- Search is local-only. It hydrates from the existing league JSON assets, stores only up to eight executed result IDs in `localStorage["darling.search.recent"]`, and navigates through canonical URL state.
+- History record URLs support `gameResult`, `gameMinScore`, `gameMaxScore`, `gameSort`, `gameLimit`, and `focus`. Invalid values are ignored and limits are capped at 100.
+- See [`docs/SEARCH_COMMAND_PALETTE.md`](./docs/SEARCH_COMMAND_PALETTE.md) before adding aliases, intent families, or commands.
+
 Current Season command-center assumptions:
 - `assets/CurrentSeason.json` can include `playoff_rules`; if omitted, the app assumes 14 regular-season weeks, 6 playoff teams, 2 byes, 6 Saunders slots, and standings sorted by win rate, points for, points differential, then owner.
 - The v1 command center uses a deterministic path model. It shows projected standings for completed games plus live leaders if scores hold; it does not display simulation odds or player-level projections.

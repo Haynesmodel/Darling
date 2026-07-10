@@ -654,6 +654,231 @@ test('url state restores selected team and facet filters on load', async ({ page
   await expect(page.locator('#historyGamesTable tbody tr').first()).toContainText('2025-09-07');
 });
 
+test('global search opens by shortcut and navigates to an owner season', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+
+  const trigger = page.locator('.search-trigger');
+  await expect(trigger).toBeEnabled();
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+K' : 'Control+K');
+  const dialog = page.getByRole('dialog', { name: 'Search The Darling' });
+  await expect(dialog).toBeVisible();
+  const input = dialog.getByRole('combobox');
+  await expect(input).toBeFocused();
+  await input.fill('Joe 2021');
+  await expect(dialog.getByRole('option').first()).toContainText('Joe - 2021 season');
+  await page.keyboard.press('Enter');
+
+  await expect(page).toHaveURL(/tab=history/);
+  await expect(page).toHaveURL(/team=Joe/);
+  await expect(page).toHaveURL(/seasons=2021/);
+  await expect(page.locator('#teamSelect')).toHaveValue('Joe');
+});
+
+test('global search resolves rivalry and browser back restores the previous view', async ({ page }) => {
+  await page.goto('/?tab=current');
+  await page.waitForLoadState('networkidle');
+  await page.locator('.search-trigger').click();
+  const dialog = page.getByRole('dialog', { name: 'Search The Darling' });
+  await dialog.getByRole('combobox').fill('Zubs vs Joel');
+  await expect(dialog.getByRole('option').first()).toContainText('Zubs vs Joel');
+  await page.keyboard.press('Enter');
+
+  await expect(page).toHaveURL(/tab=rivalry/);
+  await expect(page.locator('#rivalryTeamA')).toHaveValue('Zubs');
+  await expect(page.locator('#rivalryTeamB')).toHaveValue('Joel');
+  await page.goBack();
+  await expect(page).toHaveURL(/tab=current/);
+  await expect(page.locator('#page-current')).toBeVisible();
+});
+
+test('global search navigates to season, score threshold, and record deep links', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+
+  const search = async (query) => {
+    await page.locator('.search-trigger').click();
+    const dialog = page.getByRole('dialog', { name: 'Search The Darling' });
+    await dialog.getByRole('combobox').fill(query);
+    await page.keyboard.press('Enter');
+  };
+
+  await search('2024 playoffs');
+  await expect(page).toHaveURL(/seasons=2024/);
+  await expect(page).toHaveURL(/types=Playoff/);
+  await expect(page.locator('#teamSelect')).toHaveValue('__ALL__');
+
+  await search('150 point games');
+  await expect(page).toHaveURL(/gameMinScore=150/);
+  await expect(page).toHaveURL(/gameSort=scoreDesc/);
+  await expect(page.locator('#historyGamesQuerySummary')).toContainText('scores of at least 150');
+  const scoreCells = await page.locator('#historyGamesTable tbody tr td:nth-child(5)').allTextContents();
+  expect(scoreCells.length).toBeGreaterThan(0);
+  expect(scoreCells.every(value => Number(value.split(' - ')[0]) >= 150)).toBe(true);
+
+  await search('biggest loss');
+  await expect(page).toHaveURL(/gameResult=L/);
+  await expect(page).toHaveURL(/gameSort=marginAsc/);
+  await expect(page).toHaveURL(/gameLimit=1/);
+  await expect(page.locator('#historyGamesTable tbody tr')).toHaveCount(1);
+});
+
+test('history game-query deep links survive direct loads and reloads', async ({ page }) => {
+  const scoreUrl = '/?tab=history&gameMinScore=150&gameSort=scoreDesc&focus=games';
+  await page.goto(scoreUrl);
+  await page.waitForLoadState('networkidle');
+  await expect(page).toHaveURL(/gameMinScore=150/);
+  await expect(page.locator('#teamSelect')).toHaveValue('__ALL__');
+  await expect(page.locator('#historyGamesQuerySummary')).toContainText('scores of at least 150');
+  const scoreCount = await page.locator('#historyGamesTable tbody tr').count();
+  expect(scoreCount).toBeGreaterThan(0);
+
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+  await expect(page).toHaveURL(/gameMinScore=150/);
+  await expect(page.locator('#historyGamesTable tbody tr')).toHaveCount(scoreCount);
+
+  const recordUrl = '/?tab=history&gameResult=L&gameSort=marginAsc&gameLimit=1&focus=games';
+  await page.goto(recordUrl);
+  await page.waitForLoadState('networkidle');
+  await expect(page).toHaveURL(/gameResult=L/);
+  await expect(page.locator('#historyGamesTable tbody tr')).toHaveCount(1);
+
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+  await expect(page).toHaveURL(/gameLimit=1/);
+  await expect(page.locator('#historyGamesTable tbody tr')).toHaveCount(1);
+});
+
+test('dynamic structured results remain in recents after reopen and reload', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+  await page.evaluate(() => window.darlingSearch.clearRecent());
+  const trigger = page.locator('.search-trigger');
+  await trigger.click();
+  let dialog = page.getByRole('dialog', { name: 'Search The Darling' });
+  await dialog.getByRole('combobox').fill('games over 140');
+  await dialog.getByRole('option').first().click();
+  await expect(page).toHaveURL(/gameMinScore=140/);
+
+  await trigger.click();
+  dialog = page.getByRole('dialog', { name: 'Search The Darling' });
+  await expect(dialog.getByRole('option').first()).toContainText('140+ point games');
+  await page.keyboard.press('Escape');
+
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+  await trigger.click();
+  dialog = page.getByRole('dialog', { name: 'Search The Darling' });
+  await expect(dialog.getByRole('option').first()).toContainText('140+ point games');
+
+  await page.keyboard.press('Escape');
+  const dynamicIds = await page.evaluate(() => {
+    window.darlingSearch.clearRecent();
+    const results = ['2024 regular season', 'Zubs vs Joe'].map(query => window.darlingSearch.search(query)[0]);
+    results.forEach(result => window.darlingSearch.execute(result));
+    return results.map(result => result.id);
+  });
+  expect(dynamicIds).toEqual(['season-type:2024:Regular', 'rivalry:Zubs:Joe']);
+
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+  const restoredIds = await page.evaluate(() => window.darlingSearch.search('').map(result => result.id));
+  expect(restoredIds).toEqual(expect.arrayContaining(dynamicIds));
+});
+
+test('global search parser recognizes supported league phrases without guessing invalid entities', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+
+  const results = await page.evaluate(() => {
+    const queries = [
+      'Joe 2021',
+      '2021 Joe',
+      'Zubs versus Joel',
+      'Plot Joel head to head',
+      'Joel versus Joe',
+      'Joel Joe h2h',
+      '2024 Saunders',
+      'games over 140',
+      'Joe biggest loss',
+      'Joe trophy case',
+      'Joe dynasty',
+      'The Browns vs When it Haynes, it Pours',
+      'games over 100.38',
+      'DefinitelyNotAnOwner trophy case',
+      'Joe Shap biggest loss',
+      'DefinitelyNotAnOwner 2022',
+      'Joe vs Joe',
+      'Joe vs Joel 2024',
+      'Joe vs Joel biggest loss',
+      'vs Joe Joel',
+    ];
+    return Object.fromEntries(queries.map(query => {
+      const first = window.darlingSearch.search(query)[0];
+      return [query, first ? { title: first.title, score: first.score, interpretation: first.interpretation } : null];
+    }));
+  });
+
+  expect(results['Joe 2021'].title).toContain('Joe - 2021 season');
+  expect(results['2021 Joe'].title).toContain('Joe - 2021 season');
+  expect(results['Zubs versus Joel'].title).toBe('Zubs vs Joel');
+  expect(results['Plot Joel head to head'].title).toBe('Plot vs Joel');
+  expect(results['Joel versus Joe'].title).toBe('Joel vs Joe');
+  expect(results['Joel Joe h2h'].title).toBe('Joel vs Joe');
+  expect(results['2024 Saunders'].title).toContain('2024 Saunders games');
+  expect(results['games over 140'].title).toContain('140+ point games');
+  expect(results['Joe biggest loss'].title).toContain('Joe Biggest loss');
+  expect(results['Joe trophy case'].title).toContain('Joe Trophy Case');
+  expect(results['Joe dynasty'].title).toContain('Joe Dynasty Rankings');
+  expect(results['The Browns vs When it Haynes, it Pours'].title).toBe('Zubs vs Joe');
+  expect(results['games over 100.38'].title).toContain('100.38+ point games');
+  expect(results['DefinitelyNotAnOwner trophy case']?.score || 0).toBeLessThan(1000);
+  expect(results['Joe Shap biggest loss']?.score || 0).toBeLessThan(1000);
+  expect(results['DefinitelyNotAnOwner 2022']?.score || 0).toBeLessThan(1000);
+  expect(results['Joe vs Joe']?.score || 0).toBeLessThan(1000);
+  expect(results['Joe vs Joel 2024']?.score || 0).toBeLessThan(1000);
+  expect(results['Joe vs Joel biggest loss']?.score || 0).toBeLessThan(1000);
+  expect(results['vs Joe Joel']?.score || 0).toBeLessThan(1000);
+});
+
+test('global search executes theme commands and uses a keyboard-safe mobile sheet', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+  const trigger = page.locator('.search-trigger');
+  await trigger.click();
+  const dialog = page.getByRole('dialog', { name: 'Search The Darling' });
+  const box = await dialog.boundingBox();
+  expect(box.width).toBeLessThanOrEqual(390);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+  await dialog.getByRole('combobox').fill('dark mode');
+  await expect(dialog.getByRole('option').first()).toContainText('Dark mode');
+  expect(await page.evaluate(() => window.darlingSearch.search('dark mode')[0].action)).toEqual({ kind: 'command', command: 'theme-dark' });
+  await dialog.getByRole('option').first().click();
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('darling.search.recent') || '[]'))).toContain('command:theme-dark');
+  await expect(page.locator('html')).toHaveAttribute('data-color-scheme', 'dark');
+
+  await trigger.click();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(trigger).toBeFocused();
+});
+
+test('global search restores focus to the keyboard shortcut invoker', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+  const teamSelect = page.locator('#teamSelect');
+  await teamSelect.focus();
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+K' : 'Control+K');
+  const dialog = page.getByRole('dialog', { name: 'Search The Darling' });
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(teamSelect).toBeFocused();
+});
+
 test('facet dropdowns keep expanded state in sync and close with escape', async ({ page }) => {
   await page.goto('/');
   await page.waitForLoadState('networkidle');
@@ -733,6 +958,26 @@ test('csv export downloads the currently filtered history rows', async ({ page }
   expect(lines).toHaveLength(2);
   expect(lines[0]).toBe('date,season,team,opponent,result,pf,pa,type,round,week,xw');
   expect(lines[1]).toContain('"2025-09-07","2025","Joe","Shemer","L","81.32","94.56","Regular","","1"');
+});
+
+test('export history command honors game-query filters, ordering, and limit', async ({ page }) => {
+  await page.goto('/?tab=history&gameMinScore=150&gameSort=scoreDesc&gameLimit=5&focus=games');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('#historyGamesTable tbody tr')).toHaveCount(5);
+
+  await page.locator('.search-trigger').click();
+  const dialog = page.getByRole('dialog', { name: 'Search The Darling' });
+  await dialog.getByRole('combobox').fill('export history');
+  const downloadPromise = page.waitForEvent('download');
+  await dialog.getByRole('option').first().click();
+  const download = await downloadPromise;
+  const lines = (await downloadText(download)).trim().split('\n');
+
+  expect(download.suggestedFilename()).toBe('history_ALL.csv');
+  expect(lines).toHaveLength(6);
+  const scores = lines.slice(1).map(line => Number(line.split(',')[5].replaceAll('"', '')));
+  expect(scores.every(score => score >= 150)).toBe(true);
+  expect(scores).toEqual([...scores].sort((a, b) => b - a));
 });
 
 test('unchanged history state does not rebuild rendered table rows', async ({ page }) => {

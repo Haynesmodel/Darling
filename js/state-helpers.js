@@ -1,4 +1,5 @@
 import * as core from './core-helpers.js';
+import { queryHistoryGames } from './history-game-query.js';
 function emptyUniverse() {
   return { seasons: [], weeks: [], opponents: [], types: [], rounds: [] };
 }
@@ -16,6 +17,25 @@ function defaultIsRestrictive(selSet, uniArr) {
 
 function isFiniteInput(value) {
   return value !== null && value !== '' && Number.isFinite(Number(value));
+}
+
+const GAME_RESULTS = new Set(['W', 'L', 'T']);
+const GAME_SORTS = new Set(['dateDesc', 'scoreDesc', 'scoreAsc', 'marginDesc', 'marginAsc', 'combinedDesc']);
+const FOCUS_TARGETS = new Set(['top', 'overview', 'games', 'standings', 'playoff-picture']);
+
+function enumParam(params, key, allowed) {
+  const value = params.get(key);
+  return allowed.has(value) ? value : null;
+}
+
+function numericParam(params, key, opts = {}) {
+  const value = params.get(key);
+  if (!isFiniteInput(value)) return null;
+  const parsed = Number(value);
+  if (opts.integer && !Number.isInteger(parsed)) return null;
+  if (Number.isFinite(opts.min) && parsed < opts.min) return null;
+  if (Number.isFinite(opts.max) && parsed > opts.max) return opts.cap ? opts.max : null;
+  return parsed;
 }
 
 function coreFn(name, fallback) {
@@ -71,10 +91,17 @@ function parseUrlState(search) {
   const parsedDynastyEnd = isFiniteInput(dynastyEnd) ? +dynastyEnd : null;
   const parsedDynastyMinSeasons = isFiniteInput(dynastyMinSeasons) ? +dynastyMinSeasons : null;
   const parsedDynastySaunders = dynastySaunders === null ? null : dynastySaunders !== '0';
+  const gameResult = enumParam(params, 'gameResult', GAME_RESULTS);
+  const gameMinScore = numericParam(params, 'gameMinScore', { min: 0 });
+  const gameMaxScore = numericParam(params, 'gameMaxScore', { min: 0 });
+  const gameSort = enumParam(params, 'gameSort', GAME_SORTS);
+  const gameLimit = numericParam(params, 'gameLimit', { integer: true, min: 1, max: 100, cap: true });
+  const focus = enumParam(params, 'focus', FOCUS_TARGETS);
   const hasCurrent = !!(tab === 'current' || parsedCurrentSeason !== null || parsedCurrentWeek !== null || currentOwner || currentView || currentProjection);
   const hasDynasty = !!(tab === 'dynasty' || dynastyMode || dynastyOwner || parsedDynastyStart !== null || parsedDynastyEnd !== null || parsedDynastyMinSeasons !== null || parsedDynastySaunders !== null);
   const hasGauntlet = !!(tab === 'gauntlet' || gauntletA || gauntletB || gauntletModel || parsedGauntletIncludePostseason !== null || parsedGauntletSimulations !== null || gauntletSeed);
-  const hasAny = !!(team || trophyOwner || hasCurrent || hasDynasty || hasGauntlet || (seasons && seasons.length) || (weeks && weeks.length) || (opps && opps.length) || (types && types.length) || (rounds && rounds.length));
+  const hasGameQuery = !!(gameResult || gameMinScore !== null || gameMaxScore !== null || gameSort || gameLimit !== null);
+  const hasAny = !!(team || trophyOwner || hasCurrent || hasDynasty || hasGauntlet || hasGameQuery || focus || (seasons && seasons.length) || (weeks && weeks.length) || (opps && opps.length) || (types && types.length) || (rounds && rounds.length));
   return {
     team,
     seasons: seasons ? new Set(seasons) : null,
@@ -104,6 +131,13 @@ function parseUrlState(search) {
     dynastyEnd: parsedDynastyEnd,
     dynastyMinSeasons: parsedDynastyMinSeasons,
     dynastySaunders: parsedDynastySaunders,
+    gameResult,
+    gameMinScore,
+    gameMaxScore,
+    gameSort,
+    gameLimit,
+    focus,
+    hasGameQuery,
     hasRivalry: tab === 'rivalry' || !!rivalryTeamA || !!rivalryTeamB,
     hasCurrent,
     hasGauntlet,
@@ -163,6 +197,12 @@ function buildUrlFromState(opts = {}) {
   const selectedGauntletIncludePostseason = Object.prototype.hasOwnProperty.call(opts, 'selectedGauntletIncludePostseason') ? opts.selectedGauntletIncludePostseason : null;
   const selectedGauntletSimulations = Object.prototype.hasOwnProperty.call(opts, 'selectedGauntletSimulations') ? opts.selectedGauntletSimulations : null;
   const selectedGauntletSeed = Object.prototype.hasOwnProperty.call(opts, 'selectedGauntletSeed') ? opts.selectedGauntletSeed : null;
+  const selectedGameResult = Object.prototype.hasOwnProperty.call(opts, 'selectedGameResult') ? opts.selectedGameResult : null;
+  const selectedGameMinScore = Object.prototype.hasOwnProperty.call(opts, 'selectedGameMinScore') ? opts.selectedGameMinScore : null;
+  const selectedGameMaxScore = Object.prototype.hasOwnProperty.call(opts, 'selectedGameMaxScore') ? opts.selectedGameMaxScore : null;
+  const selectedGameSort = Object.prototype.hasOwnProperty.call(opts, 'selectedGameSort') ? opts.selectedGameSort : null;
+  const selectedGameLimit = Object.prototype.hasOwnProperty.call(opts, 'selectedGameLimit') ? opts.selectedGameLimit : null;
+  const selectedFocus = Object.prototype.hasOwnProperty.call(opts, 'selectedFocus') ? opts.selectedFocus : null;
   const selectedSeasons = asSet(opts.selectedSeasons);
   const selectedWeeks = asSet(opts.selectedWeeks);
   const selectedOpponents = asSet(opts.selectedOpponents);
@@ -219,6 +259,12 @@ function buildUrlFromState(opts = {}) {
     setIf('types', selectedTypes, universe.types || []);
     setIf('rounds', selectedRounds, universe.rounds || []);
   }
+  if (GAME_RESULTS.has(selectedGameResult)) params.set('gameResult', selectedGameResult);
+  if (isFiniteInput(selectedGameMinScore) && Number(selectedGameMinScore) >= 0) params.set('gameMinScore', `${Number(selectedGameMinScore)}`);
+  if (isFiniteInput(selectedGameMaxScore) && Number(selectedGameMaxScore) >= 0) params.set('gameMaxScore', `${Number(selectedGameMaxScore)}`);
+  if (GAME_SORTS.has(selectedGameSort)) params.set('gameSort', selectedGameSort);
+  if (isFiniteInput(selectedGameLimit) && Number(selectedGameLimit) >= 1) params.set('gameLimit', `${Math.min(100, Math.floor(Number(selectedGameLimit)))}`);
+  if (FOCUS_TARGETS.has(selectedFocus)) params.set('focus', selectedFocus);
   const qs = params.toString();
   return `${pathname}${qs ? `?${qs}` : ''}`;
 }
@@ -295,6 +341,31 @@ function buildHistoryCsvText(games, opts = {}) {
   const header = ['date', 'season', 'team', 'opponent', 'result', 'pf', 'pa', 'type', 'round', 'week', 'xw'];
   const quoteRow = (values) => values.map(csvEscapeFn).map(v => `"${v}"`).join(',');
   const lines = [header.join(',')];
+
+  if (opts.gameQuery) {
+    const rows = queryHistoryGames(games, {
+      selectedTeam,
+      allTeams,
+      query: opts.gameQuery,
+    }).rows;
+    for (const row of rows) {
+      const xw = isRegularGameFn(row.sourceGame) ? expectedWinForGameFn(row.team, row.sourceGame) : null;
+      lines.push(quoteRow([
+        row.date,
+        row.season,
+        row.team,
+        row.opponent,
+        row.result,
+        row.score.toFixed(2),
+        row.opponentScore.toFixed(2),
+        row.type,
+        row.round,
+        row.week,
+        xw ?? '',
+      ]));
+    }
+    return lines.join('\n');
+  }
 
   if (selectedTeam === allTeams) {
     const useWeek = isRestrictiveFn(selectedWeeks, universeWeeks);

@@ -762,6 +762,19 @@ test('interactive history games sort, filter, expand, and persist saved views', 
   const reloaded = page.locator('[data-table-id="history-games"]');
   await expect(reloaded.locator('.table-view-menu')).toContainText('Singer 150 audit');
   await expect(reloaded.locator('.table-expanded-row')).toHaveCount(0);
+
+  await page.locator('#teamSelect').selectOption('Joel');
+  await expect(page).toHaveURL(/team=Joel/);
+  const switched = page.locator('[data-table-id="history-games"]');
+  await switched.locator('.table-view-menu > summary').click();
+  await switched.getByRole('button', { name: 'Singer 150 audit', exact: true }).click();
+  await expect(page).toHaveURL(/team=Joe/);
+  await expect(page).toHaveURL(/gameMinScore=150/);
+  await expect(page.locator('#teamSelect')).toHaveValue('Joe');
+  const restored = page.locator('[data-table-id="history-games"]');
+  const restoredOpponents = await restored.locator('tbody > tr:not(.table-expanded-row) td:nth-child(2)').allTextContents();
+  expect(restoredOpponents.length).toBeGreaterThan(0);
+  expect(restoredOpponents.every(value => value.includes('Singer'))).toBe(true);
 });
 
 test('interactive tables mount across rivalry, current season, and trophy pages', async ({ page }) => {
@@ -830,6 +843,12 @@ test('history game-query deep links survive direct loads and reloads', async ({ 
   await page.waitForLoadState('networkidle');
   await expect(page).toHaveURL(/gameLimit=1/);
   await expect(page.locator('#historyGamesTable tbody tr')).toHaveCount(1);
+
+  await page.goto('/?tab=history&team=Joe&gameLimit=100&focus=games');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('[data-table-id="history-games"] .table-result-count')).toContainText('100 of');
+  await expect(page.locator('#historyGamesTable tbody tr:not(:has(.table-empty-state))')).toHaveCount(100);
+  await expect(page.locator('[data-table-id="history-games"] .table-pagination')).toHaveCount(0);
 });
 
 test('dynamic structured results remain in recents after reopen and reload', async ({ page }) => {
@@ -1162,9 +1181,12 @@ test('empty-result filters leave the tables empty without breaking the page', as
   await expect(page.locator('#seasonCountText')).toHaveText('1 selected');
   await expect(page.locator('#weekCountText')).toHaveText('1 selected');
   await expect(page.locator('#typeCountText')).toHaveText('1 selected');
-  await expect(page.locator('#historyGamesTable tbody tr')).toHaveCount(0);
-  await expect(page.locator('#weekTable tbody tr')).toHaveCount(0);
-  await expect(page.locator('#oppTable tbody tr')).toHaveCount(0);
+  await expect(page.locator('#historyGamesTable tbody tr:not(:has(.table-empty-state))')).toHaveCount(0);
+  await expect(page.locator('#historyGamesTable .table-empty-state')).toHaveText('No games match the current table filters.');
+  await expect(page.locator('#weekTable tbody tr:not(:has(.table-empty-state))')).toHaveCount(0);
+  await expect(page.locator('#weekTable .table-empty-state')).toHaveText('Select a team or broaden the filters to see weekly games.');
+  await expect(page.locator('#oppTable tbody tr:not(:has(.table-empty-state))')).toHaveCount(0);
+  await expect(page.locator('#oppTable .table-empty-state')).toHaveText('No opponents match the current table filters.');
 });
 
 test('all-teams export uses the ALL filename and includes both sides of a game', async ({ page }) => {

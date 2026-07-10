@@ -2,6 +2,7 @@ import ColumnFilterMenu from './ColumnFilterMenu';
 import SavedViewsMenu from './SavedViewsMenu';
 import type {
   PortableTableState,
+  SavedTableView,
   TableContext,
   TableRegistryEntry,
 } from '../../tables/table-types';
@@ -16,6 +17,7 @@ interface TableToolbarProps {
   totalCount: number;
   state: PortableTableState;
   onApplyState(state: PortableTableState): void;
+  onApplySavedView(view: SavedTableView): void;
   onReset(): void;
 }
 
@@ -29,6 +31,7 @@ export default function TableToolbar({
   totalCount,
   state,
   onApplyState,
+  onApplySavedView,
   onReset,
 }: TableToolbarProps) {
   return (
@@ -101,7 +104,13 @@ export default function TableToolbar({
             })}
           </div>
         </details>
-        <SavedViewsMenu registry={registry} context={context} state={state} onApply={onApplyState} />
+        <SavedViewsMenu
+          registry={registry}
+          context={context}
+          state={state}
+          onApplyState={onApplyState}
+          onApplySavedView={onApplySavedView}
+        />
         <button type="button" class="btn" onClick={onReset}>Reset</button>
       </div>
     </div>

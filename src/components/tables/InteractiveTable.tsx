@@ -19,10 +19,11 @@ import SortableHeader from './SortableHeader';
 import TableToolbar from './TableToolbar';
 import { enumFilterValue, isEmptyRange, numberRangeFilterValue, textFilterValue } from '../../tables/table-filter-functions';
 import { filterByQuickFilters, toggleQuickFilter } from '../../tables/table-quick-filters';
-import { sanitizePortableState } from '../../tables/table-saved-views';
+import { sanitizePortableState, tableContextsMatch } from '../../tables/table-saved-views';
 import type {
   DarlingTableRow,
   PortableTableState,
+  SavedTableView,
   TableContext,
   TableRegistryEntry,
   TableUrlState,
@@ -58,6 +59,8 @@ interface InteractiveTableProps {
   initialState?: Partial<PortableTableState>;
   urlState?: TableUrlState;
   onUrlStateChange?: (state: TableUrlState) => void;
+  onApplySavedView?: (view: SavedTableView) => void;
+  forceUrlSyncOnMount?: boolean;
 }
 
 const sortFromGameQuery: Record<string, { id: string; desc: boolean }> = {
@@ -116,6 +119,13 @@ function pinnedClass(column: any): string {
   return column.getIsPinned?.() === 'start' ? ' table-column-pinned' : '';
 }
 
+function compareSortValues(left: unknown, right: unknown): number {
+  const leftNumber = Number(left);
+  const rightNumber = Number(right);
+  if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) return leftNumber - rightNumber;
+  return String(left ?? '').localeCompare(String(right ?? ''), undefined, { numeric: true, sensitivity: 'base' });
+}
+
 export default function InteractiveTable({
   registry,
   rows,
@@ -123,6 +133,8 @@ export default function InteractiveTable({
   initialState,
   urlState,
   onUrlStateChange,
+  onApplySavedView,
+  forceUrlSyncOnMount = false,
 }: InteractiveTableProps) {
   const startingState = useMemo(() => initialPortableState(registry, initialState, urlState), []);
   const [quickFilters, setQuickFilters] = useState(startingState.quickFilters);
@@ -140,6 +152,9 @@ export default function InteractiveTable({
       ? definition.render(info.getValue(), info.row.original)
       : String(info.getValue() ?? '—'),
     enableSorting: definition.sortable !== false,
+    sortFn: definition.sortAccessor
+      ? (rowA: any, rowB: any) => compareSortValues(definition.sortAccessor?.(rowA.original), definition.sortAccessor?.(rowB.original))
+      : undefined,
     sortDescFirst: definition.sortDescFirst,
     enableColumnFilter: !!definition.filterType,
     filterFn: definition.filterType === 'number-range'
@@ -197,10 +212,11 @@ export default function InteractiveTable({
 
   useEffect(() => {
     if (!onUrlStateChange || registry.id !== 'history-games') return;
-    if (initialUrlEffect.current) {
+    if (initialUrlEffect.current && !forceUrlSyncOnMount) {
       initialUrlEffect.current = false;
       return;
     }
+    initialUrlEffect.current = false;
     onUrlStateChange(gameQueryFromState(portableState, { ...urlState, gameLimit }));
   }, [JSON.stringify(portableState.sorting), JSON.stringify(portableState.columnFilters), JSON.stringify(quickFilters)]);
 
@@ -233,10 +249,11 @@ export default function InteractiveTable({
       });
     }
   };
-  const filteredCount = table.getPrePaginatedRowModel?.().rows.length || 0;
+  const prePaginatedRows = table.getPrePaginatedRowModel?.().rows || [];
+  const filteredCount = prePaginatedRows.length;
   const limit = gameLimit;
   const pageRows = table.getRowModel().rows;
-  const visibleRows = limit ? pageRows.slice(0, Math.max(0, limit)) : pageRows;
+  const visibleRows = limit ? prePaginatedRows.slice(0, Math.max(0, limit)) : pageRows;
   const resultCount = limit ? Math.min(filteredCount, limit) : filteredCount;
   const visibleColumnCount = table.getVisibleLeafColumns?.().length || registry.columns.length;
 
@@ -255,6 +272,13 @@ export default function InteractiveTable({
         totalCount={rows.length}
         state={portableState}
         onApplyState={applyState}
+        onApplySavedView={view => {
+          if (!view.context || tableContextsMatch(context, view.context) || !onApplySavedView) {
+            applyState(view.state);
+            return;
+          }
+          onApplySavedView(view);
+        }}
         onReset={reset}
       />
       <div class="interactive-table-scroll table-wrap" tabIndex={0} aria-label={`${registry.id.replaceAll('-', ' ')} table`}>

@@ -9,6 +9,8 @@ import { TABLE_IDS } from './table-types';
 export const TABLE_VIEWS_STORAGE_KEY = 'darling.tableViews.v1';
 export const MAX_SAVED_TABLE_VIEWS = 25;
 
+const PORTABLE_CONTEXT_KEYS = ['owner', 'rivalryA', 'rivalryB', 'selectedOwner', 'season'] as const;
+
 function storageOrDefault(storage?: Storage | null): Storage | null {
   if (storage) return storage;
   try {
@@ -20,6 +22,22 @@ function storageOrDefault(storage?: Storage | null): Storage | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+export function portableTableContext(context?: TableContext): TableContext | undefined {
+  if (!context) return undefined;
+  const portable = Object.fromEntries(
+    PORTABLE_CONTEXT_KEYS
+      .filter(key => Object.prototype.hasOwnProperty.call(context, key))
+      .map(key => [key, context[key]]),
+  ) as TableContext;
+  return Object.keys(portable).length ? portable : undefined;
+}
+
+export function tableContextsMatch(current: TableContext = {}, saved?: TableContext): boolean {
+  if (!saved) return true;
+  const portableSaved = portableTableContext(saved) || {};
+  return Object.entries(portableSaved).every(([key, value]) => current[key] === value);
 }
 
 function portableState(value: unknown): PortableTableState | null {
@@ -61,7 +79,7 @@ export function readSavedViews(storage?: Storage | null): SavedTableView[] {
         tableId: item.tableId as TableId,
         name: item.name.trim(),
         state,
-        context: isRecord(item.context) ? item.context as TableContext : undefined,
+        context: isRecord(item.context) ? portableTableContext(item.context as TableContext) : undefined,
         createdAt: typeof item.createdAt === 'string' ? item.createdAt : new Date(0).toISOString(),
         updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : new Date(0).toISOString(),
       } satisfies SavedTableView];
@@ -108,11 +126,13 @@ export function saveView(
   state: PortableTableState,
   context?: TableContext,
   storage?: Storage | null,
+  options: { replaceExisting?: boolean } = {},
 ): SavedTableView | null {
   const trimmed = name.trim();
   if (!trimmed) return null;
   const views = readSavedViews(storage);
   const existing = views.find(view => view.tableId === tableId && view.name.toLocaleLowerCase() === trimmed.toLocaleLowerCase());
+  if (existing && !options.replaceExisting) return null;
   const now = new Date().toISOString();
   const view: SavedTableView = {
     id: existing?.id || `${tableId}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
@@ -120,7 +140,7 @@ export function saveView(
     tableId,
     name: trimmed,
     state,
-    context,
+    context: portableTableContext(context),
     createdAt: existing?.createdAt || now,
     updatedAt: now,
   };
@@ -134,6 +154,8 @@ export function renameView(id: string, name: string, storage?: Storage | null): 
   const views = readSavedViews(storage);
   const target = views.find(view => view.id === id);
   if (!target) return false;
+  const collision = views.some(view => view.id !== id && view.tableId === target.tableId && view.name.toLocaleLowerCase() === trimmed.toLocaleLowerCase());
+  if (collision) return false;
   target.name = trimmed;
   target.updatedAt = new Date().toISOString();
   return writeSavedViews(views, storage);

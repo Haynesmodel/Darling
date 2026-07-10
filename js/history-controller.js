@@ -376,6 +376,41 @@ function handleTrophyChange(next) {
   renderTrophy();
 }
 
+function applySavedTableContext(tableId, context = {}) {
+  if (tableId.startsWith('history-')) {
+    updateUrlFromState({
+      ...currentFacetState(),
+      selectedTeam: context.owner || ALL_TEAMS,
+      isApplyingUrlState: false,
+    });
+  } else if (tableId.startsWith('rivalry-')) {
+    updateUrlFromState({
+      tab: 'rivalry',
+      selectedRivalryTeamA: context.rivalryA || selectedRivalryTeamA,
+      selectedRivalryTeamB: context.rivalryB || selectedRivalryTeamB,
+      selectedRivalryScope,
+      isApplyingUrlState: false,
+    });
+  } else if (tableId.startsWith('current-')) {
+    updateUrlFromState({
+      tab: 'current',
+      selectedCurrentSeason: context.season || selectedCurrentSeasonState?.selectedSeason,
+      selectedCurrentWeek: selectedCurrentSeasonState?.selectedWeek,
+      selectedCurrentOwner: context.selectedOwner || null,
+      selectedCurrentView: selectedCurrentSeasonState?.selectedView,
+      selectedCurrentProjection: selectedCurrentSeasonState?.selectedProjectionMode,
+      isApplyingUrlState: false,
+    });
+  } else if (tableId === 'trophy-seasons') {
+    updateUrlFromState({
+      tab: 'trophy',
+      selectedTrophyOwner: context.owner || selectedTrophyOwner,
+      isApplyingUrlState: false,
+    });
+  }
+  applyUrlState(parseUrlState());
+}
+
 function handleGauntletChange(next) {
   const derivedSeed = `${teamSeasonId(next.selectedOwnerA, next.selectedSeasonA)}|${teamSeasonId(next.selectedOwnerB, next.selectedSeasonB)}|${next.selectedModel}|${next.selectedIncludePostseason ? 'postseason' : 'regular'}|${next.selectedSimulations}`;
   const explicitSeed = next.seedSource === 'explicit' || selectedGauntletState?.seedSource === 'explicit';
@@ -556,11 +591,13 @@ function renderRivalry() {
     window.darlingTables?.render?.('rivalry-seasons', {
       rows: view.seasonRows,
       context: { rivalryA: view.teamA, rivalryB: view.teamB },
+      onContextChange: context => applySavedTableContext('rivalry-seasons', context),
       instanceKey: `${view.teamA}|${view.teamB}|${view.scope}`,
     });
     window.darlingTables?.render?.('rivalry-games', {
       rows: view.gameRows,
       context: { rivalryA: view.teamA, rivalryB: view.teamB },
+      onContextChange: context => applySavedTableContext('rivalry-games', context),
       instanceKey: `${view.teamA}|${view.teamB}|${view.scope}`,
     });
     if (document.title !== undefined) {
@@ -633,6 +670,7 @@ function renderCurrentSeason() {
         selectedOwner: view.commandCenter.selectedOwner,
         playoffPicture: view.commandCenter.playoffPicture,
       },
+      onContextChange: context => applySavedTableContext('current-standings', context),
       instanceKey: `${view.season}|${view.commandCenter.selectedView}`,
     });
     window.darlingTables?.render?.('current-projected', {
@@ -642,6 +680,7 @@ function renderCurrentSeason() {
         selectedOwner: view.commandCenter.selectedOwner,
         modelLabel: view.commandCenter.modelLabel,
       },
+      onContextChange: context => applySavedTableContext('current-projected', context),
       instanceKey: `${view.season}|${view.commandCenter.selectedView}|${view.commandCenter.selectedProjectionMode}`,
     });
   });
@@ -680,6 +719,7 @@ function renderTrophy() {
     window.darlingTables?.render?.('trophy-seasons', {
       rows: view.seasonLedger,
       context: { owner: view.owner },
+      onContextChange: context => applySavedTableContext('trophy-seasons', context),
       instanceKey: view.owner,
     });
   });
@@ -1451,6 +1491,7 @@ function renderOppBreakdown(team, games) {
       games,
       isLeague: team === ALL_TEAMS,
     },
+    onContextChange: context => applySavedTableContext('history-opponents', context),
     instanceKey: `${team}|${renderKeysForGames(games)}`,
   });
 
@@ -1558,6 +1599,7 @@ function renderHistory() {
         owner: selectedTeam === ALL_TEAMS ? null : selectedTeam,
         latestSeason: Math.max(...universe.seasons),
       },
+      onContextChange: context => applySavedTableContext('history-seasons', context),
       instanceKey: `${selectedTeam}|${[...selectedSeasons].join(',')}`,
     });
   });
@@ -1569,6 +1611,7 @@ function renderHistory() {
     window.darlingTables?.render?.('history-weeks', {
       rows,
       context: { owner: selectedTeam === ALL_TEAMS ? null : selectedTeam },
+      onContextChange: context => applySavedTableContext('history-weeks', context),
       instanceKey: `${selectedTeam}|${renderKeys.weekByWeek}`,
     });
   });
@@ -1586,6 +1629,7 @@ function renderHistory() {
       },
       urlState: gameQuery,
       onUrlStateChange: handleHistoryGameTableUrlState,
+      onContextChange: context => applySavedTableContext('history-games', context),
       instanceKey: `${selectedTeam}|${renderKeys.gamesTable}|${JSON.stringify(gameQuery)}`,
     });
     updateHistoryGamesSummary(selectedTeam, filtered, gameQuery);

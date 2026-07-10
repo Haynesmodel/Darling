@@ -37,10 +37,10 @@ export interface SavedTableView {
 }
 
 export interface TableContext {
-  owner?: string;
-  rivalryA?: string;
-  rivalryB?: string;
-  selectedOwner?: string;
+  owner?: string | null;
+  rivalryA?: string | null;
+  rivalryB?: string | null;
+  selectedOwner?: string | null;
   season?: number;
   [key: string]: unknown;
 }
@@ -57,6 +57,7 @@ export interface TableColumnDefinition {
   id: string;
   label: string;
   accessor?: (row: DarlingTableRow) => unknown;
+  sortAccessor?: (row: DarlingTableRow) => unknown;
   render?: (value: unknown, row: DarlingTableRow) => ComponentChildren;
   sortable?: boolean;
   sortDescFirst?: boolean;
@@ -103,6 +104,7 @@ export interface TableRenderPayload {
   initialState?: Partial<PortableTableState>;
   urlState?: TableUrlState;
   onUrlStateChange?: (state: TableUrlState) => void;
+  onContextChange?: (context: TableContext) => void;
 }
 
 export interface DarlingTableRuntime {

@@ -22,6 +22,7 @@ const modules = Promise.all([
   importTypeScript('src/tables/table-filter-functions.ts'),
   importTypeScript('src/tables/table-quick-filters.ts'),
   importTypeScript('src/tables/rows/history-game-rows.ts'),
+  importTypeScript('src/tables/table-registry.ts'),
 ]);
 
 class FakeStorage {
@@ -65,23 +66,46 @@ test('saved views survive malformed storage and validate schema/table IDs', asyn
   assert.deepEqual(saved.readSavedViews(storage), []);
 });
 
-test('saved views save, replace duplicate names, rename, delete, and handle quota errors', async () => {
+test('saved views require explicit replacement, reject rename collisions, and handle quota errors', async () => {
   const [saved] = await modules;
   const storage = new FakeStorage();
-  const first = saved.saveView('history-games', ' Playoff losses ', portableState(), { owner: 'Joe' }, storage);
+  const first = saved.saveView('history-games', ' Playoff losses ', portableState(), { owner: 'Joe', games: [{ id: 'raw' }], isLeague: false }, storage);
   assert.equal(first.name, 'Playoff losses');
-  const replacement = saved.saveView('history-games', 'playoff losses', portableState({ pageSize: 100 }), { owner: 'Joe' }, storage);
+  assert.deepEqual(first.context, { owner: 'Joe' });
+  assert.equal(saved.saveView('history-games', 'playoff losses', portableState({ pageSize: 100 }), { owner: 'Joe' }, storage), null);
+  assert.equal(saved.readSavedViews(storage)[0].state.pageSize, 50);
+
+  const replacement = saved.saveView(
+    'history-games',
+    'playoff losses',
+    portableState({ pageSize: 100 }),
+    { owner: 'Joe' },
+    storage,
+    { replaceExisting: true },
+  );
   assert.equal(replacement.id, first.id);
   assert.equal(saved.readSavedViews(storage).length, 1);
   assert.equal(saved.readSavedViews(storage)[0].state.pageSize, 100);
 
+  const second = saved.saveView('history-games', 'Singer audit', portableState(), { owner: 'Joel' }, storage);
+  assert.equal(saved.renameView(second.id, 'PLAYOFF LOSSES', storage), false);
+  assert.equal(saved.readSavedViews(storage).find(view => view.id === second.id).name, 'Singer audit');
   assert.equal(saved.renameView(first.id, 'Joe playoff losses', storage), true);
-  assert.equal(saved.readSavedViews(storage)[0].name, 'Joe playoff losses');
+  assert.equal(saved.readSavedViews(storage).find(view => view.id === first.id).name, 'Joe playoff losses');
   assert.equal(saved.deleteView(first.id, storage), true);
+  assert.equal(saved.deleteView(second.id, storage), true);
   assert.deepEqual(saved.readSavedViews(storage), []);
 
   storage.failWrites = true;
   assert.equal(saved.saveView('history-games', 'Quota', portableState(), {}, storage), null);
+});
+
+test('saved view contexts compare only portable owner, rivalry, and season fields', async () => {
+  const [saved] = await modules;
+  assert.equal(saved.tableContextsMatch({ owner: 'Joe', games: [] }, { owner: 'Joe' }), true);
+  assert.equal(saved.tableContextsMatch({ owner: 'Joel' }, { owner: 'Joe' }), false);
+  assert.equal(saved.tableContextsMatch({ rivalryA: 'Joe', rivalryB: 'Joel' }, { rivalryA: 'Joe', rivalryB: 'Joel' }), true);
+  assert.equal(saved.tableContextsMatch({ rivalryA: 'Joe', rivalryB: 'Shap' }, { rivalryA: 'Joe', rivalryB: 'Joel' }), false);
 });
 
 test('portable saved state drops stale columns and quick filters safely', async () => {
@@ -115,6 +139,17 @@ test('typed table filters cover text, enums, ranges, records, and game predicate
   assert.equal(filters.isBlowout({ margin: 31 }), true);
   assert.equal(filters.isPostseason({ type: 'Playoff' }), true);
   assert.equal(filters.isSaunders({ type: 'Saunders', round: 'Final' }), true);
+});
+
+test('record columns filter their displayed record and sort by numeric performance', async () => {
+  const [, , , , registryModule] = await modules;
+  const tables = ['history-opponents', 'history-seasons', 'rivalry-seasons', 'current-standings', 'trophy-seasons'];
+  for (const tableId of tables) {
+    const column = registryModule.getTableRegistryEntry(tableId).columns.find(item => item.id === 'record');
+    const row = { record: '1-0-0', winPct: 1, wins: 1, ties: 0 };
+    assert.equal(column.accessor(row), '1-0-0');
+    assert.equal(typeof column.sortAccessor(row), 'number');
+  }
 });
 
 test('quick filters compose and replace incompatible filters within a group', async () => {

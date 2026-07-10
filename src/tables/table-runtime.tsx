@@ -1,7 +1,7 @@
 import { render } from 'preact';
 import InteractiveTable from '../components/tables/InteractiveTable';
 import { getTableRegistryEntry } from './table-registry';
-import { readSavedViews } from './table-saved-views';
+import { readSavedViews, tableContextsMatch } from './table-saved-views';
 import { adaptHistoryGameRows } from './rows/history-game-rows';
 import { adaptHistoryOpponentRows } from './rows/history-opponent-rows';
 import { adaptHistorySeasonRows } from './rows/history-season-rows';
@@ -13,10 +13,13 @@ import { adaptTrophySeasonRows } from './rows/trophy-season-rows';
 import type {
   DarlingTableRow,
   DarlingTableRuntime,
+  SavedTableView,
   TableContext,
   TableId,
   TableRenderPayload,
 } from './table-types';
+
+const pendingSavedViews = new Map<TableId, SavedTableView>();
 
 function adaptRows(tableId: TableId, rows: unknown[], context: TableContext): DarlingTableRow[] {
   switch (tableId) {
@@ -45,15 +48,24 @@ export function createTableRuntime(): DarlingTableRuntime {
         : baseRegistry;
       const mount = document.getElementById(registry.mountId);
       if (!mount) return;
+      const pendingView = pendingSavedViews.get(tableId);
+      const restorePendingView = !!pendingView && tableContextsMatch(context, pendingView.context);
+      if (restorePendingView) pendingSavedViews.delete(tableId);
       render(
         <InteractiveTable
-          key={`${tableId}:${payload.instanceKey || 'default'}`}
+          key={`${tableId}:${payload.instanceKey || 'default'}:${restorePendingView ? pendingView?.id : 'current'}`}
           registry={registry}
           rows={adaptRows(tableId, payload.rows || [], context)}
           context={context}
-          initialState={payload.initialState}
+          initialState={restorePendingView ? pendingView?.state : payload.initialState}
           urlState={payload.urlState}
           onUrlStateChange={payload.onUrlStateChange}
+          forceUrlSyncOnMount={restorePendingView}
+          onApplySavedView={view => {
+            if (!payload.onContextChange) return;
+            pendingSavedViews.set(tableId, view);
+            payload.onContextChange(view.context || {});
+          }}
         />,
         mount,
       );

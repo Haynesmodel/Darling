@@ -113,7 +113,7 @@ const entries: Record<TableId, TableRegistryEntry> = {
     tableElementId: 'oppTable',
     columns: [
       text('opponent', 'Opponent', { width: 148 }),
-      text('record', 'Record', { accessor: row => row.winPct, render: (_value, row) => String(row.record || '—') }),
+      text('record', 'Record', { sortAccessor: row => row.winPct, render: value => String(value || '—') }),
       number('winPct', 'Win %', { render: percent }),
       number('ppg', 'PPG', { render: decimal(2) }),
       number('oppg', 'OPPG', { render: decimal(2), hideOnMobile: true }),
@@ -138,7 +138,7 @@ const entries: Record<TableId, TableRegistryEntry> = {
     columns: [
       number('season', 'Season'),
       number('draftPick', 'Draft Pick', { render: (_value, row) => row.draftPickLabel as string, hideOnMobile: true }),
-      text('record', 'Record', { accessor: row => row.winPct, render: (_value, row) => String(row.record || '—') }),
+      text('record', 'Record', { sortAccessor: row => row.winPct, render: value => String(value || '—') }),
       number('winPct', 'Win %', { render: percent }),
       number('finish', 'Finish', { sortDescFirst: false }),
       text('outcome', 'Outcome'),
@@ -161,7 +161,7 @@ const entries: Record<TableId, TableRegistryEntry> = {
     tableElementId: 'rivalrySeasonTable',
     columns: [
       number('season', 'Season'),
-      text('record', 'Record', { accessor: row => row.wins !== undefined ? Number(row.wins) + Number(row.ties || 0) * 0.5 : parseRecord(row.record), render: (_value, row) => String(row.record || '—') }),
+      text('record', 'Record', { sortAccessor: row => row.wins !== undefined ? Number(row.wins) + Number(row.ties || 0) * 0.5 : parseRecord(row.record), render: value => String(value || '—') }),
       number('pf', 'PF', { render: decimal(2) }),
       number('pa', 'PA', { render: decimal(2) }),
       number('diff', 'Diff', { render: signed(2) }),
@@ -207,7 +207,7 @@ const entries: Record<TableId, TableRegistryEntry> = {
     columns: [
       number('rank', 'Rank', { sortDescFirst: false }),
       text('owner', 'Owner'),
-      text('record', 'Record', { accessor: row => row.winPct, render: (_value, row) => String(row.record || '—') }),
+      text('record', 'Record', { sortAccessor: row => row.winPct, render: value => String(value || '—') }),
       number('winPct', 'Win %', { render: percent }),
       number('pointsFor', 'PF', { render: decimal(2) }),
       number('pointsAgainst', 'PA', { render: decimal(2), hideOnMobile: true }),
@@ -251,7 +251,7 @@ const entries: Record<TableId, TableRegistryEntry> = {
     tableElementId: 'trophySeasonTable',
     columns: [
       number('season', 'Season'),
-      text('record', 'Record', { accessor: row => parseRecord(row.record), render: (_value, row) => String(row.record || '—') }),
+      text('record', 'Record', { sortAccessor: row => parseRecord(row.record), render: value => String(value || '—') }),
       number('finishValue', 'Finish', { render: (_value, row) => String(row.finish || '—'), sortDescFirst: false }),
       number('pfValue', 'PF', { render: (_value, row) => String(row.pf || '—') }),
       number('paValue', 'PA', { render: (_value, row) => String(row.pa || '—'), hideOnMobile: true }),

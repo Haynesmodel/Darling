@@ -3,6 +3,7 @@ import type {
   SavedTableView,
   TableContext,
   TableId,
+  TableUrlState,
 } from './table-types';
 import { TABLE_IDS } from './table-types';
 
@@ -10,6 +11,8 @@ export const TABLE_VIEWS_STORAGE_KEY = 'darling.tableViews.v1';
 export const MAX_SAVED_TABLE_VIEWS = 25;
 
 const PORTABLE_CONTEXT_KEYS = ['owner', 'rivalryA', 'rivalryB', 'selectedOwner', 'season'] as const;
+const GAME_RESULTS = new Set(['W', 'L', 'T']);
+const GAME_SORTS = new Set(['dateDesc', 'scoreDesc', 'scoreAsc', 'marginDesc', 'marginAsc', 'combinedDesc']);
 
 function storageOrDefault(storage?: Storage | null): Storage | null {
   if (storage) return storage;
@@ -63,6 +66,42 @@ function portableState(value: unknown): PortableTableState | null {
   };
 }
 
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter(item => typeof item === 'string') : [];
+}
+
+function numberArray(value: unknown): number[] {
+  return Array.isArray(value) ? value.map(Number).filter(Number.isFinite) : [];
+}
+
+function nullableNumber(value: unknown, options: { integer?: boolean; min?: number; max?: number } = {}): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  if (options.integer && !Number.isInteger(number)) return null;
+  if (Number.isFinite(options.min) && number < Number(options.min)) return null;
+  if (Number.isFinite(options.max) && number > Number(options.max)) return null;
+  return number;
+}
+
+export function portableTableUrlState(value?: TableUrlState | Record<string, unknown>): TableUrlState | undefined {
+  if (!isRecord(value)) return undefined;
+  const gameResult = typeof value.gameResult === 'string' && GAME_RESULTS.has(value.gameResult) ? value.gameResult : null;
+  const gameSort = typeof value.gameSort === 'string' && GAME_SORTS.has(value.gameSort) ? value.gameSort : null;
+  return {
+    seasons: numberArray(value.seasons),
+    weeks: numberArray(value.weeks),
+    opps: stringArray(value.opps),
+    types: stringArray(value.types),
+    rounds: stringArray(value.rounds),
+    gameResult,
+    gameMinScore: nullableNumber(value.gameMinScore, { min: 0 }),
+    gameMaxScore: nullableNumber(value.gameMaxScore, { min: 0 }),
+    gameSort,
+    gameLimit: nullableNumber(value.gameLimit, { integer: true, min: 1, max: 100 }),
+  };
+}
+
 export function readSavedViews(storage?: Storage | null): SavedTableView[] {
   const target = storageOrDefault(storage);
   if (!target) return [];
@@ -80,6 +119,7 @@ export function readSavedViews(storage?: Storage | null): SavedTableView[] {
         name: item.name.trim(),
         state,
         context: isRecord(item.context) ? portableTableContext(item.context as TableContext) : undefined,
+        urlState: isRecord(item.urlState) ? portableTableUrlState(item.urlState) : undefined,
         createdAt: typeof item.createdAt === 'string' ? item.createdAt : new Date(0).toISOString(),
         updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : new Date(0).toISOString(),
       } satisfies SavedTableView];
@@ -126,7 +166,7 @@ export function saveView(
   state: PortableTableState,
   context?: TableContext,
   storage?: Storage | null,
-  options: { replaceExisting?: boolean } = {},
+  options: { replaceExisting?: boolean; urlState?: TableUrlState } = {},
 ): SavedTableView | null {
   const trimmed = name.trim();
   if (!trimmed) return null;
@@ -141,6 +181,7 @@ export function saveView(
     name: trimmed,
     state,
     context: portableTableContext(context),
+    urlState: portableTableUrlState(options.urlState),
     createdAt: existing?.createdAt || now,
     updatedAt: now,
   };

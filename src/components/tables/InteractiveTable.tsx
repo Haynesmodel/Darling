@@ -78,12 +78,15 @@ function initialPortableState(
   urlState: TableUrlState = {},
 ): PortableTableState {
   const hiddenColumns = Object.fromEntries(registry.columns.filter(column => column.hidden).map(column => [column.id, false]));
-  const filters = [...(state.columnFilters || [])];
-  if (urlState.gameResult) filters.push({ id: 'result', value: urlState.gameResult });
-  if (Number.isFinite(urlState.gameMinScore) || Number.isFinite(urlState.gameMaxScore)) {
+  const usesGameQuery = registry.id === 'history-games';
+  const filters = [...(state.columnFilters || [])]
+    .filter(filter => !(usesGameQuery && ((urlState.gameResult && filter.id === 'result') ||
+      ((Number.isFinite(urlState.gameMinScore) || Number.isFinite(urlState.gameMaxScore)) && filter.id === 'score'))));
+  if (usesGameQuery && urlState.gameResult) filters.push({ id: 'result', value: urlState.gameResult });
+  if (usesGameQuery && (Number.isFinite(urlState.gameMinScore) || Number.isFinite(urlState.gameMaxScore))) {
     filters.push({ id: 'score', value: { min: urlState.gameMinScore ?? null, max: urlState.gameMaxScore ?? null } });
   }
-  const urlSort = urlState.gameSort ? sortFromGameQuery[urlState.gameSort] : null;
+  const urlSort = usesGameQuery && urlState.gameSort ? sortFromGameQuery[urlState.gameSort] : null;
   return {
     sorting: urlSort ? [urlSort] : state.sorting || registry.defaultSorting,
     columnFilters: filters,
@@ -138,7 +141,7 @@ export default function InteractiveTable({
 }: InteractiveTableProps) {
   const startingState = useMemo(() => initialPortableState(registry, initialState, urlState), []);
   const [quickFilters, setQuickFilters] = useState(startingState.quickFilters);
-  const [gameLimit, setGameLimit] = useState<number | null>(Number.isFinite(Number(urlState?.gameLimit)) ? Number(urlState?.gameLimit) : null);
+  const [gameLimit, setGameLimit] = useState<number | null>(registry.id === 'history-games' && typeof urlState?.gameLimit === 'number' && Number.isFinite(urlState.gameLimit) ? urlState.gameLimit : null);
   const initialUrlEffect = useRef(true);
   const data = useMemo(
     () => filterByQuickFilters(rows, quickFilters, registry.quickFilters, context),
@@ -220,9 +223,10 @@ export default function InteractiveTable({
     onUrlStateChange(gameQueryFromState(portableState, { ...urlState, gameLimit }));
   }, [JSON.stringify(portableState.sorting), JSON.stringify(portableState.columnFilters), JSON.stringify(quickFilters)]);
 
-  const applyState = (next: PortableTableState) => {
+  const applyState = (next: PortableTableState, nextUrlState?: TableUrlState) => {
+    const combined = initialPortableState(registry, next, nextUrlState);
     const valid = sanitizePortableState(
-      next,
+      combined,
       registry.columns.map(column => column.id),
       registry.quickFilters.map(filter => filter.id),
     );
@@ -234,7 +238,7 @@ export default function InteractiveTable({
     table.setPageIndex?.(0);
     table.setExpanded?.({});
     setQuickFilters(valid.quickFilters);
-    setGameLimit(null);
+    setGameLimit(registry.id === 'history-games' && typeof nextUrlState?.gameLimit === 'number' && Number.isFinite(nextUrlState.gameLimit) ? nextUrlState.gameLimit : null);
   };
 
   const reset = () => {
@@ -256,6 +260,9 @@ export default function InteractiveTable({
   const visibleRows = limit ? prePaginatedRows.slice(0, Math.max(0, limit)) : pageRows;
   const resultCount = limit ? Math.min(filteredCount, limit) : filteredCount;
   const visibleColumnCount = table.getVisibleLeafColumns?.().length || registry.columns.length;
+  const currentUrlState = registry.id === 'history-games'
+    ? { ...urlState, ...gameQueryFromState(portableState, { ...urlState, gameLimit }) }
+    : urlState;
 
   return (
     <div class="interactive-table-shell" data-table-id={registry.id}>
@@ -271,13 +278,11 @@ export default function InteractiveTable({
         resultCount={resultCount}
         totalCount={rows.length}
         state={portableState}
+        urlState={currentUrlState}
         onApplyState={applyState}
         onApplySavedView={view => {
-          if (!view.context || tableContextsMatch(context, view.context) || !onApplySavedView) {
-            applyState(view.state);
-            return;
-          }
-          onApplySavedView(view);
+          applyState(view.state, view.urlState);
+          if (onApplySavedView && (view.urlState || (view.context && !tableContextsMatch(context, view.context)))) onApplySavedView(view);
         }}
         onReset={reset}
       />

@@ -10,17 +10,19 @@ import type {
   SavedTableView,
   TableContext,
   TableRegistryEntry,
+  TableUrlState,
 } from '../../tables/table-types';
 
 interface SavedViewsMenuProps {
   registry: TableRegistryEntry;
   context: TableContext;
   state: PortableTableState;
+  urlState?: TableUrlState;
   onApplyState(state: PortableTableState): void;
   onApplySavedView(view: SavedTableView): void;
 }
 
-export default function SavedViewsMenu({ registry, context, state, onApplyState, onApplySavedView }: SavedViewsMenuProps) {
+export default function SavedViewsMenu({ registry, context, state, urlState, onApplyState, onApplySavedView }: SavedViewsMenuProps) {
   const [name, setName] = useState('');
   const [revision, setRevision] = useState(0);
   const [message, setMessage] = useState('');
@@ -44,7 +46,7 @@ export default function SavedViewsMenu({ registry, context, state, onApplyState,
         return;
       }
     }
-    const saved = saveView(registry.id, trimmed, state, context, undefined, { replaceExisting: !!existing });
+    const saved = saveView(registry.id, trimmed, state, context, undefined, { replaceExisting: !!existing, urlState });
     setMessage(saved ? `Saved “${saved.name}”.` : 'Enter a name and try again.');
     if (saved) {
       setName('');

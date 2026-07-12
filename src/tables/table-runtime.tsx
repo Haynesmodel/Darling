@@ -64,7 +64,7 @@ export function createTableRuntime(): DarlingTableRuntime {
           onApplySavedView={view => {
             if (!payload.onContextChange) return;
             pendingSavedViews.set(tableId, view);
-            payload.onContextChange(view.context || {});
+            payload.onContextChange(view.context || {}, view.urlState);
           }}
         />,
         mount,

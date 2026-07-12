@@ -5,6 +5,7 @@ import type {
   SavedTableView,
   TableContext,
   TableRegistryEntry,
+  TableUrlState,
 } from '../../tables/table-types';
 
 interface TableToolbarProps {
@@ -16,6 +17,7 @@ interface TableToolbarProps {
   resultCount: number;
   totalCount: number;
   state: PortableTableState;
+  urlState?: TableUrlState;
   onApplyState(state: PortableTableState): void;
   onApplySavedView(view: SavedTableView): void;
   onReset(): void;
@@ -30,6 +32,7 @@ export default function TableToolbar({
   resultCount,
   totalCount,
   state,
+  urlState,
   onApplyState,
   onApplySavedView,
   onReset,
@@ -108,6 +111,7 @@ export default function TableToolbar({
           registry={registry}
           context={context}
           state={state}
+          urlState={urlState}
           onApplyState={onApplyState}
           onApplySavedView={onApplySavedView}
         />

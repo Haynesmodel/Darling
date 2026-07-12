@@ -292,6 +292,22 @@ function currentFacetState() {
   });
 }
 
+function historyTableUrlState() {
+  const state = parseUrlState();
+  return {
+    seasons: [...(state.seasons || [])],
+    weeks: [...(state.weeks || [])],
+    opps: [...(state.opps || [])],
+    types: [...(state.types || [])],
+    rounds: [...(state.rounds || [])],
+    gameResult: state.gameResult,
+    gameMinScore: state.gameMinScore,
+    gameMaxScore: state.gameMaxScore,
+    gameSort: state.gameSort,
+    gameLimit: state.gameLimit,
+  };
+}
+
 function filteredGamesForCurrentState() {
   const state = currentFacetState();
   const key = buildFacetStateKey(state);
@@ -376,11 +392,23 @@ function handleTrophyChange(next) {
   renderTrophy();
 }
 
-function applySavedTableContext(tableId, context = {}) {
+function applySavedTableContext(tableId, context = {}, urlState) {
   if (tableId.startsWith('history-')) {
     updateUrlFromState({
       ...currentFacetState(),
       selectedTeam: context.owner || ALL_TEAMS,
+      ...(urlState ? {
+        selectedSeasons: new Set(urlState.seasons || []),
+        selectedWeeks: new Set(urlState.weeks || []),
+        selectedOpponents: new Set(urlState.opps || []),
+        selectedTypes: new Set(urlState.types || []),
+        selectedRounds: new Set(urlState.rounds || []),
+        selectedGameResult: urlState.gameResult,
+        selectedGameMinScore: urlState.gameMinScore,
+        selectedGameMaxScore: urlState.gameMaxScore,
+        selectedGameSort: urlState.gameSort,
+        selectedGameLimit: urlState.gameLimit,
+      } : {}),
       isApplyingUrlState: false,
     });
   } else if (tableId.startsWith('rivalry-')) {
@@ -408,6 +436,17 @@ function applySavedTableContext(tableId, context = {}) {
       isApplyingUrlState: false,
     });
   }
+  const historyCacheKeys = {
+    'history-opponents': 'oppBreakdown',
+    'history-seasons': 'seasonRecap',
+    'history-weeks': 'weekByWeek',
+    'history-games': 'gamesTable',
+  };
+  const cacheKey = historyCacheKeys[tableId]
+    || (tableId.startsWith('rivalry-') ? 'rivalry' : null)
+    || (tableId.startsWith('current-') ? 'current' : null)
+    || (tableId === 'trophy-seasons' ? 'trophy' : null);
+  if (cacheKey) renderSectionCache.delete(cacheKey);
   applyUrlState(parseUrlState());
 }
 
@@ -437,21 +476,19 @@ function ensureRivalryControls(initialState = {}) {
     }
   }
 
-  if (!teamASelect.dataset.ready) {
-    const built = buildRivalryControls({
-      doc: document,
-      leagueGames,
-      seasonSummaries,
-      rivalries,
-      selectedTeamA: initialState.selectedTeamA || urlState.rivalryTeamA || selectedRivalryTeamA || selectedTeam,
-      selectedTeamB: initialState.selectedTeamB || urlState.rivalryTeamB || selectedRivalryTeamB,
-      allTeams: ALL_TEAMS,
-      onChange: handleRivalryChange,
-    });
-    selectedRivalryTeamA = built.selectedTeamA;
-    selectedRivalryTeamB = built.selectedTeamB;
-    teamASelect.dataset.ready = '1';
-  }
+  const built = buildRivalryControls({
+    doc: document,
+    leagueGames,
+    seasonSummaries,
+    rivalries,
+    selectedTeamA: initialState.selectedTeamA || urlState.rivalryTeamA || selectedRivalryTeamA || selectedTeam,
+    selectedTeamB: initialState.selectedTeamB || urlState.rivalryTeamB || selectedRivalryTeamB,
+    allTeams: ALL_TEAMS,
+    onChange: handleRivalryChange,
+  });
+  selectedRivalryTeamA = built.selectedTeamA;
+  selectedRivalryTeamB = built.selectedTeamB;
+  teamASelect.dataset.ready = '1';
 
   return teamASelect;
 }
@@ -516,23 +553,21 @@ function ensureTrophyControls(initialState = {}) {
   const ownerSelect = document.getElementById('trophyOwnerSelect');
   if (!ownerSelect) return null;
 
-  if (!ownerSelect.dataset.ready) {
-    const urlState = parseUrlState();
-    const built = buildTrophyControls({
-      doc: document,
-      leagueGames,
-      seasonSummaries,
-      selectedOwner: initialState.selectedOwner
-        || urlState.trophyOwner
-        || urlState.team
-        || selectedTrophyOwner
-        || selectedTeam,
-      allTeams: ALL_TEAMS,
-      onChange: handleTrophyChange,
-    });
-    selectedTrophyOwner = built.selectedOwner;
-    ownerSelect.dataset.ready = '1';
-  }
+  const urlState = parseUrlState();
+  const built = buildTrophyControls({
+    doc: document,
+    leagueGames,
+    seasonSummaries,
+    selectedOwner: initialState.selectedOwner
+      || urlState.trophyOwner
+      || urlState.team
+      || selectedTrophyOwner
+      || selectedTeam,
+    allTeams: ALL_TEAMS,
+    onChange: handleTrophyChange,
+  });
+  selectedTrophyOwner = built.selectedOwner;
+  ownerSelect.dataset.ready = '1';
 
   return ownerSelect;
 }
@@ -591,13 +626,13 @@ function renderRivalry() {
     window.darlingTables?.render?.('rivalry-seasons', {
       rows: view.seasonRows,
       context: { rivalryA: view.teamA, rivalryB: view.teamB },
-      onContextChange: context => applySavedTableContext('rivalry-seasons', context),
+      onContextChange: (context, urlState) => applySavedTableContext('rivalry-seasons', context, urlState),
       instanceKey: `${view.teamA}|${view.teamB}|${view.scope}`,
     });
     window.darlingTables?.render?.('rivalry-games', {
       rows: view.gameRows,
       context: { rivalryA: view.teamA, rivalryB: view.teamB },
-      onContextChange: context => applySavedTableContext('rivalry-games', context),
+      onContextChange: (context, urlState) => applySavedTableContext('rivalry-games', context, urlState),
       instanceKey: `${view.teamA}|${view.teamB}|${view.scope}`,
     });
     if (document.title !== undefined) {
@@ -670,7 +705,7 @@ function renderCurrentSeason() {
         selectedOwner: view.commandCenter.selectedOwner,
         playoffPicture: view.commandCenter.playoffPicture,
       },
-      onContextChange: context => applySavedTableContext('current-standings', context),
+      onContextChange: (context, urlState) => applySavedTableContext('current-standings', context, urlState),
       instanceKey: `${view.season}|${view.commandCenter.selectedView}`,
     });
     window.darlingTables?.render?.('current-projected', {
@@ -680,7 +715,7 @@ function renderCurrentSeason() {
         selectedOwner: view.commandCenter.selectedOwner,
         modelLabel: view.commandCenter.modelLabel,
       },
-      onContextChange: context => applySavedTableContext('current-projected', context),
+      onContextChange: (context, urlState) => applySavedTableContext('current-projected', context, urlState),
       instanceKey: `${view.season}|${view.commandCenter.selectedView}|${view.commandCenter.selectedProjectionMode}`,
     });
   });
@@ -719,7 +754,7 @@ function renderTrophy() {
     window.darlingTables?.render?.('trophy-seasons', {
       rows: view.seasonLedger,
       context: { owner: view.owner },
-      onContextChange: context => applySavedTableContext('trophy-seasons', context),
+      onContextChange: (context, urlState) => applySavedTableContext('trophy-seasons', context, urlState),
       instanceKey: view.owner,
     });
   });
@@ -1491,7 +1526,8 @@ function renderOppBreakdown(team, games) {
       games,
       isLeague: team === ALL_TEAMS,
     },
-    onContextChange: context => applySavedTableContext('history-opponents', context),
+    urlState: historyTableUrlState(),
+    onContextChange: (context, urlState) => applySavedTableContext('history-opponents', context, urlState),
     instanceKey: `${team}|${renderKeysForGames(games)}`,
   });
 
@@ -1599,7 +1635,8 @@ function renderHistory() {
         owner: selectedTeam === ALL_TEAMS ? null : selectedTeam,
         latestSeason: Math.max(...universe.seasons),
       },
-      onContextChange: context => applySavedTableContext('history-seasons', context),
+      urlState: historyTableUrlState(),
+      onContextChange: (context, urlState) => applySavedTableContext('history-seasons', context, urlState),
       instanceKey: `${selectedTeam}|${[...selectedSeasons].join(',')}`,
     });
   });
@@ -1611,7 +1648,8 @@ function renderHistory() {
     window.darlingTables?.render?.('history-weeks', {
       rows,
       context: { owner: selectedTeam === ALL_TEAMS ? null : selectedTeam },
-      onContextChange: context => applySavedTableContext('history-weeks', context),
+      urlState: historyTableUrlState(),
+      onContextChange: (context, urlState) => applySavedTableContext('history-weeks', context, urlState),
       instanceKey: `${selectedTeam}|${renderKeys.weekByWeek}`,
     });
   });
@@ -1627,9 +1665,9 @@ function renderHistory() {
         columnVisibility: { team: selectedTeam === ALL_TEAMS },
         columnPinning: { left: [selectedTeam === ALL_TEAMS ? 'team' : 'date'], right: [] },
       },
-      urlState: gameQuery,
+      urlState: historyTableUrlState(),
       onUrlStateChange: handleHistoryGameTableUrlState,
-      onContextChange: context => applySavedTableContext('history-games', context),
+      onContextChange: (context, urlState) => applySavedTableContext('history-games', context, urlState),
       instanceKey: `${selectedTeam}|${renderKeys.gamesTable}|${JSON.stringify(gameQuery)}`,
     });
     updateHistoryGamesSummary(selectedTeam, filtered, gameQuery);

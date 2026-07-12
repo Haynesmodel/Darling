@@ -108,6 +108,38 @@ test('saved view contexts compare only portable owner, rivalry, and season field
   assert.equal(saved.tableContextsMatch({ rivalryA: 'Joe', rivalryB: 'Shap' }, { rivalryA: 'Joe', rivalryB: 'Joel' }), false);
 });
 
+test('saved views persist and sanitize canonical URL-owned state separately', async () => {
+  const [saved] = await modules;
+  const storage = new FakeStorage();
+  const view = saved.saveView('history-games', 'Canonical loss', portableState(), { owner: 'Joe' }, storage, {
+    urlState: {
+      seasons: [2024, 'invalid'],
+      weeks: [16],
+      opps: ['Zubs', 7],
+      types: ['Playoff'],
+      rounds: ['Semi Final'],
+      gameResult: 'L',
+      gameMinScore: -1,
+      gameMaxScore: 150,
+      gameSort: 'marginAsc',
+      gameLimit: 101,
+    },
+  });
+  assert.deepEqual(view.urlState, {
+    seasons: [2024],
+    weeks: [16],
+    opps: ['Zubs'],
+    types: ['Playoff'],
+    rounds: ['Semi Final'],
+    gameResult: 'L',
+    gameMinScore: null,
+    gameMaxScore: 150,
+    gameSort: 'marginAsc',
+    gameLimit: null,
+  });
+  assert.deepEqual(saved.readSavedViews(storage)[0].urlState, view.urlState);
+});
+
 test('portable saved state drops stale columns and quick filters safely', async () => {
   const [saved] = await modules;
   const state = portableState({

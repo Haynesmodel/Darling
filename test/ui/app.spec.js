@@ -777,6 +777,80 @@ test('interactive history games sort, filter, expand, and persist saved views', 
   expect(restoredOpponents.every(value => value.includes('Singer'))).toBe(true);
 });
 
+test('saved history views restore canonical facets and game-query limits', async ({ page }) => {
+  await page.goto('/?tab=history&team=Joe&seasons=2024&types=Playoff&rounds=Semi%20Final&gameResult=L&gameSort=marginAsc&gameLimit=1');
+  await page.waitForLoadState('networkidle');
+  await page.evaluate(() => localStorage.removeItem('darling.tableViews.v1'));
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+
+  const original = page.locator('[data-table-id="history-games"]');
+  await expect(original.locator('tbody > tr:not(.table-expanded-row)')).toHaveCount(1);
+  await original.locator('.table-view-menu > summary').click();
+  await original.getByPlaceholder('View name').fill('Joe 2024 semifinal loss');
+  await original.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(original.locator('.table-menu-message')).toContainText('Saved');
+
+  await page.goto('/?tab=history&team=Joel&seasons=2025&types=Regular');
+  await page.waitForLoadState('networkidle');
+  const switched = page.locator('[data-table-id="history-games"]');
+  await switched.locator('.table-view-menu > summary').click();
+  await switched.getByRole('button', { name: 'Joe 2024 semifinal loss', exact: true }).click();
+
+  await expect(page.locator('#teamSelect')).toHaveValue('Joe');
+  await expect.poll(() => page.evaluate(() => Object.fromEntries(new URLSearchParams(location.search)))).toMatchObject({
+    team: 'Joe',
+    seasons: '2024',
+    types: 'Playoff',
+    rounds: 'Semi Final',
+    gameResult: 'L',
+    gameSort: 'marginAsc',
+    gameLimit: '1',
+  });
+  await expect(page.locator('[data-table-id="history-games"] tbody > tr:not(.table-expanded-row)')).toHaveCount(1);
+});
+
+test('saved rivalry and trophy views restore initialized control contexts', async ({ page }) => {
+  await page.goto('/?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel');
+  await page.waitForLoadState('networkidle');
+  await page.evaluate(() => localStorage.removeItem('darling.tableViews.v1'));
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+
+  const rivalry = page.locator('[data-table-id="rivalry-games"]');
+  await rivalry.getByRole('button', { name: 'Last five meetings' }).click();
+  await rivalry.locator('.table-view-menu > summary').click();
+  await rivalry.getByPlaceholder('View name').fill('Joe vs Joel last five');
+  await rivalry.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.locator('#rivalryTeamB').selectOption('Shap');
+  await expect(page).toHaveURL(/rivalryTeamB=Shap/);
+
+  const switchedRivalry = page.locator('[data-table-id="rivalry-games"]');
+  await switchedRivalry.locator('.table-view-menu > summary').click();
+  await switchedRivalry.getByRole('button', { name: 'Joe vs Joel last five', exact: true }).click();
+  await expect(page.locator('#rivalryTeamA')).toHaveValue('Joe');
+  await expect(page.locator('#rivalryTeamB')).toHaveValue('Joel');
+  await expect(page).toHaveURL(/rivalryTeamB=Joel/);
+  await expect(page.locator('[data-table-id="rivalry-games"] tbody > tr:not(.table-expanded-row)')).toHaveCount(5);
+
+  await page.goto('/?tab=trophy&trophyOwner=Joe');
+  await page.waitForLoadState('networkidle');
+  const trophy = page.locator('[data-table-id="trophy-seasons"]');
+  await trophy.getByRole('button', { name: 'Sort Finish; currently unsorted' }).click();
+  await trophy.locator('.table-view-menu > summary').click();
+  await trophy.getByPlaceholder('View name').fill('Joe trophy ledger');
+  await trophy.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.locator('#trophyOwnerSelect').selectOption('Joel');
+  await expect(page).toHaveURL(/trophyOwner=Joel/);
+
+  const switchedTrophy = page.locator('[data-table-id="trophy-seasons"]');
+  await switchedTrophy.locator('.table-view-menu > summary').click();
+  await switchedTrophy.getByRole('button', { name: 'Joe trophy ledger', exact: true }).click();
+  await expect(page.locator('#trophyOwnerSelect')).toHaveValue('Joe');
+  await expect(page).toHaveURL(/trophyOwner=Joe/);
+  await expect(page.locator('[data-table-id="trophy-seasons"] th').filter({ hasText: 'Finish' })).toHaveAttribute('aria-sort', 'ascending');
+});
+
 test('interactive tables mount across rivalry, current season, and trophy pages', async ({ page }) => {
   await page.goto('/?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel');
   await page.waitForLoadState('networkidle');

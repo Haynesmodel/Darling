@@ -32,6 +32,7 @@ export interface SavedTableView {
   name: string;
   state: PortableTableState;
   context?: TableContext;
+  urlState?: TableUrlState;
   createdAt: string;
   updatedAt: string;
 }
@@ -90,6 +91,11 @@ export interface TableRegistryEntry {
 }
 
 export interface TableUrlState {
+  seasons?: number[];
+  weeks?: number[];
+  opps?: string[];
+  types?: string[];
+  rounds?: string[];
   gameResult?: string | null;
   gameMinScore?: number | null;
   gameMaxScore?: number | null;
@@ -104,7 +110,7 @@ export interface TableRenderPayload {
   initialState?: Partial<PortableTableState>;
   urlState?: TableUrlState;
   onUrlStateChange?: (state: TableUrlState) => void;
-  onContextChange?: (context: TableContext) => void;
+  onContextChange?: (context: TableContext, urlState?: TableUrlState) => void;
 }
 
 export interface DarlingTableRuntime {

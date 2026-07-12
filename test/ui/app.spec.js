@@ -38,6 +38,23 @@ async function downloadText(download) {
   return Buffer.concat(chunks).toString('utf8');
 }
 
+async function computedContrastRatio(locator) {
+  return locator.evaluate((element) => {
+    const channels = (value) => (value.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+    const luminance = (value) => {
+      const [red, green, blue] = channels(value).map(channel => {
+        const normalized = channel / 255;
+        return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+    };
+    const style = getComputedStyle(element);
+    const foreground = luminance(style.color);
+    const background = luminance(style.backgroundColor);
+    return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+  });
+}
+
 test.beforeEach(async ({ page, browserName }, testInfo) => {
   const browserErrors = [];
   const expectedFailureTest = testInfo.title.includes('fetch failure');
@@ -871,7 +888,23 @@ test('interactive tables mount across rivalry, current season, and trophy pages'
   await page.goto('/?tab=trophy&trophyOwner=Joe');
   await page.waitForLoadState('networkidle');
   await expect(page.locator('[data-table-id="trophy-seasons"] tbody tr')).toHaveCount(12);
-  await expect(page.locator('[data-table-id="trophy-seasons"] .trophy-chip').first()).toBeVisible();
+  await expect(page.locator('[data-table-id="trophy-seasons"] .table-note-chip').first()).toBeVisible();
+});
+
+test('trophy ledger note chips meet light and dark contrast requirements', async ({ page }) => {
+  await page.goto('/?tab=trophy&trophyOwner=Joe');
+  await page.waitForLoadState('networkidle');
+  const chip = page.locator('[data-table-id="trophy-seasons"] .table-note-chip').first();
+  await expect(chip).toBeVisible();
+  await expect(page.locator('[data-table-id="trophy-seasons"] .trophy-chip')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Light' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-color-scheme', 'light');
+  expect(await computedContrastRatio(chip)).toBeGreaterThanOrEqual(4.5);
+
+  await page.getByRole('button', { name: 'Dark' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-color-scheme', 'dark');
+  expect(await computedContrastRatio(chip)).toBeGreaterThanOrEqual(4.5);
 });
 
 test('interactive tables keep sticky identity cells readable on mobile and dark mode', async ({ page }) => {

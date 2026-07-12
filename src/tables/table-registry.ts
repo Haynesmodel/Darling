@@ -40,7 +40,7 @@ const scoreWithMark = (value: unknown, row: DarlingTableRow) => `${value ?? '—
 const notes = (value: unknown, row: DarlingTableRow) => {
   const items = Array.isArray(row.notes) ? row.notes : String(value || '').split(' • ').filter(Boolean);
   return h('span', { class: 'table-chip-list' }, items.length
-    ? items.map(item => h('span', { class: 'trophy-chip', key: String(item) }, String(item)))
+    ? items.map(item => h('span', { class: 'table-note-chip', key: String(item) }, String(item)))
     : '—');
 };
 

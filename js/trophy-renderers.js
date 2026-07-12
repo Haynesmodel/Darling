@@ -1252,7 +1252,7 @@ function trophySeasonLedgerHtml(view) {
       <td>${esc(row.pf)}</td>
       <td>${esc(row.pa)}</td>
       <td>${esc(row.diff)}</td>
-      <td>${row.notes.length ? row.notes.map(note => `<span class="trophy-chip">${esc(note)}</span>`).join(' ') : ''}</td>
+      <td>${row.notes.length ? row.notes.map(note => `<span class="table-note-chip">${esc(note)}</span>`).join(' ') : ''}</td>
     </tr>
   `).join('');
 }

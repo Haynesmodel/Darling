@@ -304,12 +304,15 @@ test('buildTrophyCaseViewModel renders the visual profile sections', () => {
   assert.match(trophyAchievementListHtml(vm), /Best regular season|Highest weekly score|Best win margin/);
   assert.match(trophyScarListHtml(vm), /Most unlucky season|Worst weekly score|Biggest loss|Record 11-3-0|Luck \+0\.00/);
   assert.equal(vm.seasonLedger.length, 3);
-  assert.match(trophySeasonLedgerHtml(vm), /2025/);
-  assert.match(trophySeasonLedgerHtml(vm), /Champion/);
-  assert.match(trophySeasonLedgerHtml(vm), /Regular-season title/);
-  assert.match(trophySeasonLedgerHtml(vm), /Postseason 1-1/);
-  assert.match(trophySeasonLedgerHtml(vm), /Bye/);
-  assert.match(trophySeasonLedgerHtml(vm), /Bagels 2/);
+  const ledgerHtml = trophySeasonLedgerHtml(vm);
+  assert.match(ledgerHtml, /2025/);
+  assert.match(ledgerHtml, /Champion/);
+  assert.match(ledgerHtml, /Regular-season title/);
+  assert.match(ledgerHtml, /Postseason 1-1/);
+  assert.match(ledgerHtml, /Bye/);
+  assert.match(ledgerHtml, /Bagels 2/);
+  assert.match(ledgerHtml, /class="table-note-chip"/);
+  assert.doesNotMatch(ledgerHtml, /class="trophy-chip"/);
 });
 
 test('trophy renderers escape owner names and support empty states', () => {

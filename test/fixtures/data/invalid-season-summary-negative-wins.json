@@ -1,0 +1,22 @@
+[
+  {
+    "season": 2025,
+    "owner": "Joe",
+    "wins": -1,
+    "losses": 1,
+    "ties": 0,
+    "finish": 1,
+    "points_for": 100,
+    "points_against": 90,
+    "playoff_wins": 0,
+    "playoff_losses": 0,
+    "saunders_wins": 0,
+    "saunders_losses": 0,
+    "bagels_earned": null,
+    "bye": false,
+    "champion": true,
+    "saunders": false,
+    "saunders_bye": false,
+    "wild_card": false
+  }
+]

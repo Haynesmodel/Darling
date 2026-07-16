@@ -41,7 +41,7 @@
   "derived": {
     "bytes": 180301,
     "path": "assets/DerivedStats.json",
-    "required": true,
+    "required": false,
     "sha256": "sha256:2e5541ac09843571b5b8c4b21bcf355dd8e9733f636a056fa94851b6f6f45237",
     "source_hashes": {
       "H2H": "sha256:ca8155035573c00dc8922d3f6de90772869a2baec9a16909c5d6562bae371d18",
@@ -166,9 +166,7 @@
       ]
     },
     "leagueHeroSource": {
-      "available": false,
       "fallback": "assets/hero/league-1920.jpg",
-      "offloaded": true,
       "path": "assets/LeaguePic.jpeg",
       "role": "regeneration-optional"
     }

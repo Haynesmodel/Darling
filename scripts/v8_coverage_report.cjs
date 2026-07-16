@@ -13,6 +13,7 @@ const ignoredSourceSegments = [
 ];
 const ignoredSourceFiles = new Set([
   path.join('scripts', 'build_chart_vendor.cjs'),
+  path.join('src', 'data', 'generated', 'asset-types.ts'),
   path.join('src', 'search', 'search-types.ts'),
   path.join('src', 'theme', 'theme-types.ts'),
 ]);
@@ -42,6 +43,21 @@ function isTypeOnlySourceFile(filePath) {
 
   let src = stripComments(fs.readFileSync(filePath, 'utf8')).trim();
   if (!src) return false;
+
+  try {
+    const ts = require('typescript');
+    const output = ts.transpileModule(src, {
+      compilerOptions: {
+        module: ts.ModuleKind.ESNext,
+        target: ts.ScriptTarget.ES2022,
+        removeComments: true,
+      },
+      fileName: filePath,
+    }).outputText.replace(/export\s*\{\s*\};?/g, '').trim();
+    if (!output) return true;
+  } catch {
+    // Fall through to the lightweight syntax check for minimal test fixtures.
+  }
 
   src = src
     .replace(/import\s+type[\s\S]*?;\s*/g, '')

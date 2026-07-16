@@ -246,15 +246,15 @@ export interface ScoreEvent {
  * Content-addressed inventory for one deployable data snapshot.
  */
 export interface AssetManifest {
-  manifest_version: 1;
+  manifest_version: number;
   data_version: string;
-  derived_generator_version: 1;
+  derived_generator_version: number;
   schema_versions: {
-    H2H: 1;
-    SeasonSummary: 1;
-    Rivalries: 1;
-    CurrentSeason: 1;
-    DerivedStats: 1;
+    H2H: number;
+    SeasonSummary: number;
+    Rivalries: number;
+    CurrentSeason: number;
+    DerivedStats: number;
   };
   assets: {
     H2H: JsonAsset;
@@ -299,8 +299,6 @@ export interface AssetManifest {
       role: 'regeneration-optional';
       path: string;
       fallback: string;
-      available: boolean;
-      offloaded: boolean;
     };
   };
 }

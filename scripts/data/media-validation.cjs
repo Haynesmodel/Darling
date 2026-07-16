@@ -76,10 +76,26 @@ async function inspectHeroAssets(root = process.cwd()) {
   const sourcePath = path.join(root, 'assets', 'LeaguePic.jpeg');
   const placeholderPath = path.join(root, 'assets', '.LeaguePic.jpeg.icloud');
   const fallbackPath = path.join(root, 'assets', 'hero', 'league-1920.jpg');
-  const sourceAvailable = fs.existsSync(sourcePath) && fs.statSync(sourcePath).isFile() && fs.statSync(sourcePath).size > 0;
+  const sourceExists = fs.existsSync(sourcePath) && fs.statSync(sourcePath).isFile() && fs.statSync(sourcePath).size > 0;
+  let sourceAvailable = false;
+  let sourceInvalid = false;
+  if (sourceExists) {
+    try {
+      const metadata = await sharp(sourcePath, { failOn: 'warning' }).metadata();
+      await sharp(sourcePath, { failOn: 'warning' }).stats();
+      sourceAvailable = !!(metadata.width && metadata.height);
+      sourceInvalid = !sourceAvailable;
+    } catch {
+      sourceInvalid = true;
+    }
+  }
   const sourceOffloaded = !sourceAvailable && fs.existsSync(placeholderPath);
   const fallbackAvailable = fs.existsSync(fallbackPath) && fs.statSync(fallbackPath).isFile() && fs.statSync(fallbackPath).size > 0;
-  if (sourceOffloaded && fallbackAvailable) {
+  if (sourceInvalid && fallbackAvailable) {
+    warnings.push('WARN  [MEDIA_SOURCE_INVALID] assets/LeaguePic.jpeg: original exists but Sharp cannot decode it; assets/hero/league-1920.jpg remains a valid regeneration fallback');
+  } else if (sourceInvalid) {
+    errors.push('ERROR [MEDIA_REGENERATION_SOURCE_INVALID] assets/LeaguePic.jpeg: original exists but Sharp cannot decode it and no valid fallback is available');
+  } else if (sourceOffloaded && fallbackAvailable) {
     warnings.push('WARN  [MEDIA_SOURCE_OFFLOADED] assets/LeaguePic.jpeg: original is offloaded to iCloud; runtime variants are valid and assets/hero/league-1920.jpg can regenerate them');
   } else if (!sourceAvailable && !fallbackAvailable) {
     errors.push('ERROR [MEDIA_REGENERATION_SOURCE_MISSING] assets/LeaguePic.jpeg: download the original from iCloud or restore assets/hero/league-1920.jpg before rebuilding the hero');
@@ -95,6 +111,7 @@ async function inspectHeroAssets(root = process.cwd()) {
       fallback: 'assets/hero/league-1920.jpg',
       available: sourceAvailable,
       offloaded: sourceOffloaded,
+      invalid: sourceInvalid,
     },
   };
 }

@@ -83,7 +83,7 @@ Historical inconsistencies must not weaken a rule globally. Add a narrow entry t
 - Owner career totals.
 - Regular-season Gauntlet distributions.
 
-Interactive filters, URL state, live projections, chart layout, and postseason-weighted Gauntlet selections remain dynamic. The browser falls back to the existing client calculations when derived data is unavailable. Parity tests compare generated metrics with those implementations.
+Interactive filters, URL state, live projections, chart layout, and postseason-weighted Gauntlet selections remain dynamic. For the first release, the manifest marks DerivedStats optional and the browser falls back to the existing client calculations when it is missing, invalid, or stale. Once those fallbacks are removed, the manifest can make the artifact required. Parity tests compare generated metrics with the fallback implementations.
 
 Increment `derived_generator_version` whenever calculation meaning changes, even if input schemas do not.
 
@@ -91,7 +91,7 @@ Increment `derived_generator_version` whenever calculation meaning changes, even
 
 `asset-manifest.json` records schema versions, source and derived hashes, byte sizes, row counts, season coverage, dependencies, and hero metadata. `data_version` hashes canonical JSON inputs, schema versions, the derived generator version, the derived hash, and runtime media hashes.
 
-The manifest does not hash itself and contains no wall-clock generation timestamp. Unchanged inputs therefore produce byte-identical output. The browser exposes diagnostics at `window.darlingDataDiagnostics` and the full version at `window.__darlingDataVersion`.
+The manifest does not hash itself, contain wall-clock generation timestamps, or record ignored local iCloud placeholder state. Unchanged tracked inputs therefore produce byte-identical output in local development and CI. The browser exposes diagnostics at `window.darlingDataDiagnostics` and the full version at `window.__darlingDataVersion`.
 
 ## Media rules and iCloud recovery
 
@@ -134,3 +134,5 @@ On the implementation machine (Node 23; CI targets Node 20):
 - Browser startup uses generated aggregates when available; client calculations remain only as recovery fallbacks.
 
 These values are guardrails, not contractual benchmarks. Re-measure when generator meaning, data volume, or feature consumption changes.
+
+Production JavaScript baseline and chunk budgets are documented in [bundle-size.md](bundle-size.md).

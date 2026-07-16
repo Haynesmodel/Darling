@@ -54,7 +54,7 @@ async function buildManifest(root = process.cwd(), opts = {}) {
     path: 'assets/DerivedStats.json',
     sha256: sha256Json(derived),
     bytes: fs.statSync(derivedPath).size,
-    required: true,
+    required: false,
     source_hashes: derived.source_hashes,
   };
   const schemaVersions = {
@@ -80,7 +80,11 @@ async function buildManifest(root = process.cwd(), opts = {}) {
     derived: derivedEntry,
     media: {
       leagueHero: { role: 'runtime-required', variants: media.variants },
-      leagueHeroSource: media.source,
+      leagueHeroSource: {
+        role: media.source.role,
+        path: media.source.path,
+        fallback: media.source.fallback,
+      },
     },
   };
 }

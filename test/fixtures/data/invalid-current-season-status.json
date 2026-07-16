@@ -1,0 +1,54 @@
+{
+  "source": "sleeper",
+  "league_id": "12345",
+  "season": 2025,
+  "generated_at": "2025-09-08T00:00:00Z",
+  "current_week": 1,
+  "regular_season_max_week": 14,
+  "playoff_rules": {
+    "regular_season_max_week": 14,
+    "playoff_slots": 1,
+    "bye_slots": 0,
+    "standings_tiebreakers": ["win_pct"],
+    "saunders_slots": 1
+  },
+  "update_context": {
+    "mode": "manual",
+    "cutoff_date": "2025-09-08",
+    "contains_live_scores": false,
+    "contains_projected_scores": false
+  },
+  "max_week": 17,
+  "weeks_fetched": [1],
+  "teams": [
+    {
+      "roster_id": 1,
+      "owner": "Joe",
+      "display_name": "Joe",
+      "sleeper_team_name": "Joe"
+    },
+    {
+      "roster_id": 2,
+      "owner": "Shap",
+      "display_name": "Shap",
+      "sleeper_team_name": "Shap"
+    }
+  ],
+  "games": [
+    {
+      "season": 2025,
+      "date": "2025-09-07",
+      "teamA": "Joe",
+      "teamB": "Shap",
+      "scoreA": null,
+      "scoreB": 90,
+      "week": 1,
+      "round": "",
+      "type": "Regular",
+      "status": "complete",
+      "matchup_id": 1,
+      "rosterA": 1,
+      "rosterB": 2
+    }
+  ]
+}

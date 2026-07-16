@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://darling.example/schemas/h2h.schema.json",
+  "title": "H2H game history",
+  "description": "The authoritative historical matchup array.",
+  "type": "array",
+  "items": {
+    "$ref": "#/$defs/game"
+  },
+  "$defs": {
+    "game": {
+      "title": "H2HGame",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["season", "date", "teamA", "teamB", "scoreA", "scoreB", "week", "round", "type"],
+      "properties": {
+        "season": { "$ref": "common.schema.json#/$defs/season" },
+        "date": { "$ref": "common.schema.json#/$defs/date" },
+        "teamA": { "$ref": "common.schema.json#/$defs/owner" },
+        "teamB": { "$ref": "common.schema.json#/$defs/owner" },
+        "scoreA": { "$ref": "common.schema.json#/$defs/score" },
+        "scoreB": { "$ref": "common.schema.json#/$defs/score" },
+        "week": { "$ref": "common.schema.json#/$defs/week" },
+        "round": { "$ref": "common.schema.json#/$defs/round" },
+        "type": { "$ref": "common.schema.json#/$defs/gameType" },
+        "bracket": { "type": "null" }
+      }
+    }
+  }
+}

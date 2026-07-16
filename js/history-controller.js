@@ -240,6 +240,9 @@ let leagueGames = [];
 let seasonSummaries = [];
 let rivalries = [];
 let currentSeason = null;
+let derivedStats = null;
+let dataVersion = null;
+let dataDiagnostics = null;
 let selectedTeam = DEFAULT_TEAM;
 let selectedSeasons = new Set();
 let selectedWeeks = new Set();
@@ -325,6 +328,7 @@ function renderIfChanged(section, signature, renderFn) {
 }
 
 function subThresholdGamesPerTeam(threshold = SUB_SCORE_THRESHOLD) {
+  if (threshold === 70 && derivedStats?.records?.sub_70) return derivedStats.records.sub_70;
   return computeSubThresholdGamesPerTeam(leagueGames, threshold);
 }
 
@@ -338,27 +342,30 @@ function longestWinStreaksAllTeams(n = 5) {
 
 function seasonAggregatesAllTeams() {
   if (seasonAggregatesCache) return seasonAggregatesCache;
-  seasonAggregatesCache = computeSeasonAggregatesAllTeams(leagueGames, seasonSummaries);
+  seasonAggregatesCache = derivedStats?.season_aggregates || computeSeasonAggregatesAllTeams(leagueGames, seasonSummaries);
   return seasonAggregatesCache;
 }
 
 function headToHeadPairs(minGames = 5) {
   if (headToHeadPairsCache.has(minGames)) return headToHeadPairsCache.get(minGames);
-  const rows = computeHeadToHeadPairs(leagueGames, minGames);
+  const rows = derivedStats?.head_to_head_pairs
+    ? derivedStats.head_to_head_pairs.filter(row => row.g >= minGames)
+    : computeHeadToHeadPairs(leagueGames, minGames);
   headToHeadPairsCache.set(minGames, rows);
   return rows;
 }
 
 function weeklyAwards() {
   if (weeklyAwardsCache) return weeklyAwardsCache;
-  weeklyAwardsCache = computeWeeklyAwards(leagueGames, HIGH_SCORE_THRESHOLD);
+  weeklyAwardsCache = derivedStats?.weekly_awards || computeWeeklyAwards(leagueGames, HIGH_SCORE_THRESHOLD);
   return weeklyAwardsCache;
 }
 
 function teamSeasons(includePostseason = false) {
   const cacheKey = includePostseason ? 'postseason' : 'regular';
   if (teamSeasonsCache.has(cacheKey)) return teamSeasonsCache.get(cacheKey);
-  const built = buildTeamSeasons(leagueGames, seasonSummaries, { includePostseason });
+  const precomputed = includePostseason ? null : derivedStats?.team_seasons;
+  const built = precomputed || buildTeamSeasons(leagueGames, seasonSummaries, { includePostseason });
   teamSeasonsCache.set(cacheKey, built);
   return built;
 }
@@ -741,6 +748,9 @@ function renderTrophy() {
     const view = buildTrophyCaseViewModel(selectedTrophyOwner, {
       leagueGames,
       seasonSummaries,
+      weeklyAwards: weeklyAwards(),
+      seasonAggregates: seasonAggregatesAllTeams(),
+      ownerCareers: derivedStats?.owner_careers || null,
       champNoteFn: champNote,
       saundersNoteFn: saundersNote,
     });
@@ -1098,13 +1108,20 @@ async function loadLeagueJSON() {
   setAppStatus('loading', 'Loading league data...');
   try {
     const loaded = await loadLeagueAssets();
-    ({ leagueGames, derivedWeeksSet, seasonSummaries, rivalries, currentSeason } = setLoadedLeagueData({
+    ({ leagueGames, derivedWeeksSet, seasonSummaries, rivalries, currentSeason, derivedStats, dataVersion, diagnostics: dataDiagnostics } = setLoadedLeagueData({
       leagueGames,
       derivedWeeksSet,
       seasonSummaries,
       rivalries,
       currentSeason,
+      derivedStats,
+      dataVersion,
+      diagnostics: dataDiagnostics,
     }, loaded));
+    if (typeof window !== 'undefined') {
+      window.darlingDataDiagnostics = dataDiagnostics;
+      window.__darlingDataVersion = dataVersion;
+    }
     seasonAggregatesCache = null;
     weeklyAwardsCache = null;
     teamsFromLeagueGamesCache = null;
@@ -1121,7 +1138,9 @@ async function loadLeagueJSON() {
     return true;
   } catch (e) {
     console.error('Failed to load league JSON', e);
-    setAppStatus('error', 'Could not load league data. Refresh after the JSON files are available.');
+    const failedAsset = e?.asset ? ` (${e.asset})` : '';
+    const versionHint = e?.dataVersion ? ` Data ${String(e.dataVersion).replace(/^sha256:/, '').slice(0, 12)}.` : '';
+    setAppStatus('error', `Could not load league data${failedAsset}.${versionHint} Refresh to retry.`);
     return false;
   }
 }
@@ -1378,24 +1397,32 @@ function leagueRowsSingleWeeks() {
 }
 
 function topNWeeklyScoresAllTeams(n = 5) {
+  if (derivedStats?.records?.top_scores && n <= derivedStats.records.top_scores.length) {
+    return derivedStats.records.top_scores.slice(0, n);
+  }
   return computeTopNWeeklyScoresAllTeams(leagueGames, n);
 }
 
 function bottomNWeeklyScoresAllTeams(n = 5) {
+  if (derivedStats?.records?.bottom_scores && n <= derivedStats.records.bottom_scores.length) {
+    return derivedStats.records.bottom_scores.slice(0, n);
+  }
   return computeBottomNWeeklyScoresAllTeams(leagueGames, n);
 }
 
 function teamsFromLeagueGames() {
   if (teamsFromLeagueGamesCache) return teamsFromLeagueGamesCache;
-  teamsFromLeagueGamesCache = computeTeamsFromLeagueGames(leagueGames);
+  teamsFromLeagueGamesCache = derivedStats?.owners || computeTeamsFromLeagueGames(leagueGames);
   return teamsFromLeagueGamesCache;
 }
 
 function longestWinStreaksGlobal(n = 10) {
+  if (derivedStats?.streaks?.wins && n <= derivedStats.streaks.wins.length) return derivedStats.streaks.wins.slice(0, n);
   return computeLongestStreaksGlobal(leagueGames, teamsFromLeagueGames(), 'W', n);
 }
 
 function longestLosingStreaksGlobal(n = 10) {
+  if (derivedStats?.streaks?.losses && n <= derivedStats.streaks.losses.length) return derivedStats.streaks.losses.slice(0, n);
   return computeLongestStreaksGlobal(leagueGames, teamsFromLeagueGames(), 'L', n);
 }
 
@@ -1494,6 +1521,7 @@ function renderCurseTrackerSection() {
     seasonSummaries,
     selectedTeam,
     allTeams: ALL_TEAMS,
+    seasonAggregates: seasonAggregatesAllTeams(),
     onChange: renderCurseTrackerSection,
   });
 }

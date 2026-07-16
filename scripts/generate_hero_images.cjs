@@ -37,7 +37,11 @@ function resolveSource(root, requestedSource) {
   const gitSource = readGitSource(root, 'assets/LeaguePic.jpeg');
   if (gitSource) return { input: gitSource, label: 'HEAD:assets/LeaguePic.jpeg' };
 
-  throw new Error('Missing hero source. Pass a source path or set DARLING_HERO_SOURCE.');
+  throw new Error([
+    'Missing hero regeneration source.',
+    'Download assets/LeaguePic.jpeg from iCloud, restore assets/hero/league-1920.jpg,',
+    'pass a source path, or set DARLING_HERO_SOURCE.',
+  ].join(' '));
 }
 
 async function generateHeroImages(root = process.cwd(), requestedSource = process.argv[2]) {

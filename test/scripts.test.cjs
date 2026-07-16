@@ -432,23 +432,29 @@ test('asset validation cli accepts the canonical bundle', async () => {
       teamB: 'Shap',
       scoreA: 100,
       scoreB: 90,
+      week: 1,
       type: 'Regular',
       round: '',
     }]));
-    fs.writeFileSync(path.join(root, 'assets', 'SeasonSummary.json'), JSON.stringify([{
-      season: 2025,
-      owner: 'Joe',
-      wins: 10,
-      losses: 4,
+    const summaryDefaults = {
       ties: 0,
-      finish: 1,
-      playoff_wins: 2,
+      playoff_wins: 0,
       playoff_losses: 0,
       saunders_wins: 0,
       saunders_losses: 0,
-    }]));
+      bye: false,
+      wild_card: false,
+      saunders_bye: false,
+      bagels_earned: null,
+    };
+    fs.writeFileSync(path.join(root, 'assets', 'SeasonSummary.json'), JSON.stringify([
+      { ...summaryDefaults, season: 2025, owner: 'Joe', wins: 1, losses: 0, finish: 1, points_for: 100, points_against: 90, champion: true, saunders: false },
+      { ...summaryDefaults, season: 2025, owner: 'Shap', wins: 0, losses: 1, finish: 2, points_for: 90, points_against: 100, champion: false, saunders: true },
+    ]));
     fs.writeFileSync(path.join(root, 'assets', 'Rivalries.json'), JSON.stringify([{
+      slug: 'founders',
       name: 'Founders',
+      type: 'pair',
       members: ['Joe', 'Shap'],
     }]));
     fs.mkdirSync(path.join(root, 'assets', 'hero'));
@@ -505,7 +511,7 @@ test('asset validation cli reports row-level failures', async () => {
 
     const result = runNode(path.join(__dirname, '..', 'scripts', 'validate_assets.cjs'), [], root);
     assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /row 0 invalid date/);
+    assert.match(result.stderr, /row 0, field "date".*format "date"/);
   });
 });
 
@@ -530,10 +536,15 @@ set -euo pipefail
 script="$1"
 shift
 out=""
+h2h=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --out)
       out="$2"
+      shift 2
+      ;;
+    --h2h)
+      h2h="$2"
       shift 2
       ;;
     *)
@@ -544,47 +555,13 @@ done
 
 mkdir -p "$(dirname "$out")"
 if [[ "$script" == *"generate_current_season.py" ]]; then
-cat > "$out" <<'JSON'
-{
-  "source": "sleeper",
-  "league_id": "stub",
-  "season": 2025,
-  "generated_at": "2025-09-07T00:00:00Z",
-  "current_week": 1,
-  "games": [
-    {
-      "season": 2025,
-      "date": "2025-09-07",
-      "teamA": "Joe",
-      "teamB": "Shap",
-      "scoreA": null,
-      "scoreB": null,
-      "week": 1,
-      "round": "",
-      "type": "Regular",
-      "status": "scheduled"
-    }
-  ]
-}
-JSON
+cp assets/CurrentSeason.json "$out"
 exit 0
 fi
 
-cat > "$out" <<'JSON'
-[
-  {
-    "season": 2025,
-    "date": "2025-09-07",
-    "teamA": "Joe",
-    "teamB": "Shap",
-    "scoreA": 100,
-    "scoreB": 90,
-    "week": 1,
-    "round": "",
-    "type": "Regular"
-  }
-]
-JSON
+if [[ "$h2h" != "$out" ]]; then
+  cp "$h2h" "$out"
+fi
 `);
   fs.chmodSync(stubPath, 0o755);
 

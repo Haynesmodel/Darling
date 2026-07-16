@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://darling.example/schemas/current-season.schema.json",
+  "title": "Current season data",
+  "description": "Sleeper update context, current team map, rules, and matchups.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "source", "league_id", "season", "generated_at", "current_week", "regular_season_max_week",
+    "playoff_rules", "update_context", "max_week", "weeks_fetched", "teams", "games"
+  ],
+  "properties": {
+    "source": { "type": "string", "minLength": 1 },
+    "league_id": { "type": "string", "pattern": "^[0-9]+$" },
+    "season": { "$ref": "common.schema.json#/$defs/season" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "current_week": { "type": ["integer", "null"], "minimum": 1, "maximum": 25 },
+    "regular_season_max_week": { "$ref": "common.schema.json#/$defs/week" },
+    "max_week": { "$ref": "common.schema.json#/$defs/week" },
+    "weeks_fetched": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/week" }
+    },
+    "playoff_rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["regular_season_max_week", "playoff_slots", "bye_slots", "standings_tiebreakers", "saunders_slots"],
+      "properties": {
+        "regular_season_max_week": { "$ref": "common.schema.json#/$defs/week" },
+        "playoff_slots": { "type": "integer", "minimum": 1 },
+        "bye_slots": { "type": "integer", "minimum": 0 },
+        "saunders_slots": { "type": "integer", "minimum": 0 },
+        "standings_tiebreakers": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "update_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "cutoff_date", "contains_live_scores", "contains_projected_scores"],
+      "properties": {
+        "mode": { "type": "string", "minLength": 1 },
+        "cutoff_date": { "$ref": "common.schema.json#/$defs/date" },
+        "contains_live_scores": { "type": "boolean" },
+        "contains_projected_scores": { "type": "boolean" }
+      }
+    },
+    "teams": {
+      "type": "array",
+      "minItems": 2,
+      "items": { "$ref": "#/$defs/team" }
+    },
+    "games": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/game" }
+    }
+  },
+  "$defs": {
+    "team": {
+      "title": "CurrentSeasonTeam",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["roster_id", "owner", "display_name", "sleeper_team_name"],
+      "properties": {
+        "roster_id": { "type": "integer", "minimum": 1 },
+        "owner": { "$ref": "common.schema.json#/$defs/owner" },
+        "display_name": { "type": "string", "minLength": 1 },
+        "sleeper_team_name": { "type": "string" }
+      }
+    },
+    "game": {
+      "title": "CurrentSeasonGame",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "season", "date", "teamA", "teamB", "scoreA", "scoreB", "week", "round", "type",
+        "status", "matchup_id", "rosterA", "rosterB"
+      ],
+      "properties": {
+        "season": { "$ref": "common.schema.json#/$defs/season" },
+        "date": { "$ref": "common.schema.json#/$defs/date" },
+        "teamA": { "$ref": "common.schema.json#/$defs/owner" },
+        "teamB": { "$ref": "common.schema.json#/$defs/owner" },
+        "scoreA": { "$ref": "common.schema.json#/$defs/nullableScore" },
+        "scoreB": { "$ref": "common.schema.json#/$defs/nullableScore" },
+        "week": { "$ref": "common.schema.json#/$defs/week" },
+        "round": { "type": "string" },
+        "type": { "$ref": "common.schema.json#/$defs/gameType" },
+        "status": { "enum": ["scheduled", "live", "final"] },
+        "matchup_id": { "type": "integer", "minimum": 1 },
+        "rosterA": { "type": "integer", "minimum": 1 },
+        "rosterB": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

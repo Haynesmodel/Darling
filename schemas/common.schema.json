@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://darling.example/schemas/common.schema.json",
+  "title": "Darling shared data definitions",
+  "description": "Reusable scalar contracts for the Darling static data pipeline.",
+  "$defs": {
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "season": { "type": "integer", "minimum": 2014, "maximum": 2100 },
+    "week": { "type": "integer", "minimum": 1, "maximum": 25 },
+    "owner": { "type": "string", "minLength": 1, "pattern": "\\S" },
+    "score": { "type": "number", "minimum": 0 },
+    "nullableScore": { "type": ["number", "null"], "minimum": 0 },
+    "nonNegativeInteger": { "type": "integer", "minimum": 0 },
+    "nullableNonNegativeNumber": { "type": ["number", "null"], "minimum": 0 },
+    "date": { "type": "string", "format": "date" },
+    "sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "relativeAssetPath": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$"
+    },
+    "gameType": { "enum": ["Regular", "Playoff", "Saunders"] },
+    "round": { "type": ["string", "null"] }
+  }
+}

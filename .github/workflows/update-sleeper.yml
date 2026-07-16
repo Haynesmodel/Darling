@@ -50,6 +50,9 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install Node dependencies
+        run: npm ci
+
       - name: Resolve target season
         id: resolve
         shell: bash
@@ -149,7 +152,10 @@ jobs:
               --season "${{ steps.resolve.outputs.season }}"
           fi
 
-          node scripts/validate_assets.cjs
+          npm run generate:derived
+          npm run generate:manifest
+          npm run check:data-generated
+          npm run test:assets
 
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
@@ -160,6 +166,7 @@ jobs:
           if [[ -f assets/SeasonSummary.draft.json ]]; then
             git add assets/SeasonSummary.draft.json
           fi
+          git add assets/DerivedStats.json assets/asset-manifest.json
 
           if git diff --cached --quiet; then
             echo "No tracked asset changes to commit."
@@ -168,6 +175,20 @@ jobs:
 
           git commit -m "Update Sleeper H2H for season ${{ steps.resolve.outputs.season }}"
           git push origin "HEAD:${{ github.ref_name }}"
+
+      - name: Upload candidate data on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sleeper-candidate-data-${{ steps.resolve.outputs.season }}
+          path: |
+            assets/H2H.updated.json
+            assets/CurrentSeason.updated.json
+            assets/SeasonSummary.draft.json
+            assets/DerivedStats.json
+            assets/asset-manifest.json
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Notify on failure
         if: failure()

@@ -69,6 +69,9 @@ async function readOptionalObjectJson(fetchFn, path, logger = console) {
 }
 
 async function loadLeagueAssets(opts = {}) {
+  if (!opts.forceLegacy && !opts.paths && !opts.fetchFn && typeof globalThis.darlingDataLoader === 'function') {
+    return globalThis.darlingDataLoader({ logger: opts.logger || console });
+  }
   const fetchFn = opts.fetchFn || globalThis.fetch;
   if (typeof fetchFn !== 'function') {
     throw new Error('loadLeagueAssets requires a fetch function');

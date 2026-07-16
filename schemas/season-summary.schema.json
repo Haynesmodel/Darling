@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://darling.example/schemas/season-summary.schema.json",
+  "title": "Season summary",
+  "description": "One finalized standings and outcomes row per owner and season.",
+  "type": "array",
+  "items": { "$ref": "#/$defs/row" },
+  "$defs": {
+    "row": {
+      "title": "SeasonSummaryRow",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "season", "owner", "wins", "losses", "ties", "finish", "points_for", "points_against",
+        "playoff_wins", "playoff_losses", "saunders_wins", "saunders_losses", "champion", "saunders",
+        "bye", "wild_card", "saunders_bye", "bagels_earned"
+      ],
+      "properties": {
+        "season": { "$ref": "common.schema.json#/$defs/season" },
+        "owner": { "$ref": "common.schema.json#/$defs/owner" },
+        "wins": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "losses": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "ties": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "finish": { "type": "integer", "minimum": 1, "maximum": 24 },
+        "points_for": { "type": "number", "minimum": 0 },
+        "points_against": { "type": "number", "minimum": 0 },
+        "playoff_wins": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "playoff_losses": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "saunders_wins": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "saunders_losses": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "bagels_earned": { "$ref": "common.schema.json#/$defs/nullableNonNegativeNumber" },
+        "draft_pick": { "type": "integer", "minimum": 1, "maximum": 24 },
+        "bye": { "type": "boolean" },
+        "champion": { "type": "boolean" },
+        "saunders": { "type": "boolean" },
+        "saunders_bye": { "type": "boolean" },
+        "wild_card": { "type": "boolean" }
+      }
+    }
+  }
+}

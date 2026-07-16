@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://darling.example/schemas/asset-manifest.schema.json",
+  "title": "AssetManifest",
+  "description": "Content-addressed inventory for one deployable data snapshot.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifest_version", "data_version", "derived_generator_version", "schema_versions", "assets", "derived", "media"],
+  "properties": {
+    "manifest_version": { "const": 1 },
+    "data_version": { "$ref": "common.schema.json#/$defs/sha256" },
+    "derived_generator_version": { "const": 1 },
+    "schema_versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["H2H", "SeasonSummary", "Rivalries", "CurrentSeason", "DerivedStats"],
+      "properties": {
+        "H2H": { "const": 1 },
+        "SeasonSummary": { "const": 1 },
+        "Rivalries": { "const": 1 },
+        "CurrentSeason": { "const": 1 },
+        "DerivedStats": { "const": 1 }
+      }
+    },
+    "assets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["H2H", "SeasonSummary", "Rivalries", "CurrentSeason"],
+      "properties": {
+        "H2H": { "$ref": "#/$defs/jsonAsset" },
+        "SeasonSummary": { "$ref": "#/$defs/jsonAsset" },
+        "Rivalries": { "$ref": "#/$defs/jsonAsset" },
+        "CurrentSeason": { "$ref": "#/$defs/jsonAsset" }
+      }
+    },
+    "derived": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes", "required", "source_hashes"],
+      "properties": {
+        "path": { "$ref": "common.schema.json#/$defs/relativeAssetPath" },
+        "sha256": { "$ref": "common.schema.json#/$defs/sha256" },
+        "bytes": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "required": { "type": "boolean" },
+        "source_hashes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["H2H", "SeasonSummary", "Rivalries"],
+          "properties": {
+            "H2H": { "$ref": "common.schema.json#/$defs/sha256" },
+            "SeasonSummary": { "$ref": "common.schema.json#/$defs/sha256" },
+            "Rivalries": { "$ref": "common.schema.json#/$defs/sha256" }
+          }
+        }
+      }
+    },
+    "media": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["leagueHero", "leagueHeroSource"],
+      "properties": {
+        "leagueHero": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["role", "variants"],
+          "properties": {
+            "role": { "const": "runtime-required" },
+            "variants": { "type": "array", "minItems": 12, "maxItems": 12, "items": { "$ref": "#/$defs/mediaVariant" } }
+          }
+        },
+        "leagueHeroSource": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["role", "path", "fallback", "available", "offloaded"],
+          "properties": {
+            "role": { "const": "regeneration-optional" },
+            "path": { "$ref": "common.schema.json#/$defs/relativeAssetPath" },
+            "fallback": { "$ref": "common.schema.json#/$defs/relativeAssetPath" },
+            "available": { "type": "boolean" },
+            "offloaded": { "type": "boolean" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "jsonAsset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes", "rows", "season_min", "season_max", "required"],
+      "properties": {
+        "path": { "$ref": "common.schema.json#/$defs/relativeAssetPath" },
+        "sha256": { "$ref": "common.schema.json#/$defs/sha256" },
+        "bytes": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "rows": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "season_min": { "type": ["integer", "null"], "minimum": 2014, "maximum": 2100 },
+        "season_max": { "type": ["integer", "null"], "minimum": 2014, "maximum": 2100 },
+        "required": { "type": "boolean" }
+      }
+    },
+    "mediaVariant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "format", "width", "height", "bytes", "sha256", "max_bytes"],
+      "properties": {
+        "path": { "$ref": "common.schema.json#/$defs/relativeAssetPath" },
+        "format": { "enum": ["avif", "webp", "jpeg"] },
+        "width": { "enum": [480, 768, 1280, 1920] },
+        "height": { "type": "integer", "minimum": 1 },
+        "bytes": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "sha256": { "$ref": "common.schema.json#/$defs/sha256" },
+        "max_bytes": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" }
+      }
+    }
+  }
+}

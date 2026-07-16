@@ -749,7 +749,7 @@ function detectByeCurse(model) {
   return cards;
 }
 
-function buildCurseTrackerModel(leagueGames, seasonSummaries) {
+function buildCurseTrackerModel(leagueGames, seasonSummaries, opts = {}) {
   const sideRows = makeSideRows(leagueGames);
   const regularRows = sideRows.filter(row => row.type === 'Regular');
   const byOwner = groupBy(sideRows, row => row.owner);
@@ -757,7 +757,7 @@ function buildCurseTrackerModel(leagueGames, seasonSummaries) {
   const regularRowsByOwnerSeason = groupBy(regularRows, row => `${row.owner}|${row.season}`);
   const seasonSummariesByOwnerMap = seasonSummariesByOwner(seasonSummaries);
   const seasonSummariesBySeasonMap = seasonSummariesBySeason(seasonSummaries);
-  const seasonAggregates = coreFn('computeSeasonAggregatesAllTeams')(leagueGames, seasonSummaries)
+  const seasonAggregates = (opts.seasonAggregates || coreFn('computeSeasonAggregatesAllTeams')(leagueGames, seasonSummaries))
     .filter(row => Number.isFinite(+row.season));
   const seasonAggregatesByOwner = groupBy(seasonAggregates, row => row.team);
   const completedSeasons = completedSeasonsFromSummaries(seasonSummaries);
@@ -1078,8 +1078,8 @@ function buildCurseTrackerSummary(cards, visibleCards, completedSeasons, filters
   return `${visibleCards.length} curses shown, ${activeCount} active, across ${completedSeasons.length} completed seasons${scopeText}. Most cursed: ${mostCursed[0]} (${mostCursed[1]}). Most blessed: ${mostBlessed[0]} (${mostBlessed[1]}).`;
 }
 
-function buildCurseTrackerView(leagueGames, seasonSummaries, selectedTeam, allTeams, doc) {
-  const model = buildCurseTrackerModel(leagueGames, seasonSummaries);
+function buildCurseTrackerView(leagueGames, seasonSummaries, selectedTeam, allTeams, doc, opts = {}) {
+  const model = buildCurseTrackerModel(leagueGames, seasonSummaries, opts);
   const filters = readCurseTrackerFilters({ doc, selectedTeam, allTeams });
   const visibleCards = model.cards
     .filter(card => card.ratingMethod === 'effect-size'
@@ -1106,6 +1106,7 @@ function renderCurseTracker({
   selectedTeam,
   allTeams,
   onChange,
+  seasonAggregates,
 }) {
   const root = docOrDefault(doc);
   if (!root) return null;
@@ -1119,7 +1120,7 @@ function renderCurseTracker({
   const summaryEl = root.getElementById('curseSummary');
   const grid = root.getElementById('curseGrid');
   if (!summaryEl || !grid) return null;
-  const view = buildCurseTrackerView(leagueGames, seasonSummaries, selectedTeam, allTeams, root);
+  const view = buildCurseTrackerView(leagueGames, seasonSummaries, selectedTeam, allTeams, root, { seasonAggregates });
   summaryEl.textContent = view.summary;
   if (!view.visibleCards.length) {
     grid.innerHTML = '<div class="curse-empty muted">No curses match the current filters.</div>';

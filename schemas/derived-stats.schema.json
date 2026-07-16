@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://darling.example/schemas/derived-stats.schema.json",
+  "title": "DerivedStats",
+  "description": "Deterministic, filter-independent statistics generated from the league assets.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "derived_generator_version", "source_hashes", "owners", "seasons",
+    "season_aggregates", "head_to_head_pairs", "weekly_awards", "records", "streaks",
+    "owner_careers", "team_seasons"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "derived_generator_version": { "const": 1 },
+    "source_hashes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["H2H", "SeasonSummary", "Rivalries"],
+      "properties": {
+        "H2H": { "$ref": "common.schema.json#/$defs/sha256" },
+        "SeasonSummary": { "$ref": "common.schema.json#/$defs/sha256" },
+        "Rivalries": { "$ref": "common.schema.json#/$defs/sha256" }
+      }
+    },
+    "owners": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/owner" }
+    },
+    "seasons": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/season" }
+    },
+    "season_aggregates": { "type": "array", "items": { "$ref": "#/$defs/seasonAggregate" } },
+    "head_to_head_pairs": { "type": "array", "items": { "$ref": "#/$defs/headToHead" } },
+    "weekly_awards": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["top", "low", "high150"],
+      "properties": {
+        "top": { "type": "array", "items": { "$ref": "#/$defs/countRow" } },
+        "low": { "type": "array", "items": { "$ref": "#/$defs/countRow" } },
+        "high150": { "type": "array", "items": { "$ref": "#/$defs/countRow" } }
+      }
+    },
+    "records": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["top_scores", "bottom_scores", "sub_70"],
+      "properties": {
+        "top_scores": { "type": "array", "items": { "$ref": "#/$defs/scoreRecord" } },
+        "bottom_scores": { "type": "array", "items": { "$ref": "#/$defs/scoreRecord" } },
+        "sub_70": { "type": "array", "items": { "$ref": "#/$defs/countRow" } }
+      }
+    },
+    "streaks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wins", "losses"],
+      "properties": {
+        "wins": { "type": "array", "items": { "$ref": "#/$defs/streak" } },
+        "losses": { "type": "array", "items": { "$ref": "#/$defs/streak" } }
+      }
+    },
+    "owner_careers": { "type": "array", "items": { "$ref": "#/$defs/ownerCareer" } },
+    "team_seasons": { "type": "array", "items": { "$ref": "#/$defs/teamSeason" } }
+  },
+  "$defs": {
+    "countRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["team", "count"],
+      "properties": {
+        "team": { "$ref": "common.schema.json#/$defs/owner" },
+        "count": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" }
+      }
+    },
+    "seasonAggregate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["team", "season", "w", "l", "t", "n", "pf", "pa", "actWins", "expWins", "pct", "ppg", "oppg", "luck", "diff"],
+      "properties": {
+        "team": { "$ref": "common.schema.json#/$defs/owner" },
+        "season": { "$ref": "common.schema.json#/$defs/season" },
+        "w": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "l": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "t": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "n": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "pf": { "type": "number" },
+        "pa": { "type": "number" },
+        "actWins": { "type": "number" },
+        "expWins": { "type": "number" },
+        "pct": { "type": "number", "minimum": 0, "maximum": 1 },
+        "ppg": { "type": "number" },
+        "oppg": { "type": "number" },
+        "luck": { "type": "number" },
+        "diff": { "type": "number" }
+      }
+    },
+    "headToHead": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["team", "opp", "w", "l", "t", "g", "pct"],
+      "properties": {
+        "team": { "$ref": "common.schema.json#/$defs/owner" },
+        "opp": { "$ref": "common.schema.json#/$defs/owner" },
+        "w": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "l": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "t": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "g": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "pct": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "gameRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["season", "week", "date"],
+      "properties": {
+        "season": { "$ref": "common.schema.json#/$defs/season" },
+        "week": { "$ref": "common.schema.json#/$defs/week" },
+        "date": { "$ref": "common.schema.json#/$defs/date" }
+      }
+    },
+    "streak": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["team", "len", "start", "end"],
+      "properties": {
+        "team": { "$ref": "common.schema.json#/$defs/owner" },
+        "len": { "type": "integer", "minimum": 1 },
+        "start": { "$ref": "#/$defs/gameRef" },
+        "end": { "$ref": "#/$defs/gameRef" }
+      }
+    },
+    "scoreRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["team", "pf", "pa", "opp", "date", "season"],
+      "properties": {
+        "team": { "$ref": "common.schema.json#/$defs/owner" },
+        "pf": { "type": "number" },
+        "pa": { "type": "number" },
+        "opp": { "$ref": "common.schema.json#/$defs/owner" },
+        "date": { "$ref": "common.schema.json#/$defs/date" },
+        "season": { "$ref": "common.schema.json#/$defs/season" }
+      }
+    },
+    "ownerCareer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner", "seasons", "games", "wins", "losses", "ties", "points_for", "points_against", "championships", "saunders_titles", "weekly_crowns"],
+      "properties": {
+        "owner": { "$ref": "common.schema.json#/$defs/owner" },
+        "seasons": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "games": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "wins": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "losses": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "ties": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "points_for": { "type": "number" },
+        "points_against": { "type": "number" },
+        "championships": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "saunders_titles": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "weekly_crowns": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" }
+      }
+    },
+    "scoreEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["score", "weight"],
+      "properties": { "score": { "type": "number" }, "weight": { "type": "number", "exclusiveMinimum": 0 } }
+    },
+    "teamSeason": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "owner", "season", "scores", "games", "mean", "stdev", "min", "max", "median", "p25", "p75", "record", "wins", "losses", "ties", "finish", "champion", "saunders", "bye", "pointsFor", "pointsAgainst"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "owner": { "$ref": "common.schema.json#/$defs/owner" },
+        "season": { "$ref": "common.schema.json#/$defs/season" },
+        "scores": { "type": "array", "items": { "type": "number" } },
+        "scoreEvents": { "type": "array", "items": { "$ref": "#/$defs/scoreEvent" } },
+        "games": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "mean": { "type": "number" },
+        "stdev": { "type": "number" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "median": { "type": "number" },
+        "p25": { "type": "number" },
+        "p75": { "type": "number" },
+        "record": { "type": "string" },
+        "wins": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "losses": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "ties": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "finish": { "type": ["integer", "null"], "minimum": 1 },
+        "champion": { "type": "boolean" },
+        "saunders": { "type": "boolean" },
+        "bye": { "type": "boolean" },
+        "pointsFor": { "type": "number" },
+        "pointsAgainst": { "type": "number" }
+      }
+    }
+  }
+}

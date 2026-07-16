@@ -38,6 +38,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify coherent data snapshot
+        run: npm run check:data-generated && npm run test:assets
+
       - name: Build static site
         run: npm run build
 

@@ -299,6 +299,9 @@ function competitionRankRows(rows, accessor, { direction = 'desc' } = {}) {
 }
 
 function buildOwnerCareerProfile(owner, seasonSummaries = [], leagueGames = [], opts = {}) {
+  const careerBase = Array.isArray(opts.ownerCareers)
+    ? opts.ownerCareers.find(row => row.owner === owner) || null
+    : null;
   const seasonRows = seasonSummaries
     .filter(row => row.owner === owner)
     .sort(sortSeasonDesc);
@@ -315,6 +318,11 @@ function buildOwnerCareerProfile(owner, seasonSummaries = [], leagueGames = [], 
     acc.ties += +row.ties || 0;
     return acc;
   }, { wins: 0, losses: 0, ties: 0 });
+  if (careerBase) {
+    regularRecord.wins = careerBase.wins;
+    regularRecord.losses = careerBase.losses;
+    regularRecord.ties = careerBase.ties;
+  }
 
   const playoffRecord = seasonRows.reduce((acc, row) => {
     acc.wins += +row.playoff_wins || 0;
@@ -328,8 +336,8 @@ function buildOwnerCareerProfile(owner, seasonSummaries = [], leagueGames = [], 
     return acc;
   }, { wins: 0, losses: 0, ties: 0 });
 
-  const pointsFor = seasonRows.reduce((sum, row) => sum + (Number.isFinite(+row.points_for) ? +row.points_for : 0), 0);
-  const pointsAgainst = seasonRows.reduce((sum, row) => sum + (Number.isFinite(+row.points_against) ? +row.points_against : 0), 0);
+  const pointsFor = careerBase?.points_for ?? seasonRows.reduce((sum, row) => sum + (Number.isFinite(+row.points_for) ? +row.points_for : 0), 0);
+  const pointsAgainst = careerBase?.points_against ?? seasonRows.reduce((sum, row) => sum + (Number.isFinite(+row.points_against) ? +row.points_against : 0), 0);
   const diffTotal = pointsFor - pointsAgainst;
   const finishes = seasonRows.map(row => toNumber(row.finish)).filter(value => value !== null);
   const averageFinish = calcAvg(finishes);
@@ -345,8 +353,8 @@ function buildOwnerCareerProfile(owner, seasonSummaries = [], leagueGames = [], 
   const wildCardYears = seasonRows.filter(row => row.wild_card).map(row => +row.season).sort((a, b) => a - b);
   const saundersByeYears = seasonRows.filter(row => row.saunders_bye).map(row => +row.season).sort((a, b) => a - b);
 
-  const weeklyAwards = computeWeeklyAwards(leagueGames, 150);
-  const weeklyCrowns = (weeklyAwards.top || []).find(row => row.team === owner)?.count || 0;
+  const weeklyAwards = opts.weeklyAwards || computeWeeklyAwards(leagueGames, 150);
+  const weeklyCrowns = careerBase?.weekly_crowns ?? ((weeklyAwards.top || []).find(row => row.team === owner)?.count || 0);
   const lowScores = (weeklyAwards.low || []).find(row => row.team === owner)?.count || 0;
   const highScores = (weeklyAwards.high150 || []).find(row => row.team === owner)?.count || 0;
   const sub70Games = regularGames.filter(game => {
@@ -354,14 +362,18 @@ function buildOwnerCareerProfile(owner, seasonSummaries = [], leagueGames = [], 
     return s && +s.pf < 70;
   }).length;
 
+  const aggregateBySeason = new Map((opts.seasonAggregates || [])
+    .filter(row => row.team === owner)
+    .map(row => [+row.season, row]));
   const seasonLuckRows = seasonRows
     .map(row => {
       const games = regularGames.filter(game => +game.season === +row.season);
-      const expectedWins = games.reduce((sum, game) => {
+      const aggregate = aggregateBySeason.get(+row.season);
+      const expectedWins = aggregate?.expWins ?? games.reduce((sum, game) => {
         const xw = computeExpectedWinForGame(leagueGames, owner, game);
         return xw === null ? sum : sum + xw;
       }, 0);
-      const luck = games.reduce((sum, game) => {
+      const luck = aggregate?.luck ?? games.reduce((sum, game) => {
         const xw = computeExpectedWinForGame(leagueGames, owner, game);
         if (xw === null) return sum;
         const s = sidesForTeam(game, owner);

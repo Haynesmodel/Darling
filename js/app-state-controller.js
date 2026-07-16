@@ -78,6 +78,10 @@ function setLoadedLeagueData(state = {}, loaded = {}) {
     seasonSummaries: loaded.seasonSummaries || [],
     rivalries: loaded.rivalries || [],
     currentSeason: loaded.currentSeason || null,
+    derivedStats: loaded.derivedStats || null,
+    manifest: loaded.manifest || null,
+    dataVersion: loaded.dataVersion || null,
+    diagnostics: loaded.diagnostics || null,
   });
 }
 

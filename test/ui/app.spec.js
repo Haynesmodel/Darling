@@ -88,7 +88,8 @@ test.afterEach(async ({ page }, testInfo) => {
       !error.includes('Failed to load league JSON') &&
       !error.includes('Failed to load resource: the server responded with a status of 500') &&
       !error.includes('asset 500:') &&
-      !error.includes('/assets/H2H.json')
+      !error.includes('/assets/H2H.json') &&
+      !error.includes('/assets/CurrentSeason.json')
     );
     expect(unexpected).toEqual([]);
     return;
@@ -117,6 +118,23 @@ test('page loads and renders the history tables', async ({ page }) => {
   expect(weekCount).toBeGreaterThan(0);
   expect(historyCount).toBeGreaterThan(0);
   expect(weekCount).toBe(historyCount);
+  const diagnostics = await page.evaluate(() => window.darlingDataDiagnostics);
+  expect(diagnostics.dataVersion).toMatch(/^sha256:[a-f0-9]{64}$/);
+  expect(diagnostics.manifestVersion).toBe(1);
+  expect(diagnostics.loadedAssets).toContain('DerivedStats');
+  expect(diagnostics.optionalAssetFailures).toEqual([]);
+});
+
+test('optional CurrentSeason fetch failure leaves history usable', async ({ page }) => {
+  await page.route('**/assets/CurrentSeason.json', route => route.fulfill({ status: 500, body: '{}' }));
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#appStatus')).toBeHidden();
+  await expect(page.locator('#historyGamesTable tbody tr').first()).toBeVisible();
+  const diagnostics = await page.evaluate(() => window.darlingDataDiagnostics);
+  expect(diagnostics.optionalAssetFailures).toContain('CurrentSeason');
+  expect(diagnostics.loadedAssets).not.toContain('CurrentSeason');
 });
 
 test('theme toggle switches color scheme and persists after reload', async ({ page }) => {

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://darling.example/schemas/rivalries.schema.json",
+  "title": "Rivalry definitions",
+  "description": "Curated named rivalry groups.",
+  "type": "array",
+  "items": { "$ref": "#/$defs/rivalry" },
+  "$defs": {
+    "rivalry": {
+      "title": "RivalryDefinition",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "name", "type", "members"],
+      "properties": {
+        "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "name": { "type": "string", "minLength": 1, "pattern": "\\S" },
+        "type": { "enum": ["pair", "group"] },
+        "members": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/owner" }
+        },
+        "note": { "type": "string" }
+      }
+    }
+  }
+}

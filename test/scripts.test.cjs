@@ -243,6 +243,13 @@ test('bundle measurement enforces a separate data runtime chunk', async () => {
     assert.deepEqual(result.errors, []);
     assert.equal(result.chunks.length, 2);
     assert.equal(result.dataChunk.isDynamicEntry, true);
+
+    fs.writeFileSync(path.join(distDir, '.vite', 'manifest.json'), JSON.stringify({
+      'src/main.tsx': { file: 'assets/index.js', isEntry: true },
+      'src/data/load-league-assets.ts': { file: 'assets/load-league-assets.js', isDynamicEntry: false },
+    }));
+    const staticLoader = measureBundle(root);
+    assert.ok(staticLoader.errors.some(error => error.includes('not marked as a dynamic entry')));
   });
 });
 

@@ -256,6 +256,23 @@ test('media audit rejects unavailable fallbacks and validates local original pho
     }
   });
 
+  await t.test('truncated local original fails a full pixel decode', async () => {
+    const temp = copyHeroFixture();
+    try {
+      const source = fs.readFileSync(path.join(root, 'assets/hero/league-1920.jpg'));
+      fs.writeFileSync(
+        path.join(temp, 'assets/LeaguePic.jpeg'),
+        source.subarray(0, Math.floor(source.length * 0.95)),
+      );
+      const result = await inspectHeroAssets(temp);
+      assert.equal(result.source.available, false);
+      assert.equal(result.source.invalid, true);
+      assert.ok(result.warnings.some(warning => warning.includes('[MEDIA_SOURCE_INVALID]')));
+    } finally {
+      fs.rmSync(temp, { recursive: true, force: true });
+    }
+  });
+
   await t.test('decodable local original is accepted', async () => {
     const temp = copyHeroFixture();
     try {

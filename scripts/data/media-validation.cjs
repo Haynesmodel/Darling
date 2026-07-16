@@ -81,7 +81,8 @@ async function inspectHeroAssets(root = process.cwd()) {
   let sourceInvalid = false;
   if (sourceExists) {
     try {
-      const metadata = await sharp(sourcePath).metadata();
+      const metadata = await sharp(sourcePath, { failOn: 'warning' }).metadata();
+      await sharp(sourcePath, { failOn: 'warning' }).stats();
       sourceAvailable = !!(metadata.width && metadata.height);
       sourceInvalid = !sourceAvailable;
     } catch {

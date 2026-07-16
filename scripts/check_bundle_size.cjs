@@ -27,14 +27,17 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
     .sort((a, b) => b.bytes - a.bytes);
   const errors = [];
   const entry = chunks.find(chunk => chunk.isEntry);
-  const dataChunk = chunks.find(chunk => chunk.id.includes('load-league-assets') || chunk.file.includes('load-league-assets'));
+  const namedDataChunk = chunks.find(chunk => chunk.id.includes('load-league-assets') || chunk.file.includes('load-league-assets'));
+  const dataChunk = namedDataChunk?.isDynamicEntry ? namedDataChunk : null;
   const totalGzipBytes = chunks.reduce((sum, chunk) => sum + chunk.gzipBytes, 0);
   if (!entry) errors.push('production JavaScript entry chunk is missing');
   else if (entry.bytes > budget.budgets.entry_chunk_max_bytes) {
     errors.push(`entry chunk ${entry.bytes} bytes exceeds ${budget.budgets.entry_chunk_max_bytes}`);
   }
   if (budget.budgets.require_data_runtime_chunk && !dataChunk) {
-    errors.push('data loader and generated validators were not split into a dedicated dynamic chunk');
+    errors.push(namedDataChunk
+      ? 'data loader chunk exists but is not marked as a dynamic entry'
+      : 'data loader and generated validators were not split into a dedicated dynamic chunk');
   }
   if (totalGzipBytes > budget.budgets.total_javascript_gzip_max_bytes) {
     errors.push(`total JavaScript gzip ${totalGzipBytes} bytes exceeds ${budget.budgets.total_javascript_gzip_max_bytes}`);

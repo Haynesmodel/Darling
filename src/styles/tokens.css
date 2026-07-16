@@ -1,0 +1,188 @@
+:root{
+  color-scheme:light;
+
+  --surface-page:#f6f7fb;
+  --surface-panel:#fff;
+  --surface-panel-alt:#fafbff;
+  --surface-elevated:#fff;
+  --surface-control:#fff;
+  --surface-control-hover:#f3f4f6;
+  --surface-highlight:#f8fafc;
+  --surface-selected:#eff6ff;
+
+  --text-primary:#111827;
+  --text-secondary:#374151;
+  --text-muted:#596273;
+  --text-on-accent:#fff;
+  --text-link:#1d4ed8;
+
+  --border-subtle:#e5e7eb;
+  --border-strong:#cbd5e1;
+  --border-focus:var(--accent-primary);
+  --table-header:#0f172a;
+  --table-header-text:#fff;
+  --chart-grid:rgba(15,23,42,.12);
+  --shadow-soft:0 8px 18px rgba(15,23,42,.04);
+  --shadow-pop:0 12px 24px rgba(15,23,42,.10);
+  --overlay-backdrop:rgba(15,23,42,.62);
+  --overlay-panel:var(--surface-elevated);
+
+  --accent-primary:#2563eb;
+  --accent-secondary:#60a5fa;
+  --accent-soft:#eff6ff;
+  --accent-ring:rgba(37,99,235,.35);
+  --action-primary-bg:#15803d;
+  --action-danger-bg:#b91c1c;
+
+  --focus-ring-width:3px;
+  --focus-ring-offset:2px;
+  --control-min-block-size:40px;
+  --touch-target-size:44px;
+  --sticky-nav-block-size:64px;
+
+  --space-1:4px;
+  --space-2:8px;
+  --space-3:12px;
+  --space-4:16px;
+  --space-5:24px;
+
+  --radius-control:8px;
+  --radius-panel:12px;
+  --radius-pill:999px;
+
+  --motion-fast:120ms;
+  --motion-normal:180ms;
+  --motion-slow:300ms;
+  --motion-easing:ease;
+
+  --status-win-bg:#e9fbf0;
+  --status-win-text:#166534;
+  --status-loss-bg:#fff0f0;
+  --status-loss-text:#991b1b;
+  --status-tie-bg:#f3f4f6;
+  --status-tie-text:#374151;
+  --status-info-bg:#eff6ff;
+  --status-info-border:#bfdbfe;
+  --status-info-text:#1d4ed8;
+  --status-warn-bg:#fff7ed;
+  --status-warn-border:#fed7aa;
+  --status-warn-text:#9a3412;
+  --status-error-bg:#fef2f2;
+  --status-error-border:#fecaca;
+  --status-error-text:#b91c1c;
+  --status-champ:#b45309;
+  --status-saunders:#6d28d9;
+  --status-regular:#60a5fa;
+
+  --season-primary:var(--accent-primary);
+  --season-soft:var(--accent-soft);
+  --season-border:var(--border-strong);
+
+  --hero-focus-y:60%;
+  --hero-overlay:rgba(0,0,0,.38);
+  --hero-text:#fff;
+  --hero-min-block-size:clamp(280px,48svh,460px);
+  --hero-max-block-size:min(52svh,460px);
+
+  --bg:var(--surface-page);
+  --panel:var(--surface-panel);
+  --row-alt:var(--surface-panel-alt);
+  --text:var(--text-primary);
+  --muted:var(--text-muted);
+  --border:var(--border-subtle);
+  --accent:var(--accent-primary);
+  --header:var(--text-primary);
+  --win:var(--status-win-bg);
+  --loss:var(--status-loss-bg);
+  --tie:var(--status-tie-bg);
+  --champ-accent:var(--status-champ);
+  --sau-accent:var(--status-saunders);
+  --reg-accent:var(--status-regular);
+}
+
+:root[data-color-scheme="dark"]{
+  color-scheme:dark;
+  --surface-page:#0b1020;
+  --surface-panel:#111827;
+  --surface-panel-alt:#172033;
+  --surface-elevated:#1f2937;
+  --surface-control:#172033;
+  --surface-control-hover:#223047;
+  --surface-highlight:#172033;
+  --surface-selected:rgba(96,165,250,.16);
+  --text-primary:#f8fafc;
+  --text-secondary:#cbd5e1;
+  --text-muted:#94a3b8;
+  --text-link:#93c5fd;
+  --border-subtle:#263244;
+  --border-strong:#3b475c;
+  --table-header:#1f2937;
+  --table-header-text:#f8fafc;
+  --chart-grid:rgba(248,250,252,.14);
+  --shadow-soft:0 8px 18px rgba(0,0,0,.18);
+  --shadow-pop:0 16px 32px rgba(0,0,0,.28);
+  --overlay-backdrop:rgba(2,6,23,.78);
+  --accent-soft:rgba(96,165,250,.16);
+  --status-win-bg:rgba(34,197,94,.14);
+  --status-win-text:#86efac;
+  --status-loss-bg:rgba(239,68,68,.14);
+  --status-loss-text:#fca5a5;
+  --status-tie-bg:rgba(148,163,184,.14);
+  --status-tie-text:#cbd5e1;
+  --status-info-bg:rgba(96,165,250,.14);
+  --status-info-border:rgba(96,165,250,.32);
+  --status-info-text:#bfdbfe;
+  --status-warn-bg:rgba(251,146,60,.14);
+  --status-warn-border:rgba(251,146,60,.32);
+  --status-warn-text:#fed7aa;
+  --status-error-bg:rgba(248,113,113,.14);
+  --status-error-border:rgba(248,113,113,.32);
+  --status-error-text:#fecaca;
+  --status-champ:#fbbf24;
+  --status-saunders:#c4b5fd;
+  --status-regular:#93c5fd;
+  --action-primary-bg:#166534;
+  --action-danger-bg:#b91c1c;
+  --hero-overlay:rgba(0,0,0,.58);
+}
+
+:root[data-accent-theme="owner"]{
+  --accent-primary:var(--owner-primary);
+  --accent-secondary:var(--owner-secondary);
+  --accent-soft:var(--owner-soft);
+  --accent-ring:var(--owner-ring);
+  --text-on-accent:var(--owner-text);
+}
+
+:root[data-accent-theme="rivalry"]{
+  --rivalry-a:var(--owner-a-primary);
+  --rivalry-b:var(--owner-b-primary);
+  --accent-primary:var(--rivalry-a);
+  --accent-secondary:var(--rivalry-b);
+  --accent-soft:color-mix(in srgb, var(--rivalry-a) 12%, var(--surface-panel));
+  --accent-ring:color-mix(in srgb, var(--rivalry-a) 35%, transparent);
+}
+
+:root[data-season-mode="postseason"]{
+  --season-primary:#b45309;
+  --season-soft:#fff7ed;
+  --season-border:#fbbf24;
+}
+
+:root[data-color-scheme="dark"][data-season-mode="postseason"]{
+  --season-primary:#fbbf24;
+  --season-soft:rgba(245,158,11,.14);
+  --season-border:rgba(245,158,11,.42);
+}
+
+:root[data-season-mode="saunders"]{
+  --season-primary:#6d28d9;
+  --season-soft:#f5f3ff;
+  --season-border:#a78bfa;
+}
+
+:root[data-color-scheme="dark"][data-season-mode="saunders"]{
+  --season-primary:#c4b5fd;
+  --season-soft:rgba(167,139,250,.16);
+  --season-border:rgba(167,139,250,.44);
+}

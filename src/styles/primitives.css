@@ -1,0 +1,66 @@
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:16px;min-width:0}
+.card h3{margin:4px 0 10px;font-size:16px}
+.card-kicker{
+  margin:-4px 0 12px;
+  font-size:12px;
+  line-height:1.35;
+  color:var(--muted);
+  font-weight:600;
+}
+.status-banner{
+  margin:0 0 16px;
+  padding:12px 14px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--surface-panel);
+  font-weight:600;
+}
+.status-banner.status-loading{
+  background:var(--status-info-bg);
+  border-color:var(--status-info-border);
+  color:var(--status-info-text);
+}
+.status-banner.status-error{
+  background:var(--status-error-bg);
+  border-color:var(--status-error-border);
+  color:var(--status-error-text);
+}
+.status-banner[hidden]{display:none}
+
+/* Tables */
+.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px}
+table{width:100%;border-collapse:collapse}
+thead th{background:var(--table-header);color:var(--table-header-text);padding:8px;text-align:left;white-space:nowrap}
+tbody td{padding:8px;border-top:1px solid var(--border)}
+tbody tr:nth-child(even){background:var(--row-alt)}
+tbody tr.result-win{background:var(--win)}
+tbody tr.result-loss{background:var(--loss)}
+tbody tr.result-tie{background:var(--tie)}
+
+/* Postseason rows pop */
+.postseason{position:relative;box-shadow:inset 4px 0 0 0 var(--season-primary);background:var(--season-soft)}
+.postseason td{font-weight:600}
+
+/* Stats, callouts */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.stat{background:var(--surface-panel);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center}
+.stat .label{font-size:12px;color:var(--muted)}
+.stat .value{font-size:16px;font-weight:700}
+.stat .sub{font-size:12px;color:var(--muted);margin-top:4px}
+.callout{margin-top:12px;padding:12px;border-radius:12px;background:var(--accent-soft);border:1px solid color-mix(in srgb, var(--accent-primary) 22%, var(--border));font-size:14px;font-weight:600}
+
+.section-heading{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.section-heading h3{
+  margin:4px 0 10px;
+}
+.section-heading .muted{
+  font-size:13px;
+  line-height:1.4;
+  font-weight:600;
+}

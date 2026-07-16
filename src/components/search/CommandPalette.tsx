@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { DarlingSearchRuntime, SearchResult } from '../../search/search-types';
+import { focusableElements } from '../../accessibility/focus';
 import SearchResultRow from './SearchResultRow';
 
 interface CommandPaletteProps {
@@ -22,9 +23,7 @@ export default function CommandPalette({ open, runtime, onClose }: CommandPalett
       setActiveIndex(0);
       return;
     }
-    document.body.classList.add('search-dialog-open');
     requestAnimationFrame(() => inputRef.current?.focus());
-    return () => document.body.classList.remove('search-dialog-open');
   }, [open]);
 
   useEffect(() => {
@@ -70,7 +69,7 @@ export default function CommandPalette({ open, runtime, onClose }: CommandPalett
       return;
     }
     if (event.key === 'Tab') {
-      const focusable = [...(dialogRef.current?.querySelectorAll('input, button:not([disabled])') || [])] as any[];
+      const focusable = focusableElements(dialogRef.current);
       if (!focusable.length) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];

@@ -1,4 +1,10 @@
 // Group overlays + persistent backdrops
+function prefersReducedMotion(){
+  return window.darlingAccessibility?.prefersReducedMotion?.()
+    ?? window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    ?? false;
+}
+
 function ensureFxOverlay(){
   let fx = document.getElementById('fxGroup');
   if(!fx){
@@ -23,7 +29,7 @@ function ensureFxBackdrop(){
 // Contributor note: adding a new group usually takes three coordinated edits.
 // 1) Add the group slug to assets/Rivalries.json.
 // 2) Add the matching visual mapping here in GROUP_EGGS.
-// 3) Add the styling in css/easter-eggs.css.
+// 3) Add the styling in src/styles/motion.css.
 // Keep the slug identical across all three files.
 const GROUP_EGGS = {
   'the-jews':            { cls: 'egg-the-jews', label: 'The Jews ✡️', emoji: '✡️' },
@@ -43,6 +49,7 @@ const GROUP_EGGS = {
 };
 
 function triggerGroupEgg(slug){
+  if(prefersReducedMotion()) return;
   const egg = GROUP_EGGS[slug];
   if(!egg) return;
   const fx = ensureFxOverlay();
@@ -72,6 +79,7 @@ function setGroupBackdrop(slugOrNull){
 
   bg.classList.add('bg-'+slugOrNull);
   document.body.classList.add('group-active');
+  if(prefersReducedMotion()) return;
   const emo = egg.emoji || '✨';
   for(let i=0;i<14;i++){
     const e = document.createElement('i');
@@ -82,6 +90,14 @@ function setGroupBackdrop(slugOrNull){
     e.style.fontSize = (28 + Math.random()*20) + 'px';
     bg.appendChild(e);
   }
+}
+
+if(typeof window !== 'undefined'){
+  window.addEventListener('darling:motionchange', event => {
+    if(!event.detail?.reduced) return;
+    document.querySelectorAll('.egg-overlay').forEach(element => element.remove());
+    document.querySelectorAll('.egg-backdrop .float').forEach(element => element.remove());
+  });
 }
 
 export {

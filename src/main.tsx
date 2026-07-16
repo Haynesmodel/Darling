@@ -1,17 +1,19 @@
-import '../css/style.css';
-import '../css/easter-eggs.css';
+import './styles/app.css';
 import '../js/app.js';
 
 import { render } from 'preact';
 import ThemeToggle from './components/theme/ThemeToggle';
 import GlobalSearch from './components/search/GlobalSearch';
-import './components/tables/table.css';
 import { createDarlingThemeRuntime, type DarlingThemeRuntime } from './theme/apply-theme';
 import { createSearchRuntime } from './search/search-runtime';
 import type { DarlingSearchRuntime } from './search/search-types';
 import { createTableRuntime } from './tables/table-runtime';
 import type { DarlingTableRuntime } from './tables/table-types';
 import type { DataDiagnostics } from './data/load-league-assets';
+import { bindDropdownChecklists } from './accessibility/dropdown-checklist';
+import { focusableElements } from './accessibility/focus';
+import { prefersReducedMotion, subscribeToReducedMotion } from './accessibility/motion';
+import { bindTablist, syncPageState, updateTabOverflow } from './accessibility/tablist';
 
 type DarlingDataLoader = typeof import('./data/load-league-assets').loadLeagueAssets;
 
@@ -21,6 +23,12 @@ interface BrowserWindow {
   darlingTables?: DarlingTableRuntime;
   darlingDataLoader?: DarlingDataLoader;
   darlingDataDiagnostics?: DataDiagnostics;
+  darlingAccessibility?: {
+    prefersReducedMotion: typeof prefersReducedMotion;
+    focusableElements: typeof focusableElements;
+    syncPageState: typeof syncPageState;
+    updateTabOverflow: typeof updateTabOverflow;
+  };
 }
 
 interface BrowserDocument {
@@ -45,6 +53,12 @@ if (browser.window) {
     const { loadLeagueAssets } = await import('./data/load-league-assets');
     return loadLeagueAssets(options);
   };
+  browser.window.darlingAccessibility = {
+    prefersReducedMotion,
+    focusableElements,
+    syncPageState,
+    updateTabOverflow,
+  };
 }
 
 function mountThemeControls() {
@@ -63,6 +77,12 @@ function mountGlobalSearch() {
 function mountShell() {
   mountThemeControls();
   mountGlobalSearch();
+  bindTablist(document);
+  bindDropdownChecklists(document);
+  subscribeToReducedMotion((reduced) => {
+    document.documentElement.dataset.reducedMotion = reduced ? 'reduce' : 'no-preference';
+    window.dispatchEvent(new CustomEvent('darling:motionchange', { detail: { reduced } }));
+  });
 }
 
 if (browser.document?.readyState === 'loading') {

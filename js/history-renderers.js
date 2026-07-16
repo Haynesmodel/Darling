@@ -254,8 +254,8 @@ function weekByWeekTableRowHtml(row) {
   const resClass = row.result === 'W' ? 'result-win' : row.result === 'L' ? 'result-loss' : 'result-tie';
   const postClass = (row.type !== 'Regular') ? 'postseason' : '';
   const badges = `
-    ${row.isCrown ? '<span class="badge-emoji" title="Top score league-wide this week">&#x1f451;</span>' : ''}
-    ${row.isTurd ? '<span class="badge-emoji big" title="Lowest score league-wide this week">&#x1f4a9;</span>' : ''}
+    ${row.isCrown ? '<span class="badge-emoji badge-top-score" aria-hidden="true">&#x1f451;</span><span class="visually-hidden">Top score league-wide this week</span>' : ''}
+    ${row.isTurd ? '<span class="badge-emoji big badge-low-score" aria-hidden="true">&#x1f4a9;</span><span class="visually-hidden">Lowest score league-wide this week</span>' : ''}
   `;
   return `<tr class="${resClass} ${postClass}">
     <td>${esc(row.season)}</td>

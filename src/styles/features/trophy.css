@@ -1,0 +1,465 @@
+.trophy-toolbar{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-bottom:16px;
+  padding:14px 16px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-primary) 10%, transparent), color-mix(in srgb, var(--season-primary) 8%, transparent)),
+    var(--surface-panel);
+}
+.trophy-toolbar select{
+  min-width:240px;
+  max-width:100%;
+  font-weight:700;
+}
+
+.trophy-hero{
+  display:grid;
+  gap:14px;
+  padding:20px;
+  margin-bottom:16px;
+  border:1px solid #c7d2fe;
+  border-radius:18px;
+  background:
+    radial-gradient(circle at top right, rgba(245,158,11,.18), transparent 26%),
+    radial-gradient(circle at bottom left, rgba(37,99,235,.14), transparent 28%),
+    linear-gradient(135deg, rgba(15,23,42,.95), rgba(30,64,175,.78));
+  color:#f8fafc;
+  box-shadow:0 18px 36px rgba(15,23,42,.12);
+}
+.trophy-hero-title{display:grid;gap:6px}
+.trophy-identity{
+  display:inline-flex;
+  align-items:center;
+  width:fit-content;
+  padding:4px 10px;
+  border-radius:999px;
+  background:rgba(255,255,255,.14);
+  color:#dbeafe;
+  font-size:12px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+.trophy-hero h3{
+  margin:0;
+  font-size:clamp(30px, 4vw, 44px);
+  line-height:1;
+  letter-spacing:-.03em;
+}
+.trophy-hero-summary{
+  margin:0;
+  max-width:66ch;
+  font-size:16px;
+  line-height:1.45;
+  color:rgba(248,250,252,.92);
+  font-weight:600;
+}
+.trophy-chip-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.trophy-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.10);
+  color:#f8fafc;
+  font-size:12px;
+  font-weight:800;
+  line-height:1;
+}
+.trophy-chip strong{font-weight:900}
+.trophy-chip-icon{
+  width:18px;
+  height:18px;
+  display:block;
+  flex:0 0 auto;
+}
+.trophy-hero-record,
+.trophy-hero-rank{
+  font-size:14px;
+  font-weight:700;
+  color:rgba(248,250,252,.88);
+}
+.trophy-hero-split{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+  gap:10px;
+  padding-top:4px;
+  border-top:1px solid rgba(255,255,255,.14);
+  color:#f8fafc;
+  font-size:14px;
+  font-weight:700;
+}
+
+.trophy-shelf{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(170px, 1fr));
+  gap:10px;
+}
+.trophy-hardware-card{
+  display:grid;
+  gap:8px;
+  padding:14px;
+  border:1px solid var(--border);
+  border-radius:16px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-panel) 92%, transparent), var(--surface-panel));
+  box-shadow:var(--shadow-soft);
+  min-height:126px;
+}
+.trophy-hardware-card.gold{
+  border-color:var(--season-border);
+  background:var(--season-soft);
+}
+.trophy-hardware-card.scar{
+  border-color:#fecaca;
+  background:linear-gradient(180deg, rgba(255,241,242,.98), rgba(255,255,255,1));
+}
+.trophy-card-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+.trophy-card-title{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+.trophy-card-art{
+  width:38px;
+  height:38px;
+  flex:0 0 auto;
+  display:block;
+  object-fit:contain;
+}
+.trophy-card-rank{
+  font-size:12px;
+  font-weight:800;
+  color:var(--muted);
+}
+.trophy-card-value{
+  font-size:30px;
+  font-weight:900;
+  line-height:1;
+  letter-spacing:-.04em;
+}
+.trophy-card-years{
+  font-size:13px;
+  font-weight:700;
+  color:var(--text);
+}
+.trophy-card-context{
+  font-size:12px;
+  line-height:1.35;
+  color:var(--muted);
+}
+
+.trophy-year-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:4px 10px;
+  border-radius:999px;
+  background:var(--accent-soft);
+  color:var(--text-link);
+  font-size:11px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+
+.trophy-rank-strip{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(136px, 1fr));
+  gap:10px;
+}
+.trophy-rank-pill{
+  display:grid;
+  gap:6px;
+  padding:12px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  background:var(--surface-panel);
+  box-shadow:0 1px 0 rgba(17,24,39,.02);
+  min-width:0;
+}
+.trophy-rank-pill-label{
+  font-size:12px;
+  color:var(--muted);
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.trophy-rank-pill-value{
+  font-size:22px;
+  font-weight:900;
+  line-height:1;
+}
+.trophy-rank-pill-sub{
+  font-size:12px;
+  color:var(--muted);
+  font-weight:600;
+}
+
+.trophy-career-shape{
+  display:grid;
+  gap:10px;
+}
+.trophy-career-chart{
+  display:grid;
+  gap:10px;
+  padding:14px;
+  border:1px solid rgba(37,99,235,.12);
+  border-radius:18px;
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--accent-primary) 6%, transparent), transparent 24%),
+    radial-gradient(circle at bottom left, color-mix(in srgb, var(--season-primary) 5%, transparent), transparent 28%),
+    var(--surface-panel);
+}
+.trophy-career-header{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+}
+.trophy-career-title{
+  font-size:15px;
+  font-weight:900;
+  color:var(--header);
+  letter-spacing:-.01em;
+}
+.trophy-career-subtitle{
+  margin-top:4px;
+  font-size:12px;
+  line-height:1.35;
+  color:var(--muted);
+  font-weight:600;
+}
+.trophy-career-svg{
+  width:100%;
+  height:auto;
+  display:block;
+  overflow:visible;
+}
+.trophy-career-host{
+  min-height:310px;
+}
+.trophy-career-grid{stroke:var(--chart-grid);stroke-width:1}
+.trophy-career-xgrid{stroke:color-mix(in srgb, var(--chart-grid) 55%, transparent);stroke-width:1}
+.trophy-career-axis-label{fill:var(--muted);font-size:11px;font-weight:800}
+.trophy-career-playoff-line{stroke:var(--accent-primary);stroke-width:2;stroke-dasharray:5 5}
+.trophy-career-playoff-label{fill:var(--accent-primary);font-size:11px;font-weight:800}
+.trophy-career-line{
+  fill:none;
+  stroke:var(--accent-primary);
+  stroke-width:4;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.trophy-career-point{stroke:#fff;stroke-width:2.5}
+.trophy-career-point.champion{fill:#f59e0b}
+.trophy-career-point.playoff{fill:#2563eb}
+.trophy-career-point.saunders{fill:#8b5cf6}
+.trophy-career-point.miss{fill:#ef4444}
+.trophy-career-point-core{stroke:none}
+.trophy-career-point-core.champion{fill:#fff}
+.trophy-career-point-core.playoff{fill:#fff}
+.trophy-career-point-core.saunders{fill:#fff}
+.trophy-career-point-core.miss{fill:#fff}
+.trophy-career-point-label{
+  fill:var(--header);
+  font-size:11px;
+  font-weight:900;
+}
+.trophy-career-year-label{fill:var(--muted);font-size:10px;font-weight:800}
+.trophy-career-legend{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px 14px;
+  font-size:11px;
+  color:var(--muted);
+  font-weight:700;
+}
+.trophy-career-legend span{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+}
+.trophy-career-legend img{
+  width:14px;
+  height:14px;
+  display:block;
+}
+.legend-swatch{
+  width:10px;
+  height:10px;
+  border-radius:999px;
+  display:inline-block;
+  background:#d1d5db;
+}
+.legend-swatch.champion{background:#f59e0b}
+.legend-swatch.playoff{background:#2563eb}
+.legend-swatch.saunders{background:#8b5cf6}
+.legend-swatch.miss{background:#ef4444}
+.trophy-career-summary{font-size:13px;color:var(--muted);font-weight:600}
+
+.trophy-season-cards{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));
+  gap:12px;
+}
+.trophy-season-card{
+  display:grid;
+  gap:10px;
+  padding:14px;
+  border:1px solid var(--border);
+  border-radius:16px;
+  background:linear-gradient(180deg, var(--surface-panel), var(--surface-panel-alt));
+  box-shadow:0 8px 18px rgba(15,23,42,.04);
+}
+.trophy-season-card-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+.trophy-season-badge{
+  font-size:12px;
+  font-weight:900;
+  color:#1d4ed8;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.trophy-season-card-reason{
+  font-size:12px;
+  line-height:1.35;
+  color:var(--muted);
+  font-weight:600;
+  text-align:right;
+}
+.trophy-season-card-grid{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:8px 12px;
+}
+.trophy-season-card-grid div{
+  display:grid;
+  gap:2px;
+}
+.trophy-season-card-grid span{
+  font-size:11px;
+  color:var(--muted);
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.trophy-season-card-grid strong{
+  font-size:14px;
+  font-weight:800;
+}
+
+.trophy-split{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:16px;
+  margin-bottom:16px;
+}
+.trophy-list{
+  list-style:none;
+  margin:0;
+  padding:0;
+  display:grid;
+  gap:8px;
+}
+.trophy-list li{
+  display:grid;
+  gap:3px;
+  padding:10px 12px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--surface-panel);
+}
+.trophy-list-label{
+  font-size:12px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  color:var(--muted);
+}
+.trophy-list-value{
+  font-size:18px;
+  font-weight:900;
+  line-height:1.1;
+}
+.trophy-list-detail{
+  font-size:12px;
+  line-height:1.35;
+  color:var(--muted);
+}
+.trophy-list.tone-gold li{border-color:#fcd34d}
+.trophy-list.tone-scar li{border-color:#fecaca}
+
+.trophy-moment-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));
+  gap:10px;
+}
+.trophy-moment-card{
+  display:grid;
+  gap:8px;
+  padding:12px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  background:var(--surface-panel);
+  box-shadow:0 1px 0 rgba(17,24,39,.02);
+}
+.trophy-moment-label{
+  font-size:12px;
+  color:var(--muted);
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.trophy-moment-value{
+  font-size:24px;
+  font-weight:900;
+  line-height:1;
+}
+.trophy-moment-meta,
+.trophy-moment-score,
+.trophy-moment-note{
+  font-size:12px;
+  color:var(--muted);
+  line-height:1.35;
+}
+.trophy-moment-score{
+  font-weight:800;
+  color:var(--text);
+}
+
+.trophy-empty{
+  padding:14px;
+  border:1px dashed var(--border);
+  border-radius:12px;
+  background:var(--surface-panel-alt);
+  color:var(--muted);
+  font-size:13px;
+  font-weight:600;
+}
+
+:root[data-color-scheme="dark"] .trophy-hero{
+  border-color:var(--border);
+}
+
+.trophy-ledger{overflow:auto}

@@ -87,11 +87,9 @@ import {
 import { setGroupBackdrop, triggerGroupEgg } from './easter-eggs.js';
 import {
   buildHistoryControls,
-  closeDropdowns,
   readFacetSelections,
   rebuildOpponentFacet,
   resetFacetControls,
-  setDropdownOpen,
   setFacetSelections,
   updateFacetCountTexts,
 } from './history-controls.js';
@@ -270,6 +268,8 @@ let filteredGamesCacheValue = [];
 const renderMetrics = { filterRuns: 0 };
 let lastEffectKey = null;
 let listenersBound = false;
+let dynastyModalOpener = null;
+let dynastyModalOpenerKey = null;
 
 const SPECIAL_TITLE_NOTES = {
   Joel: { champs: { 2014: 'Singer not in league', 2020: 'COVID season' } },
@@ -819,14 +819,29 @@ function handleDynastySlumpCardClick(key) {
   renderDynasty();
 }
 
+function restoreDynastyModalFocus() {
+  if (!dynastyModalOpener && !dynastyModalOpenerKey) return;
+  const fallback = document.querySelector('#dynastyBestWindows h4, #page-dynasty h3');
+  const replacement = dynastyModalOpenerKey
+    ? [...document.querySelectorAll('[data-window-key]')]
+      .find(element => element.dataset.windowKey === dynastyModalOpenerKey)
+    : null;
+  const target = dynastyModalOpener?.isConnected ? dynastyModalOpener : replacement || fallback;
+  dynastyModalOpener = null;
+  dynastyModalOpenerKey = null;
+  requestAnimationFrame(() => target?.focus?.());
+}
+
 function handleDynastyWindowModalClose() {
-  if (!selectedDynastyState?.selectedWindowKey) return;
-  selectedDynastyState = {
-    ...(selectedDynastyState || {}),
-    selectedWindowKey: null,
-    selectedWindowKind: null,
-  };
-  renderDynasty();
+  if (selectedDynastyState?.selectedWindowKey) {
+    selectedDynastyState = {
+      ...(selectedDynastyState || {}),
+      selectedWindowKey: null,
+      selectedWindowKind: null,
+    };
+    renderDynasty();
+  }
+  restoreDynastyModalFocus();
 }
 
 function applyHistoryUrlState(urlState = parseUrlState()) {
@@ -987,6 +1002,8 @@ function ensureDynastyWindowInteractions() {
       const button = target?.closest('.dynasty-window-card[data-window-key]');
       if (!button || !bestWindows.contains(button)) return;
       event.preventDefault();
+      dynastyModalOpener = button;
+      dynastyModalOpenerKey = button.dataset.windowKey;
       handleDynastyWindowCardClick(button.dataset.windowKey);
     });
     bestWindows.dataset.bound = '1';
@@ -997,6 +1014,8 @@ function ensureDynastyWindowInteractions() {
       const button = target?.closest('.dynasty-slump-item[data-window-key]');
       if (!button || !slumps.contains(button)) return;
       event.preventDefault();
+      dynastyModalOpener = button;
+      dynastyModalOpenerKey = button.dataset.windowKey;
       handleDynastySlumpCardClick(button.dataset.windowKey);
     });
     slumps.dataset.bound = '1';
@@ -1004,19 +1023,27 @@ function ensureDynastyWindowInteractions() {
   if (modal && !modal.dataset.bound) {
     modal.addEventListener('click', event => {
       const target = event.target instanceof Element ? event.target : null;
-      if (!target?.closest('[data-dynasty-modal-close="1"]')) return;
+      if (target !== modal && !target?.closest('[data-dynasty-modal-close="1"]')) return;
       event.preventDefault();
       handleDynastyWindowModalClose();
     });
-    modal.dataset.bound = '1';
-  }
-  if (!document.body.dataset.dynastyModalEscBound) {
-    document.addEventListener('keydown', event => {
-      if (event.key === 'Escape' && selectedDynastyState?.selectedWindowKey) {
-        handleDynastyWindowModalClose();
+    modal.addEventListener('keydown', event => {
+      if (event.key !== 'Tab' || !modal.open) return;
+      const focusable = window.darlingAccessibility?.focusableElements?.(modal)
+        || [...modal.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')];
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
       }
     });
-    document.body.dataset.dynastyModalEscBound = '1';
+    modal.addEventListener('close', handleDynastyWindowModalClose);
+    modal.dataset.bound = '1';
   }
 }
 
@@ -1748,6 +1775,7 @@ function exportHistoryCsv() {
 }
 
 function triggerCrownRain() {
+  if (window.darlingAccessibility?.prefersReducedMotion?.()) return;
   const wrap = document.getElementById('fxCrown');
   if (!wrap) return;
   wrap.innerHTML = '';
@@ -1776,31 +1804,13 @@ function triggerCrownRain() {
 }
 
 function triggerSaundersFog() {
+  if (window.darlingAccessibility?.prefersReducedMotion?.()) return;
   const fog = document.getElementById('fxSaunders');
   if (!fog) return;
   fog.style.display = 'block';
   setTimeout(() => {
     fog.style.display = 'none';
   }, 2000);
-}
-
-function handleDocumentClick(e) {
-  const toggle = e.target.closest('.dropdown-toggle');
-  if (toggle) {
-    const dropdown = toggle.closest('.dropdown');
-    const shouldOpen = !dropdown.classList.contains('open');
-    closeDropdowns(dropdown, document);
-    setDropdownOpen(dropdown, shouldOpen, document);
-    return;
-  }
-  if (!e.target.closest('.dropdown')) closeDropdowns(null, document);
-}
-
-function handleKeydown(e) {
-  if (e.key !== 'Escape') return;
-  const openToggle = document.querySelector('.dropdown.open .dropdown-toggle');
-  closeDropdowns(null, document);
-  if (openToggle) openToggle.focus();
 }
 
 function bindListeners() {
@@ -1873,8 +1883,6 @@ function bindListeners() {
     });
   }
 
-  document.addEventListener('click', handleDocumentClick);
-  document.addEventListener('keydown', handleKeydown);
   window.addEventListener('popstate', () => {
     if (!leagueGames.length) return;
     applyUrlState(parseUrlState());

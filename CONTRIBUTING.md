@@ -16,11 +16,15 @@ This repository is maintained as a static site backed by JSON assets. The annual
    - `npm run build:charts`
    - `npm run typecheck`
    - `npm run test:hygiene`
+   - `npm run lint:css`
+   - `npm run check:css`
    - `npm run test:charts`
    - `npm run test:data`
    - `npm run test:scripts`
    - `npm run build`
    - `npm run test:ui`
+   - `npm run test:a11y`
+   - `npm run test:keyboard`
    - `npm run test:ui:preview`
    - `npm run test:ci`
 
@@ -30,6 +34,8 @@ This repository is maintained as a static site backed by JSON assets. The annual
 - Keep `assets/` as the source of truth. Vite dev/build copies deployable JSON and `assets/hero` media into ignored `public/assets/`.
 - Add or update owner palettes in `src/theme/owner-themes.ts` when the league membership changes.
 - Follow `docs/INTERACTIVE_TABLES.md` when changing a migrated table, and run `npm run test:tables` plus the relevant Playwright scenarios.
+- Follow `docs/accessibility.md` for tabs, disclosures, dialogs, focus, motion, charts, and manual release checks.
+- Follow `docs/css-architecture.md` for cascade layers, feature ownership, tokens, responsive rules, and stylesheet budgets.
 - Regenerate the responsive hero set with `npm run build:hero` after changing the league identity photo, then run `npm run test:assets`.
 - The Sleeper workflow needs the `SLEEPER_LEAGUE_ID` repository secret.
 - `docs/plans/README.md` is the index for the implementation plans.

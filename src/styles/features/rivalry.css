@@ -1,0 +1,149 @@
+.rivalry-headline{display:grid;gap:8px}
+.rivalry-title{font-size:24px;font-weight:800;line-height:1.1}
+.rivalry-subtitle{font-size:16px;font-weight:700;color:var(--header)}
+.rivalry-line{font-size:14px;color:var(--muted)}
+.rivalry-tape .stat{background:var(--surface-panel)}
+
+.rivalry-meter{display:grid;gap:10px}
+.rivalry-meter-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline}
+.rivalry-meter-label{font-size:18px;font-weight:800}
+.rivalry-meter-sub{font-size:13px;color:var(--muted);font-weight:600}
+.rivalry-meter-bar{
+  display:flex;
+  min-height:40px;
+  overflow:hidden;
+  border:1px solid var(--border);
+  border-radius:999px;
+  background:var(--surface-panel-alt);
+}
+.rivalry-meter-bar span{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-width:0;
+  padding:0 12px;
+  color:#fff;
+  font-size:13px;
+  font-weight:800;
+  white-space:nowrap;
+}
+.rivalry-meter-a{background:var(--owner-a-primary, var(--accent-primary))}
+.rivalry-meter-b{background:var(--owner-b-primary, var(--accent-secondary))}
+
+.rivalry-highlight-board{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+  gap:10px;
+}
+.rivalry-highlight{
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+  padding:12px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--surface-panel);
+}
+.rivalry-highlight-icon{
+  width:36px;
+  height:36px;
+  border-radius:10px;
+  display:grid;
+  place-items:center;
+  font-size:18px;
+  flex:0 0 auto;
+  background:var(--surface-panel-alt);
+}
+.rivalry-highlight-label{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.rivalry-highlight-value{font-size:18px;font-weight:800;line-height:1.1;margin-top:2px}
+.rivalry-highlight-sub{font-size:12px;color:var(--muted);margin-top:4px}
+.rivalry-blowout .rivalry-highlight-icon{background:#fee2e2}
+.rivalry-heat .rivalry-highlight-icon{background:#ffedd5}
+.rivalry-run .rivalry-highlight-icon{background:#e0e7ff}
+.rivalry-spark .rivalry-highlight-icon{background:#ecfeff}
+
+.rivalry-trend{display:grid;gap:10px}
+.rivalry-trend-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.rivalry-trend-label{font-size:18px;font-weight:800}
+.rivalry-trend-sub{font-size:13px;color:var(--muted);font-weight:600}
+.rivalry-trend-scale,
+.rivalry-trend-ticks{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:800;
+}
+.rivalry-trend-ticks{
+  justify-content:flex-start;
+  flex-wrap:wrap;
+}
+.rivalry-trend-ticks span{
+  padding:3px 6px;
+  border:1px solid var(--border);
+  border-radius:999px;
+  background:var(--surface-panel);
+}
+.rivalry-trend-host{
+  min-height:250px;
+}
+.rivalry-trend-svg{width:100%;height:250px;display:block;overflow:visible}
+.rivalry-trend-zero{stroke:var(--chart-grid);stroke-dasharray:4 4;stroke-width:2}
+.rivalry-trend-axis{stroke:var(--chart-grid);stroke-width:1.5}
+.rivalry-trend-path{fill:none;stroke:var(--accent-primary);stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+.rivalry-trend-dot{stroke:#fff;stroke-width:3}
+.rivalry-trend-dot.lead-win{fill:#16a34a}
+.rivalry-trend-dot.lead-loss{fill:#dc2626}
+.rivalry-trend-dot.lead-tie{fill:#6b7280}
+.rivalry-trend-y-label{fill:var(--muted);font-size:12px;font-weight:700}
+.rivalry-trend-tick{stroke:var(--chart-grid);stroke-width:1}
+.rivalry-trend-x-label{fill:var(--muted);font-size:11px;font-weight:700}
+.rivalry-trend-note{font-size:12px;color:var(--muted);line-height:1.35}
+
+.rivalry-timeline{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));
+  gap:8px;
+  align-items:stretch;
+}
+.rivalry-timeline-item{
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:8px;
+  background:var(--surface-panel);
+  min-height:94px;
+  display:grid;
+  gap:8px;
+  align-content:start;
+  box-shadow:inset 0 3px 0 0 transparent;
+}
+.rivalry-timeline-item.result-win{box-shadow:inset 0 3px 0 0 #16a34a}
+.rivalry-timeline-item.result-loss{box-shadow:inset 0 3px 0 0 #dc2626}
+.rivalry-timeline-item.result-tie{box-shadow:inset 0 3px 0 0 #6b7280}
+.rivalry-timeline-item.postseason{border-color:#d8c8f2}
+.rivalry-timeline-top{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.rivalry-timeline-badges{display:flex;flex-wrap:wrap;gap:4px}
+.rivalry-timeline-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:2px 6px;
+  border-radius:999px;
+  background:var(--accent-soft);
+  color:var(--text-link);
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.03em;
+}
+.rivalry-timeline-result{font-size:24px;font-weight:900;line-height:1}
+.rivalry-timeline-score{font-size:15px;font-weight:800}
+.rivalry-timeline-date{font-size:12px;color:var(--muted);margin-top:auto}
+
+@media (forced-colors:active){
+  .rivalry-meter-bar span,
+  .rivalry-timeline-item{
+    border:1px solid CanvasText;
+  }
+}

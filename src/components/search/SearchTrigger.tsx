@@ -12,11 +12,13 @@ export default function SearchTrigger({ disabled, onOpen, triggerRef }: SearchTr
       class="tab search-trigger"
       aria-haspopup="dialog"
       aria-controls="global-search-dialog"
+      aria-label="Search The Darling"
+      title="Search The Darling"
       disabled={disabled}
       onClick={onOpen}
     >
-      <span aria-hidden="true">⌕</span>
-      <span>Search</span>
+      <span class="search-trigger-icon" aria-hidden="true">⌕</span>
+      <span class="search-trigger-label">Search</span>
     </button>
   );
 }

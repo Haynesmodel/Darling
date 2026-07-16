@@ -21,12 +21,15 @@ export function updateTabOverflow(root: Document = document): void {
 
   const maxScroll = Math.max(0, strip.scrollWidth - strip.clientWidth);
   const overflow = maxScroll > 2;
-  previous.hidden = !overflow;
-  next.hidden = !overflow;
-  previous.disabled = !overflow || strip.scrollLeft <= 2;
-  next.disabled = !overflow || strip.scrollLeft >= maxScroll - 2;
-  strip.classList.toggle('has-overflow-start', overflow && !previous.disabled);
-  strip.classList.toggle('has-overflow-end', overflow && !next.disabled);
+  const atStart = !overflow || strip.scrollLeft <= 2;
+  const atEnd = !overflow || strip.scrollLeft >= maxScroll - 2;
+  const compact = root.defaultView?.matchMedia('(max-width:420px)').matches ?? false;
+  previous.disabled = atStart;
+  next.disabled = atEnd;
+  previous.hidden = !overflow || (compact && atStart);
+  next.hidden = !overflow || (compact && atEnd);
+  strip.classList.toggle('has-overflow-start', overflow && !atStart);
+  strip.classList.toggle('has-overflow-end', overflow && !atEnd);
 }
 
 export function revealActiveTab(tab: HTMLElement, root: Document = document): void {
@@ -45,6 +48,7 @@ export function syncPageState(id: string, root: Document = document): void {
   const resolvedId = Object.hasOwn(TAB_IDS, id) ? id : 'history';
   const activeTabId = TAB_IDS[resolvedId];
   let activeTab: HTMLElement | null = null;
+  const activePanel = root.getElementById(`page-${resolvedId}`);
 
   root.querySelectorAll<HTMLElement>('[role="tab"]').forEach((tab) => {
     const selected = tab.id === activeTabId;
@@ -53,6 +57,17 @@ export function syncPageState(id: string, root: Document = document): void {
     tab.tabIndex = selected ? 0 : -1;
     if (selected) activeTab = tab;
   });
+
+  const dialogsToClose = [...root.querySelectorAll<HTMLDialogElement>('dialog[open]')]
+    .filter(dialog => !activePanel?.contains(dialog));
+  dialogsToClose.forEach((dialog) => {
+    dialog.close();
+    dialog.replaceChildren();
+  });
+  if (dialogsToClose.length) {
+    root.body.classList.remove('no-scroll');
+    activeTab?.focus({ preventScroll: true });
+  }
 
   root.querySelectorAll<HTMLElement>('[role="tabpanel"]').forEach((panel) => {
     const visible = panel.id === `page-${resolvedId}`;

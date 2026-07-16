@@ -1,5 +1,6 @@
 .interactive-table-shell{
   display:grid;
+  grid-template-columns:minmax(0,1fr);
   gap:10px;
   min-width:0;
 }
@@ -143,7 +144,11 @@
 
 .interactive-table-scroll{
   position:relative;
+  width:100%;
+  min-width:0;
+  max-width:100%;
   max-height:min(68vh,720px);
+  overflow:auto;
   overscroll-behavior:contain;
 }
 .interactive-table-scroll:focus-visible{outline:3px solid var(--accent-ring);outline-offset:2px}

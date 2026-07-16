@@ -39,6 +39,8 @@ export default function GlobalSearch({ runtime, portal }: GlobalSearchProps) {
 
   useEffect(() => runtime.subscribe(setSnapshot), [runtime]);
   useEffect(() => () => {
+    if (!openRef.current) return;
+    openRef.current = false;
     setApplicationInert(false);
     unlockBodyScroll();
   }, []);
@@ -56,13 +58,17 @@ export default function GlobalSearch({ runtime, portal }: GlobalSearchProps) {
       const commandK = event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey);
       const slash = event.key === '/' && !event.metaKey && !event.ctrlKey && !event.altKey && !isEditable(event.target);
       if (!commandK && !slash) return;
+      if (openRef.current) {
+        event.preventDefault();
+        return;
+      }
       if (document.querySelector('dialog[open]')) return;
       event.preventDefault();
       if (snapshot.hydrated) {
         rememberFocus();
+        openRef.current = true;
         setApplicationInert(true);
         lockBodyScroll();
-        openRef.current = true;
         setOpen(true);
       }
     };
@@ -71,16 +77,17 @@ export default function GlobalSearch({ runtime, portal }: GlobalSearchProps) {
   }, [snapshot.hydrated]);
 
   const openSearch = () => {
-    if (document.querySelector('dialog[open]')) return;
+    if (openRef.current || document.querySelector('dialog[open]')) return;
     focusSequenceRef.current += 1;
     returnFocusRef.current = triggerRef.current;
+    openRef.current = true;
     setApplicationInert(true);
     lockBodyScroll();
-    openRef.current = true;
     setOpen(true);
   };
 
   const close = () => {
+    if (!openRef.current) return;
     openRef.current = false;
     setApplicationInert(false);
     unlockBodyScroll();

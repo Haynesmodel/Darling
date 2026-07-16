@@ -49,9 +49,17 @@ test('browser navigation restores tab semantics and reveals the selected mobile 
   await expect(page.getByRole('tabpanel', { name: 'Historical Matchup' })).toBeVisible();
   await expect.poll(() => gauntlet.evaluate((tab) => {
     const strip = tab.parentElement;
+    const previous = document.querySelector('#tabScrollPrev');
+    const next = document.querySelector('#tabScrollNext');
     const tabBox = tab.getBoundingClientRect();
     const stripBox = strip.getBoundingClientRect();
-    return tabBox.left >= stripBox.left - 1 && tabBox.right <= stripBox.right + 1;
+    const visibleEdge = (control, edge) => {
+      if (!control || control.hidden || getComputedStyle(control).display === 'none') return edge === 'start' ? stripBox.left : stripBox.right;
+      const box = control.getBoundingClientRect();
+      return edge === 'start' ? Math.max(stripBox.left, box.right) : Math.min(stripBox.right, box.left);
+    };
+    return tabBox.left >= visibleEdge(previous, 'start') - 1
+      && tabBox.right <= visibleEdge(next, 'end') + 1;
   })).toBe(true);
 });
 
@@ -107,6 +115,62 @@ test('Dynasty dialog contains focus, locks the page, ignores search shortcuts, a
   await expect(dialog).toBeHidden();
   await expect(page.locator('body')).not.toHaveClass(/no-scroll/);
   await expect(opener).toBeFocused();
+});
+
+test('browser Back closes the Dynasty dialog before hiding its tabpanel', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+  const history = page.getByRole('tab', { name: 'League History' });
+  await page.getByRole('tab', { name: 'Dynasty Rankings' }).click();
+  await page.locator('#dynastyBestWindows .dynasty-window-card').first().click();
+
+  const dialog = page.locator('#dynastyWindowModal');
+  await expect(dialog).toBeVisible();
+  await expect(page.locator('body')).toHaveClass(/no-scroll/);
+  await page.goBack();
+
+  await expect(dialog).toBeHidden();
+  await expect(dialog).toBeEmpty();
+  await expect(page.locator('body')).not.toHaveClass(/no-scroll/);
+  await expect(page.getByRole('tabpanel', { name: 'League History' })).toBeVisible();
+  await expect(history).toBeFocused();
+});
+
+test('repeating the search shortcut does not retain a duplicate scroll lock', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+  const trigger = page.locator('.search-trigger');
+  const shortcut = process.platform === 'darwin' ? 'Meta+K' : 'Control+K';
+  await trigger.focus();
+  await page.keyboard.press(shortcut);
+  await expect(page.getByRole('dialog', { name: 'Search The Darling' })).toBeVisible();
+  await expect(page.locator('body')).toHaveClass(/no-scroll/);
+  await page.keyboard.press(shortcut);
+  await page.keyboard.press('Escape');
+
+  await expect(page.getByRole('dialog', { name: 'Search The Darling' })).toBeHidden();
+  await expect(page.locator('body')).not.toHaveClass(/no-scroll/);
+  await expect(trigger).toBeFocused();
+});
+
+test('the Dynasty heatmap is locally scrollable on mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?tab=dynasty');
+  await page.waitForLoadState('networkidle');
+  const heatmap = page.getByRole('region', { name: 'Dynasty rankings by season' });
+  await expect(heatmap).toBeVisible();
+  const metrics = await heatmap.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+    overflowX: getComputedStyle(element).overflowX,
+    mainOverflowX: getComputedStyle(document.querySelector('main')).overflowX,
+  }));
+  expect(metrics.scrollWidth).toBeGreaterThan(metrics.clientWidth);
+  expect(metrics.overflowX).toBe('auto');
+  expect(metrics.mainOverflowX).not.toBe('hidden');
+  await heatmap.evaluate(element => element.scrollTo({ left: element.scrollWidth }));
+  await expect.poll(() => heatmap.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
 test('skip link is first and sticky navigation does not obscure its target', async ({ page }) => {

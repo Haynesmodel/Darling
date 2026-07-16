@@ -24,7 +24,7 @@ The data-layer hotfix was confirmed merged as pull request 28 before this work b
 - Axe scans pass for all six pages in light/dark themes and for representative overlay/expanded states.
 - Responsive checks pass at 320×568, 375×667, 390×844, and 768×1024 without document-level horizontal overflow.
 
-The production CSS bundle is emitted as one deterministic file. The verification build measured about 77.2 KB raw and 14.4 KB gzip while adding the new accessibility and responsive behavior.
+The production CSS bundle is emitted as one deterministic file. The verification build measured about 77.7 KB raw and 14.5 KB gzip while adding the new accessibility and responsive behavior.
 
 Visual characterization was checked for:
 

@@ -76,3 +76,37 @@ test('invalid URL values normalize to the supported data universe', () => {
   assert.equal(resolved.selectedZone, 'middle');
   assert.equal(resolved.normalize, 'percentile');
 });
+
+test('owner recommendations use only the selected season range', () => {
+  const joe2025 = model.buildDraftSpotModel(asset, {
+    owner: 'Joe',
+    mode: 'owner',
+    startSeason: 2025,
+    endSeason: 2025,
+  });
+  const recommendation = joe2025.ownerProfile.recommendation;
+  assert.equal(joe2025.ownerProfile.rows.length, 1);
+  assert.equal(recommendation.history.length, 1);
+  assert.equal(recommendation.best_pick.draft_pick, 10);
+  assert.match(recommendation.recommendation, /Pick 10 in 2025/i);
+  assert.doesNotMatch(recommendation.recommendation, /Target Pick 6/i);
+});
+
+test('percentile mode groups and selects equivalent positions on a 12-team scale', () => {
+  const raw = model.buildDraftSpotModel(asset, {
+    mode: 'pick',
+    selectedPick: 12,
+    normalize: 'raw',
+  });
+  const normalized = model.buildDraftSpotModel(asset, {
+    mode: 'pick',
+    selectedPick: 12,
+    normalize: 'percentile',
+  });
+  assert.equal(raw.detailRows.length, 1);
+  assert.ok(normalized.detailRows.length > raw.detailRows.length);
+  assert.ok(normalized.detailRows.some(row => row.team_count === 10 && row.draft_pick === 10));
+  assert.ok(normalized.detailRows.some(row => row.team_count === 12 && row.draft_pick === 12));
+  assert.ok(normalized.detailRows.every(row => model.draftPickBucket(row, 'percentile') === 12));
+  assert.equal(normalized.selectedPickSummary.n, normalized.detailRows.length);
+});

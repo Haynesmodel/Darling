@@ -8,7 +8,9 @@ The Current Season command center keeps deterministic standings, clinched/elimin
 - Default run count: 10,000.
 - Seed: data version, season, selected week, model version, and the current game-score snapshot.
 - Outputs: playoff, bye, every seed, and Saunders probabilities for each active owner.
-- Additional snapshots: previous completed-week baseline, if-current-scores-hold, and selected-owner win/loss scenarios.
+- Additional snapshots: matching pre-week baseline, if-current-scores-hold, and selected-owner win/loss scenarios.
+- Historical week selection truncates the analyzed snapshot after that week, so movement always compares post-week N with pre-week N.
+- Forced win/loss scenarios condition normally sampled matchup scores and preserve live scores as hard floors.
 
 ## Team scoring distributions
 

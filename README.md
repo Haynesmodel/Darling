@@ -85,7 +85,7 @@ Current Season command-center assumptions:
 Draft Spot Explorer:
 - `?tab=draft` opens a lazily loaded Preact page for league, owner, pick, and zone exploration.
 - URL fields are `draftMode`, `draftOwner`, `draftStart`, `draftEnd`, `draftMetric`, `draftMinSample`, `draftNormalize`, `draftPick`, and `draftZone`.
-- Recommendations use observed historical language and display sample confidence. Pick-percentile mode supports comparisons across 10- and 12-team seasons.
+- Recommendations use only the selected season range, use observed historical language, and display sample confidence. Normalized mode maps each draft percentile to the nearest slot on a 12-team scale, so pick summaries, zones, rankings, charts, and selections compare equivalent positions across 10- and 12-team seasons.
 
 Shareable Dynasty URLs:
 - Open `http://127.0.0.1:8000/?tab=dynasty&dynastyMode=calculator&dynastyOwner=Joe&dynastyStart=2021&dynastyEnd=2023&dynastyMinSeasons=2&dynastySaunders=1` to land directly on Joe's 2021-2023 Dynasty Score.

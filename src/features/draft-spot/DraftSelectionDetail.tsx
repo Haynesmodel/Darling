@@ -1,5 +1,5 @@
 import { outcomeLabel } from './draft-spot-format';
-import { DRAFT_ZONES } from './draft-spot-model';
+import { DRAFT_ZONES, draftPositionLabel } from './draft-spot-model';
 import type { DraftSpotViewModel } from './draft-spot-types';
 
 export default function DraftSelectionDetail({ model }: { model: DraftSpotViewModel }) {
@@ -8,7 +8,7 @@ export default function DraftSelectionDetail({ model }: { model: DraftSpotViewMo
     return <p class="muted">Select a pick or zone to inspect the receipts.</p>;
   }
   const label = model.state.selectedPick
-    ? `Pick ${model.state.selectedPick}`
+    ? draftPositionLabel(model.state.selectedPick, model.state.normalize)
     : DRAFT_ZONES.find(zone => zone.key === model.state.selectedZone)?.label || 'Selected zone';
   const best = rows.slice().sort((a, b) => a.finish - b.finish || b.points_for - a.points_for)[0];
   const worst = rows.slice().sort((a, b) => b.finish - a.finish || a.points_for - b.points_for)[0];

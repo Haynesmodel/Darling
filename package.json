@@ -37,7 +37,7 @@
     "test:keyboard": "playwright test test/ui/keyboard-navigation.spec.js",
     "test:unit:core": "npm run check:data-generated && npm run build:charts && npm run typecheck && npm run test:hygiene && npm run test:data && npm run test:charts && npm run test:search && npm run test:tables && npm run test:scripts",
     "test:unit": "npm run lint:css && npm run check:css && npm run test:unit:core",
-    "test:coverage": "npm run test:assets && node scripts/run_tests_with_coverage.cjs && npm run test:ui && node scripts/v8_coverage_report.cjs && node scripts/check_coverage.cjs",
+    "test:coverage": "npm run test:assets && node scripts/run_tests_with_coverage.cjs && PLAYWRIGHT_WORKERS=1 npm run test:ui && node scripts/v8_coverage_report.cjs && node scripts/check_coverage.cjs",
     "test:ui": "playwright test",
     "test:ui:preview": "PLAYWRIGHT_SERVER=preview playwright test",
     "test:ui:preview:serial": "PLAYWRIGHT_SERVER=preview PLAYWRIGHT_WORKERS=1 playwright test",

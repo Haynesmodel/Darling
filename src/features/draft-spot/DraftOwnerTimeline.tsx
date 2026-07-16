@@ -1,4 +1,5 @@
 import { formatPercent, outcomeLabel } from './draft-spot-format';
+import { draftPickBucket } from './draft-spot-model';
 import type { DraftSpotState, DraftSpotViewModel } from './draft-spot-types';
 
 export default function DraftOwnerTimeline({
@@ -17,7 +18,7 @@ export default function DraftOwnerTimeline({
       {profile.rows.map(row => (
         <button
           type="button"
-          data-draft-pick={row.draft_pick}
+          data-draft-pick={draftPickBucket(row, model.state.normalize)}
           role="listitem"
           class={[
             'draft-timeline-item',
@@ -28,7 +29,7 @@ export default function DraftOwnerTimeline({
           onClick={() => onChange({
             ...model.state,
             mode: 'pick',
-            selectedPick: row.draft_pick,
+            selectedPick: draftPickBucket(row, model.state.normalize),
             selectedZone: null,
           })}
         >

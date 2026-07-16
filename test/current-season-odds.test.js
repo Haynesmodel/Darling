@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   buildCurrentSeasonOdds,
   buildTeamScoringDistributions,
+  conditionForcedScores,
   simulateOddsSnapshot,
 } from '../js/current-season-odds.js';
 import { resolveCurrentSeasonRules } from '../js/current-season-command-data.js';
@@ -111,6 +112,74 @@ test('odds model exposes movement and selected-owner win/loss scenarios', () => 
   assert.equal(result.selectedOwnerScenario.owner, 'Shap');
   assert.notDeepEqual(result.selectedOwnerScenario.win, result.selectedOwnerScenario.loss);
   assert.match(result.liveMode, /Score-aware/);
+});
+
+test('forced outcomes condition sampled scores without lowering live totals', () => {
+  const live = {
+    season: 2026,
+    week: 2,
+    teamA: 'Joe',
+    teamB: 'Shap',
+    status: 'live',
+    scoreA: 130,
+    scoreB: 120,
+  };
+  const forcedLoss = conditionForcedScores(
+    live,
+    { owner: 'Joe', outcome: 'loss', week: 2 },
+    150,
+    125,
+  );
+  assert.ok(forcedLoss[0] >= 130);
+  assert.ok(forcedLoss[1] >= 120);
+  assert.ok(forcedLoss[1] > forcedLoss[0]);
+
+  const scheduled = { ...live, status: 'scheduled', scoreA: null, scoreB: null };
+  assert.deepEqual(
+    conditionForcedScores(scheduled, { owner: 'Joe', outcome: 'win', week: 2 }, 160, 100),
+    [160, 100],
+  );
+  assert.deepEqual(
+    conditionForcedScores(scheduled, { owner: 'Joe', outcome: 'win', week: 2 }, 90, 140),
+    [140, 90],
+  );
+});
+
+test('past-week movement excludes results completed after the selected week', () => {
+  const withLaterResults = {
+    ...currentSeason,
+    current_week: 3,
+    games: currentSeason.games.map(game => {
+      if (game.week === 2) return { ...game, status: 'final' };
+      if (game.week === 3) {
+        return game.teamA === 'Joe'
+          ? { ...game, status: 'final', scoreA: 70, scoreB: 160 }
+          : { ...game, status: 'final', scoreA: 155, scoreB: 75 };
+      }
+      return game;
+    }),
+  };
+  const throughWeekTwo = {
+    ...withLaterResults,
+    current_week: 2,
+    games: withLaterResults.games.map(game => (
+      game.week <= 2
+        ? game
+        : { ...game, status: 'scheduled', scoreA: null, scoreB: null }
+    )),
+  };
+  const options = {
+    derivedStats,
+    season: 2026,
+    week: 2,
+    dataVersion: 'past-week-regression',
+    simulations: 1500,
+  };
+  const historical = buildCurrentSeasonOdds({ ...options, currentSeason: withLaterResults });
+  const contemporaneous = buildCurrentSeasonOdds({ ...options, currentSeason: throughWeekTwo });
+  assert.equal(historical.seed, contemporaneous.seed);
+  assert.deepEqual(historical.rows, contemporaneous.rows);
+  assert.deepEqual(historical.movement, contemporaneous.movement);
 });
 
 test('configured tiebreakers determine exact completed-season seed probabilities', () => {

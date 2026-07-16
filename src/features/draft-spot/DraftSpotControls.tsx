@@ -123,7 +123,7 @@ export default function DraftSpotControls({ model, onChange }: Props) {
           checked={state.normalize === 'percentile'}
           onChange={event => update({ normalize: event.currentTarget.checked ? 'percentile' : 'raw' })}
         />
-        Draft percentile
+        Normalize to 12-team slots
       </label>
     </div>
   );

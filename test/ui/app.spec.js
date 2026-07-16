@@ -19,9 +19,14 @@ async function startBrowserCoverage(page, browserName) {
 
 async function stopBrowserCoverage(session, title) {
   if (!session) return;
-  const coverage = await session.send('Profiler.takePreciseCoverage');
-  await session.send('Profiler.stopPreciseCoverage');
-  await session.send('Profiler.disable');
+  let coverage;
+  try {
+    coverage = await session.send('Profiler.takePreciseCoverage');
+    await session.send('Profiler.stopPreciseCoverage');
+    await session.send('Profiler.disable');
+  } finally {
+    await session.detach();
+  }
 
   const outDir = path.join(process.cwd(), 'coverage', '.v8');
   fs.mkdirSync(outDir, { recursive: true });
@@ -1367,7 +1372,18 @@ test('Draft Spot direct URLs restore controls, receipts, themes, and browser his
   await expect.poll(() => new URL(page.url()).searchParams.get('draftZone')).toBe('late');
   await expect.poll(() => new URL(page.url()).searchParams.get('draftPick')).toBeNull();
   await page.goBack();
-  await expect(page.locator('.draft-pick-card[aria-pressed="true"]')).toContainText('Pick 10');
+  await expect(page.locator('.draft-pick-card[aria-pressed="true"]')).toContainText('12-team slot 10');
+});
+
+test('Draft Spot normalized slots combine equivalent 10-team and 12-team positions', async ({ page }) => {
+  await page.goto('/?tab=draft&draftMode=pick&draftNormalize=percentile&draftPick=12');
+  await page.waitForLoadState('networkidle');
+
+  const slot = page.locator('.draft-pick-card[data-draft-pick="12"]');
+  await expect(slot).toHaveAttribute('aria-pressed', 'true');
+  await expect(slot).toContainText('12-team slot 12');
+  await expect(slot).toContainText('n=9');
+  await expect(page.locator('#draftRowsTable tbody tr:not(:has(.table-empty-state))')).toHaveCount(9);
 });
 
 test('global search reaches Draft Spot picks, zones, and owner history', async ({ page }) => {

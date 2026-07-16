@@ -85,7 +85,7 @@ export default function DraftSpotPage({
       </section>
       <section class="card" aria-labelledby="draftOwnerRecommendationHeading">
         <h3 id="draftOwnerRecommendationHeading">Owner Recommendations</h3>
-        <p class="muted">Recommendations describe observed results and always disclose sample confidence.</p>
+        <p class="muted">Recommendations use only the selected season range, describe observed results, and always disclose sample confidence.</p>
         <DraftOwnerRecommendations model={model} />
       </section>
       <section class="card" aria-labelledby="draftOwnerTimelineHeading">

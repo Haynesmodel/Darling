@@ -62,6 +62,21 @@ test('Draft Spot pick board supports spatial arrows, Home, End, and selection', 
   await expect(page.locator('.draft-pick-card[aria-pressed="true"]')).toHaveCount(1);
 });
 
+test('Draft Spot spatial navigation drops buttons removed by filters', async ({ page }) => {
+  await page.goto('/?tab=draft&draftMode=pick&draftPick=1');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('.draft-pick-card[data-draft-pick="2"]')).toBeVisible();
+
+  await page.locator('#draftOwnerSelect').selectOption('Joe');
+  const visiblePicks = page.locator('.draft-pick-card:not(.empty)');
+  await expect(visiblePicks).toHaveCount(5);
+  const pickOne = page.locator('.draft-pick-card[data-draft-pick="1"]');
+  const pickThree = page.locator('.draft-pick-card[data-draft-pick="3"]');
+  await pickOne.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(pickThree).toBeFocused();
+});
+
 test('browser navigation restores tab semantics and reveals the selected mobile tab', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto('/');

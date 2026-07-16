@@ -1,13 +1,13 @@
 import { useEffect, useRef } from 'preact/hooks';
-import { DRAFT_METRICS, draftMetricValue } from './draft-spot-model';
+import { DRAFT_METRICS, draftMetricValue, draftPositionLabel } from './draft-spot-model';
 import { draftSummaryContext, formatMetric, formatNumber, formatPercent } from './draft-spot-format';
 import type { DraftSpotState, DraftSpotViewModel, DraftSummary } from './draft-spot-types';
 
 function chartRows(model: DraftSpotViewModel) {
   return model.pickSummary.map(summary => ({
-    pick: `P${summary.draft_pick}`,
+    pick: model.state.normalize === 'percentile' ? `S${summary.draft_pick}` : `P${summary.draft_pick}`,
     value: draftMetricValue(summary, model.state.metric),
-    title: `Pick ${summary.draft_pick}: ${formatMetric(draftMetricValue(summary, model.state.metric), model.state.metric)}, n=${summary.n}`,
+    title: `${draftPositionLabel(summary.draft_pick, model.state.normalize)}: ${formatMetric(draftMetricValue(summary, model.state.metric), model.state.metric)}, n=${summary.n}`,
   }));
 }
 
@@ -20,13 +20,13 @@ function usePickChart(model: DraftSpotViewModel, host: { current: HTMLDivElement
       const svg = Plot.plot({
         height: 240,
         marginLeft: 48,
-        x: { label: 'Draft pick' },
+        x: { label: model.state.normalize === 'percentile' ? 'Normalized draft slot (12-team scale)' : 'Draft pick' },
         y: { label: DRAFT_METRICS[model.state.metric].label },
         marks: [
           Plot.barY(rows, { x: 'pick', y: 'value', fill: 'var(--accent-primary)', title: 'title' }),
         ],
       });
-      svg.setAttribute('aria-label', `Draft pick comparison by ${DRAFT_METRICS[model.state.metric].label}`);
+      svg.setAttribute('aria-label', `${model.state.normalize === 'percentile' ? 'Normalized draft slot' : 'Draft pick'} comparison by ${DRAFT_METRICS[model.state.metric].label}`);
       svg.setAttribute('role', 'img');
       host.current.replaceChildren(svg);
     });
@@ -34,7 +34,7 @@ function usePickChart(model: DraftSpotViewModel, host: { current: HTMLDivElement
       active = false;
       host.current?.replaceChildren();
     };
-  }, [model.state.metric, model.pickSummary]);
+  }, [model.state.metric, model.state.normalize, model.pickSummary]);
 }
 
 function nearestSpatialButton(
@@ -65,11 +65,13 @@ interface Props {
 
 export default function DraftPickBoard({ model, onChange }: Props) {
   const chartHost = useRef<HTMLDivElement>(null);
-  const buttonRefs = useRef<HTMLButtonElement[]>([]);
+  const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   usePickChart(model, chartHost);
   const summaryByPick = new Map(model.pickSummary.map(summary => [summary.draft_pick, summary]));
   const maxPick = Math.max(12, ...model.picks);
-  const availableButtons = () => buttonRefs.current.filter(Boolean);
+  const availableButtons = () => buttonRefs.current.filter(
+    (button): button is HTMLButtonElement => Boolean(button?.isConnected),
+  );
 
   const handleKeyDown = (event: KeyboardEvent, button: HTMLButtonElement) => {
     const buttons = availableButtons();
@@ -99,16 +101,17 @@ export default function DraftPickBoard({ model, onChange }: Props) {
     <>
       <div class="section-heading">
         <h3>Pick Board</h3>
-        <div class="muted">{DRAFT_METRICS[model.state.metric].label} with visible sample sizes. Arrow keys move through available picks.</div>
+        <div class="muted">{DRAFT_METRICS[model.state.metric].label} with visible sample sizes. {model.state.normalize === 'percentile' ? 'Slots use a normalized 12-team scale. ' : ''}Arrow keys move through available positions.</div>
       </div>
       <div ref={chartHost} class="chart-host draft-pick-chart" />
       <div class="draft-pick-board" role="group" aria-label="Draft picks">
         {Array.from({ length: maxPick }, (_, index) => index + 1).map(pick => {
           const summary = summaryByPick.get(pick);
+          const positionLabel = draftPositionLabel(pick, model.state.normalize);
           if (!summary) {
             return (
-              <div class="draft-pick-card empty" aria-label={`Pick ${pick}: no data`}>
-                <span class="draft-pick-number">Pick {pick}</span>
+              <div class="draft-pick-card empty" aria-label={`${positionLabel}: no data`}>
+                <span class="draft-pick-number">{positionLabel}</span>
                 <span class="draft-pick-note">No data</span>
               </div>
             );
@@ -118,7 +121,7 @@ export default function DraftPickBoard({ model, onChange }: Props) {
           return (
             <button
               ref={element => {
-                if (element) buttonRefs.current[pick] = element;
+                buttonRefs.current[pick] = element;
               }}
               type="button"
               data-draft-pick={pick}
@@ -129,7 +132,7 @@ export default function DraftPickBoard({ model, onChange }: Props) {
                 lowSample ? 'low-sample' : '',
               ].filter(Boolean).join(' ')}
               aria-pressed={selected}
-              aria-label={`Pick ${pick}: ${formatMetric(draftMetricValue(summary, model.state.metric), model.state.metric)}, sample ${summary.n}${lowSample ? ', low sample' : ''}`}
+              aria-label={`${positionLabel}: ${formatMetric(draftMetricValue(summary, model.state.metric), model.state.metric)}, sample ${summary.n}${lowSample ? ', low sample' : ''}`}
               style={{ '--draft-intensity': intensity(summary) } as Record<string, number>}
               onKeyDown={event => handleKeyDown(event, event.currentTarget)}
               onClick={() => onChange({
@@ -140,7 +143,7 @@ export default function DraftPickBoard({ model, onChange }: Props) {
               })}
             >
               <span class="draft-pick-top">
-                <span class="draft-pick-number">Pick {pick}</span>
+                <span class="draft-pick-number">{positionLabel}</span>
                 <span class="draft-sample">n={summary.n}</span>
               </span>
               <strong>{formatMetric(draftMetricValue(summary, model.state.metric), model.state.metric)}</strong>

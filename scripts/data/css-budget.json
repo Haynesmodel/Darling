@@ -2,7 +2,8 @@
   "defaultSharedLineBudget": 350,
   "defaultFeatureLineBudget": 500,
   "lineBudgets": {
-    "src/styles/app.css": 40
+    "src/styles/app.css": 40,
+    "src/styles/features/draft-spot.css": 440
   },
   "importantBudgets": {
     "src/styles/motion.css": 6,

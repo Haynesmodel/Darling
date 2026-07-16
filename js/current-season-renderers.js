@@ -13,6 +13,7 @@ import {
   matchupKey,
 } from './current-season-command-data.js';
 import {
+  renderCurrentOddsMovementPlot,
   renderCurrentProjectedStandingsPlot,
   renderCurrentSeedMovementPlot,
 } from './charting/plot-charts.js';
@@ -23,6 +24,14 @@ function docOrDefault(doc) {
 
 function fmtPct(value) {
   return Number.isFinite(Number(value)) ? `${(Number(value) * 100).toFixed(1)}%` : '0.0%';
+}
+
+function fmtOdds(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '—';
+  if (number > 0 && number < 0.01) return '<1%';
+  if (number < 1 && number > 0.99) return '>99%';
+  return `${Math.round(number * 100)}%`;
 }
 
 function formatRecord(row) {
@@ -240,6 +249,17 @@ function buildCurrentSeasonViewModel({
   };
 }
 
+function attachCurrentSeasonOdds(view, odds) {
+  if (!view?.commandCenter || !odds) return view;
+  const oddsByOwner = new Map((odds.rows || []).map(row => [row.owner, row]));
+  view.commandCenter.odds = odds;
+  view.commandCenter.playoffPicture = view.commandCenter.playoffPicture.map(row => ({
+    ...row,
+    odds: oddsByOwner.get(row.owner) || null,
+  }));
+  return view;
+}
+
 function currentSeasonHeroHtml(view) {
   const high = view.summary.highestScore;
   const close = view.summary.closestGame;
@@ -442,10 +462,30 @@ function currentPlayoffPictureHtml(view) {
             <span class="${statusClass(row.status)}">${escapeHtml(row.status.label)}</span>
             <span>${escapeHtml(gapText(row.playoffGap))}</span>
             <span>Projected ${escapeHtml(row.projectedSeed)} (${escapeHtml(signedSeedChange(row.seedChange))})</span>
+            ${row.odds ? `
+              <span class="current-odds-chip">Playoffs ${escapeHtml(fmtOdds(row.odds.playoffOdds))}</span>
+              <span class="current-odds-chip">Bye ${escapeHtml(fmtOdds(row.odds.byeOdds))}</span>
+              <span class="current-odds-chip current-odds-chip-saunders">Saunders ${escapeHtml(fmtOdds(row.odds.saundersOdds))}</span>
+              <details class="current-seed-distribution">
+                <summary>Seed odds</summary>
+                <span>${Object.entries(row.odds.seedProbabilities).map(([seed, probability]) => `#${escapeHtml(seed)} ${escapeHtml(fmtOdds(probability))}`).join(' · ')}</span>
+              </details>
+            ` : ''}
           </div>
         </div>
       `).join('')}
     </div>
+    ${command.odds?.status === 'ready' ? `
+      <div class="current-odds-methodology">
+        <strong>${escapeHtml(command.odds.modelLabel)}</strong>
+        <span>${escapeHtml(command.odds.simulations.toLocaleString())} simulations · ${escapeHtml(command.odds.liveMode)} · model ${escapeHtml(command.odds.modelVersion)}</span>
+        <span>${escapeHtml(command.odds.methodology)}</span>
+      </div>
+    ` : command.odds?.status === 'error' ? `
+      <div class="current-odds-methodology current-odds-error">
+        Probability model unavailable. Deterministic standings remain authoritative.
+      </div>
+    ` : ''}
     ${saundersLine ? `<p class="current-boundary-note">The Saunders boundary marks the bottom ${escapeHtml(command.rules.saunders_slots)} seed${command.rules.saunders_slots === 1 ? '' : 's'} entering the consolation danger zone.</p>` : ''}
   `;
 }
@@ -454,6 +494,7 @@ function currentWeekNeedsHtml(view) {
   if (!selectedViewAllows(view, 'needs')) return '';
   const command = view.commandCenter;
   const rows = command?.ownerNeeds || [];
+  const scenario = command?.odds?.selectedOwnerScenario || null;
   if (!rows.length) return '<div class="card"><h3>This Week Needs</h3><p class="muted">No owner paths available.</p></div>';
   return `
     <div class="section-heading current-section-heading">
@@ -476,6 +517,12 @@ function currentWeekNeedsHtml(view) {
           <p class="muted">${escapeHtml(row.pathSummary)}</p>
           <p class="current-risk-text">${escapeHtml(row.riskSummary)}</p>
           ${row.saundersSummary && row.saundersSummary !== row.riskSummary ? `<p class="current-saunders-text">${escapeHtml(row.saundersSummary)}</p>` : ''}
+          ${scenario?.owner === row.owner ? `
+            <p class="current-odds-scenario">
+              <strong>Win:</strong> playoff ${escapeHtml(fmtOdds(scenario.win.playoffOdds))}, bye ${escapeHtml(fmtOdds(scenario.win.byeOdds))}
+              · <strong>Loss:</strong> playoff ${escapeHtml(fmtOdds(scenario.loss.playoffOdds))}, bye ${escapeHtml(fmtOdds(scenario.loss.byeOdds))}
+            </p>
+          ` : ''}
         </article>
       `).join('')}
     </div>
@@ -488,6 +535,7 @@ function currentLiveMovementHtml(view) {
   const rows = (command?.liveMovement || []).slice(0, 6);
   if (!rows.length) return '<h3>Live Movement</h3><p class="muted">No movement available.</p>';
   const projectionLabel = command.selectedProjectionMode === 'current' ? 'Completed games only' : 'If scores hold';
+  const oddsMovement = (command.odds?.movement || []).slice().sort((a, b) => Math.abs(b.playoffChange) - Math.abs(a.playoffChange));
   return `
     <div class="section-heading current-section-heading">
       <h3>Live Movement</h3>
@@ -496,6 +544,20 @@ function currentLiveMovementHtml(view) {
     <div class="current-command-chart chart-shell">
       <div id="currentSeedMovementPlot" class="chart-host current-seed-movement-host" aria-label="Live seed movement by owner"></div>
     </div>
+    ${oddsMovement.length ? `
+      <div class="section-heading current-section-heading">
+        <h4>Playoff odds movement</h4>
+        <div class="muted">Change from the previous completed-week baseline</div>
+      </div>
+      <div class="current-command-chart chart-shell">
+        <div id="currentOddsMovementPlot" class="chart-host current-odds-movement-host" aria-label="Playoff odds movement by owner"></div>
+      </div>
+      <div class="current-odds-movement-list chart-fallback">
+        ${oddsMovement.slice(0, 6).map(row => `
+          <span><strong>${escapeHtml(row.owner)}</strong> ${escapeHtml(row.playoffChange >= 0 ? '+' : '')}${escapeHtml(Math.round(row.playoffChange * 100))} pts</span>
+        `).join('')}
+      </div>
+    ` : ''}
     <div class="current-movement-grid chart-fallback">
       ${rows.map(row => `
         <div class="current-movement-card${row.owner === command.selectedOwner ? ' current-owner-focus' : ''}">
@@ -563,12 +625,15 @@ function renderCurrentCommandCenter(view, opts = {}) {
     setSectionHtml(el, htmlFn(view));
   }
   const movementHost = typeof root?.getElementById === 'function' ? root.getElementById('currentSeedMovementPlot') : null;
+  const oddsMovementHost = typeof root?.getElementById === 'function' ? root.getElementById('currentOddsMovementPlot') : null;
   const projectionHost = typeof root?.getElementById === 'function' ? root.getElementById('currentProjectedStandingsPlot') : null;
   renderCurrentSeedMovementPlot(movementHost, view);
+  renderCurrentOddsMovementPlot(oddsMovementHost, view);
   renderCurrentProjectedStandingsPlot(projectionHost, view);
 }
 
 export {
+  attachCurrentSeasonOdds,
   buildCurrentSeasonViewModel,
   currentLiveMovementHtml,
   currentMatchupsHtml,

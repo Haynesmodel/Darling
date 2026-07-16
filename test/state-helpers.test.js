@@ -170,6 +170,26 @@ test('url helpers parse and rebuild gauntlet state', () => {
   assert.equal(next, '/index.html?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019&gm=hybrid&gp=1&gn=10000&gs=abc123');
 });
 
+test('url helpers parse and rebuild Draft Spot state', () => {
+  const parsed = parseUrlState('?tab=draft&draftMode=pick&draftOwner=Joe&draftStart=2021&draftEnd=2025&draftMetric=playoffRate&draftMinSample=3&draftNormalize=percentile&draftPick=10');
+  assert.equal(parsed.hasDraft, true);
+  assert.equal(parsed.draftOwner, 'Joe');
+  assert.equal(parsed.draftPick, 10);
+  const url = buildUrlFromState({
+    pathname: '/Darling/',
+    tab: 'draft',
+    selectedDraftMode: parsed.draftMode,
+    selectedDraftOwner: parsed.draftOwner,
+    selectedDraftStartSeason: parsed.draftStart,
+    selectedDraftEndSeason: parsed.draftEnd,
+    selectedDraftMetric: parsed.draftMetric,
+    selectedDraftMinSample: parsed.draftMinSample,
+    selectedDraftNormalize: parsed.draftNormalize,
+    selectedDraftPick: parsed.draftPick,
+  });
+  assert.equal(url, '/Darling/?tab=draft&draftMode=pick&draftOwner=Joe&draftStart=2021&draftEnd=2025&draftMetric=playoffRate&draftMinSample=3&draftNormalize=percentile&draftPick=10');
+});
+
 test('url helpers preserve opponent selections with spaces and punctuation', () => {
   const next = buildUrlFromState({
     selectedTeam: 'Joe',

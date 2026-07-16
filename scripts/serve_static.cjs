@@ -106,12 +106,20 @@ function startServer({ root = process.cwd(), port = 8000, host = '127.0.0.1', ba
 }
 
 if (require.main === module) {
-  startServer({
+  const server = startServer({
     root: process.argv[4] ? path.resolve(process.argv[4]) : process.cwd(),
     port: Number(process.argv[2] || 8000),
     host: process.argv[3] || '127.0.0.1',
     basePath: process.argv[5] || '/',
   });
+  server.on('error', error => console.error(`[static-server:error] ${error.stack || error}`));
+  server.on('close', () => console.error('[static-server:close] preview server closed'));
+  for (const signal of ['SIGTERM', 'SIGINT']) {
+    process.once(signal, () => {
+      console.error(`[static-server:${signal}] shutting down`);
+      server.close(() => process.exit(0));
+    });
+  }
 }
 
 module.exports = {

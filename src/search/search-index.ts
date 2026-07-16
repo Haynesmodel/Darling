@@ -27,7 +27,7 @@ export function buildSearchIndex(data: SearchHydrationData): BuiltSearchIndex {
 
   const documents: SearchDocument[] = [];
   const add = (document: SearchDocument | null) => { if (document) documents.push(document); };
-  ['history', 'current', 'playoff-picture', 'trophy', 'dynasty', 'gauntlet'].forEach(feature => {
+  ['history', 'current', 'playoff-picture', 'trophy', 'dynasty', 'draft', 'gauntlet'].forEach(feature => {
     add(buildIntentDocument({ kind: 'feature', feature: feature as never }, data));
   });
   ['theme-system', 'theme-light', 'theme-dark', 'export-history'].forEach(command => {
@@ -41,7 +41,12 @@ export function buildSearchIndex(data: SearchHydrationData): BuiltSearchIndex {
     add(buildIntentDocument({ kind: 'owner-season', owner }, data));
     add(buildIntentDocument({ kind: 'feature', feature: 'trophy', owner }, data));
     add(buildIntentDocument({ kind: 'feature', feature: 'dynasty', owner }, data));
+    add(buildIntentDocument({ kind: 'draft-owner', owner }, data));
   });
+  Array.from({ length: 12 }, (_, index) => index + 1)
+    .forEach(pick => add(buildIntentDocument({ kind: 'draft-pick', pick }, data)));
+  (['early', 'middle', 'late'] as const)
+    .forEach(zone => add(buildIntentDocument({ kind: 'draft-zone', zone }, data)));
   data.seasonSummaries.forEach(row => add(buildIntentDocument({ kind: 'owner-season', owner: row.owner, season: Number(row.season) }, data)));
   seasons.forEach(season => {
     add(buildIntentDocument({ kind: 'season-type', season, gameType: 'Playoff' }, data));

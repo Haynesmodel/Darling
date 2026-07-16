@@ -10,6 +10,7 @@ import { adaptRivalryGameRows } from './rows/rivalry-game-rows';
 import { adaptRivalrySeasonRows } from './rows/rivalry-season-rows';
 import { adaptCurrentProjectedRows, adaptCurrentStandingRows } from './rows/current-standing-rows';
 import { adaptTrophySeasonRows } from './rows/trophy-season-rows';
+import { adaptDraftSpotRows } from './rows/draft-spot-rows';
 import type {
   DarlingTableRow,
   DarlingTableRuntime,
@@ -32,6 +33,7 @@ function adaptRows(tableId: TableId, rows: unknown[], context: TableContext): Da
     case 'current-standings': return adaptCurrentStandingRows(rows, context);
     case 'current-projected': return adaptCurrentProjectedRows(rows, context);
     case 'trophy-seasons': return adaptTrophySeasonRows(rows, context);
+    case 'draft-rows': return adaptDraftSpotRows(rows, context);
   }
 }
 

@@ -120,7 +120,7 @@ test('page loads and renders the history tables', async ({ page }) => {
   expect(weekCount).toBe(historyCount);
   const diagnostics = await page.evaluate(() => window.darlingDataDiagnostics);
   expect(diagnostics.dataVersion).toMatch(/^sha256:[a-f0-9]{64}$/);
-  expect(diagnostics.manifestVersion).toBe(1);
+  expect(diagnostics.manifestVersion).toBe(2);
   expect(diagnostics.loadedAssets).toContain('DerivedStats');
   expect(diagnostics.optionalAssetFailures).toEqual([]);
 });
@@ -1347,4 +1347,60 @@ test('fetch failure surfaces an error banner instead of a blank page', async ({ 
   await expect(page.locator('#appStatus')).toBeVisible();
   await expect(page.locator('#appStatus')).toContainText('Could not load league data');
   await expect(page.locator('#teamSelect option')).toHaveCount(0);
+});
+
+test('Draft Spot direct URLs restore controls, receipts, themes, and browser history', async ({ page }) => {
+  await page.goto('/?tab=draft&draftMode=pick&draftOwner=Joe&draftStart=2021&draftEnd=2025&draftMetric=playoffRate&draftMinSample=2&draftNormalize=percentile&draftPick=10');
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#tabDraftBtn')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tabpanel', { name: 'Draft Spot' })).toBeVisible();
+  await expect(page.locator('#draftOwnerSelect')).toHaveValue('Joe');
+  await expect(page.locator('#draftMetricSelect')).toHaveValue('playoffRate');
+  await expect(page.locator('#draftNormalizeToggle')).toBeChecked();
+  await expect(page.locator('.draft-pick-card[data-draft-pick="10"], .draft-pick-card[aria-label^="Pick 10:"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#draftRowsTable tbody tr:not(:has(.table-empty-state))')).toHaveCount(1);
+  await expect(page.locator('html')).toHaveAttribute('data-accent-theme', 'owner');
+  await expect(page.locator('html')).toHaveAttribute('data-owner-theme', 'Joe');
+
+  await page.locator('.draft-zone-card').filter({ hasText: 'Late (8+)' }).click();
+  await expect.poll(() => new URL(page.url()).searchParams.get('draftZone')).toBe('late');
+  await expect.poll(() => new URL(page.url()).searchParams.get('draftPick')).toBeNull();
+  await page.goBack();
+  await expect(page.locator('.draft-pick-card[aria-pressed="true"]')).toContainText('Pick 10');
+});
+
+test('global search reaches Draft Spot picks, zones, and owner history', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+  await page.locator('.search-trigger').click();
+  const search = page.getByRole('combobox', { name: /Search owners, seasons/i });
+  await search.fill('Joe draft history');
+  await expect(page.getByRole('option', { name: /Joe draft history/i })).toBeVisible();
+  await page.getByRole('option', { name: /Joe draft history/i }).click();
+  await expect.poll(() => new URL(page.url()).searchParams.get('tab')).toBe('draft');
+  await expect.poll(() => new URL(page.url()).searchParams.get('draftOwner')).toBe('Joe');
+
+  await page.locator('.search-trigger').click();
+  await page.getByRole('combobox', { name: /Search owners, seasons/i }).fill('pick 10');
+  await page.getByRole('option', { name: /Draft pick 10/i }).click();
+  await expect.poll(() => new URL(page.url()).searchParams.get('draftPick')).toBe('10');
+});
+
+test('optional Draft Spot fetch failure leaves the rest of the app usable', async ({ page }) => {
+  await page.route('**/assets/DraftSpot.json', route => route.fulfill({ status: 500, body: '{}' }));
+  await page.goto('/?tab=draft');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('#draftSpotRoot')).toContainText('Draft Spot is unavailable');
+  await page.locator('#tabHistoryBtn').click();
+  await expect(page.locator('#historyGamesTable')).toBeVisible();
+});
+
+test('Current Season displays deterministic playoff odds without replacing status labels', async ({ page }) => {
+  await page.goto('/?tab=current&currentOwner=Joe');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('.current-odds-methodology')).toBeVisible();
+  await expect(page.locator('.current-odds-chip').first()).toContainText(/Playoffs \d+%|Playoffs <1%|Playoffs >99%/);
+  await expect(page.locator('.current-status-badge').first()).toBeVisible();
+  await expect(page.locator('#currentOddsMovementPlot svg')).toBeVisible();
 });

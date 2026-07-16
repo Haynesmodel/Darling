@@ -56,6 +56,58 @@ function gameSubtitle(count: number, owner?: string, season?: number): string {
 }
 
 export function buildIntentDocument(intent: SearchIntent, data: SearchHydrationData): SearchDocument | null {
+  if (intent.kind === 'draft-pick') {
+    const url = buildUrlFromState({
+      tab: 'draft',
+      selectedDraftMode: 'pick',
+      selectedDraftPick: intent.pick,
+      pathname: window.location.pathname,
+    });
+    return {
+      id: `draft-pick:${intent.pick}`,
+      category: 'navigate',
+      title: `Draft pick ${intent.pick}`,
+      subtitle: `Draft Spot / Pick ${intent.pick} historical results`,
+      keywords: [`pick ${intent.pick}`, `draft pick ${intent.pick}`, 'draft spot'],
+      priority: 92,
+      action: { kind: 'navigate', url },
+    };
+  }
+  if (intent.kind === 'draft-zone') {
+    const labels = { early: 'Early (1-3)', middle: 'Middle (4-7)', late: 'Late (8+)' };
+    const url = buildUrlFromState({
+      tab: 'draft',
+      selectedDraftMode: 'zone',
+      selectedDraftZone: intent.zone,
+      pathname: window.location.pathname,
+    });
+    return {
+      id: `draft-zone:${intent.zone}`,
+      category: 'navigate',
+      title: `${labels[intent.zone]} draft picks`,
+      subtitle: `Draft Spot / ${labels[intent.zone]} zone`,
+      keywords: [intent.zone, 'draft picks', labels[intent.zone]],
+      priority: 88,
+      action: { kind: 'navigate', url },
+    };
+  }
+  if (intent.kind === 'draft-owner') {
+    const url = buildUrlFromState({
+      tab: 'draft',
+      selectedDraftMode: 'owner',
+      selectedDraftOwner: intent.owner,
+      pathname: window.location.pathname,
+    });
+    return {
+      id: `draft-owner:${intent.owner}`,
+      category: 'owner',
+      title: `${intent.owner} draft history`,
+      subtitle: `Draft Spot / ${intent.owner} recommendations and timeline`,
+      keywords: [intent.owner, 'draft history', 'draft spot'],
+      priority: 90,
+      action: { kind: 'navigate', url },
+    };
+  }
   if (intent.kind === 'owner-season') {
     const url = historyUrl(data, {
       selectedTeam: intent.owner,
@@ -186,6 +238,7 @@ export function buildIntentDocument(intent: SearchIntent, data: SearchHydrationD
       'playoff-picture': ['Playoff picture', 'Current Season / Playoff picture', 'current'],
       trophy: [`${intent.owner ? `${intent.owner} ` : ''}Trophy Case`, 'Championships, finishes, and league hardware', 'trophy'],
       dynasty: [`${intent.owner ? `${intent.owner} ` : ''}Dynasty Rankings`, 'Compare long-term league performance', 'dynasty'],
+      draft: ['Draft Spot Explorer', 'Compare historical draft picks, zones, and owner results', 'draft'],
       gauntlet: ['Historical Matchup', 'Simulate two owner-seasons', 'gauntlet'],
     } as const;
     const [title, subtitle, tab] = definitions[intent.feature];
@@ -281,6 +334,15 @@ export function rebuildSearchDocument(id: string, data: SearchHydrationData): Se
       owner: optionalToken(parts[1]),
       season: optionalNumber(parts[2]),
     }, data);
+  }
+  if (kind === 'draft-pick' && optionalNumber(parts[0])) {
+    return buildIntentDocument({ kind: 'draft-pick', pick: optionalNumber(parts[0]) as number }, data);
+  }
+  if (kind === 'draft-zone' && ['early', 'middle', 'late'].includes(parts[0])) {
+    return buildIntentDocument({ kind: 'draft-zone', zone: parts[0] as 'early' | 'middle' | 'late' }, data);
+  }
+  if (kind === 'draft-owner' && parts[0]) {
+    return buildIntentDocument({ kind: 'draft-owner', owner: parts[0] }, data);
   }
   return null;
 }

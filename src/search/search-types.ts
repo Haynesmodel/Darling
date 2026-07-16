@@ -30,7 +30,10 @@ export type SearchIntent =
   | { kind: 'score-threshold'; owner?: string; season?: number; min?: number; max?: number }
   | { kind: 'game-extreme'; metric: 'largest-loss-margin' | 'largest-win-margin' | 'highest-score' | 'lowest-score'; owner?: string; season?: number }
   | { kind: 'game-filter'; owner?: string; season?: number; result: 'W' | 'L' | 'T' }
-  | { kind: 'feature'; feature: 'history' | 'current' | 'playoff-picture' | 'trophy' | 'dynasty' | 'gauntlet'; owner?: string }
+  | { kind: 'feature'; feature: 'history' | 'current' | 'playoff-picture' | 'trophy' | 'dynasty' | 'draft' | 'gauntlet'; owner?: string }
+  | { kind: 'draft-pick'; pick: number }
+  | { kind: 'draft-zone'; zone: 'early' | 'middle' | 'late' }
+  | { kind: 'draft-owner'; owner: string }
   | { kind: 'command'; command: SearchCommand };
 
 export interface LeagueGame {

@@ -146,7 +146,22 @@ function currentProjectedSeedRows(view = {}) {
   }));
 }
 
+function currentOddsMovementRows(view = {}) {
+  const selectedOwner = view.commandCenter?.selectedOwner || '';
+  return (view.commandCenter?.odds?.movement || [])
+    .map(row => ({
+      owner: row.owner,
+      playoffChange: toFinite(row.playoffChange, 0) * 100,
+      currentPlayoffOdds: toFinite(row.playoffOdds, 0),
+      previousPlayoffOdds: toFinite(row.previousPlayoffOdds, 0),
+      isSelected: !!selectedOwner && row.owner === selectedOwner,
+      title: `${row.owner}: playoff odds ${Math.round(Number(row.previousPlayoffOdds || 0) * 100)}% to ${Math.round(Number(row.playoffOdds || 0) * 100)}%`,
+    }))
+    .sort((a, b) => Math.abs(b.playoffChange) - Math.abs(a.playoffChange) || a.owner.localeCompare(b.owner));
+}
+
 export {
+  currentOddsMovementRows,
   currentProjectedSeedRows,
   currentSeedMovementRows,
   dynastyTrendRows,

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  currentOddsMovementRows,
   currentProjectedSeedRows,
   currentSeedMovementRows,
   dynastyTrendRows,
@@ -76,4 +77,15 @@ test('trophy, rivalry, and current-season chart rows preserve labels and selecte
   };
   assert.equal(currentSeedMovementRows(view)[0].isSelected, true);
   assert.equal(currentProjectedSeedRows(view)[0].isSelected, false);
+
+  view.commandCenter.odds = {
+    movement: [{
+      owner: 'Joe',
+      previousPlayoffOdds: 0.4,
+      playoffOdds: 0.65,
+      playoffChange: 0.25,
+    }],
+  };
+  assert.equal(currentOddsMovementRows(view)[0].playoffChange, 25);
+  assert.equal(currentOddsMovementRows(view)[0].isSelected, true);
 });

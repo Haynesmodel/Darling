@@ -9,6 +9,15 @@
       "season_min": 2025,
       "sha256": "sha256:b18d1dc798a1f36976bbcd2d9c9e26f110dfe4a0345c53356ea9ca8f3c513600"
     },
+    "DraftSpot": {
+      "bytes": 95227,
+      "path": "assets/DraftSpot.json",
+      "required": false,
+      "rows": 92,
+      "season_max": 2025,
+      "season_min": 2017,
+      "sha256": "sha256:eae28ae3a44e785325145c0294237adefce0a32c832864974a5a23b4d38703fb"
+    },
     "H2H": {
       "bytes": 178643,
       "path": "assets/H2H.json",
@@ -37,7 +46,7 @@
       "sha256": "sha256:2fac336af3e8324a1213fd34f39de5d574bcc0e5b99212ebba05ab007de8a11f"
     }
   },
-  "data_version": "sha256:5e2a0fe7e2cbf6b56977fddfcb6245cab74e760a208e17866bfb7415474e51bd",
+  "data_version": "sha256:32c57e28628162d8d48f27ff38837654710b0c5a5b6f854a66e5ba49e9b2a127",
   "derived": {
     "bytes": 180301,
     "path": "assets/DerivedStats.json",
@@ -50,7 +59,7 @@
     }
   },
   "derived_generator_version": 1,
-  "manifest_version": 1,
+  "manifest_version": 2,
   "media": {
     "leagueHero": {
       "role": "runtime-required",
@@ -174,6 +183,7 @@
   "schema_versions": {
     "CurrentSeason": 1,
     "DerivedStats": 1,
+    "DraftSpot": 1,
     "H2H": 1,
     "Rivalries": 1,
     "SeasonSummary": 1

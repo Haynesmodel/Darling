@@ -10,6 +10,7 @@ import type { DarlingSearchRuntime } from './search/search-types';
 import { createTableRuntime } from './tables/table-runtime';
 import type { DarlingTableRuntime } from './tables/table-types';
 import type { DataDiagnostics } from './data/load-league-assets';
+import type { DarlingDraftSpotRuntime } from './features/draft-spot/draft-spot-types';
 import { bindDropdownChecklists } from './accessibility/dropdown-checklist';
 import { focusableElements } from './accessibility/focus';
 import { prefersReducedMotion, subscribeToReducedMotion } from './accessibility/motion';
@@ -23,6 +24,7 @@ interface BrowserWindow {
   darlingTables?: DarlingTableRuntime;
   darlingDataLoader?: DarlingDataLoader;
   darlingDataDiagnostics?: DataDiagnostics;
+  darlingDraftSpot?: DarlingDraftSpotRuntime;
   darlingAccessibility?: {
     prefersReducedMotion: typeof prefersReducedMotion;
     focusableElements: typeof focusableElements;
@@ -52,6 +54,18 @@ if (browser.window) {
   browser.window.darlingDataLoader = async options => {
     const { loadLeagueAssets } = await import('./data/load-league-assets');
     return loadLeagueAssets(options);
+  };
+  browser.window.darlingDraftSpot = {
+    async mount(options) {
+      const mount = document.getElementById(options.mountId || 'draftSpotRoot');
+      if (!mount) return;
+      const { mountDraftSpot } = await import('./features/draft-spot/draft-spot-controller');
+      await mountDraftSpot({ ...options, mount });
+    },
+    unmount() {
+      void import('./features/draft-spot/draft-spot-controller')
+        .then(({ unmountDraftSpot }) => unmountDraftSpot());
+    },
   };
   browser.window.darlingAccessibility = {
     prefersReducedMotion,

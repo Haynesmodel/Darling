@@ -15,6 +15,9 @@ module.exports = defineConfig({
   testDir: './test/ui',
   timeout: 30_000,
   retries: process.env.CI ? 1 : 0,
+  workers: process.env.PLAYWRIGHT_WORKERS
+    ? Number(process.env.PLAYWRIGHT_WORKERS)
+    : (usePreview || process.env.CI ? 1 : undefined),
   use: {
     baseURL,
     trace: 'on-first-retry',

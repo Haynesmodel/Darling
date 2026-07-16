@@ -8,6 +8,7 @@ const pages = [
   ['rivalry', 'Head to Head'],
   ['trophy', 'Trophy Case'],
   ['dynasty', 'Dynasty Rankings'],
+  ['draft', 'Draft Spot'],
   ['gauntlet', 'Historical Matchup'],
 ];
 

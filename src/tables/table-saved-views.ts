@@ -10,7 +10,16 @@ import { TABLE_IDS } from './table-types';
 export const TABLE_VIEWS_STORAGE_KEY = 'darling.tableViews.v1';
 export const MAX_SAVED_TABLE_VIEWS = 25;
 
-const PORTABLE_CONTEXT_KEYS = ['owner', 'rivalryA', 'rivalryB', 'selectedOwner', 'season'] as const;
+const PORTABLE_CONTEXT_KEYS = [
+  'owner',
+  'rivalryA',
+  'rivalryB',
+  'selectedOwner',
+  'season',
+  'draftMode',
+  'draftStart',
+  'draftEnd',
+] as const;
 const GAME_RESULTS = new Set(['W', 'L', 'T']);
 const GAME_SORTS = new Set(['dateDesc', 'scoreDesc', 'scoreAsc', 'marginDesc', 'marginAsc', 'combinedDesc']);
 
@@ -88,6 +97,17 @@ export function portableTableUrlState(value?: TableUrlState | Record<string, unk
   if (!isRecord(value)) return undefined;
   const gameResult = typeof value.gameResult === 'string' && GAME_RESULTS.has(value.gameResult) ? value.gameResult : null;
   const gameSort = typeof value.gameSort === 'string' && GAME_SORTS.has(value.gameSort) ? value.gameSort : null;
+  const hasDraftState = [
+    'draftOwner',
+    'draftMode',
+    'draftStart',
+    'draftEnd',
+    'draftMetric',
+    'draftMinSample',
+    'draftNormalize',
+    'draftPick',
+    'draftZone',
+  ].some(key => Object.prototype.hasOwnProperty.call(value, key));
   return {
     seasons: numberArray(value.seasons),
     weeks: numberArray(value.weeks),
@@ -99,6 +119,17 @@ export function portableTableUrlState(value?: TableUrlState | Record<string, unk
     gameMaxScore: nullableNumber(value.gameMaxScore, { min: 0 }),
     gameSort,
     gameLimit: nullableNumber(value.gameLimit, { integer: true, min: 1, max: 100 }),
+    ...(hasDraftState ? {
+      draftOwner: typeof value.draftOwner === 'string' ? value.draftOwner : null,
+      draftMode: typeof value.draftMode === 'string' ? value.draftMode : null,
+      draftStart: nullableNumber(value.draftStart, { integer: true, min: 2014, max: 2100 }),
+      draftEnd: nullableNumber(value.draftEnd, { integer: true, min: 2014, max: 2100 }),
+      draftMetric: typeof value.draftMetric === 'string' ? value.draftMetric : null,
+      draftMinSample: nullableNumber(value.draftMinSample, { integer: true, min: 1, max: 5 }),
+      draftNormalize: typeof value.draftNormalize === 'string' ? value.draftNormalize : null,
+      draftPick: nullableNumber(value.draftPick, { integer: true, min: 1, max: 24 }),
+      draftZone: typeof value.draftZone === 'string' ? value.draftZone : null,
+    } : {}),
   };
 }
 

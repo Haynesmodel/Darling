@@ -137,6 +137,89 @@
   font-size:12px;
   font-weight:700;
 }
+
+.current-odds-chip{
+  display:inline-flex;
+  padding:4px 8px;
+  border:1px solid var(--status-info-border);
+  border-radius:var(--radius-pill);
+  background:var(--status-info-bg);
+  color:var(--status-info-text);
+  font-weight:900;
+  white-space:nowrap;
+}
+
+.current-odds-chip-saunders{
+  border-color:var(--status-warn-border);
+  background:var(--status-warn-bg);
+  color:var(--status-warn-text);
+}
+
+.current-seed-distribution{
+  position:relative;
+}
+
+.current-seed-distribution summary{
+  color:var(--text-link);
+  cursor:pointer;
+  font-weight:900;
+}
+
+.current-seed-distribution span{
+  display:block;
+  max-width:360px;
+  margin-top:4px;
+  color:var(--muted);
+  line-height:1.45;
+}
+
+.current-odds-methodology{
+  display:grid;
+  gap:4px;
+  margin-top:10px;
+  padding:10px;
+  border:1px solid var(--status-info-border);
+  border-radius:10px;
+  background:var(--status-info-bg);
+  color:var(--status-info-text);
+  font-size:12px;
+  line-height:1.45;
+}
+
+.current-odds-methodology span{
+  color:var(--text-secondary);
+}
+
+.current-odds-error{
+  border-color:var(--status-error-border);
+  background:var(--status-error-bg);
+  color:var(--status-error-text);
+}
+
+.current-odds-scenario{
+  padding:9px 10px;
+  border:1px solid var(--status-info-border);
+  border-radius:10px;
+  background:var(--status-info-bg);
+  color:var(--status-info-text);
+  font-size:13px;
+}
+
+.current-odds-movement-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:0 0 12px;
+}
+
+.current-odds-movement-list span{
+  padding:5px 8px;
+  border:1px solid var(--border);
+  border-radius:var(--radius-pill);
+  background:var(--surface-panel-alt);
+  color:var(--muted);
+  font-size:12px;
+}
 .current-seed-meta{
   display:flex;
   flex-wrap:wrap;

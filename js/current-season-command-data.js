@@ -965,4 +965,6 @@ export {
   remainingScheduleForOwner,
   resolveCurrentSeasonRules,
   scheduledRegularSeasonGames,
+  saundersLineSeed,
+  sortAndRankStandings,
 };

@@ -13,7 +13,7 @@ const { inspectHeroAssets } = require('../scripts/data/media-validation.cjs');
 const { createAjv, validateWithSchema } = require('../scripts/data/schema-validation.cjs');
 const { validateSemanticBundle } = require('../scripts/data/semantic-validation.cjs');
 const { checkGeneratedAssets } = require('../scripts/check_generated_assets.cjs');
-const { validateDerivedDependencies } = require('../scripts/validate_assets.cjs');
+const { validateDraftSpotDependencies, validateDerivedDependencies } = require('../scripts/validate_assets.cjs');
 
 const root = path.join(__dirname, '..');
 const bundle = {
@@ -150,7 +150,7 @@ test('manifest is deterministic, content-addressed, and excludes its own bytes',
 
   const temp = copyHeroFixture();
   try {
-    for (const file of ['H2H.json', 'SeasonSummary.json', 'Rivalries.json', 'CurrentSeason.json', 'DerivedStats.json']) {
+    for (const file of ['H2H.json', 'SeasonSummary.json', 'Rivalries.json', 'CurrentSeason.json', 'DraftSpot.json', 'DerivedStats.json']) {
       fs.copyFileSync(path.join(root, 'assets', file), path.join(temp, 'assets', file));
     }
     fs.writeFileSync(path.join(temp, 'assets/.LeaguePic.jpeg.icloud'), 'placeholder');
@@ -169,6 +169,14 @@ test('derived dependency checks reject stale source hashes', () => {
   const changed = clone(bundle);
   changed.H2H[0].scoreA += 0.1;
   assert.ok(validateDerivedDependencies(changed, derived).some(error => error.includes('H2H source hash is stale')));
+});
+
+test('Draft Spot dependency checks reject stale SeasonSummary hashes', () => {
+  const draftSpot = readJson(path.join(root, 'assets/DraftSpot.json'));
+  assert.deepEqual(validateDraftSpotDependencies(bundle, draftSpot), []);
+  const changed = clone(bundle);
+  changed.SeasonSummary[0].draft_pick = changed.SeasonSummary[0].draft_pick === 1 ? 2 : 1;
+  assert.ok(validateDraftSpotDependencies(changed, draftSpot).some(error => error.includes('source hash is stale')));
 });
 
 test('media audit validates signatures and reports corruption and offloaded source state', async () => {

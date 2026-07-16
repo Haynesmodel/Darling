@@ -1,7 +1,7 @@
 const path = require('node:path');
 
 const SCHEMA_VERSION = 1;
-const MANIFEST_VERSION = 1;
+const MANIFEST_VERSION = 2;
 const DERIVED_GENERATOR_VERSION = 1;
 
 const SOURCE_ASSETS = Object.freeze({
@@ -12,6 +12,7 @@ const SOURCE_ASSETS = Object.freeze({
 });
 
 const GENERATED_ASSETS = Object.freeze({
+  DraftSpot: { path: 'assets/DraftSpot.json', schema: 'draft-spot.schema.json', required: false },
   DerivedStats: { path: 'assets/DerivedStats.json', schema: 'derived-stats.schema.json' },
   AssetManifest: { path: 'assets/asset-manifest.json', schema: 'asset-manifest.schema.json' },
   AssetTypes: { path: 'src/data/generated/asset-types.ts' },

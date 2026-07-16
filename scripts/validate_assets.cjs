@@ -48,6 +48,16 @@ function validateDerivedDependencies(bundle, derived) {
   return errors;
 }
 
+function validateDraftSpotDependencies(bundle, draftSpot) {
+  if (!draftSpot) {
+    return ['ERROR [DRAFT_SPOT_MISSING] assets/DraftSpot.json: generated asset is missing'];
+  }
+  const actual = sha256Json(bundle.SeasonSummary);
+  return draftSpot.source_sha256 === actual
+    ? []
+    : ['ERROR [DRAFT_SPOT_SOURCE_HASH] assets/DraftSpot.json: SeasonSummary source hash is stale'];
+}
+
 async function validateAssets(root = process.cwd(), argv = []) {
   const resolved = resolveAssetPaths(argv, root);
   const bundle = readBundle(resolved.paths);
@@ -76,7 +86,9 @@ async function validateAssets(root = process.cwd(), argv = []) {
 
   if (fullAudit && !errors.length) {
     const derived = readJson(path.join(root, 'assets', 'DerivedStats.json'));
+    const draftSpot = readJson(path.join(root, 'assets', 'DraftSpot.json'));
     errors.push(...validateDerivedDependencies(bundle, derived));
+    errors.push(...validateDraftSpotDependencies(bundle, draftSpot));
     errors.push(...await verifyManifest(root));
   }
 
@@ -106,6 +118,7 @@ module.exports = {
   HERO_REQUIREMENTS,
   resolveAssetPaths,
   validateAssets,
+  validateDraftSpotDependencies,
   validateDerivedDependencies,
   validateHeroAssets,
 };

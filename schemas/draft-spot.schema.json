@@ -1,0 +1,293 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://darling.example/schemas/draft-spot.schema.json",
+  "title": "DraftSpot",
+  "description": "Deterministic draft-position observations generated from SeasonSummary.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generator_version",
+    "source",
+    "source_sha256",
+    "generated_at",
+    "season_range",
+    "team_seasons",
+    "correlations",
+    "rows",
+    "pick_summary",
+    "zone_summary",
+    "owner_recommendations"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "generator_version": { "const": 1 },
+    "source": { "const": "SeasonSummary.json" },
+    "source_sha256": { "$ref": "common.schema.json#/$defs/sha256" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "season_range": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "type": ["integer", "null"], "minimum": 2014, "maximum": 2100 },
+        "end": { "type": ["integer", "null"], "minimum": 2014, "maximum": 2100 }
+      }
+    },
+    "team_seasons": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+    "correlations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pick_finish",
+        "draft_percentile_finish_score",
+        "draft_percentile_points_z"
+      ],
+      "properties": {
+        "pick_finish": { "type": "number", "minimum": -1, "maximum": 1 },
+        "draft_percentile_finish_score": { "type": "number", "minimum": -1, "maximum": 1 },
+        "draft_percentile_points_z": { "type": "number", "minimum": -1, "maximum": 1 }
+      }
+    },
+    "rows": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/row" }
+    },
+    "pick_summary": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/pickSummary" }
+    },
+    "zone_summary": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/zoneSummary" }
+    },
+    "owner_recommendations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ownerRecommendation" }
+    }
+  },
+  "$defs": {
+    "rate": { "type": "number", "minimum": 0, "maximum": 1 },
+    "zoneKey": { "enum": ["early", "middle", "late"] },
+    "zoneLabel": { "enum": ["Early (1-3)", "Middle (4-7)", "Late (8+)"] },
+    "row": {
+      "title": "DraftSpotRow",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "season",
+        "owner",
+        "draft_pick",
+        "team_count",
+        "zone_key",
+        "zone",
+        "wins",
+        "losses",
+        "ties",
+        "finish",
+        "points_for",
+        "points_against",
+        "champion",
+        "saunders",
+        "made_playoffs",
+        "top_three",
+        "win_pct",
+        "finish_score",
+        "draft_percentile",
+        "points_rank",
+        "points_score",
+        "points_z",
+        "wins_above_avg"
+      ],
+      "properties": {
+        "season": { "$ref": "common.schema.json#/$defs/season" },
+        "owner": { "$ref": "common.schema.json#/$defs/owner" },
+        "draft_pick": { "type": "integer", "minimum": 1, "maximum": 24 },
+        "team_count": { "type": "integer", "minimum": 2, "maximum": 24 },
+        "zone_key": { "$ref": "#/$defs/zoneKey" },
+        "zone": { "$ref": "#/$defs/zoneLabel" },
+        "wins": { "type": "number", "minimum": 0 },
+        "losses": { "type": "number", "minimum": 0 },
+        "ties": { "type": "number", "minimum": 0 },
+        "finish": { "type": "integer", "minimum": 1, "maximum": 24 },
+        "points_for": { "type": "number", "minimum": 0 },
+        "points_against": { "type": "number", "minimum": 0 },
+        "champion": { "type": "boolean" },
+        "saunders": { "type": "boolean" },
+        "made_playoffs": { "type": "boolean" },
+        "top_three": { "type": "boolean" },
+        "win_pct": { "$ref": "#/$defs/rate" },
+        "finish_score": { "$ref": "#/$defs/rate" },
+        "draft_percentile": { "$ref": "#/$defs/rate" },
+        "points_rank": { "type": "integer", "minimum": 1, "maximum": 24 },
+        "points_score": { "$ref": "#/$defs/rate" },
+        "points_z": { "type": "number" },
+        "wins_above_avg": { "type": "number" }
+      }
+    },
+    "baseSummary": {
+      "type": "object",
+      "properties": {
+        "n": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "avg_finish": { "type": "number", "minimum": 0, "maximum": 24 },
+        "avg_finish_score": { "$ref": "#/$defs/rate" },
+        "avg_wins_above_avg": { "type": "number" },
+        "avg_points_z": { "type": "number" },
+        "top_three_rate": { "$ref": "#/$defs/rate" },
+        "playoff_rate": { "$ref": "#/$defs/rate" },
+        "champion_rate": { "$ref": "#/$defs/rate" },
+        "saunders_rate": { "$ref": "#/$defs/rate" }
+      }
+    },
+    "pickSummary": {
+      "allOf": [
+        { "$ref": "#/$defs/baseSummary" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "draft_pick",
+            "n",
+            "avg_finish",
+            "avg_finish_score",
+            "avg_wins_above_avg",
+            "avg_points_z",
+            "top_three_rate",
+            "playoff_rate",
+            "championships",
+            "champion_rate",
+            "saunders_count",
+            "saunders_rate"
+          ],
+          "properties": {
+            "draft_pick": { "type": "integer", "minimum": 1, "maximum": 24 },
+            "n": true,
+            "avg_finish": true,
+            "avg_finish_score": true,
+            "avg_wins_above_avg": true,
+            "avg_points_z": true,
+            "top_three_rate": true,
+            "playoff_rate": true,
+            "championships": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+            "champion_rate": true,
+            "saunders_count": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+            "saunders_rate": true
+          }
+        }
+      ]
+    },
+    "zoneSummary": {
+      "allOf": [
+        { "$ref": "#/$defs/baseSummary" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "zone_key",
+            "zone",
+            "n",
+            "avg_pick",
+            "avg_finish",
+            "avg_finish_score",
+            "avg_wins_above_avg",
+            "avg_points_z",
+            "top_three_rate",
+            "playoff_rate",
+            "champion_rate",
+            "saunders_rate"
+          ],
+          "properties": {
+            "zone_key": { "$ref": "#/$defs/zoneKey" },
+            "zone": { "$ref": "#/$defs/zoneLabel" },
+            "n": true,
+            "avg_pick": { "type": "number", "minimum": 1, "maximum": 24 },
+            "avg_finish": true,
+            "avg_finish_score": true,
+            "avg_wins_above_avg": true,
+            "avg_points_z": true,
+            "top_three_rate": true,
+            "playoff_rate": true,
+            "champion_rate": true,
+            "saunders_rate": true
+          }
+        }
+      ]
+    },
+    "recommendationGroup": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "label",
+        "n",
+        "avg_finish",
+        "avg_finish_score",
+        "playoffs",
+        "top_three",
+        "titles",
+        "saunders"
+      ],
+      "properties": {
+        "label": { "type": "string", "minLength": 1 },
+        "n": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "avg_finish": { "type": "number", "minimum": 0, "maximum": 24 },
+        "avg_finish_score": { "$ref": "#/$defs/rate" },
+        "playoffs": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "top_three": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "titles": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "saunders": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" },
+        "draft_pick": { "type": "integer", "minimum": 1, "maximum": 24 },
+        "zone_key": { "$ref": "#/$defs/zoneKey" },
+        "zone": { "$ref": "#/$defs/zoneLabel" }
+      }
+    },
+    "ownerRecommendation": {
+      "title": "DraftSpotOwnerRecommendation",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "owner",
+        "target",
+        "recommendation",
+        "caution",
+        "best_pick",
+        "best_zone",
+        "history",
+        "confidence"
+      ],
+      "properties": {
+        "owner": { "$ref": "common.schema.json#/$defs/owner" },
+        "target": { "type": "string", "minLength": 1 },
+        "recommendation": { "type": "string", "minLength": 1 },
+        "caution": { "type": "string", "minLength": 1 },
+        "best_pick": { "$ref": "#/$defs/recommendationGroup" },
+        "best_zone": { "$ref": "#/$defs/recommendationGroup" },
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "season",
+              "draft_pick",
+              "finish",
+              "champion",
+              "saunders",
+              "made_playoffs"
+            ],
+            "properties": {
+              "season": { "$ref": "common.schema.json#/$defs/season" },
+              "draft_pick": { "type": "integer", "minimum": 1, "maximum": 24 },
+              "finish": { "type": "integer", "minimum": 1, "maximum": 24 },
+              "champion": { "type": "boolean" },
+              "saunders": { "type": "boolean" },
+              "made_playoffs": { "type": "boolean" }
+            }
+          }
+        },
+        "confidence": {
+          "enum": ["strong", "medium", "small", "league-wide fallback"]
+        }
+      }
+    }
+  }
+}

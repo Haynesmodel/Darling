@@ -10,6 +10,7 @@ export const TABLE_IDS = [
   'current-standings',
   'current-projected',
   'trophy-seasons',
+  'draft-rows',
 ] as const;
 
 export type TableId = typeof TABLE_IDS[number];
@@ -101,6 +102,15 @@ export interface TableUrlState {
   gameMaxScore?: number | null;
   gameSort?: string | null;
   gameLimit?: number | null;
+  draftOwner?: string | null;
+  draftMode?: string | null;
+  draftStart?: number | null;
+  draftEnd?: number | null;
+  draftMetric?: string | null;
+  draftMinSample?: number | null;
+  draftNormalize?: string | null;
+  draftPick?: number | null;
+  draftZone?: string | null;
 }
 
 export interface TableRenderPayload {

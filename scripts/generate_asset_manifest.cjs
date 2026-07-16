@@ -9,9 +9,12 @@ function outputRootFromArgs(argv) {
   return index >= 0 ? path.resolve(argv[index + 1]) : process.cwd();
 }
 
-async function generateAssetManifest({ sourceRoot = process.cwd(), outputRoot = sourceRoot } = {}) {
+async function generateAssetManifest({ sourceRoot = process.cwd(), outputRoot = sourceRoot, draftSpotPath } = {}) {
   const derivedPath = path.join(outputRoot, GENERATED_ASSETS.DerivedStats.path);
-  const manifest = await buildManifest(sourceRoot, { derivedPath });
+  const manifest = await buildManifest(sourceRoot, {
+    derivedPath,
+    draftSpotPath: draftSpotPath || path.join(outputRoot, GENERATED_ASSETS.DraftSpot.path),
+  });
   const outputPath = path.join(outputRoot, GENERATED_ASSETS.AssetManifest.path);
   writeCanonicalJson(outputPath, manifest);
   return { outputPath, manifest };

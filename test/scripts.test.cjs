@@ -256,7 +256,7 @@ test('asset sync copies source assets into Vite public assets', async () => {
   });
 });
 
-test('built asset audit follows manifest requirement flags', async () => {
+test('built asset audit requires every manifested deployable asset', async () => {
   await withTempRepo((root) => {
     const assetDir = path.join(root, 'dist', 'assets');
     fs.mkdirSync(path.join(assetDir, 'hero'), { recursive: true });
@@ -273,6 +273,7 @@ test('built asset audit follows manifest requirement flags', async () => {
       },
     }));
     fs.writeFileSync(path.join(assetDir, 'H2H.json'), '[]');
+    fs.writeFileSync(path.join(assetDir, 'Rivalries.json'), '[]');
     fs.writeFileSync(path.join(assetDir, 'hero', 'league-480.jpg'), 'image');
     assert.deepEqual(auditBuiltAssets(root), []);
 

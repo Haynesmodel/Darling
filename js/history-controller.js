@@ -270,6 +270,7 @@ let lastEffectKey = null;
 let listenersBound = false;
 let dynastyModalOpener = null;
 let dynastyModalOpenerKey = null;
+let suppressNextDynastyModalClose = false;
 
 const SPECIAL_TITLE_NOTES = {
   Joel: { champs: { 2014: 'Singer not in league', 2020: 'COVID season' } },
@@ -833,6 +834,10 @@ function restoreDynastyModalFocus() {
 }
 
 function handleDynastyWindowModalClose() {
+  if (suppressNextDynastyModalClose) {
+    suppressNextDynastyModalClose = false;
+    return;
+  }
   if (selectedDynastyState?.selectedWindowKey) {
     selectedDynastyState = {
       ...(selectedDynastyState || {}),
@@ -842,6 +847,22 @@ function handleDynastyWindowModalClose() {
     renderDynasty();
   }
   restoreDynastyModalFocus();
+}
+
+function closeDynastyWindowForNavigation(modal) {
+  if (selectedDynastyState) {
+    selectedDynastyState = {
+      ...selectedDynastyState,
+      selectedWindowKey: null,
+      selectedWindowKind: null,
+    };
+  }
+  dynastyModalOpener = null;
+  dynastyModalOpenerKey = null;
+  suppressNextDynastyModalClose = !!modal?.open;
+  if (modal?.open && typeof modal.close === 'function') modal.close();
+  modal?.replaceChildren?.();
+  document.body.classList.remove('no-scroll');
 }
 
 function applyHistoryUrlState(urlState = parseUrlState()) {
@@ -1021,6 +1042,10 @@ function ensureDynastyWindowInteractions() {
     slumps.dataset.bound = '1';
   }
   if (modal && !modal.dataset.bound) {
+    modal.addEventListener('darling:dialog-navigation-close', event => {
+      event.preventDefault();
+      closeDynastyWindowForNavigation(modal);
+    });
     modal.addEventListener('click', event => {
       const target = event.target instanceof Element ? event.target : null;
       if (target !== modal && !target?.closest('[data-dynasty-modal-close="1"]')) return;

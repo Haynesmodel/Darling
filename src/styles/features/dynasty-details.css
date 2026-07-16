@@ -264,7 +264,7 @@
   -webkit-overflow-scrolling:touch;
 }
 #dynastyHeatmap:focus-visible{
-  outline:var(--focus-ring-width) solid var(--focus-ring);
+  outline:var(--focus-ring-width) solid var(--border-focus);
   outline-offset:var(--focus-ring-offset);
 }
 .dynasty-heatmap{

@@ -134,6 +134,25 @@ test('browser Back closes the Dynasty dialog before hiding its tabpanel', async 
   await expect(page.locator('body')).not.toHaveClass(/no-scroll/);
   await expect(page.getByRole('tabpanel', { name: 'League History' })).toBeVisible();
   await expect(history).toBeFocused();
+  await expect.poll(() => page.evaluate(() => ({
+    tab: new URL(window.location.href).searchParams.get('tab'),
+    header: document.querySelector('header h2')?.textContent,
+    title: document.title,
+    accentTheme: document.documentElement.dataset.accentTheme,
+    ownerTheme: document.documentElement.dataset.ownerTheme,
+    seasonMode: document.documentElement.dataset.seasonMode,
+    selectedTab: document.querySelector('[role="tab"][aria-selected="true"]')?.id,
+    visiblePanel: document.querySelector('[role="tabpanel"]:not([hidden])')?.id,
+  }))).toEqual({
+    tab: null,
+    header: 'Joe',
+    title: 'Joe — League History',
+    accentTheme: 'owner',
+    ownerTheme: 'Joe',
+    seasonMode: 'regular',
+    selectedTab: 'tabHistoryBtn',
+    visiblePanel: 'page-history',
+  });
 });
 
 test('repeating the search shortcut does not retain a duplicate scroll lock', async ({ page }) => {
@@ -170,6 +189,20 @@ test('the Dynasty heatmap is locally scrollable on mobile', async ({ page }) => 
   expect(metrics.mainOverflowX).not.toBe('hidden');
   await heatmap.evaluate(element => element.scrollTo({ left: element.scrollWidth }));
   await expect.poll(() => heatmap.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
+  await heatmap.focus();
+  await expect(heatmap).toBeFocused();
+  const focusOutline = await heatmap.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      color: style.outlineColor,
+      style: style.outlineStyle,
+      width: Number.parseFloat(style.outlineWidth),
+    };
+  });
+  expect(focusOutline.style).toBe('solid');
+  expect(focusOutline.width).toBeGreaterThanOrEqual(2);
+  expect(focusOutline.color).not.toBe('transparent');
+  expect(focusOutline.color).not.toBe('rgba(0, 0, 0, 0)');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 

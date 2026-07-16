@@ -7,19 +7,19 @@
   "additionalProperties": false,
   "required": ["manifest_version", "data_version", "derived_generator_version", "schema_versions", "assets", "derived", "media"],
   "properties": {
-    "manifest_version": { "const": 1 },
+    "manifest_version": { "type": "integer", "minimum": 1 },
     "data_version": { "$ref": "common.schema.json#/$defs/sha256" },
-    "derived_generator_version": { "const": 1 },
+    "derived_generator_version": { "type": "integer", "minimum": 1 },
     "schema_versions": {
       "type": "object",
       "additionalProperties": false,
       "required": ["H2H", "SeasonSummary", "Rivalries", "CurrentSeason", "DerivedStats"],
       "properties": {
-        "H2H": { "const": 1 },
-        "SeasonSummary": { "const": 1 },
-        "Rivalries": { "const": 1 },
-        "CurrentSeason": { "const": 1 },
-        "DerivedStats": { "const": 1 }
+        "H2H": { "type": "integer", "minimum": 1 },
+        "SeasonSummary": { "type": "integer", "minimum": 1 },
+        "Rivalries": { "type": "integer", "minimum": 1 },
+        "CurrentSeason": { "type": "integer", "minimum": 1 },
+        "DerivedStats": { "type": "integer", "minimum": 1 }
       }
     },
     "assets": {
@@ -71,13 +71,11 @@
         "leagueHeroSource": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["role", "path", "fallback", "available", "offloaded"],
+          "required": ["role", "path", "fallback"],
           "properties": {
             "role": { "const": "regeneration-optional" },
             "path": { "$ref": "common.schema.json#/$defs/relativeAssetPath" },
-            "fallback": { "$ref": "common.schema.json#/$defs/relativeAssetPath" },
-            "available": { "type": "boolean" },
-            "offloaded": { "type": "boolean" }
+            "fallback": { "$ref": "common.schema.json#/$defs/relativeAssetPath" }
           }
         }
       }

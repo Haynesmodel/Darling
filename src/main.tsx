@@ -11,14 +11,15 @@ import { createSearchRuntime } from './search/search-runtime';
 import type { DarlingSearchRuntime } from './search/search-types';
 import { createTableRuntime } from './tables/table-runtime';
 import type { DarlingTableRuntime } from './tables/table-types';
-import { loadLeagueAssets } from './data/load-league-assets';
 import type { DataDiagnostics } from './data/load-league-assets';
+
+type DarlingDataLoader = typeof import('./data/load-league-assets').loadLeagueAssets;
 
 interface BrowserWindow {
   darlingTheme?: DarlingThemeRuntime;
   darlingSearch?: DarlingSearchRuntime;
   darlingTables?: DarlingTableRuntime;
-  darlingDataLoader?: typeof loadLeagueAssets;
+  darlingDataLoader?: DarlingDataLoader;
   darlingDataDiagnostics?: DataDiagnostics;
 }
 
@@ -40,7 +41,10 @@ if (browser.window) {
   browser.window.darlingTheme = themeRuntime;
   browser.window.darlingSearch = searchRuntime;
   browser.window.darlingTables = tableRuntime;
-  browser.window.darlingDataLoader = loadLeagueAssets;
+  browser.window.darlingDataLoader = async options => {
+    const { loadLeagueAssets } = await import('./data/load-league-assets');
+    return loadLeagueAssets(options);
+  };
 }
 
 function mountThemeControls() {

@@ -20,6 +20,7 @@ Test locally:
 - `npm run test:assets` validates source and generated JSON, cross-file league semantics, manifest freshness, and responsive media.
 - `npm run generate:data` intentionally refreshes generated types, standalone validators, derived statistics, and the manifest.
 - `npm run check:data-generated` performs a read-only byte-for-byte drift check.
+- `npm run check:bundle` verifies the production entry, lazy data-runtime chunk, and total gzip budgets.
 - `npm run test:charts` runs the chart data/spec smoke tests.
 - `npm run test:tables` runs the interactive table engine, row-adapter, quick-filter, and saved-view schema tests.
 - `npm run test:unit` regenerates the chart bundle, then runs typecheck, hygiene, asset validation, chart tests, Node unit tests, and Python tests.

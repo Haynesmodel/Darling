@@ -9,6 +9,8 @@ const { pathToFileURL } = require('node:url');
 const sharp = require('sharp');
 
 const { checkRepoHygiene } = require('../scripts/check_repo_hygiene.cjs');
+const { auditBuiltAssets } = require('../scripts/audit_built_assets.cjs');
+const { measureBundle } = require('../scripts/check_bundle_size.cjs');
 const { FORMATS, HERO_WIDTHS, generateHeroImages, resolveSource } = require('../scripts/generate_hero_images.cjs');
 const { createStaticServer, normalizeBasePath, resolvePath } = require('../scripts/serve_static.cjs');
 const { syncPublicAssets } = require('../scripts/sync_public_assets.cjs');
@@ -187,6 +189,60 @@ test('asset sync copies source assets into Vite public assets', async () => {
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'hero', 'source.txt')), false);
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', '.DS_Store')), false);
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'stale.json')), false);
+  });
+});
+
+test('built asset audit follows manifest requirement flags', async () => {
+  await withTempRepo((root) => {
+    const assetDir = path.join(root, 'dist', 'assets');
+    fs.mkdirSync(path.join(assetDir, 'hero'), { recursive: true });
+    fs.writeFileSync(path.join(assetDir, 'asset-manifest.json'), JSON.stringify({
+      assets: {
+        H2H: { path: 'assets/H2H.json', required: true },
+        Rivalries: { path: 'assets/Rivalries.json', required: false },
+      },
+      derived: { path: 'assets/DerivedStats.json', required: false },
+      media: {
+        leagueHero: {
+          variants: [{ path: 'assets/hero/league-480.jpg' }],
+        },
+      },
+    }));
+    fs.writeFileSync(path.join(assetDir, 'H2H.json'), '[]');
+    fs.writeFileSync(path.join(assetDir, 'hero', 'league-480.jpg'), 'image');
+    assert.deepEqual(auditBuiltAssets(root), []);
+
+    fs.rmSync(path.join(assetDir, 'H2H.json'));
+    assert.ok(auditBuiltAssets(root).some(error => error.includes('H2H.json is missing')));
+  });
+});
+
+test('bundle measurement enforces a separate data runtime chunk', async () => {
+  await withTempRepo((root) => {
+    const distDir = path.join(root, 'dist');
+    const assetDir = path.join(distDir, 'assets');
+    fs.mkdirSync(path.join(distDir, '.vite'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'scripts', 'data'), { recursive: true });
+    fs.mkdirSync(assetDir, { recursive: true });
+    fs.writeFileSync(path.join(root, 'scripts', 'data', 'bundle-budget.json'), JSON.stringify({
+      baseline: { commit: 'fixture', largest_chunk_bytes: 100, largest_chunk_gzip_bytes: 100 },
+      budgets: {
+        entry_chunk_max_bytes: 1000,
+        total_javascript_gzip_max_bytes: 1000,
+        require_data_runtime_chunk: true,
+      },
+    }));
+    fs.writeFileSync(path.join(distDir, '.vite', 'manifest.json'), JSON.stringify({
+      'src/main.tsx': { file: 'assets/index.js', isEntry: true },
+      'src/data/load-league-assets.ts': { file: 'assets/load-league-assets.js', isDynamicEntry: true },
+    }));
+    fs.writeFileSync(path.join(assetDir, 'index.js'), 'export const app = true;\n');
+    fs.writeFileSync(path.join(assetDir, 'load-league-assets.js'), 'export const loader = true;\n');
+
+    const result = measureBundle(root);
+    assert.deepEqual(result.errors, []);
+    assert.equal(result.chunks.length, 2);
+    assert.equal(result.dataChunk.isDynamicEntry, true);
   });
 });
 

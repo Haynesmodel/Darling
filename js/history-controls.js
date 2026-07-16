@@ -20,7 +20,10 @@ function setDropdownOpen(dropdown, isOpen, doc) {
   const btn = dropdown.querySelector('.dropdown-toggle');
   if (btn) btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   const menu = dropdown.querySelector('.dropdown-menu');
-  if (menu) menu.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+  if (menu) {
+    menu.hidden = !isOpen;
+    menu.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+  }
 }
 
 function closeDropdowns(except = null, doc) {
@@ -32,9 +35,17 @@ function closeDropdowns(except = null, doc) {
 }
 
 function buildFacet(containerId, values, prefix, onChange, doc) {
+  const labels = {
+    seasonFilters: 'Filter by season',
+    weekFilters: 'Filter by week',
+    oppFilters: 'Filter by opponent',
+    typeFilters: 'Filter by game type',
+    roundFilters: 'Filter by postseason round',
+  };
   buildFacetControl(containerId, values, {
     doc,
     prefix,
+    label: labels[containerId] || 'Filter options',
     onChange,
   });
 }

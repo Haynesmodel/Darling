@@ -9,6 +9,7 @@ const { pathToFileURL } = require('node:url');
 const sharp = require('sharp');
 
 const { checkRepoHygiene } = require('../scripts/check_repo_hygiene.cjs');
+const { checkCssHygiene, runCli: runCssHygieneCli } = require('../scripts/check_css_hygiene.cjs');
 const { auditBuiltAssets } = require('../scripts/audit_built_assets.cjs');
 const { measureBundle } = require('../scripts/check_bundle_size.cjs');
 const { FORMATS, HERO_WIDTHS, generateHeroImages, resolveSource } = require('../scripts/generate_hero_images.cjs');
@@ -55,9 +56,72 @@ function runShell(script, env, cwd) {
   });
 }
 
+function writeCssHygieneFixture(root) {
+  const styles = path.join(root, 'src', 'styles');
+  fs.mkdirSync(styles, { recursive: true });
+  fs.mkdirSync(path.join(root, 'scripts', 'data'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'scripts', 'data', 'css-budget.json'), JSON.stringify({
+    defaultSharedLineBudget: 20,
+    defaultFeatureLineBudget: 20,
+    lineBudgets: {
+      'src/styles/app.css': 10,
+    },
+    importantBudgets: {},
+    hardcodedColorBudgets: {},
+  }));
+  fs.writeFileSync(path.join(styles, 'app.css'), [
+    '@layer tokens, components;',
+    '@import "./tokens.css" layer(tokens);',
+    '@import "./components.css" layer(components);',
+    '',
+  ].join('\n'));
+  fs.writeFileSync(path.join(styles, 'tokens.css'), ':root{--fixture-text:CanvasText}\n');
+  fs.writeFileSync(path.join(styles, 'components.css'), '.fixture{color:var(--fixture-text)}\n');
+}
+
 test('repo hygiene accepts the expected ESM app shape', async () => {
   await withTempRepo((root) => {
     assert.deepEqual(checkRepoHygiene(root), []);
+  });
+});
+
+test('CSS hygiene checker and CLI accept a layered fixture', async () => {
+  await withTempRepo((root) => {
+    writeCssHygieneFixture(root);
+    assert.deepEqual(checkCssHygiene(root), []);
+
+    const originalLog = console.log;
+    const messages = [];
+    console.log = message => messages.push(String(message));
+    try {
+      assert.equal(runCssHygieneCli(root), 0);
+    } finally {
+      console.log = originalLog;
+    }
+    assert.ok(messages.some(message => message.includes('CSS hygiene checks passed')));
+  });
+});
+
+test('CSS hygiene checker and CLI report invalid and unimported CSS', async () => {
+  await withTempRepo((root) => {
+    writeCssHygieneFixture(root);
+    fs.appendFileSync(path.join(root, 'src', 'styles', 'components.css'), '.fixture{outline:none}\n');
+    fs.writeFileSync(path.join(root, 'src', 'styles', 'unimported.css'), '.unimported{color:var(--fixture-text)}\n');
+
+    const failures = checkCssHygiene(root);
+    assert.ok(failures.some(failure => failure.includes('repeats selector ".fixture"')));
+    assert.ok(failures.some(failure => failure.includes('uses outline:none')));
+    assert.ok(failures.some(failure => failure.includes('unimported.css is not imported')));
+
+    const originalError = console.error;
+    const messages = [];
+    console.error = message => messages.push(String(message));
+    try {
+      assert.equal(runCssHygieneCli(root), 1);
+    } finally {
+      console.error = originalError;
+    }
+    assert.ok(messages.some(message => message.includes('CSS hygiene:')));
   });
 });
 

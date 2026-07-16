@@ -1,0 +1,127 @@
+/* Controls */
+.controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.controls input,.controls select{min-block-size:var(--control-min-block-size);padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--surface-control);color:var(--text)}
+.rivalry-controls{align-items:center}
+.rivalry-controls select{min-width:180px}
+.current-controls{align-items:center}
+.current-controls select{min-width:140px}
+.trophy-controls{align-items:center}
+.trophy-controls select{min-width:220px}
+.gauntlet-controls-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(170px, 1fr));
+  gap:12px;
+  align-items:end;
+}
+.gauntlet-field{
+  display:grid;
+  gap:6px;
+  font-size:13px;
+  font-weight:700;
+  color:var(--muted);
+}
+.gauntlet-field select{
+  width:100%;
+  min-width:0;
+  font-weight:700;
+}
+.gauntlet-field-checkbox{
+  align-content:start;
+  gap:4px;
+}
+.gauntlet-checkbox-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:var(--header);
+  font-weight:800;
+}
+.gauntlet-field-note{
+  font-size:12px;
+  font-weight:600;
+  color:var(--muted);
+  line-height:1.35;
+}
+.gauntlet-actions{
+  display:grid;
+  gap:8px;
+  align-content:end;
+  justify-items:start;
+}
+.gauntlet-seed{
+  font-size:12px;
+  color:var(--muted);
+  font-weight:700;
+  line-height:1.2;
+}
+.rivalry-vs{font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.checkbox-label{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  font-size:14px;
+  font-weight:700;
+  color:var(--text);
+}
+.checkbox-label input[type="checkbox"]{
+  width:24px;
+  height:24px;
+  accent-color:var(--accent);
+}
+.btn{min-block-size:var(--control-min-block-size);border:1px solid var(--border);background:var(--surface-control);color:var(--text);padding:6px 10px;border-radius:999px;font-size:13px;cursor:pointer}
+.btn:hover{background:var(--surface-control-hover)}
+.btn.primary{background:var(--action-primary-bg);color:#fff;border-color:transparent}
+.btn.danger{background:var(--action-danger-bg);color:#fff;border-color:transparent}
+.btn.reset{background:var(--text-primary);color:var(--surface-panel)}
+
+/* Dropdown checklists */
+.dropdown{position:relative}
+.dropdown-toggle{font-weight:600;display:flex;align-items:center;gap:6px}
+.count-text{color:var(--muted);font-weight:600}
+.dropdown-menu{
+  position:absolute;top:100%;left:0;z-index:20;background:var(--surface-elevated);
+  border:1px solid var(--border);border-radius:10px;padding:8px;box-shadow:var(--shadow-pop);
+  max-height:320px;overflow:auto;min-width:240px
+}
+.dropdown-menu[hidden]{display:none}
+.dropdown-menu fieldset{min-width:0;margin:0;padding:0;border:0}
+.dropdown-sheet-header{display:none}
+.dropdown-menu .all-row{border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:6px}
+.dropdown-menu label{display:flex;align-items:center;gap:8px;min-height:40px;font-size:13px;margin:2px 0;padding:6px 8px;border-radius:8px;cursor:pointer}
+.dropdown-menu label:hover{background:var(--surface-control-hover)}
+.dropdown-menu input[type="checkbox"]{width:20px;height:20px;border:1px solid var(--border);border-radius:4px}
+.dropdown-menu .grid{display:flex;flex-direction:column}
+
+@media (max-width:700px){
+  .controls.filters{align-items:stretch}
+  .dropdown.open::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    z-index:90;
+    background:var(--overlay-backdrop);
+  }
+  .dropdown.open .dropdown-menu{
+    position:fixed;
+    inset:auto max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    z-index:100;
+    width:auto;
+    min-width:0;
+    max-height:min(68dvh, 560px);
+    padding:0 12px 12px;
+    border-radius:18px;
+  }
+  .dropdown-sheet-header{
+    position:sticky;
+    inset-block-start:0;
+    z-index:1;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:12px 0 10px;
+    border-bottom:1px solid var(--border);
+    background:var(--surface-elevated);
+  }
+  .dropdown-menu label{min-height:var(--touch-target-size)}
+}

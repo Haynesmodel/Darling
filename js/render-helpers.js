@@ -50,12 +50,29 @@ function clearAppStatus(doc) {
 function showPage(id, doc) {
   const root = docOrDefault(doc);
   if (!root) return;
-  root.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  root.querySelectorAll('.page').forEach(p => p.classList.remove('visible'));
-  const tab = root.getElementById(`tab${id[0].toUpperCase()}${id.slice(1)}Btn`) || root.getElementById('tabHistoryBtn');
-  const page = root.getElementById(`page-${id}`) || root.getElementById('page-history');
-  if (tab) tab.classList.add('active');
-  if (page) page.classList.add('visible');
+  if (
+    typeof window !== 'undefined'
+    && window.darlingAccessibility?.syncPageState
+    && root === document
+  ) {
+    window.darlingAccessibility.syncPageState(id);
+    return;
+  }
+  const resolvedId = ['history', 'current', 'rivalry', 'trophy', 'dynasty', 'gauntlet'].includes(id)
+    ? id
+    : 'history';
+  const activeTabId = `tab${resolvedId[0].toUpperCase()}${resolvedId.slice(1)}Btn`;
+  root.querySelectorAll('[role="tab"], .tab').forEach((tab) => {
+    const selected = tab.id === activeTabId;
+    tab.classList.toggle('active', selected);
+    tab.setAttribute('aria-selected', selected ? 'true' : 'false');
+    tab.tabIndex = selected ? 0 : -1;
+  });
+  root.querySelectorAll('[role="tabpanel"], .page').forEach((panel) => {
+    const visible = panel.id === `page-${resolvedId}`;
+    panel.classList.toggle('visible', visible);
+    panel.hidden = !visible;
+  });
 }
 
 function headerBannerHtml(owner, seasonSummaries) {
@@ -87,26 +104,33 @@ function updateTeamHeader(team, seasonSummaries, doc) {
 }
 
 function facetControlHtml(values, opts = {}) {
-  const { prefix = 'f' } = opts;
+  const { prefix = 'f', label = 'Filter options' } = opts;
   const allId = `${prefix}-all-option`;
   return `
-  <div class="all-row">
-    <label for="${allId}">
-      <input id="${allId}" type="checkbox" class="${prefix}-all" checked />
-      <span>All</span>
-    </label>
-  </div>
-  <div class="grid">
-    ${values.map((v, index) => {
-      const id = `${prefix}-option-${index}`;
-      return `
-      <label for="${id}">
-        <input id="${id}" type="checkbox" class="${prefix}-cb" data-value="${encodeURIComponent(v)}" />
-        <span>${escapeHtml(v)}</span>
+  <fieldset>
+    <legend class="visually-hidden">${escapeHtml(label)}</legend>
+    <div class="dropdown-sheet-header">
+      <strong>${escapeHtml(label)}</strong>
+      <button type="button" class="btn dropdown-done" data-dropdown-done="1">Done</button>
+    </div>
+    <div class="all-row">
+      <label for="${allId}">
+        <input id="${allId}" type="checkbox" class="${prefix}-all" checked />
+        <span>All</span>
       </label>
-    `;
-    }).join('')}
-  </div>
+    </div>
+    <div class="grid">
+      ${values.map((v, index) => {
+        const id = `${prefix}-option-${index}`;
+        return `
+        <label for="${id}">
+          <input id="${id}" type="checkbox" class="${prefix}-cb" data-value="${encodeURIComponent(v)}" />
+          <span>${escapeHtml(v)}</span>
+        </label>
+      `;
+      }).join('')}
+    </div>
+  </fieldset>
 `;
 }
 
@@ -115,9 +139,21 @@ function buildFacetControl(containerId, values, opts = {}) {
   if (!root) return;
   const container = root.getElementById(containerId);
   if (!container) return;
-  const { prefix = 'f', onChange = null } = opts;
+  const { prefix = 'f', label = 'Filter options', onChange = null } = opts;
+  const active = root.activeElement;
+  const focusedValue = active && container.contains(active)
+    ? active.dataset?.value ?? (active.matches?.(`input.${prefix}-all`) ? '__ALL__' : null)
+    : null;
 
-  container.innerHTML = facetControlHtml(values, { prefix });
+  container.innerHTML = facetControlHtml(values, { prefix, label });
+  if (focusedValue !== null) {
+    const nextTarget = focusedValue === '__ALL__'
+      ? container.querySelector(`input.${prefix}-all`)
+      : [...container.querySelectorAll(`input.${prefix}-cb`)]
+        .find(input => input.dataset.value === focusedValue)
+        || container.querySelector(`input.${prefix}-all`);
+    nextTarget?.focus();
+  }
   container.onchange = (e) => {
     if (e.target && e.target.matches(`input.${prefix}-all`)) {
       const allChecked = e.target.checked;

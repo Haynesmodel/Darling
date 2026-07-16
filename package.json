@@ -30,7 +30,12 @@
     "test:data": "npm run test:assets && node test/data.test.js",
     "test:scripts": "node --test test/scripts.test.cjs test/data-pipeline.test.cjs test/runtime-loader.test.cjs test/app-state-controller.test.js test/theme-system.test.cjs && python3 -m unittest discover -s test -p 'test_*.py'",
     "test:hygiene": "node scripts/check_repo_hygiene.cjs",
-    "test:unit": "npm run check:data-generated && npm run build:charts && npm run typecheck && npm run test:hygiene && npm run test:data && npm run test:charts && npm run test:search && npm run test:tables && npm run test:scripts",
+    "lint:css": "stylelint \"src/**/*.css\"",
+    "check:css": "node scripts/check_css_hygiene.cjs",
+    "test:a11y": "playwright test test/ui/accessibility.spec.js",
+    "test:keyboard": "playwright test test/ui/keyboard-navigation.spec.js",
+    "test:unit:core": "npm run check:data-generated && npm run build:charts && npm run typecheck && npm run test:hygiene && npm run test:data && npm run test:charts && npm run test:search && npm run test:tables && npm run test:scripts",
+    "test:unit": "npm run lint:css && npm run check:css && npm run test:unit:core",
     "test:coverage": "npm run test:assets && node scripts/run_tests_with_coverage.cjs && npm run test:ui && node scripts/v8_coverage_report.cjs && node scripts/check_coverage.cjs",
     "test:ui": "playwright test",
     "test:ui:preview": "PLAYWRIGHT_SERVER=preview playwright test",
@@ -38,6 +43,7 @@
     "test:ci": "npm run test:unit && VITE_BASE_PATH=/Darling/ npm run build && npm run audit:dist && npm run test:ui:preview"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
     "@jridgewell/trace-mapping": "^0.3.31",
     "@playwright/test": "^1.60.0",
     "@preact/preset-vite": "^2.10.5",
@@ -47,6 +53,8 @@
     "esbuild": "^0.28.1",
     "json-schema-to-typescript": "15.0.4",
     "sharp": "^0.35.3",
+    "stylelint": "17.14.0",
+    "stylelint-config-standard": "40.0.0",
     "typescript": "^7.0.2",
     "vite": "^8.1.4"
   },

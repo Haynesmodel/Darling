@@ -1,3 +1,9 @@
+/* FX overlays */
+#fxCrown{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:999;display:none}
+.crown{position:absolute;font-size:24px;animation:fall linear forwards;filter:drop-shadow(0 2px 2px rgba(0,0,0,.2))}
+@keyframes fall{0%{transform:translateY(-10vh) rotate(0deg);opacity:0}100%{transform:translateY(110vh) rotate(360deg);opacity:1}}
+#fxSaunders{position:fixed;inset:0;background:radial-gradient(70% 60% at 50% 30%, rgba(139,92,246,.25), rgba(139,92,246,.5));backdrop-filter:blur(1px);z-index:998;display:none;animation:fadeInOut 2s ease forwards}
+@keyframes fadeInOut{0%{opacity:0}10%{opacity:1}90%{opacity:.9}100%{opacity:0}}
 
 /* One-shot overlays */
 .egg-overlay{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
@@ -44,4 +50,42 @@
    .bg-sec{background:linear-gradient(180deg, rgba(0,128,128,.2), rgba(255,255,255,.08))}
    .bg-nuss-rishi{background:linear-gradient(180deg, rgba(255,0,0,.2), rgba(0,0,0,.05))}
    .bg-singer-nuss{background:linear-gradient(180deg, rgba(160,82,45,.2), rgba(0,0,0,.05))}
-   
+
+@media (prefers-reduced-motion:reduce){
+  :root{
+    --motion-fast:0ms;
+    --motion-normal:0ms;
+    --motion-slow:0ms;
+  }
+
+  *,
+  *::before,
+  *::after{
+    scroll-behavior:auto!important;
+  }
+
+  .crown,
+  #fxSaunders,
+  .egg-overlay,
+  .float{
+    display:none!important;
+    animation:none!important;
+  }
+
+  #funFacts .stat,
+  .dynasty-window-card,
+  .dynasty-slump-item,
+  .dynasty-heatmap-cell,
+  .trophy-hardware-card,
+  .gauntlet-team-card{
+    transition:none!important;
+    transform:none!important;
+  }
+
+  #funFacts .stat:hover,
+  .dynasty-window-card:hover,
+  .dynasty-slump-item:hover,
+  .dynasty-heatmap-cell:hover{
+    transform:none!important;
+  }
+}

@@ -21,11 +21,15 @@ Test locally:
 - `npm run generate:data` intentionally refreshes generated types, standalone validators, derived statistics, and the manifest.
 - `npm run check:data-generated` performs a read-only byte-for-byte drift check.
 - `npm run check:bundle` verifies the production entry, lazy data-runtime chunk, and total gzip budgets.
+- `npm run lint:css` validates application and component styles with Stylelint.
+- `npm run check:css` enforces stylesheet ownership, line, color, duplicate-selector, focus, and import guardrails.
 - `npm run test:charts` runs the chart data/spec smoke tests.
 - `npm run test:tables` runs the interactive table engine, row-adapter, quick-filter, and saved-view schema tests.
 - `npm run test:unit` regenerates the chart bundle, then runs typecheck, hygiene, asset validation, chart tests, Node unit tests, and Python tests.
 - `npm run test:scripts` runs the script helper tests, including the Python update helpers.
 - `npm run test:ui` runs the Playwright browser tests against the Vite dev server.
+- `npm run test:a11y` runs axe WCAG A/AA scans across pages and interaction states.
+- `npm run test:keyboard` runs tab, disclosure, dialog, skip-link, motion, and responsive keyboard checks.
 - `npm run test:ui:preview` runs the Playwright browser tests against a previously built `dist/` bundle under `/Darling/`.
 - `npm run test:coverage` runs the Node tests, browser tests, and coverage check.
 - `npm run test:ci` runs the local unit, GitHub Pages production build, and built-output UI checks that mirror CI.
@@ -64,6 +68,11 @@ Interactive tables:
 - History game filters and supported sorting continue to use canonical Global Search URL fields; presentation preferences remain local.
 - Saved views are local-only in `localStorage["darling.tableViews.v1"]` and are schema-validated when restored.
 - See [`docs/INTERACTIVE_TABLES.md`](./docs/INTERACTIVE_TABLES.md) before adding a table ID, column, adapter, quick filter, or saved-state field.
+
+Accessibility and CSS:
+- Primary navigation follows the manual-activation ARIA tab pattern, filter disclosures retain native checkbox semantics, and application dialogs manage inertness, focus containment, scroll lock, and focus restoration.
+- The application stylesheet entry is `src/styles/app.css`; shared and feature styles are assigned to explicit cascade layers.
+- See [`docs/accessibility.md`](./docs/accessibility.md) and [`docs/css-architecture.md`](./docs/css-architecture.md) before adding a tab, disclosure, modal, animation, shared style, or feature stylesheet.
 
 Current Season command-center assumptions:
 - `assets/CurrentSeason.json` can include `playoff_rules`; if omitted, the app assumes 14 regular-season weeks, 6 playoff teams, 2 byes, 6 Saunders slots, and standings sorted by win rate, points for, points differential, then owner.

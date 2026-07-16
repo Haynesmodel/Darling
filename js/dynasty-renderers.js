@@ -1139,11 +1139,10 @@ function dynastyWindowModalHtml(window = null, opts = {}) {
     </tr>
   `).join('');
   return `
-    <div class="dynasty-modal-backdrop" data-dynasty-modal-close="1"></div>
-    <div class="dynasty-modal-panel" role="dialog" aria-modal="true" aria-labelledby="dynastyWindowModalTitle" tabindex="-1">
+    <article class="dynasty-modal-panel">
       <button type="button" class="dynasty-modal-close" data-dynasty-modal-close="1" aria-label="Close window details">×</button>
       <div class="dynasty-modal-kicker">${escapeHtml(titleLabel)}</div>
-      <h3 id="dynastyWindowModalTitle">${escapeHtml(title)}</h3>
+      <h3 id="dynastyWindowModalTitle" tabindex="-1">${escapeHtml(title)}</h3>
       <div class="dynasty-modal-subtitle">
         ${escapeHtml(window.windowSize ? `${window.windowSize}-Year Window` : 'Window')}
         · ${escapeHtml(window.label || 'Dynasty Window')}
@@ -1176,7 +1175,7 @@ function dynastyWindowModalHtml(window = null, opts = {}) {
           </tbody>
         </table>
       </div>
-    </div>
+    </article>
   `;
 }
 
@@ -1216,20 +1215,42 @@ function dynastyBestWindowsHtml(bestWindows = {}) {
 
 function heatmapCellBackground(cell, score, minScore = 0, maxScore = 0) {
   const mix = (from, to, t) => Math.round(from + ((to - from) * t));
-  const blend = (from, to, t) => `rgb(${mix(from[0], to[0], t)}, ${mix(from[1], to[1], t)}, ${mix(from[2], to[2], t)})`;
+  const blend = (from, to, t) => from.map((value, index) => mix(value, to[index], t));
+  const cssColor = rgb => `rgb(${rgb.join(', ')})`;
+  const luminance = (rgb) => {
+    const channels = rgb.map((channel) => {
+      const normalized = channel / 255;
+      return normalized <= 0.04045
+        ? normalized / 12.92
+        : ((normalized + 0.055) / 1.055) ** 2.4;
+    });
+    return (0.2126 * channels[0]) + (0.7152 * channels[1]) + (0.0722 * channels[2]);
+  };
+  const contrast = (left, right) => {
+    const light = Math.max(luminance(left), luminance(right));
+    const dark = Math.min(luminance(left), luminance(right));
+    return (light + 0.05) / (dark + 0.05);
+  };
+  const readableText = background => (
+    contrast(background, [15, 23, 42]) >= contrast(background, [255, 255, 255])
+      ? '#0f172a'
+      : '#fff'
+  );
   if (cell.profile?.champion) {
     const t = 0.75;
+    const background = blend([255, 249, 231], [234, 179, 8], t);
     return {
-      background: blend([255, 249, 231], [234, 179, 8], t),
-      color: '#1f2937',
+      background: cssColor(background),
+      color: readableText(background),
       boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.26), 0 0 0 1px rgba(180,123,0,.24)',
     };
   }
   if (cell.profile?.saunders) {
     const t = 0.85;
+    const background = blend([90, 61, 24], [75, 44, 14], t);
     return {
-      background: blend([90, 61, 24], [75, 44, 14], t),
-      color: '#fff',
+      background: cssColor(background),
+      color: readableText(background),
       boxShadow: 'inset 0 0 0 1px rgba(255,248,238,.14), 0 0 0 1px rgba(75,44,14,.35)',
     };
   }
@@ -1240,16 +1261,18 @@ function heatmapCellBackground(cell, score, minScore = 0, maxScore = 0) {
   if (value <= anchor) {
     const denominator = Math.max(1, anchor - lowerBound);
     const t = clamp01((anchor - value) / denominator);
+    const background = blend([255, 248, 248], [185, 28, 28], t);
     return {
-      background: blend([255, 248, 248], [185, 28, 28], t),
-      color: t > 0.72 ? '#0f172a' : '#fff',
+      background: cssColor(background),
+      color: readableText(background),
     };
   }
   const denominator = Math.max(1, upperBound - anchor);
   const t = clamp01((value - anchor) / denominator);
+  const background = blend([244, 248, 255], [37, 99, 235], t);
   return {
-    background: blend([244, 248, 255], [37, 99, 235], t),
-    color: t < 0.35 ? '#0f172a' : '#fff',
+    background: cssColor(background),
+    color: readableText(background),
   };
 }
 
@@ -1441,14 +1464,16 @@ function renderDynastyWindowModal(window, opts = {}) {
   const el = docOrDefault(opts.doc)?.getElementById('dynastyWindowModal');
   if (!el) return;
   if (!window) {
-    el.hidden = true;
-    el.setAttribute('aria-hidden', 'true');
+    if (typeof el.close === 'function' && el.open) el.close();
+    docOrDefault(opts.doc)?.body?.classList?.remove('no-scroll');
     el.innerHTML = '';
     return;
   }
-  el.hidden = false;
-  el.setAttribute('aria-hidden', 'false');
   el.innerHTML = dynastyWindowModalHtml(window, opts);
+  if (typeof el.showModal === 'function' && !el.open) el.showModal();
+  docOrDefault(opts.doc)?.body?.classList?.add('no-scroll');
+  const title = el.querySelector('#dynastyWindowModalTitle');
+  requestAnimationFrame(() => title?.focus?.());
 }
 
 function renderDynastySlumpModal(window, opts = {}) {

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { DarlingSearchRuntime } from '../../search/search-types';
 import CommandPalette from './CommandPalette';
 import SearchTrigger from './SearchTrigger';
-import './search.css';
+import { lockBodyScroll, setApplicationInert, unlockBodyScroll } from '../../accessibility/focus';
 
 interface GlobalSearchProps {
   runtime: DarlingSearchRuntime;
@@ -20,13 +20,17 @@ export default function GlobalSearch({ runtime, portal }: GlobalSearchProps) {
   const triggerRef = useRef<any>(null);
   const openRef = useRef(false);
   const returnFocusRef = useRef<any>(null);
+  const focusSequenceRef = useRef(0);
 
   const rememberFocus = () => {
+    focusSequenceRef.current += 1;
     returnFocusRef.current = document.activeElement;
   };
   const restoreFocus = () => {
+    const sequence = focusSequenceRef.current;
+    const target = returnFocusRef.current;
     requestAnimationFrame(() => {
-      const target = returnFocusRef.current;
+      if (sequence !== focusSequenceRef.current) return;
       if (target?.isConnected && typeof target.focus === 'function') target.focus();
       else triggerRef.current?.focus();
       returnFocusRef.current = null;
@@ -34,11 +38,19 @@ export default function GlobalSearch({ runtime, portal }: GlobalSearchProps) {
   };
 
   useEffect(() => runtime.subscribe(setSnapshot), [runtime]);
+  useEffect(() => () => {
+    if (!openRef.current) return;
+    openRef.current = false;
+    setApplicationInert(false);
+    unlockBodyScroll();
+  }, []);
   useEffect(() => {
     const onShortcut = (event: any) => {
       if (event.key === 'Escape' && openRef.current) {
         event.preventDefault();
         openRef.current = false;
+        setApplicationInert(false);
+        unlockBodyScroll();
         setOpen(false);
         restoreFocus();
         return;
@@ -46,10 +58,17 @@ export default function GlobalSearch({ runtime, portal }: GlobalSearchProps) {
       const commandK = event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey);
       const slash = event.key === '/' && !event.metaKey && !event.ctrlKey && !event.altKey && !isEditable(event.target);
       if (!commandK && !slash) return;
+      if (openRef.current) {
+        event.preventDefault();
+        return;
+      }
+      if (document.querySelector('dialog[open]')) return;
       event.preventDefault();
       if (snapshot.hydrated) {
         rememberFocus();
         openRef.current = true;
+        setApplicationInert(true);
+        lockBodyScroll();
         setOpen(true);
       }
     };
@@ -58,13 +77,20 @@ export default function GlobalSearch({ runtime, portal }: GlobalSearchProps) {
   }, [snapshot.hydrated]);
 
   const openSearch = () => {
-    rememberFocus();
+    if (openRef.current || document.querySelector('dialog[open]')) return;
+    focusSequenceRef.current += 1;
+    returnFocusRef.current = triggerRef.current;
     openRef.current = true;
+    setApplicationInert(true);
+    lockBodyScroll();
     setOpen(true);
   };
 
   const close = () => {
+    if (!openRef.current) return;
     openRef.current = false;
+    setApplicationInert(false);
+    unlockBodyScroll();
     setOpen(false);
     restoreFocus();
   };

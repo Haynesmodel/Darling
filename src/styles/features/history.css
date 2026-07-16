@@ -1,0 +1,111 @@
+/* Callouts container */
+.callouts{display:flex;flex-direction:column;gap:8px;margin:8px 0 10px}
+
+/* Overview grid */
+.overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.overview-chip{border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--surface-panel)}
+.overview-chip h4{margin:0 0 6px 0;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.overview-chip .big{font-size:18px;font-weight:800}
+.overview-chip .sub{font-size:12px;color:var(--muted);margin-top:4px}
+.overview-chip.champs{box-shadow:inset 0 0 0 2px var(--champ-accent)}
+.overview-chip.sau{box-shadow:inset 0 0 0 2px var(--sau-accent)}
+.overview-chip.regs{box-shadow:inset 0 0 0 2px var(--reg-accent)}
+
+.fun-lists{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin-top:10px}
+.mini{background:var(--surface-panel);border:1px solid var(--border);border-radius:10px;padding:8px}
+.mini-title{font-size:13px;font-weight:700;margin:2px 4px 6px;color:var(--text-primary)}
+.table-wrap.mini-table thead th{background:var(--table-header)}
+.table-wrap.mini-table tbody td{font-size:13px}
+
+/* Badges in tables */
+.score-cell{display:flex;align-items:center;gap:6px}
+.badge-emoji {
+  font-size: 1.1rem;
+  line-height: 1;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.badge-emoji.big {
+  font-size: 1.4rem;
+}
+
+.badge-top-score {
+  filter: drop-shadow(0 0 4px gold);
+}
+
+.badge-low-score {
+  filter: drop-shadow(0 0 4px brown);
+}
+
+#funFacts {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(120px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+#funFacts .stat {
+  background: var(--surface-panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 4px;
+  text-align: center;
+  transition:
+    transform var(--motion-fast) var(--motion-easing),
+    background-color var(--motion-fast) var(--motion-easing);
+}
+
+#funFacts .stat:hover {
+  transform: scale(1.05);
+  background: var(--season-soft);
+}
+
+#funFacts .label {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+#funFacts .value {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-top: 2px;
+}
+
+/* Week-by-Week Table Styling */
+#weekTable td.score-cell {
+  font-weight: bold;
+}
+
+#weekTable tr.result-win {
+  background: var(--status-win-bg);
+}
+
+#weekTable tr.result-loss {
+  background: var(--status-loss-bg);
+}
+
+#weekTable tr.result-tie {
+  background: var(--status-tie-bg);
+}
+
+#weekTable tr.postseason td {
+  font-style: italic;
+  background: var(--season-soft);
+}
+
+/* Season Narratives */
+#seasonRecapTable td:last-child {
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+
+@media (max-width: 1200px){
+  #funFacts{ grid-template-columns: repeat(4, minmax(120px,1fr)); }
+}
+
+@media (max-width:700px){
+  #funFacts{grid-template-columns:repeat(2,minmax(120px,1fr))}
+}

@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 </head>
 <body>
+  <div id="appShell">
+    <a class="skip-link" href="#mainContent">Skip to league content</a>
   <header class="site-hero">
     <picture class="site-hero-media" aria-hidden="true">
       <source
@@ -47,18 +49,25 @@
     </div>
   </header>
 
-  <nav class="tabs">
-    <button class="tab active" id="tabHistoryBtn">League History</button>
-    <button class="tab" id="tabCurrentBtn">Current Season</button>
-    <button class="tab" id="tabRivalryBtn">Head to Head</button>
-    <button class="tab" id="tabTrophyBtn">Trophy Case</button>
-    <button class="tab" id="tabDynastyBtn">Dynasty Rankings</button>
-    <button class="tab" id="tabGauntletBtn">Historical Matchup</button>
+  <nav class="primary-nav" aria-label="Primary">
+    <div class="tab-strip-shell">
+      <div id="primaryTabStrip" class="tab-strip" role="tablist" aria-label="League sections">
+        <button class="tab active" id="tabHistoryBtn" type="button" role="tab" aria-selected="true" aria-controls="page-history" tabindex="0">League History</button>
+        <button class="tab" id="tabCurrentBtn" type="button" role="tab" aria-selected="false" aria-controls="page-current" tabindex="-1">Current Season</button>
+        <button class="tab" id="tabRivalryBtn" type="button" role="tab" aria-selected="false" aria-controls="page-rivalry" tabindex="-1">Head to Head</button>
+        <button class="tab" id="tabTrophyBtn" type="button" role="tab" aria-selected="false" aria-controls="page-trophy" tabindex="-1">Trophy Case</button>
+        <button class="tab" id="tabDynastyBtn" type="button" role="tab" aria-selected="false" aria-controls="page-dynasty" tabindex="-1">Dynasty Rankings</button>
+        <button class="tab" id="tabGauntletBtn" type="button" role="tab" aria-selected="false" aria-controls="page-gauntlet" tabindex="-1">Historical Matchup</button>
+      </div>
+      <button id="tabScrollPrev" class="tab-scroll-button" type="button" aria-label="Scroll tabs left" hidden>‹</button>
+      <button id="tabScrollNext" class="tab-scroll-button" type="button" aria-label="Scroll tabs right" hidden>›</button>
+    </div>
     <div id="globalSearchRoot" class="global-search-mount"></div>
   </nav>
 
-  <main>
-    <section id="page-history" class="page">
+  <main id="mainContent" tabindex="-1">
+    <section id="page-history" class="page visible" role="tabpanel" aria-labelledby="tabHistoryBtn">
+      <h2 class="visually-hidden">League History</h2>
       <div id="appStatus" class="status-banner status-loading" role="status" aria-live="polite">Loading league data...</div>
       <div class="card">
         <div class="controls filters">
@@ -67,38 +76,38 @@
           </label>
 
           <div class="dropdown">
-            <button type="button" class="btn dropdown-toggle" data-target="seasonFilters" aria-haspopup="true" aria-expanded="false" aria-controls="seasonFilters">
+            <button type="button" class="btn dropdown-toggle" data-target="seasonFilters" aria-expanded="false" aria-controls="seasonFilters">
               Seasons <span class="count-text" id="seasonCountText">All</span> ▼
             </button>
-            <div class="dropdown-menu" id="seasonFilters" role="group" aria-label="Season filters" aria-hidden="true"></div>
+            <div class="dropdown-menu" id="seasonFilters" aria-hidden="true" hidden></div>
           </div>
 
           <div class="dropdown">
-            <button type="button" class="btn dropdown-toggle" data-target="weekFilters" aria-haspopup="true" aria-expanded="false" aria-controls="weekFilters">
+            <button type="button" class="btn dropdown-toggle" data-target="weekFilters" aria-expanded="false" aria-controls="weekFilters">
               Weeks <span class="count-text" id="weekCountText">All</span> ▼
             </button>
-            <div class="dropdown-menu" id="weekFilters" role="group" aria-label="Week filters" aria-hidden="true"></div>
+            <div class="dropdown-menu" id="weekFilters" aria-hidden="true" hidden></div>
           </div>
 
           <div class="dropdown">
-            <button type="button" class="btn dropdown-toggle" data-target="oppFilters" aria-haspopup="true" aria-expanded="false" aria-controls="oppFilters">
+            <button type="button" class="btn dropdown-toggle" data-target="oppFilters" aria-expanded="false" aria-controls="oppFilters">
               Opponents <span class="count-text" id="oppCountText">All</span> ▼
             </button>
-            <div class="dropdown-menu" id="oppFilters" role="group" aria-label="Opponent filters" aria-hidden="true"></div>
+            <div class="dropdown-menu" id="oppFilters" aria-hidden="true" hidden></div>
           </div>
 
           <div class="dropdown">
-            <button type="button" class="btn dropdown-toggle" data-target="typeFilters" aria-haspopup="true" aria-expanded="false" aria-controls="typeFilters">
+            <button type="button" class="btn dropdown-toggle" data-target="typeFilters" aria-expanded="false" aria-controls="typeFilters">
               Types <span class="count-text" id="typeCountText">All</span> ▼
             </button>
-            <div class="dropdown-menu" id="typeFilters" role="group" aria-label="Type filters" aria-hidden="true"></div>
+            <div class="dropdown-menu" id="typeFilters" aria-hidden="true" hidden></div>
           </div>
 
           <div class="dropdown">
-            <button type="button" class="btn dropdown-toggle" data-target="roundFilters" aria-haspopup="true" aria-expanded="false" aria-controls="roundFilters">
+            <button type="button" class="btn dropdown-toggle" data-target="roundFilters" aria-expanded="false" aria-controls="roundFilters">
               Rounds <span class="count-text" id="roundCountText">All</span> ▼
             </button>
-            <div class="dropdown-menu" id="roundFilters" role="group" aria-label="Round filters" aria-hidden="true"></div>
+            <div class="dropdown-menu" id="roundFilters" aria-hidden="true" hidden></div>
           </div>
 
           <span style="flex:1"></span>
@@ -150,7 +159,8 @@
       </div>
     </section>
 
-    <section id="page-current" class="page">
+    <section id="page-current" class="page" role="tabpanel" aria-labelledby="tabCurrentBtn" hidden>
+      <h2 class="visually-hidden">Current Season</h2>
       <div class="card">
         <div class="controls filters current-controls">
           <label>Season:
@@ -181,7 +191,8 @@
       <section id="currentTeamSnapshots" class="current-team-snapshots"></section>
     </section>
 
-    <section id="page-rivalry" class="page">
+    <section id="page-rivalry" class="page" role="tabpanel" aria-labelledby="tabRivalryBtn" hidden>
+      <h2 class="visually-hidden">Head to Head</h2>
       <div class="card">
         <div class="controls filters rivalry-controls">
           <select id="rivalryTeamA" aria-label="First team"></select>
@@ -235,7 +246,8 @@
       </div>
     </section>
 
-    <section id="page-trophy" class="page">
+    <section id="page-trophy" class="page" role="tabpanel" aria-labelledby="tabTrophyBtn" hidden>
+      <h2 class="visually-hidden">Trophy Case</h2>
       <div class="trophy-toolbar">
         <select id="trophyOwnerSelect" aria-label="Trophy case owner"></select>
       </div>
@@ -274,7 +286,8 @@
       </section>
     </section>
 
-    <section id="page-dynasty" class="page">
+    <section id="page-dynasty" class="page" role="tabpanel" aria-labelledby="tabDynastyBtn" hidden>
+      <h2 class="visually-hidden">Dynasty Rankings</h2>
       <div class="card">
         <div class="controls filters dynasty-controls">
           <label>Mode:
@@ -325,7 +338,7 @@
 
       <div class="card">
         <h3>Era Heatmap</h3>
-        <div id="dynastyHeatmap"></div>
+        <div id="dynastyHeatmap" role="region" aria-label="Dynasty rankings by season" tabindex="0"></div>
       </div>
 
       <div class="card">
@@ -333,10 +346,11 @@
         <div id="dynastySlumps"></div>
       </div>
 
-      <div id="dynastyWindowModal" class="dynasty-modal" hidden aria-hidden="true"></div>
+      <dialog id="dynastyWindowModal" class="dynasty-modal" aria-labelledby="dynastyWindowModalTitle"></dialog>
     </section>
 
-    <section id="page-gauntlet" class="page">
+    <section id="page-gauntlet" class="page" role="tabpanel" aria-labelledby="tabGauntletBtn" hidden>
+      <h2 class="visually-hidden">Historical Matchup</h2>
       <div class="card gauntlet-card">
         <h3>Historical Matchup</h3>
         <div class="card-kicker">Compare two owner-seasons using the league's scoring history.</div>
@@ -378,6 +392,7 @@
   <div id="fxCrown" class="fx-layer"></div>
   <div id="fxSaunders" class="fx-layer"></div>
   <div id="fxGroup" class="fx-layer"></div>
+  </div>
   <div id="globalSearchPortal"></div>
 
   <script type="module" src="/src/main.tsx"></script>

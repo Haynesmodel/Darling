@@ -306,6 +306,26 @@ test('historical odds probability totals follow each season postseason format', 
   }
 });
 
+test('zero Saunders slots produce zero Saunders probability', () => {
+  const zeroSaundersSeason = {
+    ...currentSeason,
+    playoff_rules: {
+      ...currentSeason.playoff_rules,
+      saunders_slots: 0,
+    },
+  };
+  const result = buildCurrentSeasonOdds({
+    currentSeason: zeroSaundersSeason,
+    derivedStats,
+    season: 2026,
+    week: 2,
+    dataVersion: 'zero-saunders-slots',
+    simulations: 500,
+  });
+  assert.equal(result.rows.reduce((sum, row) => sum + row.saundersOdds, 0), 0);
+  assert.ok(result.rows.every(row => row.saundersOdds === 0));
+});
+
 test('configured tiebreakers determine exact completed-season seed probabilities', () => {
   const complete = {
     season: 2026,

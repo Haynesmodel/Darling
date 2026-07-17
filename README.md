@@ -77,7 +77,7 @@ Accessibility and CSS:
 - See [`docs/accessibility.md`](./docs/accessibility.md) and [`docs/css-architecture.md`](./docs/css-architecture.md) before adding a tab, disclosure, modal, animation, shared style, or feature stylesheet.
 
 Current Season command-center assumptions:
-- `assets/CurrentSeason.json` can include `playoff_rules`; historical views infer regular-season length, playoff teams, byes, and Saunders slots from that season's stored schedule and brackets. If neither source supplies a format, the app falls back to 14 regular-season weeks, 6 playoff teams, 2 byes, and the remaining teams in Saunders, with standings sorted by win rate, points for, points differential, then owner.
+- Validated `assets/CurrentSeason.json` assets must include the complete `playoff_rules` object required by `schemas/current-season.schema.json`. Historical views instead infer regular-season length, playoff teams, byes, and Saunders slots from the selected season's stored schedule and brackets.
 - Mathematical clinched/eliminated status and deterministic projected standings remain authoritative.
 - A lazily loaded, seeded 10,000-run team-score Monte Carlo model adds playoff, bye, seed, and Saunders probabilities, prior-week movement, and selected-owner win/loss scenarios.
 - Estimates blend completed current-season scoring with recency-weighted owner history and a league prior. They are team-score simulations, not Sleeper player projections. See [`docs/current-season-odds.md`](./docs/current-season-odds.md).

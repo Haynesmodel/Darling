@@ -472,7 +472,7 @@ function cutlineGap(row, standings, slot) {
 
 function saundersLineSeed(rules = DEFAULT_PLAYOFF_RULES, teamCount = 0) {
   const count = positiveInt(teamCount, 0);
-  const saundersSlots = Math.max(positiveInt(rules?.saunders_slots, DEFAULT_PLAYOFF_RULES.saunders_slots), 0);
+  const saundersSlots = nonNegativeInt(rules?.saunders_slots, DEFAULT_PLAYOFF_RULES.saunders_slots);
   if (!count || !saundersSlots) return null;
   return Math.max(1, count - Math.min(saundersSlots, count) + 1);
 }

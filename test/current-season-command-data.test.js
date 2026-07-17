@@ -10,6 +10,7 @@ import {
   classifyOwnerStatus,
   remainingScheduleForOwner,
   resolveCurrentSeasonRules,
+  saundersLineSeed,
 } from '../js/current-season-command-data.js';
 
 const currentSeason = {
@@ -39,6 +40,7 @@ test('command rules resolve from CurrentSeason metadata', () => {
   assert.equal(rules.playoff_slots, 2);
   assert.equal(rules.bye_slots, 1);
   assert.deepEqual(rules.standings_tiebreakers, ['win_pct', 'points_for', 'points_differential', 'owner']);
+  assert.equal(saundersLineSeed({ ...rules, saunders_slots: 0 }, 4), null);
 });
 
 test('projected standings count live leaders only in if-scores-hold mode', () => {

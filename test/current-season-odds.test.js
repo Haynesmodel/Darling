@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 
 import {
   buildCurrentSeasonOdds,
@@ -42,6 +43,10 @@ const derivedStats = {
     { owner: 'Nuss', season: 2025, scores: [90, 98, 108] },
   ],
 };
+
+function readAsset(name) {
+  return JSON.parse(fs.readFileSync(new URL(`../assets/${name}`, import.meta.url), 'utf8'));
+}
 
 test('fixed inputs and seed produce reproducible playoff, bye, seed, and Saunders odds', () => {
   const rules = resolveCurrentSeasonRules(currentSeason, 4);
@@ -180,6 +185,99 @@ test('past-week movement excludes results completed after the selected week', ()
   assert.equal(historical.seed, contemporaneous.seed);
   assert.deepEqual(historical.rows, contemporaneous.rows);
   assert.deepEqual(historical.movement, contemporaneous.movement);
+});
+
+test('historical season snapshots truncate league games for current and baseline odds', () => {
+  const leagueGames = readAsset('H2H.json');
+  const historicalCurrentSeason = readAsset('CurrentSeason.json');
+  const historicalDerivedStats = readAsset('DerivedStats.json');
+  const options = {
+    currentSeason: historicalCurrentSeason,
+    derivedStats: historicalDerivedStats,
+    season: 2024,
+    dataVersion: 'historical-season-regression',
+    simulations: 500,
+    playoffPicture: [{ owner: 'Joe', status: { key: 'clinched-playoff' } }],
+  };
+  const results = [1, 7, 14].map(week => buildCurrentSeasonOdds({
+    ...options,
+    leagueGames,
+    week,
+  }));
+
+  results.forEach((result, index) => {
+    const week = [1, 7, 14][index];
+    assert.deepEqual([...new Set(result.distributions.map(row => row.currentSample))], [week]);
+    assert.ok(result.movement.some(row => Math.abs(row.playoffChange) > 0));
+  });
+  assert.notDeepEqual(results[0].rows, results[1].rows);
+  assert.notDeepEqual(results[1].rows, results[2].rows);
+  assert.notEqual(results[0].rows.find(row => row.owner === 'Joe').playoffOdds, 1);
+
+  const truncatedLeagueGames = leagueGames.map(game => (
+    game.season === 2024 && game.week > 7
+      ? { ...game, status: 'scheduled', scoreA: null, scoreB: null }
+      : game
+  ));
+  const contemporaneous = buildCurrentSeasonOdds({
+    ...options,
+    leagueGames: truncatedLeagueGames,
+    week: 7,
+  });
+  assert.equal(results[1].seed, contemporaneous.seed);
+  assert.deepEqual(results[1].rows, contemporaneous.rows);
+  assert.deepEqual(results[1].movement, contemporaneous.movement);
+});
+
+test('historical distributions exclude future weeks and future-season priors', () => {
+  const historicalGames = [
+    { season: 2024, teamA: 'Joe', teamB: 'Shap', scoreA: 110, scoreB: 90, week: 1, type: 'Regular', status: 'final' },
+    { season: 2024, teamA: 'Nuss', teamB: 'Joel', scoreA: 95, scoreB: 85, week: 1, type: 'Regular', status: 'final' },
+    { season: 2024, teamA: 'Joe', teamB: 'Nuss', scoreA: 300, scoreB: 280, week: 2, type: 'Regular', status: 'final' },
+    { season: 2024, teamA: 'Shap', teamB: 'Joel', scoreA: 290, scoreB: 270, week: 2, type: 'Regular', status: 'final' },
+  ];
+  const laterCurrentSeason = {
+    ...currentSeason,
+    season: 2026,
+    current_week: 2,
+    games: currentSeason.games.map(game => ({ ...game, season: 2026 })),
+  };
+  const availablePriors = {
+    team_seasons: [
+      { owner: 'Joe', season: 2023, scores: [100, 105] },
+      { owner: 'Shap', season: 2023, scores: [90, 95] },
+    ],
+  };
+  const withFuturePriors = {
+    team_seasons: [
+      ...availablePriors.team_seasons,
+      { owner: 'Joe', season: 2025, scores: [800, 900] },
+      { owner: 'Shap', season: 2025, scores: [700, 750] },
+    ],
+  };
+  const options = {
+    currentSeason: laterCurrentSeason,
+    season: 2024,
+    week: 1,
+    dataVersion: 'future-score-regression',
+    simulations: 500,
+  };
+  const historical = buildCurrentSeasonOdds({
+    ...options,
+    leagueGames: historicalGames,
+    derivedStats: withFuturePriors,
+  });
+  const contemporaneous = buildCurrentSeasonOdds({
+    ...options,
+    leagueGames: historicalGames.map(game => (
+      game.week > 1 ? { ...game, status: 'scheduled', scoreA: null, scoreB: null } : game
+    )),
+    derivedStats: availablePriors,
+  });
+
+  assert.deepEqual(historical.distributions, contemporaneous.distributions);
+  assert.ok(historical.distributions.every(row => row.currentSample === 1));
+  assert.ok(historical.distributions.every(row => row.ceiling < 300));
 });
 
 test('configured tiebreakers determine exact completed-season seed probabilities', () => {

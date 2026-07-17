@@ -98,9 +98,12 @@ function buildTeamScoringDistributions({
   const historicalScores = historicalScoresByOwner(derivedStats, season);
   const standings = buildScenarioStandings({ leagueGames, currentSeason, season, rules });
   const owners = standings.map(row => row.owner);
+  const priorScores = (derivedStats?.team_seasons || [])
+    .filter(row => numeric(row.season) < numeric(season, Infinity))
+    .flatMap(row => row.scores || []);
   const allScores = [
     ...[...currentScores.values()].flat(),
-    ...(derivedStats?.team_seasons || []).flatMap(row => row.scores || []),
+    ...priorScores,
   ].map(Number).filter(Number.isFinite);
   const leagueMean = mean(allScores) || 100;
   const leagueStdev = standardDeviation(allScores, leagueMean) || 20;
@@ -220,13 +223,14 @@ function conditionForcedScores(game, forcedOutcome, sampledScoreA, sampledScoreB
 }
 
 function snapshotCacheKey(options) {
+  const rules = options.rules || resolveCurrentSeasonRules(options.currentSeason);
   return JSON.stringify({
     season: options.season,
     simulations: options.simulations,
     seed: options.seed,
     liveMode: options.liveMode,
     forcedOutcome: options.forcedOutcome,
-    games: (options.currentSeason?.games || []).map(game => [
+    games: regularSeasonGamesFor({ ...options, rules }).map(game => [
       game.week,
       game.teamA,
       game.teamB,
@@ -330,34 +334,47 @@ function simulateOddsSnapshot(options = {}) {
   return result;
 }
 
-function seasonSnapshotBeforeWeek(currentSeason, week) {
-  if (!currentSeason || !Number.isFinite(numeric(week))) return currentSeason;
+function snapshotGamesForWeek(games, season, week, includeSelectedWeek) {
+  const targetSeason = numeric(season);
+  const targetWeek = numeric(week);
+  if (!Number.isFinite(targetSeason) || !Number.isFinite(targetWeek)) return games;
+  return (games || []).map(game => {
+    if (numeric(game.season) !== targetSeason) return game;
+    const gameWeek = numeric(weekForGame(game));
+    const isVisible = !Number.isFinite(gameWeek)
+      || (includeSelectedWeek ? gameWeek <= targetWeek : gameWeek < targetWeek);
+    return isVisible
+      ? game
+      : { ...game, status: 'scheduled', scoreA: null, scoreB: null };
+  });
+}
+
+function seasonSourceSnapshot({ leagueGames = [], currentSeason = null, season, week }, includeSelectedWeek) {
+  const targetSeason = numeric(season);
+  const assetSeason = numeric(currentSeason?.season);
   return {
-    ...currentSeason,
-    games: (currentSeason.games || []).map(game => (
-      numeric(weekForGame(game)) < numeric(week)
-        ? game
-        : { ...game, status: 'scheduled', scoreA: null, scoreB: null }
-    )),
+    leagueGames: snapshotGamesForWeek(leagueGames, targetSeason, week, includeSelectedWeek),
+    currentSeason: currentSeason && assetSeason === targetSeason
+      ? {
+          ...currentSeason,
+          ...(includeSelectedWeek ? { current_week: numeric(week) } : {}),
+          games: snapshotGamesForWeek(currentSeason.games || [], targetSeason, week, includeSelectedWeek),
+        }
+      : currentSeason,
   };
 }
 
-function seasonSnapshotThroughWeek(currentSeason, week) {
-  if (!currentSeason || !Number.isFinite(numeric(week))) return currentSeason;
-  return {
-    ...currentSeason,
-    current_week: numeric(week),
-    games: (currentSeason.games || []).map(game => (
-      numeric(weekForGame(game)) <= numeric(week)
-        ? game
-        : { ...game, status: 'scheduled', scoreA: null, scoreB: null }
-    )),
-  };
+function seasonSnapshotBeforeWeek(options) {
+  return seasonSourceSnapshot(options, false);
 }
 
-function matchupForOwner(currentSeason, owner, week) {
+function seasonSnapshotThroughWeek(options) {
+  return seasonSourceSnapshot(options, true);
+}
+
+function matchupForOwner(games, owner, week) {
   if (!owner || !Number.isFinite(numeric(week))) return null;
-  return (currentSeason?.games || [])
+  return (games || [])
     .filter(isRegularGame)
     .find(game => numeric(weekForGame(game)) === numeric(week) && sidesForTeam(game, owner))
     || null;
@@ -392,19 +409,19 @@ function buildCurrentSeasonOdds({
   const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
   try {
     const rules = resolveCurrentSeasonRules(currentSeason, playoffPicture.length);
-    const analysisSeason = seasonSnapshotThroughWeek(currentSeason, week);
-    const scoreSignature = (analysisSeason?.games || []).map(game => `${game.week}:${game.scoreA}:${game.scoreB}:${game.status}`).join('|');
+    const analysisSnapshot = seasonSnapshotThroughWeek({ leagueGames, currentSeason, season, week });
+    const baselineSnapshot = seasonSnapshotBeforeWeek({ leagueGames, currentSeason, season, week });
+    const analysisGames = regularSeasonGamesFor({ ...analysisSnapshot, season, rules });
+    const scoreSignature = analysisGames.map(game => `${game.week}:${game.scoreA}:${game.scoreB}:${game.status}`).join('|');
     const seed = `${dataVersion}|${season}|${week}|${MODEL_VERSION}|${scoreSignature}`;
     const distributions = buildTeamScoringDistributions({
-      leagueGames,
-      currentSeason: analysisSeason,
+      ...analysisSnapshot,
       derivedStats,
       season,
       rules,
     });
     const current = simulateOddsSnapshot({
-      leagueGames,
-      currentSeason: analysisSeason,
+      ...analysisSnapshot,
       derivedStats,
       season,
       rules,
@@ -413,10 +430,8 @@ function buildCurrentSeasonOdds({
       seed: `${seed}|current`,
       liveMode: 'score-aware',
     });
-    const baselineSeason = seasonSnapshotBeforeWeek(analysisSeason, week);
     const baseline = simulateOddsSnapshot({
-      leagueGames,
-      currentSeason: baselineSeason,
+      ...baselineSnapshot,
       derivedStats,
       season,
       rules,
@@ -425,8 +440,7 @@ function buildCurrentSeasonOdds({
       liveMode: 'pregame',
     });
     const hold = simulateOddsSnapshot({
-      leagueGames,
-      currentSeason: analysisSeason,
+      ...analysisSnapshot,
       derivedStats,
       season,
       rules,
@@ -435,13 +449,12 @@ function buildCurrentSeasonOdds({
       seed: `${seed}|scores-hold`,
       liveMode: 'hold',
     });
-    const matchup = matchupForOwner(analysisSeason, selectedOwner, week);
+    const matchup = matchupForOwner(analysisGames, selectedOwner, week);
     const selectedOwnerScenario = matchup && !isCompletedGame(matchup)
       ? {
           owner: selectedOwner,
           win: simulateOddsSnapshot({
-            leagueGames,
-            currentSeason: analysisSeason,
+            ...analysisSnapshot,
             derivedStats,
             season,
             rules,
@@ -452,8 +465,7 @@ function buildCurrentSeasonOdds({
             forcedOutcome: { owner: selectedOwner, outcome: 'win', week },
           }).rows.find(row => row.owner === selectedOwner),
           loss: simulateOddsSnapshot({
-            leagueGames,
-            currentSeason: analysisSeason,
+            ...analysisSnapshot,
             derivedStats,
             season,
             rules,
@@ -465,7 +477,11 @@ function buildCurrentSeasonOdds({
           }).rows.find(row => row.owner === selectedOwner),
         }
       : null;
-    const currentRows = enforceStatuses(current.rows, playoffPicture);
+    const statusSnapshotIsCurrent = numeric(season) === numeric(currentSeason?.season)
+      && numeric(week) >= numeric(currentSeason?.current_week, Infinity);
+    const currentRows = statusSnapshotIsCurrent
+      ? enforceStatuses(current.rows, playoffPicture)
+      : current.rows;
     const previousByOwner = rowMap(baseline.rows);
     const movement = currentRows.map(row => {
       const previous = previousByOwner.get(row.owner) || row;
@@ -480,7 +496,8 @@ function buildCurrentSeasonOdds({
       };
     });
     const endedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    const hasReliableLiveScores = Boolean(currentSeason?.update_context?.contains_live_scores);
+    const hasReliableLiveScores = numeric(season) === numeric(currentSeason?.season)
+      && Boolean(currentSeason?.update_context?.contains_live_scores);
     return {
       status: currentRows.length ? 'ready' : 'unavailable',
       modelVersion: MODEL_VERSION,
@@ -492,7 +509,9 @@ function buildCurrentSeasonOdds({
       durationMs: endedAt - startedAt,
       rows: currentRows,
       movement,
-      ifScoresHold: enforceStatuses(hold.rows, playoffPicture),
+      ifScoresHold: statusSnapshotIsCurrent
+        ? enforceStatuses(hold.rows, playoffPicture)
+        : hold.rows,
       selectedOwnerScenario: selectedOwnerScenario?.win && selectedOwnerScenario?.loss
         ? selectedOwnerScenario
         : null,

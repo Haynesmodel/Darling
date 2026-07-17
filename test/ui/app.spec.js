@@ -1386,6 +1386,18 @@ test('Draft Spot normalized slots combine equivalent 10-team and 12-team positio
   await expect(page.locator('#draftRowsTable tbody tr:not(:has(.table-empty-state))')).toHaveCount(9);
 });
 
+test('Draft Spot timeline highlights normalized selections using the normalized slot', async ({ page }) => {
+  await page.goto('/?tab=draft&draftMode=owner&draftOwner=Joel&draftNormalize=percentile');
+  await page.waitForLoadState('networkidle');
+
+  const tenthPick = page.locator('.draft-timeline-item[data-draft-pick="12"]').first();
+  await expect(tenthPick).toContainText('Pick 10');
+  await tenthPick.click();
+
+  await expect.poll(() => new URL(page.url()).searchParams.get('draftPick')).toBe('12');
+  await expect(tenthPick).toHaveClass(/selected/);
+});
+
 test('global search reaches Draft Spot picks, zones, and owner history', async ({ page }) => {
   await page.goto('/');
   await page.waitForLoadState('networkidle');

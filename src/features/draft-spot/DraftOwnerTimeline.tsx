@@ -24,7 +24,7 @@ export default function DraftOwnerTimeline({
             'draft-timeline-item',
             row.champion ? 'champion' : '',
             row.saunders ? 'saunders' : '',
-            model.state.selectedPick === row.draft_pick ? 'selected' : '',
+            model.state.selectedPick === draftPickBucket(row, model.state.normalize) ? 'selected' : '',
           ].filter(Boolean).join(' ')}
           onClick={() => onChange({
             ...model.state,

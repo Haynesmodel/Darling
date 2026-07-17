@@ -54,9 +54,18 @@ function validateWorkflowContracts({ ci, updater, legacyDeployExists = false }) 
     errors.push('updater may not push to main or github.ref_name');
   }
   if (!/BRANCH="automation\/sleeper-\$\{SEASON\}"/.test(updater)) errors.push('updater must use the deterministic season branch');
-  if (!/actions\/create-github-app-token@v2/.test(updater)) errors.push('updater must mint a GitHub App token');
+  if (!/actions\/create-github-app-token@v3/.test(updater)) errors.push('updater must mint a current GitHub App token');
   if (!/DARLING_AUTOMATION_APP_ID/.test(updater) || !/DARLING_AUTOMATION_PRIVATE_KEY/.test(updater)) {
     errors.push('updater must use the documented App credentials');
+  }
+  if (!/permission-contents:\s*write/.test(updater) || !/permission-pull-requests:\s*write/.test(updater)) {
+    errors.push('App token must request only publication permissions');
+  }
+  if (!/EXPECTED_AUTHOR="\$\{BOT_LOGIN\}"/.test(updater) || !/pr\.author\.login !== process\.env\.EXPECTED_AUTHOR/.test(updater)) {
+    errors.push('existing automation PR ownership must match the token App slug');
+  }
+  if (!/git status --porcelain --untracked-files=normal -- assets\/H2H\.json assets\/CurrentSeason\.json/.test(updater)) {
+    errors.push('source change detection must include a newly created optional CurrentSeason file');
   }
   if (!/gh pr create --draft/.test(updater)) errors.push('updater must create draft PRs');
   if (!/steps\.changes\.outputs\.changed == 'true'/.test(updater)) errors.push('updater must explicitly gate publication on changes');

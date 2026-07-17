@@ -157,7 +157,7 @@ jobs:
         shell: bash
         run: |
           echo "FAILED_PHASE=local promotion/regeneration" >> "$GITHUB_ENV"
-          if ! git diff --quiet -- assets/H2H.json assets/CurrentSeason.json; then
+          if [[ -n "$(git status --porcelain --untracked-files=normal -- assets/H2H.json assets/CurrentSeason.json)" ]]; then
             python3 scripts/generate_season_summary_draft.py \
               --h2h assets/H2H.json \
               --existing assets/SeasonSummary.json \
@@ -221,12 +221,14 @@ jobs:
       - name: Mint repository-scoped automation token
         if: steps.changes.outputs.changed == 'true'
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ vars.DARLING_AUTOMATION_APP_ID }}
           private-key: ${{ secrets.DARLING_AUTOMATION_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-pull-requests: write
 
       - name: Publish bot-owned season branch
         if: steps.changes.outputs.changed == 'true'
@@ -234,17 +236,19 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           SEASON: ${{ steps.resolve.outputs.season }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
         shell: bash
         run: |
           echo "FAILED_PHASE=branch lease/push" >> "$GITHUB_ENV"
           BRANCH="automation/sleeper-${SEASON}"
           TITLE="[automation] Update Sleeper data for season ${SEASON}"
+          BOT_LOGIN="${APP_SLUG}[bot]"
           echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
 
           gh auth setup-git
           gh pr list --state open --head "${BRANCH}" --base main \
             --json number,title,author,labels,isDraft,url > "${RUNNER_TEMP}/sleeper-prs.json"
-          EXPECTED_TITLE="${TITLE}" node <<'NODE'
+          EXPECTED_TITLE="${TITLE}" EXPECTED_AUTHOR="${BOT_LOGIN}" node <<'NODE'
           const fs = require('node:fs');
           const prs = JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/sleeper-prs.json`, 'utf8'));
           if (prs.length > 1) throw new Error(`Refusing ambiguous automation state: found ${prs.length} open PRs.`);
@@ -254,7 +258,9 @@ jobs:
             if (pr.title !== process.env.EXPECTED_TITLE || !labels.has('data-pipeline') || !labels.has('automated')) {
               throw new Error('Existing automation PR does not have the expected title and labels.');
             }
-            if (!pr.author?.is_bot) throw new Error('Existing automation PR is not owned by a bot identity.');
+            if (!pr.author?.is_bot || pr.author.login !== process.env.EXPECTED_AUTHOR) {
+              throw new Error(`Existing automation PR is owned by ${pr.author?.login || 'unknown'}, not ${process.env.EXPECTED_AUTHOR}.`);
+            }
           }
           NODE
 
@@ -262,7 +268,7 @@ jobs:
           if REMOTE_SHA="$(git ls-remote --exit-code --heads origin "${REMOTE_REF}" | awk '{print $1}')"; then
             git fetch origin "+${REMOTE_REF}:refs/remotes/origin/${BRANCH}"
             REMOTE_AUTHOR="$(git show -s --format='%an' "refs/remotes/origin/${BRANCH}")"
-            if [[ "${REMOTE_AUTHOR}" != "darling-automation[bot]" ]]; then
+            if [[ "${REMOTE_AUTHOR}" != "${BOT_LOGIN}" ]]; then
               echo "Refusing to overwrite branch last authored by ${REMOTE_AUTHOR}." >&2
               exit 1
             fi
@@ -271,8 +277,9 @@ jobs:
             LEASE="${REMOTE_REF}:"
           fi
 
-          git config user.name 'darling-automation[bot]'
-          git config user.email 'darling-automation[bot]@users.noreply.github.com'
+          BOT_ID="$(gh api "/users/${BOT_LOGIN}" --jq .id)"
+          git config user.name "${BOT_LOGIN}"
+          git config user.email "${BOT_ID}+${BOT_LOGIN}@users.noreply.github.com"
           git commit -m "Update Sleeper data for season ${SEASON}"
           git push --force-with-lease="${LEASE}" origin "HEAD:${REMOTE_REF}"
 

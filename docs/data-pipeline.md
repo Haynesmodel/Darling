@@ -109,7 +109,19 @@ The twelve files under `assets/hero/` are runtime-required. Validation checks th
 
 ## Sleeper automation
 
-The weekly workflow writes candidate H2H and CurrentSeason files, promotes changed sources, produces the SeasonSummary draft, regenerates derived data and the manifest, validates the whole snapshot, and stages all coherent outputs together. Failures upload candidate files for diagnosis and do not commit partial data.
+The weekly workflow runs Monday at 13:00 UTC, and maintainers can dispatch it with optional `season` and `validate_only` inputs. It is guarded to trusted `main` workflow code, checks out `main` explicitly, and never uses `pull_request_target`.
+
+Normal runs generate candidate H2H and CurrentSeason files, preserve a private baseline in runner temporary storage, promote candidates locally, generate the review-only SeasonSummary draft, regenerate derived data and the manifest, and run `check:data-generated` plus `test:assets`. Publication stages only:
+
+- `assets/H2H.json`
+- `assets/CurrentSeason.json`
+- `assets/SeasonSummary.draft.json`
+- `assets/DerivedStats.json`
+- `assets/asset-manifest.json`
+
+An unexpected staged path fails closed. No-change runs create no commit, push, or PR noise; a read-only lookup reports any existing season PR in the run summary for human inspection. Changed runs mint a short-lived repository-scoped App token, create one commit from current `main`, and update `automation/sleeper-<season>` with an explicit force-with-lease. The workflow creates or refreshes exactly one draft PR to `main`, labels it `data-pipeline` and `automated`, and returns refreshed PRs to draft. Humans must not commit to the bot branch.
+
+The generated PR body defines before/after manifest hashes, H2H additions/removals/changes using canonical game identity, CurrentSeason status counts, the sorted changed files, completed validation, and the reviewer checklist. `SeasonSummary.draft.json` remains noncanonical.
 
 Local validation-only example:
 
@@ -117,9 +129,27 @@ Local validation-only example:
 UPDATE_LIVE=1 VALIDATE_ONLY=1 SEASON=2025 CURRENT_WEEK=1 scripts/update_sleeper_h2h.sh
 ```
 
-## Deployment audit
+The equivalent Actions dispatch with `validate_only=true` generates and validates candidates without promoting files, minting the App token, committing, pushing, changing a PR, or mutating the failure issue on success.
 
-`npm run build` performs generated drift, data, semantic, manifest, and media checks before Vite builds. It then audits `dist/` against the manifest. Pages runs the same checks before uploading the artifact.
+Repeated changed runs reuse the season branch and open PR. A lease conflict, ambiguous/non-bot PR ownership, missing credential, validation error, or API failure stops publication. Failures retain the allowlisted candidate artifact for seven days and create or update the deduplicated `Weekly Sleeper update failed` issue with the failed phase and run URL.
+
+Recovery:
+
+1. Inspect the failed phase, run log, and candidate artifact without copying credentials or environment dumps.
+2. For a lease failure, inspect the remote branch and expected automation PR; never retry with bare force.
+3. For a branch push followed by PR failure, restore App/API access and rerun so the same branch produces one PR.
+4. Rotate the App private key by creating a replacement, updating `DARLING_AUTOMATION_PRIVATE_KEY`, testing `validate_only`, then revoking the old key.
+5. Disable the schedule safely by commenting/removing only the `schedule` trigger; manual validation remains available.
+
+Direct pushes are prohibited because they bypass human review and required PR checks. `pull_request_target` is prohibited because untrusted PR code must never receive publication credentials.
+
+## Pages release chain
+
+`unit` performs generated drift, data, semantic, manifest, media, type, and bundle checks before one `/Darling/` Vite build. It uploads `darling-dist-<full commit SHA>` for one day. `ui` downloads that exact artifact, audits it, and runs the preview suite without rebuilding. After `unit`, `ui`, and `coverage` all succeed on a push to `main`, `package-pages` downloads the same artifact and converts it to the Pages artifact; only then can `deploy-pages` use Pages/OIDC write permissions.
+
+Pull requests never run the Pages jobs. A skipped deploy means the run was not a main push, a required gate did not succeed, or a newer main commit made the SHA stale. Deployment history and the CI run identify the exact deployed SHA; the served `asset-manifest.json` and `window.darlingDataDiagnostics` identify its data version.
+
+To recover a failed deployment, rerun the failed job for the same green SHA while its generic artifact exists. If it expired, rerun the entire workflow for that SHA. Do not rebuild locally and upload different bytes. Roll back application code through a revert PR so the revert passes the same quality gates; never restore an independent push-triggered deployment workflow.
 
 Useful recovery commands:
 

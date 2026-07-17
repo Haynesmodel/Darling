@@ -41,3 +41,13 @@ This repository is maintained as a static site backed by JSON assets. The annual
 - Regenerate the responsive hero set with `npm run build:hero` after changing the league identity photo, then run `npm run test:assets`.
 - The Sleeper workflow needs the `SLEEPER_LEAGUE_ID` repository secret.
 - `docs/plans/README.md` is the index for the implementation plans.
+
+## Reviewing Sleeper automation pull requests
+
+The weekly or manually dispatched workflow uses `automation/sleeper-<season>` as a bot-owned branch and opens one draft PR titled `[automation] Update Sleeper data for season <season>`. Do not commit directly to that branch. Correct the source on a separate branch or coordinate with the maintainer before rerunning automation.
+
+Before approving, verify the generated PR checklist: mappings and owner names; Sleeper dates and weeks; missing or duplicate regular-season games; playoff and Saunders classifications; excluded placement games; scores and winners; CurrentSeason status/completeness; and whether derived data and the manifest match their inputs. `assets/SeasonSummary.draft.json` is only a review aid and must never replace the canonical summary automatically.
+
+The publisher requires repository variable `DARLING_AUTOMATION_APP_ID`, repository secret `DARLING_AUTOMATION_PRIVATE_KEY`, and existing secret `SLEEPER_LEAGUE_ID`. The installed App must be limited to this repository with Contents and Pull requests read/write. Dispatch with `validate_only=true` to prove generation without canonical, branch, PR, or issue mutation on success.
+
+A failed branch lease means the remote bot branch changed after the run recorded it. Do not force past the lease. Inspect the `Weekly Sleeper update failed` issue and candidate artifact, verify branch/PR ownership, then rerun from current `main`. The 2026 mapping, Week 1 anchor, and league activation remain deferred until Sleeper officially activates that league.

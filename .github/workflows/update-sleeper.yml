@@ -224,8 +224,8 @@ jobs:
         run: |
           BRANCH="automation/sleeper-${SEASON}"
           EXISTING_PRS="$(gh pr list --state open --head "${BRANCH}" \
-            --json number,url,baseRefName \
-            --jq '.[] | "- Existing open PR: \(.url) (base: \(.baseRefName))"')"
+            --json number,url,baseRefName,isCrossRepository \
+            --jq '.[] | select(.isCrossRepository == false) | "- Existing open PR: \(.url) (base: \(.baseRefName))"')"
           if [[ -n "${EXISTING_PRS}" ]]; then
             {
               echo
@@ -281,7 +281,8 @@ jobs:
 
           gh auth setup-git
           gh pr list --state open --head "${BRANCH}" \
-            --json number,title,author,labels,isDraft,url,baseRefName > "${RUNNER_TEMP}/sleeper-prs.json"
+            --json number,title,author,labels,isDraft,url,baseRefName,isCrossRepository \
+            --jq 'map(select(.isCrossRepository == false))' > "${RUNNER_TEMP}/sleeper-prs.json"
           EXPECTED_TITLE="${TITLE}" EXPECTED_AUTHOR="${BOT_LOGIN}" node <<'NODE'
           const fs = require('node:fs');
           const prs = JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/sleeper-prs.json`, 'utf8'));
@@ -330,7 +331,9 @@ jobs:
         run: |
           echo "FAILED_PHASE=PR create/update" >> "$GITHUB_ENV"
           TITLE="[automation] Update Sleeper data for season ${SEASON}"
-          PRS="$(gh pr list --state open --head "${BRANCH}" --base main --json number,isDraft,url)"
+          PRS="$(gh pr list --state open --head "${BRANCH}" --base main \
+            --json number,isDraft,url,isCrossRepository \
+            --jq 'map(select(.isCrossRepository == false))')"
           PR_COUNT="$(node -e 'const p=JSON.parse(process.argv[1]); process.stdout.write(String(p.length))' "${PRS}")"
           if [[ "${PR_COUNT}" -gt 1 ]]; then
             echo "Refusing ambiguous automation state: ${PR_COUNT} open PRs." >&2

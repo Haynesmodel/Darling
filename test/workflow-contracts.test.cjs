@@ -23,6 +23,7 @@ function validateWorkflowContracts({ ci, updater, legacyDeployExists = false }) 
   const packagePages = jobBlock(ci, 'package-pages');
   const deployPages = jobBlock(ci, 'deploy-pages');
 
+  if (/^\s*permissions:\s*write-all\s*$/m.test(ci)) errors.push('CI may not grant write-all permissions');
   if (legacyDeployExists) errors.push('legacy deploy-pages workflow still exists');
   if (occurrences(ci, /uses:\s*actions\/deploy-pages@/g) !== 1) errors.push('CI must use actions/deploy-pages exactly once');
   if (!/needs:\s*\[unit, ui, coverage\]/.test(packagePages)) errors.push('package-pages must need unit, ui, and coverage');
@@ -67,8 +68,13 @@ function validateWorkflowContracts({ ci, updater, legacyDeployExists = false }) 
   if (!/EXPECTED_AUTHOR="\$\{BOT_LOGIN\}"/.test(updater) || !/pr\.author\.login !== process\.env\.EXPECTED_AUTHOR/.test(updater)) {
     errors.push('existing automation PR ownership must match the token App slug');
   }
-  if (!/--json number,title,author,labels,isDraft,url,baseRefName/.test(updater) || !/pr\.baseRefName !== 'main'/.test(updater)) {
+  if (!/--json number,title,author,labels,isDraft,url,baseRefName,isCrossRepository/.test(updater) ||
+      !/pr\.baseRefName !== 'main'/.test(updater)) {
     errors.push('ownership checks must reject an automation PR retargeted away from main');
+  }
+  if (occurrences(updater, /isCrossRepository/g) < 3 ||
+      occurrences(updater, /select\(\.isCrossRepository == false\)/g) < 3) {
+    errors.push('automation PR queries must discard cross-repository heads');
   }
   if (!/steps\.changes\.outputs\.changed == 'false'/.test(updater) ||
       !/permission-pull-requests:\s*read/.test(updater) ||
@@ -134,6 +140,15 @@ test('workflow contract rejects workflow-level Pages write permissions', () => {
   );
   const errors = validateWorkflowContracts({ ci: changed, updater });
   assert.ok(errors.some(error => error.includes('exactly once')));
+});
+
+test('workflow contract rejects workflow-level write-all permissions', () => {
+  const changed = ci.replace(
+    'permissions:\n  contents: read',
+    'permissions: write-all',
+  );
+  const errors = validateWorkflowContracts({ ci: changed, updater });
+  assert.ok(errors.some(error => error.includes('write-all')));
 });
 
 module.exports = { validateWorkflowContracts };

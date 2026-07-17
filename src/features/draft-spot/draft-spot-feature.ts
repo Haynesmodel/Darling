@@ -7,7 +7,7 @@ import { ownerOrNull } from '../../app/feature-utils';
 
 export function createFeatureController(): DarlingFeatureController {
   let context: AppContext;
-  let selected: Record<string, unknown> = {};
+  let selected: Record<string, unknown> | null = null;
   let activeSignal: AbortSignal | null = null;
 
   const update = (next: any) => {
@@ -38,17 +38,19 @@ export function createFeatureController(): DarlingFeatureController {
     },
     async activate(input: FeatureActivation) {
       activeSignal = input.signal;
-      selected = {
-        owner: input.route.draftOwner,
-        mode: input.route.draftMode,
-        startSeason: input.route.draftStart,
-        endSeason: input.route.draftEnd,
-        metric: input.route.draftMetric,
-        minSample: input.route.draftMinSample,
-        normalize: input.route.draftNormalize,
-        selectedPick: input.route.draftPick,
-        selectedZone: input.route.draftZone,
-      };
+      if (input.reason !== 'tab' || !selected) {
+        selected = {
+          owner: input.route.draftOwner,
+          mode: input.route.draftMode,
+          startSeason: input.route.draftStart,
+          endSeason: input.route.draftEnd,
+          metric: input.route.draftMetric,
+          minSample: input.route.draftMinSample,
+          normalize: input.route.draftNormalize,
+          selectedPick: input.route.draftPick,
+          selectedZone: input.route.draftZone,
+        };
+      }
       const entry = context.data.manifest.assets.DraftSpot;
       const sourceHash = context.data.manifest.assets.SeasonSummary.sha256;
       if (!entry || !sourceHash) throw new Error('Draft Spot asset is not present in the data manifest');

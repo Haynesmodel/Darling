@@ -86,10 +86,11 @@ export function createFeatureController(): DarlingFeatureController {
     },
     activate(input: FeatureActivation) {
       active = !input.signal.aborted;
+      const preserveState = input.reason === 'tab' && state;
       state = resolveGauntletInitialState({
         teamSeasons: context.selectors.teamSeasons() as any[],
-        urlState: input.route.hasGauntlet ? input.route : null,
-        currentState: input.route.hasGauntlet ? null : state,
+        urlState: preserveState ? null : input.route,
+        currentState: preserveState || null,
       });
       state = buildGauntletControls({ doc: context.document, teamSeasons: context.selectors.teamSeasons() as any[], selectedState: state, onChange: change });
       draw();

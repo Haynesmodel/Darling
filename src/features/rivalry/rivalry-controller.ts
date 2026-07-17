@@ -25,6 +25,7 @@ export function createFeatureController(): DarlingFeatureController {
   let teamB: string | null = null;
   let selectedScope = 'allTime';
   let active = false;
+  let initialized = false;
 
   const render = () => {
     if (!active || !teamA || !teamB) return;
@@ -66,7 +67,13 @@ export function createFeatureController(): DarlingFeatureController {
     },
     activate(input: FeatureActivation) {
       active = !input.signal.aborted;
-      selectedScope = scope(input.route.rivalryScope || selectedScope);
+      const preserveState = input.reason === 'tab' && initialized;
+      if (!preserveState) {
+        const historyTeam = input.route.team && input.route.team !== ALL_TEAMS ? input.route.team : null;
+        teamA = input.route.rivalryTeamA || historyTeam || DEFAULT_TEAM;
+        teamB = input.route.rivalryTeamB || null;
+        selectedScope = scope(input.route.rivalryScope || 'allTime');
+      }
       const scopeSelect = context.document.getElementById('rivalryScopeSelect') as HTMLSelectElement | null;
       if (scopeSelect) scopeSelect.value = selectedScope;
       const built = buildRivalryControls({
@@ -86,6 +93,7 @@ export function createFeatureController(): DarlingFeatureController {
       });
       teamA = built.selectedTeamA;
       teamB = built.selectedTeamB;
+      initialized = true;
       render();
     },
     deactivate() { active = false; },

@@ -93,17 +93,17 @@ export function createFeatureController(): DarlingFeatureController {
     },
     activate(input: FeatureActivation) {
       activeSignal = input.signal;
-      const existing = state || {};
+      const existing = input.reason === 'tab' && state ? state : {};
       const built = (buildCurrentSeasonControls as any)({
         doc: context.document,
         leagueGames: context.data.leagueGames,
         seasonSummaries: context.data.seasonSummaries,
         currentSeason: context.data.currentSeason,
-        selectedSeason: input.route.currentSeason || existing.selectedSeason,
-        selectedWeek: input.route.currentWeek || existing.selectedWeek,
+        selectedSeason: input.route.currentSeason ?? existing.selectedSeason ?? null,
+        selectedWeek: input.route.currentWeek ?? existing.selectedWeek ?? null,
         selectedOwner: input.route.currentOwner ?? existing.selectedOwner ?? '',
-        selectedView: input.route.currentView || existing.selectedView || 'command',
-        selectedProjectionMode: input.route.currentProjection || existing.selectedProjectionMode || 'ifScoresHold',
+        selectedView: input.route.currentView ?? existing.selectedView ?? 'command',
+        selectedProjectionMode: input.route.currentProjection ?? existing.selectedProjectionMode ?? 'ifScoresHold',
         onChange: (next: any) => {
           if (activeSignal?.aborted) return;
           state = { ...(state || {}), ...next };

@@ -29,6 +29,16 @@ function codeLines(source) {
   }).length;
 }
 
+function featureDirectoryForImport(root, importer, specifier) {
+  const clean = String(specifier).split(/[?#]/, 1)[0];
+  if (clean.startsWith('.')) {
+    const importerDirectory = path.dirname(path.join(root, importer));
+    const relativeTarget = path.relative(root, path.resolve(importerDirectory, clean)).split(path.sep).join('/');
+    return relativeTarget.match(/^src\/features\/([^/]+)/)?.[1] || null;
+  }
+  return clean.match(/(?:^|\/)(?:src\/)?features\/([^/]+)/)?.[1] || null;
+}
+
 function checkFeatureBoundaries(root = process.cwd()) {
   const failures = [];
   const read = file => fs.readFileSync(path.join(root, file), 'utf8');
@@ -36,18 +46,18 @@ function checkFeatureBoundaries(root = process.cwd()) {
   for (const file of ['src/main.tsx', ...appFiles]) {
     if (file === 'src/app/feature-registry.ts') continue;
     for (const specifier of staticImports(read(file))) {
-      if (specifier.includes('/features/')) failures.push(`${file} statically imports feature implementation ${specifier}`);
+      if (featureDirectoryForImport(root, file, specifier)) failures.push(`${file} statically imports feature implementation ${specifier}`);
     }
   }
   for (const file of filesUnder(root, 'src/features')) {
     const ownFeature = file.split('/')[2];
     for (const specifier of staticImports(read(file))) {
-      const match = specifier.match(/features\/([^/]+)/);
-      if (match && match[1] !== ownFeature) failures.push(`${file} imports another feature directory (${specifier})`);
+      const importedFeature = featureDirectoryForImport(root, file, specifier);
+      if (importedFeature && importedFeature !== ownFeature) failures.push(`${file} imports another feature directory (${specifier})`);
     }
   }
   for (const file of filesUnder(root, 'src/app/services')) {
-    if (staticImports(read(file)).some(specifier => specifier.includes('/features/'))) failures.push(`${file} imports a feature implementation`);
+    if (staticImports(read(file)).some(specifier => featureDirectoryForImport(root, file, specifier))) failures.push(`${file} imports a feature implementation`);
   }
   if (fs.existsSync(path.join(root, 'js/history-controller.js'))) failures.push('js/history-controller.js must be deleted or reduced to an explicitly allowlisted compatibility shim');
   const registry = read('src/app/feature-registry.ts');
@@ -77,4 +87,4 @@ function runCli(root = process.cwd()) {
 }
 
 if (require.main === module) process.exit(runCli());
-module.exports = { checkFeatureBoundaries, runCli, staticImports };
+module.exports = { checkFeatureBoundaries, featureDirectoryForImport, runCli, staticImports };

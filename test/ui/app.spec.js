@@ -266,6 +266,26 @@ test('current season view modes hide filtered section containers', async ({ page
   expect(hasHorizontalOverflow).toBe(false);
 });
 
+test('browser navigation restores omitted Current Season defaults', async ({ page }) => {
+  await page.goto('/?tab=current');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('#currentViewSelect')).toHaveValue('command');
+  await expect(page.locator('#currentOwnerSelect')).toHaveValue('');
+  await expect(page.locator('#currentProjectionSelect')).toHaveValue('ifScoresHold');
+
+  await page.locator('#currentViewSelect').selectOption('owners');
+  await expect.poll(() => new URL(page.url()).searchParams.get('currentView')).toBe('owners');
+
+  await page.goBack();
+  await expect.poll(() => new URL(page.url()).searchParams.get('currentView')).toBeNull();
+  await expect(page.locator('#currentViewSelect')).toHaveValue('command');
+  await expect(page.locator('#currentOwnerSelect')).toHaveValue('');
+  await expect(page.locator('#currentProjectionSelect')).toHaveValue('ifScoresHold');
+
+  await page.goForward();
+  await expect(page.locator('#currentViewSelect')).toHaveValue('owners');
+});
+
 test('historical Current Season standings match the selected week snapshot', async ({ page }) => {
   await page.goto('/?tab=current&currentSeason=2024&currentWeek=7');
   await page.waitForLoadState('networkidle');
@@ -291,14 +311,18 @@ test('rivalry tab renders a tale of the tape and saved rivalry selection', async
   await expect(page.locator('#rivalryTeamA')).toBeVisible();
   await expect(page.locator('#rivalryTeamB')).toBeVisible();
   await expect(page.locator('#page-rivalry')).toContainText('Head to Head');
-  await expect(page.locator('header h2')).toHaveText('Joe');
+  await expect(page.locator('#rivalryTeamA')).toHaveValue('Joel');
+  await expect(page.locator('header h2')).toHaveText('Joel');
 
   await page.locator('#tabHistoryBtn').click();
   await expect(page.locator('#tabHistoryBtn')).toHaveClass(/active/);
   await expect(page.locator('header h2')).toHaveText('Joel');
 
   await page.locator('#tabRivalryBtn').click();
+  await expect(page.locator('#rivalryTeamA')).toHaveValue('Joel');
+  await page.locator('#rivalryTeamB').selectOption('Zook');
   await page.locator('#rivalryTeamA').selectOption('Joe');
+  await page.locator('#rivalryTeamB').selectOption('Joel');
   await expect(page.locator('#rivalryTeamA')).toHaveValue('Joe');
   await expect(page.locator('#rivalryTeamB')).toHaveValue('Joel');
   await expect(page.locator('#rivalryTeamB option[value="Joe"]')).toHaveCount(0);
@@ -607,6 +631,18 @@ test('gauntlet controls update the url and browser back restores the previous ma
     const params = new URL(location.href).searchParams;
     return [params.get('tab'), params.get('gm'), params.get('gp')].join('|');
   })).toBe('gauntlet|hybrid|1');
+});
+
+test('Gauntlet preserves selections across ordinary tab reactivation', async ({ page }) => {
+  await page.goto('/?tab=gauntlet');
+  await page.waitForLoadState('networkidle');
+  await page.locator('#gauntletOwnerA').selectOption('Zook');
+  await expect.poll(() => new URL(page.url()).searchParams.get('ga')).toMatch(/^Zook:/);
+
+  await page.locator('#tabTrophyBtn').click();
+  await expect(page.locator('#trophyOwnerSelect')).toBeVisible();
+  await page.locator('#tabGauntletBtn').click();
+  await expect(page.locator('#gauntletOwnerA')).toHaveValue('Zook');
 });
 
 test('gauntlet mobile layout stacks the matchup and keeps the histogram visible', async ({ page }) => {
@@ -1397,6 +1433,18 @@ test('Draft Spot normalized slots combine equivalent 10-team and 12-team positio
   await expect(slot).toContainText('12-team slot 12');
   await expect(slot).toContainText('n=9');
   await expect(page.locator('#draftRowsTable tbody tr:not(:has(.table-empty-state))')).toHaveCount(9);
+});
+
+test('Draft Spot preserves selections across ordinary tab reactivation', async ({ page }) => {
+  await page.goto('/?tab=draft');
+  await page.waitForLoadState('networkidle');
+  await page.locator('#draftOwnerSelect').selectOption('Joe');
+  await expect.poll(() => new URL(page.url()).searchParams.get('draftOwner')).toBe('Joe');
+
+  await page.locator('#tabTrophyBtn').click();
+  await expect(page.locator('#trophyOwnerSelect')).toBeVisible();
+  await page.locator('#tabDraftBtn').click();
+  await expect(page.locator('#draftOwnerSelect')).toHaveValue('Joe');
 });
 
 test('Draft Spot timeline highlights normalized selections using the normalized slot', async ({ page }) => {

@@ -265,6 +265,38 @@ const entries: Record<TableId, TableRegistryEntry> = {
     emptyMessage: 'No seasons recorded for this owner.',
     expandable: true,
   },
+  'draft-rows': {
+    id: 'draft-rows',
+    mountId: 'draftRowsTableRoot',
+    tableElementId: 'draftRowsTable',
+    columns: [
+      number('season', 'Season'),
+      text('owner', 'Owner', { width: 132 }),
+      number('draftPick', 'Draft Pick', { sortDescFirst: false }),
+      number('draftPercentile', 'Draft %', { render: percent, hideOnMobile: true }),
+      enumColumn('zone', 'Zone', ['Early (1-3)', 'Middle (4-7)', 'Late (8+)']),
+      number('finish', 'Finish', { sortDescFirst: false }),
+      text('record', 'Record'),
+      number('pointsFor', 'PF', { render: decimal(1) }),
+      number('pointsZ', 'Points z', { render: signed(2), hideOnMobile: true }),
+      number('winsAboveAvg', 'Wins +/-', { render: signed(2), hideOnMobile: true }),
+      enumColumn('outcome', 'Outcome', ['Champion', 'Top 3', 'Playoffs', 'Saunders', 'Missed playoffs']),
+    ],
+    defaultSorting: [{ id: 'season', desc: true }],
+    defaultPinned: ['owner'],
+    defaultPageSize: 25,
+    quickFilters: [
+      { id: 'champions', label: 'Champions', group: 'outcome', test: row => row.champion === true },
+      { id: 'playoffs', label: 'Playoff teams', group: 'outcome', test: row => row.madePlayoffs === true },
+      { id: 'saunders', label: 'Saunders teams', group: 'outcome', test: row => row.saunders === true },
+    ],
+    builtInViews: [
+      { name: 'Championship receipts', state: { quickFilters: ['champions'], sorting: [{ id: 'season', desc: true }] } },
+      { name: 'Best finishes', state: { sorting: [{ id: 'finish', desc: false }] } },
+    ],
+    emptyMessage: 'No owner-seasons match the current Draft Spot filters.',
+    expandable: true,
+  },
 };
 
 export function getTableRegistryEntry(tableId: TableId): TableRegistryEntry {

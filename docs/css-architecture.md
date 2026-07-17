@@ -23,6 +23,7 @@ The import order is deterministic, and every imported file is assigned to a laye
 - `motion.css`: crown, Saunders fog, Easter eggs, and reduced-motion overrides.
 - `utilities.css`: visually hidden, muted, and scroll-lock utilities.
 - `features/*.css`: styles and responsive rules owned by one page or feature.
+- `features/draft-spot.css`: Draft Spot controls, charts, pick board, owner evidence, receipts, and responsive/forced-colors behavior.
 - `src/components/search/search.css` and `src/components/tables/table.css`: component-owned styles imported into the components layer.
 
 ## Rules

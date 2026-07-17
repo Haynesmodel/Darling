@@ -11,6 +11,7 @@ const SCHEMA_FILES = Object.freeze([
   'season-summary.schema.json',
   'rivalries.schema.json',
   'current-season.schema.json',
+  'draft-spot.schema.json',
   'derived-stats.schema.json',
   'asset-manifest.schema.json',
 ]);
@@ -70,6 +71,7 @@ function validateStructuralAssets(root = process.cwd(), opts = {}) {
     errors.push(...validateWithSchema(ajv, config.schema, value, config.path));
   }
   for (const [name, config] of Object.entries({
+    DraftSpot: GENERATED_ASSETS.DraftSpot,
     DerivedStats: GENERATED_ASSETS.DerivedStats,
     AssetManifest: GENERATED_ASSETS.AssetManifest,
   })) {

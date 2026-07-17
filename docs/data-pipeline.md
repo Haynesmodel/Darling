@@ -1,6 +1,6 @@
 # Data pipeline
 
-The Darling deploys one coherent, content-addressed data snapshot. The four source JSON files remain human-reviewable inputs; schemas, generated contracts, derived statistics, and the manifest make the snapshot safe to consume and reproduce.
+The Darling deploys one coherent, content-addressed data snapshot. The four source JSON files remain human-reviewable inputs; schemas, generated contracts, Draft Spot observations, derived statistics, and the manifest make the snapshot safe to consume and reproduce.
 
 ## Source and generated files
 
@@ -17,6 +17,7 @@ Generated files (do not edit by hand):
 
 - `src/data/generated/asset-types.ts`
 - `src/data/generated/asset-validators.ts`
+- `assets/DraftSpot.json`
 - `assets/DerivedStats.json`
 - `assets/asset-manifest.json`
 
@@ -39,10 +40,11 @@ npm run test:unit
 
 The generated order is significant:
 
-1. Generate TypeScript types.
-2. Generate standalone runtime validators.
-3. Generate `DerivedStats.json` from H2H, SeasonSummary, and Rivalries.
-4. Generate `asset-manifest.json` last.
+1. Generate `DraftSpot.json` deterministically from `SeasonSummary.json`.
+2. Generate TypeScript types.
+3. Generate standalone runtime validators.
+4. Generate `DerivedStats.json` from H2H, SeasonSummary, and Rivalries.
+5. Generate `asset-manifest.json` last.
 
 Commit source and generated changes together. Editing source JSON without regenerating derived data and the manifest fails CI.
 
@@ -87,6 +89,12 @@ Interactive filters, URL state, live projections, chart layout, and postseason-w
 
 Increment `derived_generator_version` whenever calculation meaning changes, even if input schemas do not.
 
+## Draft Spot dependency contract
+
+`DraftSpot.json` contains one row per owner-season only when that season has complete draft-pick data. It records the canonical `SeasonSummary.json` SHA-256 in `source_sha256`; structural validation and generated drift checks reject stale output.
+
+The manifest includes Draft Spot with `required: false` so the main historical app remains usable after a runtime fetch failure. Generation, schema validation, source-hash validation, manifest inclusion, built-output presence, and byte-for-byte drift are mandatory in CI.
+
 ## Manifest and data version
 
 `asset-manifest.json` records schema versions, source and derived hashes, byte sizes, row counts, season coverage, dependencies, and hero metadata. `data_version` hashes canonical JSON inputs, schema versions, the derived generator version, the derived hash, and runtime media hashes.
@@ -117,6 +125,7 @@ Useful recovery commands:
 
 ```sh
 npm run generate:derived    # source hash or stale derived output
+npm run generate:draft-spot # stale SeasonSummary dependency
 npm run generate:manifest
 npm run generate:data-types # schema/type drift
 npm run generate:data-validators

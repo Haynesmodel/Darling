@@ -6,6 +6,7 @@ const TAB_IDS: Record<string, string> = {
   rivalry: 'tabRivalryBtn',
   trophy: 'tabTrophyBtn',
   dynasty: 'tabDynastyBtn',
+  draft: 'tabDraftBtn',
   gauntlet: 'tabGauntletBtn',
 };
 
@@ -100,8 +101,8 @@ export function bindTablist(root: Document = document): () => void {
     if (index < 0) return;
 
     let nextIndex: number | null = null;
-    if (event.key === 'ArrowLeft') nextIndex = Math.max(0, index - 1);
-    if (event.key === 'ArrowRight') nextIndex = Math.min(tabs.length - 1, index + 1);
+    if (event.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length;
+    if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;
     if (event.key === 'Home') nextIndex = 0;
     if (event.key === 'End') nextIndex = tabs.length - 1;
     if (nextIndex !== null) {

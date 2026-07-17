@@ -10,6 +10,7 @@ The palette is a typed, in-browser navigator over the app's existing URL state. 
 - Score threshold: `150 point games`, `games over 140`, `Joe 100 or less`
 - Records and filters: `biggest loss`, `Joe biggest loss`, `highest score`, `Joe losses`
 - Features: `current season`, `playoff picture`, `Joe trophy case`, `Joe dynasty`, `historical matchup`
+- Draft Spot: `draft spot`, `pick 10`, `late draft picks`, `Joe draft history`
 - Commands: `dark mode`, `light mode`, `system theme`, `export history`
 
 Canonical owner names come from league assets. Sleeper display and team names in `CurrentSeason.json` are added as aliases when present, but generated URLs always use the canonical owner.

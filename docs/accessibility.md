@@ -8,7 +8,7 @@ The Darling targets WCAG 2.2 Level AA as its engineering baseline. Automated che
 
 - The sticky primary navigation is a manual-activation ARIA tablist.
 - `Tab` enters at the selected tab.
-- Left/Right Arrow and Home/End move focus without changing the page.
+- Left/Right Arrow wrap from first to last and last to first; Home/End move to the edges without changing the page.
 - Enter or Space activates the focused tab.
 - Activation synchronizes the selected tab, panel visibility, URL state, theme context, browser history, and horizontal reveal.
 - Mobile overflow uses visible scroll buttons, a scrollbar, edge state, and automatic active-tab reveal. Search remains a separate utility action.
@@ -36,11 +36,18 @@ The Darling targets WCAG 2.2 Level AA as its engineering baseline. Automated che
 - JavaScript skips creating decorative effect DOM when reduction is requested.
 - Programmatic tab and deep-link scrolling changes to instant behavior.
 
+### Draft Spot pick board
+
+- Native buttons expose selected state with `aria-pressed`.
+- Left/Right move through available picks with wrapping; Up/Down follow the rendered grid; Home/End move to the first/last available pick.
+- Enter/Space use native button activation.
+- Empty picks are noninteractive, low samples include text/border treatment, and champion/Saunders states never rely on color alone.
+
 ## Automated checks
 
 Run:
 
-- `npm run test:a11y` for axe WCAG A/AA scans of all six pages in light and dark themes plus overlay and expanded-table states.
+- `npm run test:a11y` for axe WCAG A/AA scans of all seven pages in light and dark themes plus overlay and expanded-table states.
 - `npm run test:keyboard` for tablist, disclosure, dialog, skip-link, reduced-motion, and responsive interaction checks.
 - `npm run test:ui` for the complete browser suite.
 
@@ -69,3 +76,5 @@ Automated CI does not replace this checklist:
 - Touch review on a narrow physical device when available.
 
 Confirm page/tab names, dialog purpose, checkbox state, focus visibility, focus restoration, chart alternatives, and concise status announcements. Record any remaining limitation in an issue with an owner and removal condition.
+
+The current dated record is [accessibility-release-verification-2026-07-16.md](accessibility-release-verification-2026-07-16.md).

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { deriveWeeksInPlace } from '../js/core-helpers.js';
 import {
+  attachCurrentSeasonOdds,
   buildCurrentSeasonViewModel,
   currentLiveMovementHtml,
   currentMatchupsHtml,
@@ -201,4 +202,28 @@ test('current-season renderers hide containers when view mode filters sections',
   assert.equal(elements.get('currentPlayoffPicture').hidden, false);
   assert.equal(elements.get('currentProjectedStandings').hidden, false);
   assert.equal(elements.get('currentStandings').hidden, false);
+});
+
+test('current-season probability estimates attach without replacing deterministic statuses', () => {
+  const view = buildCurrentSeasonViewModel({ leagueGames: games, season: 2025, week: 1 });
+  const statusBefore = view.commandCenter.playoffPicture[0].status;
+  attachCurrentSeasonOdds(view, {
+    status: 'ready',
+    modelLabel: 'Deterministic team-score Monte Carlo',
+    modelVersion: 'test-v1',
+    simulations: 10000,
+    liveMode: 'Pregame',
+    methodology: 'Test method',
+    rows: view.commandCenter.playoffPicture.map((row, index) => ({
+      owner: row.owner,
+      playoffOdds: index < 2 ? 1 : 0,
+      byeOdds: index === 0 ? 1 : 0,
+      saundersOdds: index >= 2 ? 1 : 0,
+      seedProbabilities: { [`${index + 1}`]: 1 },
+    })),
+    movement: [],
+  });
+  assert.equal(view.commandCenter.playoffPicture[0].status, statusBefore);
+  assert.match(currentPlayoffPictureHtml(view), /Playoffs 100%/);
+  assert.match(currentPlayoffPictureHtml(view), /Seed odds/);
 });

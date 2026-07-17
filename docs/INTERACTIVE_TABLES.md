@@ -1,6 +1,6 @@
 # Interactive Tables
 
-The Darling's primary History, Head to Head, Current Season, and Trophy tables use one Preact table runtime backed by TanStack Table v9. The adapter is currently published under the `@beta` tag, so dependency upgrades should be reviewed against the Preact migration notes before updating the lockfile.
+The Darling's primary History, Head to Head, Current Season, Trophy, and Draft Spot tables use one Preact table runtime backed by TanStack Table v9. The adapter is currently published under the `@beta` tag, so dependency upgrades should be reviewed against the Preact migration notes before updating the lockfile.
 
 ## Table IDs
 
@@ -17,6 +17,7 @@ The supported IDs live in `src/tables/table-types.ts`:
 | `current-standings` | Current standings |
 | `current-projected` | Projected standings |
 | `trophy-seasons` | Trophy season ledger |
+| `draft-rows` | Draft Spot owner-season receipts |
 
 Tier 4 mini tables, Dynasty detail tables, and the Gauntlet comparison remain legacy by design.
 
@@ -41,6 +42,8 @@ History's canonical game-query fields remain URL-owned:
 - `gameLimit`
 
 The History game table initializes from those fields and sends supported sort/filter changes back through `state-helpers.js`. Browser back/forward therefore restores Global Search deep links.
+
+Draft Spot keeps product state in `draftOwner`, `draftMode`, `draftStart`, `draftEnd`, `draftMetric`, `draftMinSample`, `draftNormalize`, `draftPick`, and `draftZone`. Its table presentation state remains local and saved views retain the portable owner/range context.
 
 Presentation state stays local to the table unless saved in a view:
 

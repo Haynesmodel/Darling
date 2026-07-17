@@ -15,6 +15,12 @@ test('primary tabs use manual activation with roving focus', async ({ page }) =>
   await page.keyboard.press('Tab');
   await expect(history).toBeFocused();
   await history.focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(gauntlet).toBeFocused();
+  await expect(gauntlet).toHaveAttribute('aria-selected', 'false');
+  await expect(page.getByRole('tabpanel', { name: 'League History' })).toBeVisible();
+  await page.keyboard.press('ArrowRight');
+  await expect(history).toBeFocused();
   await page.keyboard.press('ArrowRight');
   await expect(current).toBeFocused();
   await expect(current).toHaveAttribute('aria-selected', 'false');
@@ -34,6 +40,41 @@ test('primary tabs use manual activation with roving focus', async ({ page }) =>
   await page.keyboard.press('Home');
   await expect(history).toBeFocused();
   await expect(history).toHaveAttribute('aria-selected', 'false');
+});
+
+test('Draft Spot pick board supports spatial arrows, Home, End, and selection', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?tab=draft&draftMode=pick&draftPick=10');
+  await page.waitForLoadState('networkidle');
+  const picks = page.locator('.draft-pick-card:not(.empty)');
+  await expect(picks.first()).toBeVisible();
+  await picks.first().focus();
+  await page.keyboard.press('End');
+  await expect(picks.last()).toBeFocused();
+  await page.keyboard.press('Home');
+  await expect(picks.first()).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(picks.nth(1)).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  expect(await page.evaluate(() => document.activeElement?.classList.contains('draft-pick-card'))).toBe(true);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => new URL(page.url()).searchParams.get('draftPick')).not.toBeNull();
+  await expect(page.locator('.draft-pick-card[aria-pressed="true"]')).toHaveCount(1);
+});
+
+test('Draft Spot spatial navigation drops buttons removed by filters', async ({ page }) => {
+  await page.goto('/?tab=draft&draftMode=pick&draftPick=1');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('.draft-pick-card[data-draft-pick="2"]')).toBeVisible();
+
+  await page.locator('#draftOwnerSelect').selectOption('Joe');
+  const visiblePicks = page.locator('.draft-pick-card:not(.empty)');
+  await expect(visiblePicks).toHaveCount(5);
+  const pickOne = page.locator('.draft-pick-card[data-draft-pick="1"]');
+  const pickThree = page.locator('.draft-pick-card[data-draft-pick="3"]');
+  await pickOne.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(pickThree).toBeFocused();
 });
 
 test('browser navigation restores tab semantics and reveals the selected mobile tab', async ({ page }) => {
@@ -60,6 +101,24 @@ test('browser navigation restores tab semantics and reveals the selected mobile 
     };
     return tabBox.left >= visibleEdge(previous, 'start') - 1
       && tabBox.right <= visibleEdge(next, 'end') + 1;
+  })).toBe(true);
+});
+
+test('wrapped edge focus is revealed in the mobile tab strip without activating it', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+  const history = page.getByRole('tab', { name: 'League History' });
+  const gauntlet = page.getByRole('tab', { name: 'Historical Matchup' });
+  await history.focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(gauntlet).toBeFocused();
+  await expect(history).toHaveAttribute('aria-selected', 'true');
+  await expect.poll(() => gauntlet.evaluate(tab => {
+    const strip = tab.parentElement;
+    const tabBox = tab.getBoundingClientRect();
+    const stripBox = strip.getBoundingClientRect();
+    return tabBox.left >= stripBox.left - 1 && tabBox.right <= stripBox.right + 1;
   })).toBe(true);
 });
 

@@ -8,5 +8,6 @@
 | [TROPHY_CASE_IMPLEMENTATION_PLAN.md](./TROPHY_CASE_IMPLEMENTATION_PLAN.md) | complete | Trophy Case page implementation |
 | [ERA_DYNASTY_IMPLEMENTATION_PLAN.md](./ERA_DYNASTY_IMPLEMENTATION_PLAN.md) | complete | Dynasty Rankings page implementation |
 | [TECHNICAL_RECOMMENDATIONS_IMPLEMENTATION_PLAN.md](./TECHNICAL_RECOMMENDATIONS_IMPLEMENTATION_PLAN.md) | complete | Claude review follow-up work |
+| [ROADMAP_REMEDIATION_PLAN.md](./ROADMAP_REMEDIATION_PLAN.md) | complete | Restored Draft Spot, added Current Season odds, tab wrapping, and preview stability |
 
 Keep this table current whenever a plan is added, moved, or completed.

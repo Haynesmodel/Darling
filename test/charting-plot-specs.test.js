@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import * as chartVendor from '../js/charting/vendor/charting-vendor.js';
 import {
+  currentOddsMovementPlotOptions,
   currentProjectedSeedPlotOptions,
   currentSeedMovementPlotOptions,
   dynastyTrendPlotOptions,
@@ -47,4 +48,7 @@ test('plot specs are deterministic plain option objects', () => {
 
   const projection = currentProjectedSeedPlotOptions([{ owner: 'Joe', projectedRank: 1, projectedRecord: '9-5', title: 'seed' }]);
   assert.equal(projection.marks[0].type, 'dot');
+
+  const odds = currentOddsMovementPlotOptions([{ owner: 'Joe', playoffChange: 25, title: 'odds' }]);
+  assert.equal(odds.marks[1].type, 'barX');
 });

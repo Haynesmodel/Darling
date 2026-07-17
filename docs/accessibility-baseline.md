@@ -21,7 +21,9 @@ The data-layer hotfix was confirmed merged as pull request 28 before this work b
 - Filter disclosure semantics and keyboard movement are automated.
 - Dynasty and Search focus management are automated.
 - Reduced-motion behavior is handled in CSS and JavaScript.
-- Axe scans pass for all six pages in light/dark themes and for representative overlay/expanded states.
+- Axe scans pass for all seven pages in light/dark themes and for representative overlay/expanded states.
+- Horizontal tab arrows wrap at both edges, including the seventh Draft Spot tab.
+- Draft Spot pick-board keyboard navigation, focus visibility, chart alternatives, mobile reflow, and owner theme state are automated.
 - Responsive checks pass at 320×568, 375×667, 390×844, and 768×1024 without document-level horizontal overflow.
 
 The production CSS bundle is emitted as one deterministic file. The verification build measured about 77.7 KB raw and 14.5 KB gzip while adding the new accessibility and responsive behavior.
@@ -32,4 +34,4 @@ Visual characterization was checked for:
 - 390×844 Dynasty with a long structured modal.
 - 1440×900 Trophy Case with the desktop hero and primary navigation.
 
-Manual VoiceOver, Safari, physical-device, and operating-system contrast checks remain release activities and are documented in `docs/accessibility.md`.
+The dated execution record and remaining device/assistive-technology release activities are documented in `docs/accessibility-release-verification-2026-07-16.md`.

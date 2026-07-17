@@ -1,0 +1,47 @@
+import { formatPercent, outcomeLabel } from './draft-spot-format';
+import { draftPickBucket } from './draft-spot-model';
+import type { DraftSpotState, DraftSpotViewModel } from './draft-spot-types';
+
+export default function DraftOwnerTimeline({
+  model,
+  onChange,
+}: {
+  model: DraftSpotViewModel;
+  onChange: (state: Partial<DraftSpotState>) => void;
+}) {
+  const profile = model.ownerProfile;
+  if (!profile?.rows.length) {
+    return <p class="muted">Choose an owner to see the year-by-year draft timeline.</p>;
+  }
+  return (
+    <div class="draft-timeline">
+      {profile.rows.map(row => (
+        <button
+          type="button"
+          data-draft-pick={draftPickBucket(row, model.state.normalize)}
+          aria-pressed={model.state.selectedPick === draftPickBucket(row, model.state.normalize)}
+          class={[
+            'draft-timeline-item',
+            row.champion ? 'champion' : '',
+            row.saunders ? 'saunders' : '',
+            model.state.selectedPick === draftPickBucket(row, model.state.normalize) ? 'selected' : '',
+          ].filter(Boolean).join(' ')}
+          onClick={() => onChange({
+            ...model.state,
+            mode: 'pick',
+            selectedPick: draftPickBucket(row, model.state.normalize),
+            selectedZone: null,
+          })}
+        >
+          <span>{row.season}</span>
+          <strong>
+            Pick {row.draft_pick}
+            {model.state.normalize === 'percentile' ? ` (${formatPercent(row.draft_percentile)})` : ''}
+            {' '}→ F{row.finish}
+          </strong>
+          <em>{outcomeLabel(row)}</em>
+        </button>
+      ))}
+    </div>
+  );
+}

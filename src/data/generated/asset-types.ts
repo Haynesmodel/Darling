@@ -18,6 +18,7 @@ export interface LeagueAssetBundle {
   seasonSummary: SeasonSummary;
   rivalries: RivalryDefinitions;
   currentSeason: CurrentSeasonData;
+  draftSpot: DraftSpot;
   derivedStats: DerivedStats;
   assetManifest: AssetManifest;
 }
@@ -118,6 +119,124 @@ export interface CurrentSeasonGame {
   matchup_id: number;
   rosterA: number;
   rosterB: number;
+}
+/**
+ * Deterministic draft-position observations generated from SeasonSummary.
+ */
+export interface DraftSpot {
+  schema_version: 1;
+  generator_version: 1;
+  source: 'SeasonSummary.json';
+  source_sha256: string;
+  generated_at: string;
+  season_range: {
+    start: number | null;
+    end: number | null;
+  };
+  team_seasons: number;
+  correlations: {
+    pick_finish: number;
+    draft_percentile_finish_score: number;
+    draft_percentile_points_z: number;
+  };
+  rows: DraftSpotRow[];
+  pick_summary: (BaseSummary & {
+    draft_pick: number;
+    n: any;
+    avg_finish: any;
+    avg_finish_score: any;
+    avg_wins_above_avg: any;
+    avg_points_z: any;
+    top_three_rate: any;
+    playoff_rate: any;
+    championships: number;
+    champion_rate: any;
+    saunders_count: number;
+    saunders_rate: any;
+  })[];
+  zone_summary: (BaseSummary & {
+    zone_key: 'early' | 'middle' | 'late';
+    zone: 'Early (1-3)' | 'Middle (4-7)' | 'Late (8+)';
+    n: any;
+    avg_pick: number;
+    avg_finish: any;
+    avg_finish_score: any;
+    avg_wins_above_avg: any;
+    avg_points_z: any;
+    top_three_rate: any;
+    playoff_rate: any;
+    champion_rate: any;
+    saunders_rate: any;
+  })[];
+  owner_recommendations: DraftSpotOwnerRecommendation[];
+}
+export interface DraftSpotRow {
+  season: number;
+  owner: string;
+  draft_pick: number;
+  team_count: number;
+  zone_key: 'early' | 'middle' | 'late';
+  zone: 'Early (1-3)' | 'Middle (4-7)' | 'Late (8+)';
+  wins: number;
+  losses: number;
+  ties: number;
+  finish: number;
+  points_for: number;
+  points_against: number;
+  champion: boolean;
+  saunders: boolean;
+  made_playoffs: boolean;
+  top_three: boolean;
+  win_pct: number;
+  finish_score: number;
+  draft_percentile: number;
+  points_rank: number;
+  points_score: number;
+  points_z: number;
+  wins_above_avg: number;
+}
+export interface BaseSummary {
+  n?: number;
+  avg_finish?: number;
+  avg_finish_score?: number;
+  avg_wins_above_avg?: number;
+  avg_points_z?: number;
+  top_three_rate?: number;
+  playoff_rate?: number;
+  champion_rate?: number;
+  saunders_rate?: number;
+  [k: string]: any;
+}
+export interface DraftSpotOwnerRecommendation {
+  owner: string;
+  target: string;
+  recommendation: string;
+  caution: string;
+  best_pick: RecommendationGroup;
+  best_zone: RecommendationGroup;
+  history: {
+    season: number;
+    draft_pick: number;
+    finish: number;
+    champion: boolean;
+    saunders: boolean;
+    made_playoffs: boolean;
+  }[];
+  confidence: 'strong' | 'medium' | 'small' | 'league-wide fallback';
+}
+export interface RecommendationGroup {
+  label: string;
+  n: number;
+  avg_finish: number;
+  avg_finish_score: number;
+  playoffs: number;
+  top_three: number;
+  titles: number;
+  saunders: number;
+  draft_pick?: number;
+  zone_key?: 'early' | 'middle' | 'late';
+  zone?: 'Early (1-3)' | 'Middle (4-7)' | 'Late (8+)';
+  [k: string]: any;
 }
 /**
  * Deterministic, filter-independent statistics generated from the league assets.
@@ -254,6 +373,7 @@ export interface AssetManifest {
     SeasonSummary: number;
     Rivalries: number;
     CurrentSeason: number;
+    DraftSpot: number;
     DerivedStats: number;
   };
   assets: {
@@ -261,6 +381,7 @@ export interface AssetManifest {
     SeasonSummary: JsonAsset;
     Rivalries: JsonAsset;
     CurrentSeason: JsonAsset;
+    DraftSpot: JsonAsset;
   };
   derived: {
     path: string;

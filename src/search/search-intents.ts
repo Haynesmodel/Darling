@@ -128,6 +128,20 @@ export function parseSearchIntents(rawQuery: string, context: SearchIntentContex
     : null;
   if (scopedQuery && /^(?:trophy|trophies|hardware|trophy case)$/.test(scopedQuery)) return [{ kind: 'feature', feature: 'trophy', owner }];
   if (scopedQuery && /^dynasty(?: rankings?)?$/.test(scopedQuery)) return [{ kind: 'feature', feature: 'dynasty', owner }];
+  if (owner && scopedQuery && /^(?:draft|draft spot|draft history)$/.test(scopedQuery)) {
+    return [{ kind: 'draft-owner', owner }];
+  }
+  const pickMatch = query.match(/^(?:draft )?pick (\d{1,2})$/);
+  if (!owners.length && pickMatch && Number(pickMatch[1]) >= 1 && Number(pickMatch[1]) <= 24) {
+    return [{ kind: 'draft-pick', pick: Number(pickMatch[1]) }];
+  }
+  const zoneMatch = query.match(/^(early|middle|late)(?: draft)? picks?$/);
+  if (!owners.length && zoneMatch) {
+    return [{ kind: 'draft-zone', zone: zoneMatch[1] as 'early' | 'middle' | 'late' }];
+  }
+  if (!owners.length && /^(?:draft spot|draft spot explorer|draft history)$/.test(query)) {
+    return [{ kind: 'feature', feature: 'draft' }];
+  }
   if (!owners.length && /^(?:historical matchup|gauntlet)$/.test(query)) return [{ kind: 'feature', feature: 'gauntlet' }];
   if (!owners.length && query === 'playoff picture') return [{ kind: 'feature', feature: 'playoff-picture' }];
   if (!owners.length && query === 'current season') return [{ kind: 'feature', feature: 'current' }];

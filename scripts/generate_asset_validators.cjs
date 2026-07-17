@@ -18,6 +18,7 @@ function generateAssetValidators({ sourceRoot = process.cwd(), outputRoot = sour
     validateSeasonSummary: schemaId('season-summary.schema.json'),
     validateRivalries: schemaId('rivalries.schema.json'),
     validateCurrentSeason: schemaId('current-season.schema.json'),
+    validateDraftSpot: schemaId('draft-spot.schema.json'),
     validateDerivedStats: schemaId('derived-stats.schema.json'),
     validateAssetManifest: schemaId('asset-manifest.schema.json'),
   });
@@ -37,18 +38,19 @@ function generateAssetValidators({ sourceRoot = process.cwd(), outputRoot = sour
   }).outputFiles[0].text;
   const wrappers = `
 
-import type { AssetManifest, CurrentSeasonData, DerivedStats, H2HGame, RivalryDefinition, SeasonSummaryRow } from './asset-types';
+import type { AssetManifest, CurrentSeasonData, DerivedStats, DraftSpot, H2HGame, RivalryDefinition, SeasonSummaryRow } from './asset-types';
 
 export function isH2H(value: unknown): value is H2HGame[] { return validateH2H(value) as boolean; }
 export function isSeasonSummary(value: unknown): value is SeasonSummaryRow[] { return validateSeasonSummary(value) as boolean; }
 export function isRivalries(value: unknown): value is RivalryDefinition[] { return validateRivalries(value) as boolean; }
 export function isCurrentSeason(value: unknown): value is CurrentSeasonData { return validateCurrentSeason(value) as boolean; }
+export function isDraftSpot(value: unknown): value is DraftSpot { return validateDraftSpot(value) as boolean; }
 export function isDerivedStats(value: unknown): value is DerivedStats { return validateDerivedStats(value) as boolean; }
 export function isAssetManifest(value: unknown): value is AssetManifest { return validateAssetManifest(value) as boolean; }
 
-export type ValidatorName = 'H2H' | 'SeasonSummary' | 'Rivalries' | 'CurrentSeason' | 'DerivedStats' | 'AssetManifest';
+export type ValidatorName = 'H2H' | 'SeasonSummary' | 'Rivalries' | 'CurrentSeason' | 'DraftSpot' | 'DerivedStats' | 'AssetManifest';
 export function getValidatorErrors(name: ValidatorName): Array<{ instancePath?: string; message?: string }> | null {
-  const validators = { H2H: validateH2H, SeasonSummary: validateSeasonSummary, Rivalries: validateRivalries, CurrentSeason: validateCurrentSeason, DerivedStats: validateDerivedStats, AssetManifest: validateAssetManifest };
+  const validators = { H2H: validateH2H, SeasonSummary: validateSeasonSummary, Rivalries: validateRivalries, CurrentSeason: validateCurrentSeason, DraftSpot: validateDraftSpot, DerivedStats: validateDerivedStats, AssetManifest: validateAssetManifest };
   return (validators[name] as any).errors || null;
 }
 

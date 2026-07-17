@@ -1,5 +1,6 @@
 import { Plot } from './vendor/charting-vendor.js';
 import {
+  currentOddsMovementRows,
   currentProjectedSeedRows,
   currentSeedMovementRows,
   dynastyTrendRows,
@@ -8,6 +9,7 @@ import {
   trophyCareerRows,
 } from './chart-data.js';
 import {
+  currentOddsMovementPlotOptions,
   currentProjectedSeedPlotOptions,
   currentSeedMovementPlotOptions,
   dynastyTrendPlotOptions,
@@ -165,7 +167,18 @@ function renderCurrentProjectedStandingsPlot(host, view = {}, opts = {}) {
   });
 }
 
+function renderCurrentOddsMovementPlot(host, view = {}, opts = {}) {
+  const rows = currentOddsMovementRows(view).slice(0, opts.limit || 8);
+  const spec = currentOddsMovementPlotOptions(rows, opts);
+  return renderSpec(host, spec, {
+    ariaLabel: spec.ariaLabel,
+    className: 'current-odds-movement-svg',
+    emptyMessage: 'No playoff odds movement available.',
+  });
+}
+
 export {
+  renderCurrentOddsMovementPlot,
   renderCurrentProjectedStandingsPlot,
   renderCurrentSeedMovementPlot,
   renderDynastyTrendPlot,

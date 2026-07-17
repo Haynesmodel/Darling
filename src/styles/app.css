@@ -15,6 +15,7 @@
 @import "./features/trophy.css" layer(features);
 @import "./features/dynasty.css" layer(features);
 @import "./features/dynasty-details.css" layer(features);
+@import "./features/draft-spot.css" layer(features);
 @import "./features/gauntlet.css" layer(features);
 @import "./utilities.css" layer(utilities);
 @import "./motion.css" layer(utilities);

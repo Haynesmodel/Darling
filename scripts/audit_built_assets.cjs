@@ -9,7 +9,7 @@ function auditBuiltAssets(root = process.cwd(), outputDir = 'dist') {
   if (!fs.existsSync(manifestPath)) return [`${outputDir}/assets/asset-manifest.json is missing`];
   const manifest = readJson(manifestPath);
   const paths = [
-    ...Object.values(manifest.assets).filter(asset => asset.required).map(asset => asset.path),
+    ...Object.values(manifest.assets).map(asset => asset.path),
     ...(manifest.derived.required ? [manifest.derived.path] : []),
     ...manifest.media.leagueHero.variants.map(variant => variant.path),
   ];

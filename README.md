@@ -31,6 +31,7 @@ Test locally:
 - `npm run test:a11y` runs axe WCAG A/AA scans across pages and interaction states.
 - `npm run test:keyboard` runs tab, disclosure, dialog, skip-link, motion, and responsive keyboard checks.
 - `npm run test:ui:preview` runs the Playwright browser tests against a previously built `dist/` bundle under `/Darling/`.
+- `npm run test:ui:preview:serial` is the explicit one-worker diagnostic form; preview runs use one worker by default for local/CI parity.
 - `npm run test:coverage` runs the Node tests, browser tests, and coverage check.
 - `npm run test:ci` runs the local unit, GitHub Pages production build, and built-output UI checks that mirror CI.
 - GitHub branch protection should require the `CI / unit`, `CI / ui`, and `CI / coverage` checks.
@@ -39,6 +40,7 @@ Primary web-served data:
 - `assets/H2H.json`
 - `assets/CurrentSeason.json` (optional Sleeper-generated live/current season source)
 - `assets/SeasonSummary.json`
+- `assets/DraftSpot.json` (generated, runtime-optional Draft Spot observations)
 - `assets/Rivalries.json`
 - `assets/DerivedStats.json` (generated canonical aggregates)
 - `assets/asset-manifest.json` (generated content-addressed inventory)
@@ -58,13 +60,13 @@ Theme and hero assets:
 
 Global search and command palette:
 - Open Search from the sticky navigation, with `Command+K` / `Control+K`, or with `/` while focus is outside an editable field.
-- Structured phrases include owner seasons (`Joe 2021`), rivalries (`Zubs vs Joel`), season types (`2024 playoffs`), thresholds (`150 point games`), records (`biggest loss`), feature destinations, and color-scheme commands.
+- Structured phrases include owner seasons (`Joe 2021`), rivalries (`Zubs vs Joel`), Draft Spot destinations (`pick 10`, `late draft picks`, `Joe draft history`), season types (`2024 playoffs`), thresholds (`150 point games`), records (`biggest loss`), feature destinations, and color-scheme commands.
 - Search is local-only. It hydrates from the existing league JSON assets, stores only up to eight executed result IDs in `localStorage["darling.search.recent"]`, and navigates through canonical URL state.
 - History record URLs support `gameResult`, `gameMinScore`, `gameMaxScore`, `gameSort`, `gameLimit`, and `focus`. Invalid values are ignored and limits are capped at 100.
 - See [`docs/SEARCH_COMMAND_PALETTE.md`](./docs/SEARCH_COMMAND_PALETTE.md) before adding aliases, intent families, or commands.
 
 Interactive tables:
-- Primary History, Head to Head, Current Season, and Trophy tables share sortable headers, typed filters, quick filters, sticky identity columns, row details, pagination, visibility/pinning controls, and local saved views.
+- Primary History, Head to Head, Current Season, Trophy, and Draft Spot tables share sortable headers, typed filters, quick filters, sticky identity columns, row details, pagination, visibility/pinning controls, and local saved views.
 - History game filters and supported sorting continue to use canonical Global Search URL fields; presentation preferences remain local.
 - Saved views are local-only in `localStorage["darling.tableViews.v1"]` and are schema-validated when restored.
 - See [`docs/INTERACTIVE_TABLES.md`](./docs/INTERACTIVE_TABLES.md) before adding a table ID, column, adapter, quick filter, or saved-state field.
@@ -75,8 +77,15 @@ Accessibility and CSS:
 - See [`docs/accessibility.md`](./docs/accessibility.md) and [`docs/css-architecture.md`](./docs/css-architecture.md) before adding a tab, disclosure, modal, animation, shared style, or feature stylesheet.
 
 Current Season command-center assumptions:
-- `assets/CurrentSeason.json` can include `playoff_rules`; if omitted, the app assumes 14 regular-season weeks, 6 playoff teams, 2 byes, 6 Saunders slots, and standings sorted by win rate, points for, points differential, then owner.
-- The v1 command center uses a deterministic path model. It shows projected standings for completed games plus live leaders if scores hold; it does not display simulation odds or player-level projections.
+- Validated `assets/CurrentSeason.json` assets must include the complete `playoff_rules` object required by `schemas/current-season.schema.json`. Historical views instead infer regular-season length, playoff teams, byes, and Saunders slots from the selected season's stored schedule and brackets.
+- Mathematical clinched/eliminated status and deterministic projected standings remain authoritative.
+- A lazily loaded, seeded 10,000-run team-score Monte Carlo model adds playoff, bye, seed, and Saunders probabilities, prior-week movement, and selected-owner win/loss scenarios.
+- Estimates blend completed current-season scoring with recency-weighted owner history and a league prior. They are team-score simulations, not Sleeper player projections. See [`docs/current-season-odds.md`](./docs/current-season-odds.md).
+
+Draft Spot Explorer:
+- `?tab=draft` opens a lazily loaded Preact page for league, owner, pick, and zone exploration.
+- URL fields are `draftMode`, `draftOwner`, `draftStart`, `draftEnd`, `draftMetric`, `draftMinSample`, `draftNormalize`, `draftPick`, and `draftZone`.
+- Recommendations use only the selected season range, use observed historical language, and display sample confidence. Normalized mode maps each draft percentile to the nearest slot on a 12-team scale, so pick summaries, zones, rankings, charts, and selections compare equivalent positions across 10- and 12-team seasons.
 
 Shareable Dynasty URLs:
 - Open `http://127.0.0.1:8000/?tab=dynasty&dynastyMode=calculator&dynastyOwner=Joe&dynastyStart=2021&dynastyEnd=2023&dynastyMinSeasons=2&dynastySaunders=1` to land directly on Joe's 2021-2023 Dynasty Score.
@@ -87,7 +96,7 @@ Reference data:
 
 Generated or local-only files:
 - `js/charting/vendor/charting-vendor.js` is generated by `npm run build:charts` and committed so the static site can run without a deployment build phase.
-- `src/data/generated/asset-types.ts`, `src/data/generated/asset-validators.ts`, `assets/DerivedStats.json`, and `assets/asset-manifest.json` are generated by `npm run generate:data` and committed as one coherent snapshot.
+- `src/data/generated/asset-types.ts`, `src/data/generated/asset-validators.ts`, `assets/DraftSpot.json`, `assets/DerivedStats.json`, and `assets/asset-manifest.json` are generated by `npm run generate:data` and committed as one coherent snapshot.
 - `assets/hero/league-*` is generated by `npm run build:hero` and committed so the static site can serve optimized hero images without the original full-size JPEG.
 - `public/assets/` is generated by `scripts/sync_public_assets.cjs` before Vite dev/build so JSON fetch assets and hero media remain compatible without copying unrelated source media.
 - `dist/` is generated by `npm run build`.
@@ -99,7 +108,7 @@ Season update flow:
 - Set `SEASON` and `LEAGUE_ID` when needed, then confirm the Week 1 Sunday anchor exists in `scripts/sleeper_week1_anchors.json`.
 - Dry run with `UPDATE_LIVE=1 VALIDATE_ONLY=1 scripts/update_sleeper_h2h.sh` to generate and validate a temporary bundle without touching `assets/`.
 - Run `UPDATE_LIVE=1 scripts/update_sleeper_h2h.sh` to write `assets/H2H.updated.json` and `assets/CurrentSeason.updated.json` for review.
-- Review both generated files, copy them into `assets/H2H.json` and `assets/CurrentSeason.json`, run `npm run generate:data`, then rerun `npm run test:assets` and `npm run test:scripts` before committing.
+- Review both generated files, copy them into `assets/H2H.json` and `assets/CurrentSeason.json`, update/review `assets/SeasonSummary.json` when the season is finalized, run `npm run generate:data`, review Draft Spot sample shifts, then rerun `npm run test:assets` and `npm run test:scripts` before committing.
 - The GitHub Actions workflow at [`.github/workflows/update-sleeper.yml`](./.github/workflows/update-sleeper.yml) automates the same flow, creates `assets/SeasonSummary.draft.json` when H2H changes, and files a failure alert if the run breaks.
 
 Season notes and cleanup history live in [CHANGELOG.md](./CHANGELOG.md).

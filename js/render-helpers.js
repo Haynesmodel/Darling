@@ -58,7 +58,7 @@ function showPage(id, doc) {
     window.darlingAccessibility.syncPageState(id);
     return;
   }
-  const resolvedId = ['history', 'current', 'rivalry', 'trophy', 'dynasty', 'gauntlet'].includes(id)
+  const resolvedId = ['history', 'current', 'rivalry', 'trophy', 'dynasty', 'draft', 'gauntlet'].includes(id)
     ? id
     : 'history';
   const activeTabId = `tab${resolvedId[0].toUpperCase()}${resolvedId.slice(1)}Btn`;

@@ -57,6 +57,7 @@
         <button class="tab" id="tabRivalryBtn" type="button" role="tab" aria-selected="false" aria-controls="page-rivalry" tabindex="-1">Head to Head</button>
         <button class="tab" id="tabTrophyBtn" type="button" role="tab" aria-selected="false" aria-controls="page-trophy" tabindex="-1">Trophy Case</button>
         <button class="tab" id="tabDynastyBtn" type="button" role="tab" aria-selected="false" aria-controls="page-dynasty" tabindex="-1">Dynasty Rankings</button>
+        <button class="tab" id="tabDraftBtn" type="button" role="tab" aria-selected="false" aria-controls="page-draft" tabindex="-1">Draft Spot</button>
         <button class="tab" id="tabGauntletBtn" type="button" role="tab" aria-selected="false" aria-controls="page-gauntlet" tabindex="-1">Historical Matchup</button>
       </div>
       <button id="tabScrollPrev" class="tab-scroll-button" type="button" aria-label="Scroll tabs left" hidden>‹</button>
@@ -347,6 +348,13 @@
       </div>
 
       <dialog id="dynastyWindowModal" class="dynasty-modal" aria-labelledby="dynastyWindowModalTitle"></dialog>
+    </section>
+
+    <section id="page-draft" class="page" role="tabpanel" aria-labelledby="tabDraftBtn" hidden>
+      <h2 class="visually-hidden">Draft Spot</h2>
+      <div id="draftSpotRoot">
+        <div class="status-banner status-loading" role="status">Open Draft Spot to load its historical draft data.</div>
+      </div>
     </section>
 
     <section id="page-gauntlet" class="page" role="tabpanel" aria-labelledby="tabGauntletBtn" hidden>

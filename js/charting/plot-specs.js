@@ -143,7 +143,24 @@ function currentProjectedSeedPlotOptions(rows = [], opts = {}) {
   };
 }
 
+function currentOddsMovementPlotOptions(rows = [], opts = {}) {
+  const color = row => row.isSelected ? CHART_COLORS.violet : row.playoffChange > 0 ? CHART_COLORS.green : row.playoffChange < 0 ? CHART_COLORS.red : CHART_COLORS.slate;
+  return {
+    ...basePlotOptions({ ...opts, height: opts.height || 240, marginLeft: 112, marginBottom: 40 }),
+    ariaLabel: 'Playoff odds movement by owner',
+    rows,
+    x: { label: 'Percentage-point change' },
+    y: { label: null, domain: rows.map(row => row.owner) },
+    color,
+    marks: [
+      { type: 'ruleX', data: [0], stroke: CHART_COLORS.slate },
+      { type: 'barX', data: rows, x: 'playoffChange', y: 'owner', fill: color, title: 'title', className: 'current-odds-movement-bar' },
+    ],
+  };
+}
+
 export {
+  currentOddsMovementPlotOptions,
   currentProjectedSeedPlotOptions,
   currentSeedMovementPlotOptions,
   dynastyTrendPlotOptions,

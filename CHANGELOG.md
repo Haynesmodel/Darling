@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Restored Draft Spot as a typed, validated, lazily loaded Preact feature with shareable pick/zone/owner URLs, charts, search, themes, keyboard navigation, and an interactive receipts table.
+- Added deterministic playoff, bye, seed, and Saunders probabilities to Current Season with movement and selected-owner scenarios.
+- Fixed primary-tab arrow wrapping and stabilized built-output Playwright runs at one worker with explicit preview-server diagnostics.
 - Added a visible loading state and a user-facing error banner for JSON fetch failures.
 - Added upfront season-anchor validation to `scripts/sleeper_to_h2h.py`.
 - Externalized Sleeper week-1 anchors into `scripts/sleeper_week1_anchors.json` and renamed the season update script.

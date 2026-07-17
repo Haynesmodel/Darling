@@ -30,8 +30,18 @@ function positiveInt(value, fallback) {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
+function nonNegativeInt(value, fallback) {
+  const n = Math.trunc(Number(value));
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
+
 function clampSlots(value, fallback, teamCount) {
   const n = positiveInt(value, fallback);
+  return teamCount > 0 ? Math.min(n, teamCount) : n;
+}
+
+function clampNonNegativeSlots(value, fallback, teamCount) {
+  const n = nonNegativeInt(value, fallback);
   return teamCount > 0 ? Math.min(n, teamCount) : n;
 }
 
@@ -51,11 +61,11 @@ function resolveCurrentSeasonRules(currentSeason = null, teamCount = 0) {
   );
   const playoffSlots = clampSlots(raw.playoff_slots, DEFAULT_PLAYOFF_RULES.playoff_slots, teamCount);
   const byeSlots = Math.min(
-    clampSlots(raw.bye_slots, DEFAULT_PLAYOFF_RULES.bye_slots, teamCount),
+    clampNonNegativeSlots(raw.bye_slots, DEFAULT_PLAYOFF_RULES.bye_slots, teamCount),
     playoffSlots
   );
   const defaultSaunders = Math.max((teamCount || DEFAULT_PLAYOFF_RULES.playoff_slots + DEFAULT_PLAYOFF_RULES.saunders_slots) - playoffSlots, 0);
-  const saundersSlots = clampSlots(raw.saunders_slots, defaultSaunders || DEFAULT_PLAYOFF_RULES.saunders_slots, teamCount);
+  const saundersSlots = clampNonNegativeSlots(raw.saunders_slots, defaultSaunders, teamCount);
   const standingsTiebreakers = Array.isArray(raw.standings_tiebreakers) && raw.standings_tiebreakers.length
     ? raw.standings_tiebreakers.map(value => String(value).trim()).filter(Boolean)
     : DEFAULT_PLAYOFF_RULES.standings_tiebreakers;
@@ -65,6 +75,87 @@ function resolveCurrentSeasonRules(currentSeason = null, teamCount = 0) {
     playoff_slots: playoffSlots,
     bye_slots: byeSlots,
     standings_tiebreakers: standingsTiebreakers,
+    saunders_slots: saundersSlots,
+  };
+}
+
+function ownersInGames(games = []) {
+  return new Set(games.flatMap(game => [game.teamA, game.teamB]).filter(Boolean));
+}
+
+function roundOrder(value) {
+  const round = String(value || '').trim().toLowerCase();
+  if (round.includes('wild card')) return 0;
+  if (round.includes('quarter')) return 1;
+  if (round.includes('semi')) return 2;
+  if (round.includes('championship') || round.endsWith('final')) return 3;
+  return 99;
+}
+
+function resolveSeasonRules({
+  leagueGames = [],
+  currentSeason = null,
+  season = latestLeagueSeason(leagueGames, [], currentSeason),
+  teamCount = 0,
+} = {}) {
+  const targetSeason = numeric(season);
+  const assetSeason = numeric(currentSeason?.season);
+  const rawRules = currentSeason?.playoff_rules || {};
+  if (
+    targetSeason === assetSeason
+    && Object.keys(rawRules).length > 0
+  ) {
+    return resolveCurrentSeasonRules(currentSeason, teamCount);
+  }
+
+  const seasonGames = currentSeasonSourceGames(leagueGames, targetSeason, currentSeason);
+  const regularGames = seasonGames.filter(isRegularGame);
+  const resolvedTeamCount = positiveInt(teamCount, ownersInGames(regularGames).size);
+  const playoffGames = seasonGames.filter(game => String(game.type || '').trim().toLowerCase() === 'playoff');
+  const saundersGames = seasonGames.filter(game => String(game.type || '').trim().toLowerCase() === 'saunders');
+  const playoffOwners = ownersInGames(playoffGames);
+  const saundersOwners = ownersInGames(saundersGames);
+  const firstRound = [...new Set(playoffGames.map(game => String(game.round || '').trim()).filter(Boolean))]
+    .map(round => ({
+      round,
+      order: roundOrder(round),
+      week: Math.min(
+        ...playoffGames
+          .filter(game => String(game.round || '').trim() === round)
+          .map(game => numeric(weekForGame(game)))
+          .filter(Number.isFinite),
+      ),
+    }))
+    .sort((a, b) => a.order - b.order || a.week - b.week || a.round.localeCompare(b.round))[0]?.round;
+  const firstRoundOwners = ownersInGames(
+    firstRound
+      ? playoffGames.filter(game => String(game.round || '').trim() === firstRound)
+      : [],
+  );
+  const regularSeasonWeeks = regularGames.map(game => numeric(weekForGame(game))).filter(Number.isFinite);
+  const regularSeasonMaxWeek = regularSeasonWeeks.length
+    ? Math.max(...regularSeasonWeeks)
+    : DEFAULT_PLAYOFF_RULES.regular_season_max_week;
+  const playoffSlots = clampSlots(
+    playoffOwners.size,
+    DEFAULT_PLAYOFF_RULES.playoff_slots,
+    resolvedTeamCount,
+  );
+  const byeSlots = playoffGames.length
+    ? Math.max(0, playoffSlots - firstRoundOwners.size)
+    : Math.min(DEFAULT_PLAYOFF_RULES.bye_slots, playoffSlots);
+  const defaultSaunders = Math.max(resolvedTeamCount - playoffSlots, 0);
+  const saundersSlots = clampNonNegativeSlots(
+    saundersOwners.size,
+    defaultSaunders,
+    resolvedTeamCount,
+  );
+
+  return {
+    regular_season_max_week: regularSeasonMaxWeek,
+    playoff_slots: playoffSlots,
+    bye_slots: byeSlots,
+    standings_tiebreakers: DEFAULT_PLAYOFF_RULES.standings_tiebreakers,
     saunders_slots: saundersSlots,
   };
 }
@@ -85,16 +176,17 @@ function regularSeasonGamesFor({
   leagueGames = [],
   currentSeason = null,
   season = latestLeagueSeason(leagueGames, [], currentSeason),
-  rules = resolveCurrentSeasonRules(currentSeason),
+  rules = null,
 } = {}) {
   const target = numeric(season);
   if (!Number.isFinite(target)) return [];
+  const resolvedRules = rules || resolveSeasonRules({ leagueGames, currentSeason, season: target });
   return currentSeasonSourceGames(leagueGames, target, currentSeason)
     .filter(game => numeric(game?.season) === target)
     .filter(isRegularGame)
     .filter(game => {
       const week = numeric(weekForGame(game));
-      return !Number.isFinite(week) || week <= rules.regular_season_max_week;
+      return !Number.isFinite(week) || week <= resolvedRules.regular_season_max_week;
     });
 }
 
@@ -222,7 +314,7 @@ function buildScenarioStandings({
   forcedOutcomes = [],
   includeLiveLeaders = false,
 } = {}) {
-  const resolvedRules = rules || resolveCurrentSeasonRules(currentSeason);
+  const resolvedRules = rules || resolveSeasonRules({ leagueGames, currentSeason, season });
   const targetWeek = numeric(week);
   const forces = [
     ...(owner && outcome ? [{ owner, outcome }] : []),
@@ -260,7 +352,7 @@ function buildProjectedStandings({
   rules = null,
   projectionMode = 'ifScoresHold',
 } = {}) {
-  const resolvedRules = rules || resolveCurrentSeasonRules(currentSeason);
+  const resolvedRules = rules || resolveSeasonRules({ leagueGames, currentSeason, season });
   const mode = normalizeProjectionMode(projectionMode);
   const currentStandings = buildScenarioStandings({
     leagueGames,
@@ -305,7 +397,7 @@ function remainingScheduleForOwner({
   rules = null,
 } = {}) {
   if (!owner) return [];
-  const resolvedRules = rules || resolveCurrentSeasonRules(currentSeason);
+  const resolvedRules = rules || resolveSeasonRules({ leagueGames, currentSeason, season });
   return regularSeasonGamesFor({ leagueGames, currentSeason, season, rules: resolvedRules })
     .filter(game => !isCompletedGame(game))
     .filter(game => sidesForTeam(game, owner))
@@ -380,7 +472,7 @@ function cutlineGap(row, standings, slot) {
 
 function saundersLineSeed(rules = DEFAULT_PLAYOFF_RULES, teamCount = 0) {
   const count = positiveInt(teamCount, 0);
-  const saundersSlots = Math.max(positiveInt(rules?.saunders_slots, DEFAULT_PLAYOFF_RULES.saunders_slots), 0);
+  const saundersSlots = nonNegativeInt(rules?.saunders_slots, DEFAULT_PLAYOFF_RULES.saunders_slots);
   if (!count || !saundersSlots) return null;
   return Math.max(1, count - Math.min(saundersSlots, count) + 1);
 }
@@ -572,7 +664,7 @@ function buildOwnerWeekNeeds({
   playoffPicture = null,
   selectedOwner = '',
 } = {}) {
-  const resolvedRules = rules || resolveCurrentSeasonRules(currentSeason);
+  const resolvedRules = rules || resolveSeasonRules({ leagueGames, currentSeason, season });
   const currentStandings = buildScenarioStandings({ leagueGames, seasonSummaries, currentSeason, season, rules: resolvedRules });
   const remaining = remainingByOwner(currentStandings, { leagueGames, currentSeason, season, rules: resolvedRules });
   const pictureRows = playoffPicture || buildPlayoffPicture({
@@ -731,7 +823,7 @@ function buildLiveMovement({
   rules = null,
   projectedStandings = null,
 } = {}) {
-  const resolvedRules = rules || resolveCurrentSeasonRules(currentSeason);
+  const resolvedRules = rules || resolveSeasonRules({ leagueGames, currentSeason, season });
   const selectedWeek = numeric(week);
   const regularGames = regularSeasonGamesFor({ leagueGames, currentSeason, season, rules: resolvedRules });
   const baselineGames = Number.isFinite(selectedWeek)
@@ -842,7 +934,12 @@ function buildCommandCenterModel({
   const currentStandings = buildScenarioStandings({ leagueGames, seasonSummaries, currentSeason, season });
   const owners = currentStandings.map(row => row.owner);
   const owner = owners.includes(selectedOwner) ? selectedOwner : '';
-  const rules = resolveCurrentSeasonRules(currentSeason, owners.length);
+  const rules = resolveSeasonRules({
+    leagueGames,
+    currentSeason,
+    season,
+    teamCount: owners.length,
+  });
   const current = buildScenarioStandings({ leagueGames, seasonSummaries, currentSeason, season, rules });
   const remaining = remainingByOwner(current, { leagueGames, currentSeason, season, rules });
   const projectedStandings = buildProjectedStandings({
@@ -963,6 +1060,9 @@ export {
   normalizeProjectionMode,
   regularSeasonGamesFor,
   remainingScheduleForOwner,
+  resolveSeasonRules,
   resolveCurrentSeasonRules,
   scheduledRegularSeasonGames,
+  saundersLineSeed,
+  sortAndRankStandings,
 };

@@ -68,6 +68,7 @@ import {
   latestLeagueSeason,
 } from './current-season-data.js';
 import {
+  attachCurrentSeasonOdds,
   buildCurrentSeasonViewModel,
   renderCurrentCommandCenter,
   renderCurrentMatchups,
@@ -239,6 +240,7 @@ let seasonSummaries = [];
 let rivalries = [];
 let currentSeason = null;
 let derivedStats = null;
+let assetManifest = null;
 let dataVersion = null;
 let dataDiagnostics = null;
 let selectedTeam = DEFAULT_TEAM;
@@ -254,6 +256,8 @@ let selectedCurrentSeasonState = null;
 let selectedTrophyOwner = DEFAULT_TEAM;
 let selectedDynastyState = null;
 let selectedGauntletState = null;
+let selectedDraftState = null;
+const currentSeasonOddsCache = new Map();
 let universe = { seasons: [], weeks: [], opponents: [], types: [], rounds: [] };
 let isApplyingUrlState = false;
 let derivedWeeksSet = new Set();
@@ -469,6 +473,58 @@ function handleGauntletChange(next) {
   renderGauntlet();
 }
 
+function updateHeaderForDraftSpot(state = {}) {
+  const owner = ownerOrNull(state.owner);
+  const h2 = document.querySelector('header h2');
+  if (h2) h2.textContent = owner ? `${owner} Draft Spot` : 'Draft Spot Explorer';
+  renderHeaderBanners(owner || '', seasonSummaries);
+  if (document.title !== undefined) {
+    document.title = owner ? `${owner} Draft Spot` : 'Draft Spot Explorer';
+  }
+}
+
+function applyDraftSpotState(next) {
+  selectedDraftState = next;
+  updateHeaderForDraftSpot(next);
+  applyOwnerThemeContext(next?.owner);
+  updateUrlFromState({
+    tab: 'draft',
+    selectedDraftOwner: next?.owner,
+    selectedDraftMode: next?.mode,
+    selectedDraftStartSeason: next?.startSeason,
+    selectedDraftEndSeason: next?.endSeason,
+    selectedDraftMetric: next?.metric,
+    selectedDraftMinSample: next?.minSample,
+    selectedDraftNormalize: next?.normalize,
+    selectedDraftPick: next?.selectedPick,
+    selectedDraftZone: next?.selectedZone,
+    isApplyingUrlState,
+  });
+}
+
+function renderDraftSpot() {
+  const entry = assetManifest?.assets?.DraftSpot;
+  const sourceHash = assetManifest?.assets?.SeasonSummary?.sha256;
+  updateHeaderForDraftSpot(selectedDraftState || {});
+  applyOwnerThemeContext(selectedDraftState?.owner);
+  if (!entry || !sourceHash || !window.darlingDraftSpot?.mount) {
+    const mount = document.getElementById('draftSpotRoot');
+    if (mount) {
+      mount.innerHTML = '<p role="alert">Draft Spot unavailable.</p>';
+    }
+    return;
+  }
+  void window.darlingDraftSpot.mount({
+    mountId: 'draftSpotRoot',
+    assetPath: entry.path,
+    sourceHash,
+    dataVersion,
+    state: selectedDraftState || {},
+    onStateChange: applyDraftSpotState,
+    onReady: applyDraftSpotState,
+  });
+}
+
 function ensureRivalryControls(initialState = {}) {
   const teamASelect = document.getElementById('rivalryTeamA');
   if (!teamASelect) return null;
@@ -677,6 +733,50 @@ function renderCurrentSeason() {
     selectedView: resolvedState.selectedView,
     projectionMode: resolvedState.selectedProjectionMode,
   });
+  const oddsKey = JSON.stringify({
+    dataVersion,
+    season: view.season,
+    week: view.week,
+    owner: view.commandCenter.selectedOwner,
+    games: view.regularGames.map(game => `${game.week}:${game.teamA}:${game.teamB}:${game.scoreA}:${game.scoreB}:${game.status}`).join('|'),
+  });
+  const cachedOdds = currentSeasonOddsCache.get(oddsKey);
+  if (cachedOdds && cachedOdds !== 'loading') attachCurrentSeasonOdds(view, cachedOdds);
+  if (!cachedOdds) {
+    currentSeasonOddsCache.set(oddsKey, 'loading');
+    void import('./current-season-odds.js').then(({ buildCurrentSeasonOdds }) => {
+      const odds = buildCurrentSeasonOdds({
+        leagueGames,
+        currentSeason,
+        derivedStats,
+        season: view.season,
+        week: view.week,
+        dataVersion,
+        selectedOwner: view.commandCenter.selectedOwner,
+        playoffPicture: view.commandCenter.playoffPicture,
+      });
+      currentSeasonOddsCache.set(oddsKey, odds);
+      const active = selectedCurrentSeasonState || {};
+      if (
+        Number(active.selectedSeason) === Number(view.season)
+        && Number(active.selectedWeek) === Number(view.week)
+        && String(active.selectedOwner || '') === String(view.commandCenter.selectedOwner || '')
+      ) {
+        renderSectionCache.delete('current');
+        renderCurrentSeason();
+      }
+    }).catch(error => {
+      currentSeasonOddsCache.set(oddsKey, {
+        status: 'error',
+        modelLabel: 'Deterministic team-score Monte Carlo',
+        rows: [],
+        movement: [],
+        error: error.message || String(error),
+      });
+      renderSectionCache.delete('current');
+      renderCurrentSeason();
+    });
+  }
 
   selectedCurrentSeasonState = {
     selectedSeason: view.season,
@@ -698,6 +798,7 @@ function renderCurrentSeason() {
     mode: view.commandCenter.selectedView,
     projection: view.commandCenter.selectedProjectionMode,
     picture: view.commandCenter.playoffPicture.map(row => `${row.owner}:${row.currentSeed}:${row.projectedSeed}:${row.status.key}`).join('|'),
+    odds: view.commandCenter.odds?.rows?.map(row => `${row.owner}:${row.playoffOdds}:${row.byeOdds}:${row.saundersOdds}`).join('|') || '',
   });
 
   renderIfChanged('current', signature, () => {
@@ -910,7 +1011,7 @@ function applyHistoryUrlState(urlState = parseUrlState()) {
 function applyUrlState(urlState = parseUrlState()) {
   isApplyingUrlState = true;
   try {
-    showPage(urlState.tab === 'current' ? 'current' : urlState.tab === 'rivalry' ? 'rivalry' : urlState.tab === 'trophy' ? 'trophy' : urlState.tab === 'dynasty' ? 'dynasty' : urlState.tab === 'gauntlet' ? 'gauntlet' : 'history');
+    showPage(urlState.tab === 'current' ? 'current' : urlState.tab === 'rivalry' ? 'rivalry' : urlState.tab === 'trophy' ? 'trophy' : urlState.tab === 'dynasty' ? 'dynasty' : urlState.tab === 'draft' ? 'draft' : urlState.tab === 'gauntlet' ? 'gauntlet' : 'history');
     if (urlState.tab === 'current') {
       ensureCurrentSeasonControls({
         selectedSeason: urlState.currentSeason,
@@ -966,6 +1067,21 @@ function applyUrlState(urlState = parseUrlState()) {
         seedSource: selectedGauntletState?.seedSource,
       });
       renderGauntlet();
+      return;
+    }
+    if (urlState.tab === 'draft') {
+      selectedDraftState = {
+        owner: urlState.draftOwner,
+        mode: urlState.draftMode,
+        startSeason: urlState.draftStart,
+        endSeason: urlState.draftEnd,
+        metric: urlState.draftMetric,
+        minSample: urlState.draftMinSample,
+        normalize: urlState.draftNormalize,
+        selectedPick: urlState.draftPick,
+        selectedZone: urlState.draftZone,
+      };
+      renderDraftSpot();
       return;
     }
     const teamSelect = ensureHistoryControls();
@@ -1160,13 +1276,14 @@ async function loadLeagueJSON() {
   setAppStatus('loading', 'Loading league data...');
   try {
     const loaded = await loadLeagueAssets();
-    ({ leagueGames, derivedWeeksSet, seasonSummaries, rivalries, currentSeason, derivedStats, dataVersion, diagnostics: dataDiagnostics } = setLoadedLeagueData({
+    ({ leagueGames, derivedWeeksSet, seasonSummaries, rivalries, currentSeason, derivedStats, manifest: assetManifest, dataVersion, diagnostics: dataDiagnostics } = setLoadedLeagueData({
       leagueGames,
       derivedWeeksSet,
       seasonSummaries,
       rivalries,
       currentSeason,
       derivedStats,
+      manifest: assetManifest,
       dataVersion,
       diagnostics: dataDiagnostics,
     }, loaded));
@@ -1180,6 +1297,8 @@ async function loadLeagueJSON() {
     teamSeasonsCache = new Map();
     selectedCurrentSeasonState = null;
     selectedGauntletState = null;
+    selectedDraftState = null;
+    currentSeasonOddsCache.clear();
     headToHeadPairsCache.clear();
     renderSectionCache.clear();
     filteredGamesCacheKey = null;
@@ -1908,6 +2027,14 @@ function bindListeners() {
     });
   }
 
+  const draftTab = document.getElementById('tabDraftBtn');
+  if (draftTab) {
+    draftTab.addEventListener('click', () => {
+      showPage('draft');
+      renderDraftSpot();
+    });
+  }
+
   window.addEventListener('popstate', () => {
     if (!leagueGames.length) return;
     applyUrlState(parseUrlState());
@@ -1942,7 +2069,7 @@ function bindListeners() {
 
 async function bootstrapHistoryApp() {
   const urlState = parseUrlState();
-  showPage(urlState.tab === 'current' ? 'current' : urlState.tab === 'rivalry' ? 'rivalry' : urlState.tab === 'trophy' ? 'trophy' : urlState.tab === 'dynasty' ? 'dynasty' : urlState.tab === 'gauntlet' ? 'gauntlet' : 'history');
+  showPage(urlState.tab === 'current' ? 'current' : urlState.tab === 'rivalry' ? 'rivalry' : urlState.tab === 'trophy' ? 'trophy' : urlState.tab === 'dynasty' ? 'dynasty' : urlState.tab === 'draft' ? 'draft' : urlState.tab === 'gauntlet' ? 'gauntlet' : 'history');
   const loaded = await loadLeagueJSON();
   if (!loaded) return;
   bindListeners();

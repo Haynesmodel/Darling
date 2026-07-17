@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {
   DERIVED_GENERATOR_VERSION,
+  GENERATED_ASSETS,
   MANIFEST_VERSION,
   SCHEMA_VERSION,
   SOURCE_ASSETS,
@@ -10,7 +11,7 @@ const { canonicalJson, readJson, sha256Json } = require('./canonical-json.cjs');
 const { inspectHeroAssets } = require('./media-validation.cjs');
 
 function seasonCoverage(name, value) {
-  const rows = Array.isArray(value) ? value : value?.games || [];
+  const rows = Array.isArray(value) ? value : value?.games || value?.rows || [];
   if (name === 'Rivalries') return { rows: rows.length, season_min: null, season_max: null };
   const seasons = rows.map(row => Number(row.season)).filter(Number.isFinite);
   if (!seasons.length && Number.isFinite(value?.season)) seasons.push(Number(value.season));
@@ -47,6 +48,12 @@ async function buildManifest(root = process.cwd(), opts = {}) {
     sourceValues[name] = value;
     assets[name] = jsonAssetEntry(root, name, config, value);
   }
+  const draftSpotPath = opts.draftSpotPath || path.join(root, GENERATED_ASSETS.DraftSpot.path);
+  if (!fs.existsSync(draftSpotPath)) {
+    throw new Error(`Missing generated Draft Spot asset: ${GENERATED_ASSETS.DraftSpot.path}`);
+  }
+  const draftSpot = readJson(draftSpotPath);
+  assets.DraftSpot = jsonAssetEntry(root, 'DraftSpot', GENERATED_ASSETS.DraftSpot, draftSpot);
   const derived = readJson(derivedPath);
   const media = await inspectHeroAssets(root);
   if (media.errors.length) throw new Error(media.errors.join('\n'));
@@ -62,6 +69,7 @@ async function buildManifest(root = process.cwd(), opts = {}) {
     SeasonSummary: SCHEMA_VERSION,
     Rivalries: SCHEMA_VERSION,
     CurrentSeason: SCHEMA_VERSION,
+    DraftSpot: SCHEMA_VERSION,
     DerivedStats: SCHEMA_VERSION,
   };
   const versionInput = {

@@ -25,20 +25,27 @@ function lineBudgetFor(file, budgets) {
     : budgets.defaultSharedLineBudget;
 }
 
-function importedCssFiles(root, appPath) {
+function importedCssFiles(root, appPath, files) {
   const source = fs.readFileSync(path.join(root, appPath), 'utf8');
   const ast = postcss.parse(source, { from: appPath });
   const imported = new Set();
   const layers = new Map();
-  ast.walkAtRules('import', rule => {
-    const match = rule.params.match(/^["']([^"']+\.css)["']/);
-    if (!match) return;
-    const resolved = path.normalize(path.join(path.dirname(appPath), match[1]));
-    const normalized = resolved.split(path.sep).join('/');
-    imported.add(normalized);
-    const layer = rule.params.match(/\blayer\(([^)]+)\)/)?.[1]?.trim() || 'unlayered';
-    layers.set(normalized, layer);
-  });
+  const roots = [appPath, ...files.filter(file => file.endsWith('.entry.css'))];
+  const visit = (cssPath, inheritedLayer = 'unlayered') => {
+    if (cssPath !== appPath) imported.add(cssPath);
+    const css = fs.readFileSync(path.join(root, cssPath), 'utf8');
+    const cssAst = postcss.parse(css, { from: cssPath });
+    cssAst.walkAtRules('import', rule => {
+      const match = rule.params.match(/^["']([^"']+\.css)["']/);
+      if (!match) return;
+      const resolved = path.normalize(path.join(path.dirname(cssPath), match[1]));
+      const normalized = resolved.split(path.sep).join('/');
+      const layer = rule.params.match(/\blayer\(([^)]+)\)/)?.[1]?.trim() || inheritedLayer;
+      if (!layers.has(normalized)) layers.set(normalized, layer);
+      if (!imported.has(normalized)) visit(normalized, layer);
+    });
+  };
+  roots.forEach(rootPath => visit(rootPath));
   return { ast, imported, layers };
 }
 
@@ -58,7 +65,7 @@ function checkCssHygiene(root = process.cwd()) {
   const files = listCssFiles(root);
   const failures = [];
   const appPath = 'src/styles/app.css';
-  const { ast: appAst, imported, layers } = importedCssFiles(root, appPath);
+  const { ast: appAst, imported, layers } = importedCssFiles(root, appPath, files);
   const layeredSelectors = new Map();
 
   appAst.nodes.forEach(node => {

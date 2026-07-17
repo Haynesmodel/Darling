@@ -7,7 +7,7 @@ import {
   sortAndRankStandings,
 } from './current-season-command-data.js';
 import { isCompletedGame, seasonSourceSnapshot, weekForGame } from './current-season-data.js';
-import { gaussianSample, seededRng } from './gauntlet-simulator.js';
+import { gaussianSample, seededRng } from './shared/simulation-math.js';
 
 const DEFAULT_SIMULATIONS = 10000;
 const MODEL_VERSION = 'team-score-monte-carlo-v1';

@@ -13,7 +13,7 @@ import {
 } from '../js/app-state-controller.js';
 import {
   seasonModeFromLabels,
-} from '../js/history-controller.js';
+} from '../js/shared/season-mode.js';
 
 test('snapshotFacetState clones selections and universe arrays', () => {
   const state = snapshotFacetState({

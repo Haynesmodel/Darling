@@ -1,0 +1,3 @@
+@import "../../styles/charts.css" layer(components);
+@import "../../styles/features/dynasty.css" layer(features);
+@import "../../styles/features/dynasty-details.css" layer(features);

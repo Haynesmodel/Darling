@@ -21,6 +21,7 @@ Test locally:
 - `npm run generate:data` intentionally refreshes generated types, standalone validators, derived statistics, and the manifest.
 - `npm run check:data-generated` performs a read-only byte-for-byte drift check.
 - `npm run check:bundle` verifies the production entry, lazy data-runtime chunk, and total gzip budgets.
+- `npm run check:feature-boundaries` rejects eager/cross-feature imports, feature CSS in the shell, oversized controllers, and a restored legacy monolith.
 - `npm run lint:css` validates application and component styles with Stylelint.
 - `npm run check:css` enforces stylesheet ownership, line, color, duplicate-selector, focus, and import guardrails.
 - `npm run test:charts` runs the chart data/spec smoke tests.
@@ -70,6 +71,11 @@ Interactive tables:
 - History game filters and supported sorting continue to use canonical Global Search URL fields; presentation preferences remain local.
 - Saved views are local-only in `localStorage["darling.tableViews.v1"]` and are schema-validated when restored.
 - See [`docs/INTERACTIVE_TABLES.md`](./docs/INTERACTIVE_TABLES.md) before adding a table ID, column, adapter, quick filter, or saved-state field.
+
+Feature architecture:
+- The shell loads one validated data snapshot and lazy-loads League History, Current Season, Head to Head, Trophy Case, Dynasty Rankings, Draft Spot, and Historical Matchup through cached lifecycle controllers.
+- Feature-owned renderers, table adapters, charts, and CSS stay behind each dynamic entry; Observable Plot is absent from the default History route.
+- See [`docs/feature-architecture.md`](./docs/feature-architecture.md) before adding a tab or changing routing, activation, loading/error behavior, feature diagnostics, or import ownership.
 
 Accessibility and CSS:
 - Primary navigation follows the manual-activation ARIA tab pattern, filter disclosures retain native checkbox semantics, and application dialogs manage inertness, focus containment, scroll lock, and focus restoration.

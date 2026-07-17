@@ -23,13 +23,13 @@ Tier 4 mini tables, Dynasty detail tables, and the Gauntlet comparison remain le
 
 ## Architecture
 
-- `src/tables/table-runtime.tsx` exposes the `window.darlingTables` bridge used by the legacy feature controller.
+- `src/tables/table-runtime.tsx` owns generic rendering and exposes a registration API through the shared runtime.
 - `src/tables/table-registry.ts` owns columns, default sorting, pinned identity columns, quick filters, page sizes, and empty-state language.
 - `src/tables/rows/` adapts existing feature view models into stable table rows. Domain calculations remain in the existing History, Rivalry, Current Season, and Trophy helpers.
 - `src/components/tables/InteractiveTable.tsx` owns TanStack state and native table markup.
 - The toolbar components own typed filters, visibility/pinning controls, local views, reset, and result counts.
 
-The feature controller should pass already-calculated rows and context through `window.darlingTables.render(tableId, payload)`. Do not duplicate league calculations in a table component.
+Each feature registers only its owned definitions and row adapters during lifecycle `mount`, then passes already-calculated rows and context to `context.tables.render(tableId, payload)`. Duplicate IDs fail and unregistered renders throw an actionable error. Do not duplicate league calculations in a table component.
 
 ## URL and Local State Ownership
 
@@ -71,7 +71,7 @@ Expanded rows and current page index are intentionally transient. Restore valida
 2. Add a registry entry with typed columns, useful default sort, one pinned identity column, quick filters, page size, and empty text.
 3. Add or extend a row adapter in `src/tables/rows/`. Every row needs a stable, perspective-aware ID.
 4. Add the mount element to static markup or the appropriate feature renderer.
-5. Call the runtime from `js/history-controller.js` after the mount exists.
+5. Add the definition/adapter to the owning feature's table-registration module and register it during `mount`.
 6. Cover filter/sort values, null handling, details, saved-state sanitization, and the feature's Playwright flow.
 
 Quick filters are predicates over adapted rows. Give incompatible filters the same `group` so selecting one replaces the other; filters without a shared group compose.

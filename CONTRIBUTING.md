@@ -38,6 +38,8 @@ This repository is maintained as a static site backed by JSON assets. The annual
 - Follow `docs/INTERACTIVE_TABLES.md` when changing a migrated table, and run `npm run test:tables` plus the relevant Playwright scenarios.
 - Follow `docs/accessibility.md` for tabs, disclosures, dialogs, focus, motion, charts, and manual release checks.
 - Follow `docs/css-architecture.md` for cascade layers, feature ownership, tokens, responsive rules, and stylesheet budgets.
+- Follow `docs/feature-architecture.md` for tab lifecycle, routing, loading/error behavior, and resource ownership. A feature must not statically import another feature, and shared/app modules must not import feature implementations.
+- New tabs require a literal registry loader, controller lifecycle tests, owned table/chart/CSS registration, direct-link and back/forward tests, failure/race coverage, and a manifest budget entry.
 - Regenerate the responsive hero set with `npm run build:hero` after changing the league identity photo, then run `npm run test:assets`.
 - The Sleeper workflow needs the `SLEEPER_LEAGUE_ID` repository secret.
 - `docs/plans/README.md` is the index for the implementation plans.

@@ -1,46 +1,41 @@
 import { render } from 'preact';
 import InteractiveTable from '../components/tables/InteractiveTable';
-import { getTableRegistryEntry } from './table-registry';
+import './table.entry.css';
 import { readSavedViews, tableContextsMatch } from './table-saved-views';
-import { adaptHistoryGameRows } from './rows/history-game-rows';
-import { adaptHistoryOpponentRows } from './rows/history-opponent-rows';
-import { adaptHistorySeasonRows } from './rows/history-season-rows';
-import { adaptHistoryWeekRows } from './rows/history-week-rows';
-import { adaptRivalryGameRows } from './rows/rivalry-game-rows';
-import { adaptRivalrySeasonRows } from './rows/rivalry-season-rows';
-import { adaptCurrentProjectedRows, adaptCurrentStandingRows } from './rows/current-standing-rows';
-import { adaptTrophySeasonRows } from './rows/trophy-season-rows';
-import { adaptDraftSpotRows } from './rows/draft-spot-rows';
 import type {
-  DarlingTableRow,
   DarlingTableRuntime,
   SavedTableView,
   TableContext,
   TableId,
+  TableRegistryEntry,
   TableRenderPayload,
+  TableRowAdapter,
 } from './table-types';
 
 const pendingSavedViews = new Map<TableId, SavedTableView>();
 
-function adaptRows(tableId: TableId, rows: unknown[], context: TableContext): DarlingTableRow[] {
-  switch (tableId) {
-    case 'history-games': return adaptHistoryGameRows(rows, context);
-    case 'history-weeks': return adaptHistoryWeekRows(rows, context);
-    case 'history-opponents': return adaptHistoryOpponentRows(rows, context);
-    case 'history-seasons': return adaptHistorySeasonRows(rows, context);
-    case 'rivalry-games': return adaptRivalryGameRows(rows, context);
-    case 'rivalry-seasons': return adaptRivalrySeasonRows(rows, context);
-    case 'current-standings': return adaptCurrentStandingRows(rows, context);
-    case 'current-projected': return adaptCurrentProjectedRows(rows, context);
-    case 'trophy-seasons': return adaptTrophySeasonRows(rows, context);
-    case 'draft-rows': return adaptDraftSpotRows(rows, context);
-  }
-}
-
 export function createTableRuntime(): DarlingTableRuntime {
+  const registrations = new Map<TableId, { definition: TableRegistryEntry; adapter: TableRowAdapter }>();
+  const registration = (tableId: TableId) => {
+    const found = registrations.get(tableId);
+    if (!found) throw new Error(`Table ${tableId} is not registered. Register it from its owning feature before rendering.`);
+    return found;
+  };
   return {
+    register(tableId, definition, adapter) {
+      if (definition.id !== tableId) throw new Error(`Table definition ${definition.id} cannot be registered as ${tableId}`);
+      const existing = registrations.get(tableId);
+      if (existing) {
+        if (existing.definition === definition && existing.adapter === adapter) return;
+        throw new Error(`Table ${tableId} is already registered`);
+      }
+      registrations.set(tableId, { definition, adapter });
+    },
+    isRegistered(tableId) {
+      return registrations.has(tableId);
+    },
     render(tableId: TableId, payload: TableRenderPayload) {
-      const baseRegistry = getTableRegistryEntry(tableId);
+      const { definition: baseRegistry, adapter } = registration(tableId);
       const context = payload.context || {};
       const registry = tableId === 'history-opponents' && context.isLeague
         ? {
@@ -57,7 +52,7 @@ export function createTableRuntime(): DarlingTableRuntime {
         <InteractiveTable
           key={`${tableId}:${payload.instanceKey || 'default'}:${restorePendingView ? pendingView?.id : 'current'}`}
           registry={registry}
-          rows={adaptRows(tableId, payload.rows || [], context)}
+          rows={adapter(payload.rows || [], context)}
           context={context}
           initialState={restorePendingView ? pendingView?.state : payload.initialState}
           urlState={payload.urlState}
@@ -73,7 +68,7 @@ export function createTableRuntime(): DarlingTableRuntime {
       );
     },
     unmount(tableId: TableId) {
-      const mount = document.getElementById(getTableRegistryEntry(tableId).mountId);
+      const mount = document.getElementById(registration(tableId).definition.mountId);
       if (mount) render(null, mount);
     },
     listSavedViews() {

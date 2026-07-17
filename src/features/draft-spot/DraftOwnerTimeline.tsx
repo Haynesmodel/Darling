@@ -14,12 +14,12 @@ export default function DraftOwnerTimeline({
     return <p class="muted">Choose an owner to see the year-by-year draft timeline.</p>;
   }
   return (
-    <div class="draft-timeline" role="list" aria-label={`${profile.owner} draft history`}>
+    <div class="draft-timeline">
       {profile.rows.map(row => (
         <button
           type="button"
           data-draft-pick={draftPickBucket(row, model.state.normalize)}
-          role="listitem"
+          aria-pressed={model.state.selectedPick === draftPickBucket(row, model.state.normalize)}
           class={[
             'draft-timeline-item',
             row.champion ? 'champion' : '',

@@ -266,6 +266,19 @@ test('current season view modes hide filtered section containers', async ({ page
   expect(hasHorizontalOverflow).toBe(false);
 });
 
+test('historical Current Season standings match the selected week snapshot', async ({ page }) => {
+  await page.goto('/?tab=current&currentSeason=2024&currentWeek=7');
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#currentSeasonSelect')).toHaveValue('2024');
+  await expect(page.locator('#currentWeekSelect')).toHaveValue('7');
+  const zubs = page.locator('#currentPlayoffPicture .current-seed-row').filter({ hasText: 'Zubs' });
+  await expect(zubs.locator('.current-seed-badge')).toHaveText('3');
+  await expect(zubs.locator('.current-seed-main')).toContainText('5-2');
+  await expect(zubs.locator('.current-status-badge')).toHaveText('In control');
+  await expect(zubs).not.toContainText('Clinched bye');
+});
+
 test('rivalry tab renders a tale of the tape and saved rivalry selection', async ({ page }) => {
   await page.goto('/');
   await page.waitForLoadState('networkidle');
@@ -1392,10 +1405,14 @@ test('Draft Spot timeline highlights normalized selections using the normalized 
 
   const tenthPick = page.locator('.draft-timeline-item[data-draft-pick="12"]').first();
   await expect(tenthPick).toContainText('Pick 10');
+  expect(await tenthPick.evaluate(element => element.tagName)).toBe('BUTTON');
+  expect(await tenthPick.getAttribute('role')).toBeNull();
+  await expect(tenthPick).toHaveAttribute('aria-pressed', 'false');
   await tenthPick.click();
 
   await expect.poll(() => new URL(page.url()).searchParams.get('draftPick')).toBe('12');
   await expect(tenthPick).toHaveClass(/selected/);
+  await expect(tenthPick).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('global search reaches Draft Spot picks, zones, and owner history', async ({ page }) => {

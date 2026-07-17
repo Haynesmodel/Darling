@@ -7,6 +7,7 @@ import {
   isCompletedGame,
   latestCompletedWeek,
   latestLeagueSeason,
+  seasonSourceSnapshot,
 } from './current-season-data.js';
 import {
   buildCommandCenterModel,
@@ -186,14 +187,28 @@ function buildCurrentSeasonViewModel({
 } = {}) {
   const selectedSeason = Number.isFinite(Number(season)) ? Number(season) : latestLeagueSeason(leagueGames, seasonSummaries, currentSeason);
   const selectedWeek = Number.isFinite(Number(week)) ? Number(week) : latestCompletedWeek(leagueGames, selectedSeason, currentSeason);
-  const seasonGames = currentSeasonSourceGames(leagueGames, selectedSeason, currentSeason);
+  const sourceSnapshot = seasonSourceSnapshot({
+    leagueGames,
+    currentSeason,
+    season: selectedSeason,
+    week: selectedWeek,
+  });
+  const snapshotLeagueGames = sourceSnapshot.leagueGames;
+  const snapshotCurrentSeason = sourceSnapshot.currentSeason;
+  const seasonGames = currentSeasonSourceGames(snapshotLeagueGames, selectedSeason, snapshotCurrentSeason);
   const regularGames = seasonGames.filter(game => String(game.type || '').trim() === 'Regular');
   const completedRegularGames = regularGames.filter(isCompletedGame);
-  const matchups = buildCurrentMatchupRows({ leagueGames, seasonSummaries, currentSeason, season: selectedSeason, week: selectedWeek });
-  const commandCenter = buildCommandCenterModel({
-    leagueGames,
+  const matchups = buildCurrentMatchupRows({
+    leagueGames: snapshotLeagueGames,
     seasonSummaries,
-    currentSeason,
+    currentSeason: snapshotCurrentSeason,
+    season: selectedSeason,
+    week: selectedWeek,
+  });
+  const commandCenter = buildCommandCenterModel({
+    leagueGames: snapshotLeagueGames,
+    seasonSummaries,
+    currentSeason: snapshotCurrentSeason,
     season: selectedSeason,
     week: selectedWeek,
     selectedOwner,
@@ -219,9 +234,9 @@ function buildCurrentSeasonViewModel({
   const standingsByOwner = new Map(standings.map(row => [row.owner, row]));
   const snapshots = teams.map(owner => buildTeamCurrentSeasonSnapshot({
     owner,
-    leagueGames,
+    leagueGames: snapshotLeagueGames,
     seasonSummaries,
-    currentSeason,
+    currentSeason: snapshotCurrentSeason,
     season: selectedSeason,
   })).map(snapshot => ({
     ...snapshot,

@@ -280,6 +280,32 @@ test('historical distributions exclude future weeks and future-season priors', (
   assert.ok(historical.distributions.every(row => row.ceiling < 300));
 });
 
+test('historical odds probability totals follow each season postseason format', () => {
+  const leagueGames = readAsset('H2H.json');
+  const historicalCurrentSeason = readAsset('CurrentSeason.json');
+  const historicalDerivedStats = readAsset('DerivedStats.json');
+  const formats = [
+    { season: 2024, playoff: 6, bye: 2, saunders: 4 },
+    { season: 2014, playoff: 4, bye: 0, saunders: 4 },
+  ];
+
+  for (const format of formats) {
+    const result = buildCurrentSeasonOdds({
+      leagueGames,
+      currentSeason: historicalCurrentSeason,
+      derivedStats: historicalDerivedStats,
+      season: format.season,
+      week: 1,
+      dataVersion: `historical-format-${format.season}`,
+      simulations: 500,
+    });
+    const total = key => result.rows.reduce((sum, row) => sum + row[key], 0);
+    assert.ok(Math.abs(total('playoffOdds') - format.playoff) < 1e-9);
+    assert.ok(Math.abs(total('byeOdds') - format.bye) < 1e-9);
+    assert.ok(Math.abs(total('saundersOdds') - format.saunders) < 1e-9);
+  }
+});
+
 test('configured tiebreakers determine exact completed-season seed probabilities', () => {
   const complete = {
     season: 2026,

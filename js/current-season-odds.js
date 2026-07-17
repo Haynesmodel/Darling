@@ -2,11 +2,11 @@ import { isRegularGame, sidesForTeam } from './core-helpers.js';
 import {
   buildScenarioStandings,
   regularSeasonGamesFor,
-  resolveCurrentSeasonRules,
+  resolveSeasonRules,
   saundersLineSeed,
   sortAndRankStandings,
 } from './current-season-command-data.js';
-import { isCompletedGame, weekForGame } from './current-season-data.js';
+import { isCompletedGame, seasonSourceSnapshot, weekForGame } from './current-season-data.js';
 import { gaussianSample, seededRng } from './gauntlet-simulator.js';
 
 const DEFAULT_SIMULATIONS = 10000;
@@ -223,7 +223,7 @@ function conditionForcedScores(game, forcedOutcome, sampledScoreA, sampledScoreB
 }
 
 function snapshotCacheKey(options) {
-  const rules = options.rules || resolveCurrentSeasonRules(options.currentSeason);
+  const rules = options.rules || resolveSeasonRules(options);
   return JSON.stringify({
     season: options.season,
     simulations: options.simulations,
@@ -245,7 +245,7 @@ function simulateOddsSnapshot(options = {}) {
   const cacheKey = snapshotCacheKey(options);
   if (ODDS_CACHE.has(cacheKey)) return ODDS_CACHE.get(cacheKey);
   const simulations = Math.max(100, Math.min(50000, Math.floor(numeric(options.simulations, DEFAULT_SIMULATIONS))));
-  const rules = options.rules || resolveCurrentSeasonRules(options.currentSeason);
+  const rules = options.rules || resolveSeasonRules(options);
   const distributions = options.distributions || buildTeamScoringDistributions({ ...options, rules });
   const distributionByOwner = new Map(distributions.map(row => [row.owner, row]));
   const regularGames = regularSeasonGamesFor({ ...options, rules });
@@ -334,42 +334,12 @@ function simulateOddsSnapshot(options = {}) {
   return result;
 }
 
-function snapshotGamesForWeek(games, season, week, includeSelectedWeek) {
-  const targetSeason = numeric(season);
-  const targetWeek = numeric(week);
-  if (!Number.isFinite(targetSeason) || !Number.isFinite(targetWeek)) return games;
-  return (games || []).map(game => {
-    if (numeric(game.season) !== targetSeason) return game;
-    const gameWeek = numeric(weekForGame(game));
-    const isVisible = !Number.isFinite(gameWeek)
-      || (includeSelectedWeek ? gameWeek <= targetWeek : gameWeek < targetWeek);
-    return isVisible
-      ? game
-      : { ...game, status: 'scheduled', scoreA: null, scoreB: null };
-  });
-}
-
-function seasonSourceSnapshot({ leagueGames = [], currentSeason = null, season, week }, includeSelectedWeek) {
-  const targetSeason = numeric(season);
-  const assetSeason = numeric(currentSeason?.season);
-  return {
-    leagueGames: snapshotGamesForWeek(leagueGames, targetSeason, week, includeSelectedWeek),
-    currentSeason: currentSeason && assetSeason === targetSeason
-      ? {
-          ...currentSeason,
-          ...(includeSelectedWeek ? { current_week: numeric(week) } : {}),
-          games: snapshotGamesForWeek(currentSeason.games || [], targetSeason, week, includeSelectedWeek),
-        }
-      : currentSeason,
-  };
-}
-
 function seasonSnapshotBeforeWeek(options) {
-  return seasonSourceSnapshot(options, false);
+  return seasonSourceSnapshot({ ...options, includeSelectedWeek: false });
 }
 
 function seasonSnapshotThroughWeek(options) {
-  return seasonSourceSnapshot(options, true);
+  return seasonSourceSnapshot({ ...options, includeSelectedWeek: true });
 }
 
 function matchupForOwner(games, owner, week) {
@@ -408,7 +378,12 @@ function buildCurrentSeasonOdds({
 } = {}) {
   const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
   try {
-    const rules = resolveCurrentSeasonRules(currentSeason, playoffPicture.length);
+    const rules = resolveSeasonRules({
+      leagueGames,
+      currentSeason,
+      season,
+      teamCount: playoffPicture.length,
+    });
     const analysisSnapshot = seasonSnapshotThroughWeek({ leagueGames, currentSeason, season, week });
     const baselineSnapshot = seasonSnapshotBeforeWeek({ leagueGames, currentSeason, season, week });
     const analysisGames = regularSeasonGamesFor({ ...analysisSnapshot, season, rules });

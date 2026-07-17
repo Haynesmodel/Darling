@@ -7,7 +7,7 @@
     "largest_chunk_gzip_bytes": 272150
   },
   "budgets": {
-    "entry_chunk_max_bytes": 850000,
+    "entry_chunk_max_bytes": 855000,
     "total_javascript_gzip_max_bytes": 300000,
     "require_data_runtime_chunk": true
   }

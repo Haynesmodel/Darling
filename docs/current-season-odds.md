@@ -10,6 +10,7 @@ The Current Season command center keeps deterministic standings, clinched/elimin
 - Outputs: playoff, bye, every seed, and Saunders probabilities for each active owner.
 - Additional snapshots: matching pre-week baseline, if-current-scores-hold, and selected-owner win/loss scenarios.
 - Historical week selection truncates the analyzed snapshot after that week, so movement always compares post-week N with pre-week N.
+- Historical records, seeds, statuses, gaps, and probabilities share that same post-week snapshot, while playoff/byes/Saunders slots are inferred from the selected season's stored bracket.
 - Forced win/loss scenarios condition normally sampled matchup scores and preserve live scores as hard floors.
 
 ## Team scoring distributions

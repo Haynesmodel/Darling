@@ -42,6 +42,53 @@ function weekForGame(game, owner = null) {
   return derivedWeeks.length ? Math.max(...derivedWeeks) : null;
 }
 
+function snapshotGamesThroughWeek(games, season, week, includeSelectedWeek, assumeTargetSeason = false) {
+  const targetSeason = numeric(season);
+  const targetWeek = numeric(week);
+  if (!Number.isFinite(targetSeason) || !Number.isFinite(targetWeek)) return games;
+  return (games || []).map(game => {
+    if (!assumeTargetSeason && numeric(game.season) !== targetSeason) return game;
+    const gameWeek = numeric(weekForGame(game));
+    const isVisible = !Number.isFinite(gameWeek)
+      || (includeSelectedWeek ? gameWeek <= targetWeek : gameWeek < targetWeek);
+    return isVisible
+      ? game
+      : { ...game, status: 'scheduled', scoreA: null, scoreB: null };
+  });
+}
+
+function seasonSourceSnapshot({
+  leagueGames = [],
+  currentSeason = null,
+  season = latestLeagueSeason(leagueGames, [], currentSeason),
+  week = null,
+  includeSelectedWeek = true,
+} = {}) {
+  const targetSeason = numeric(season);
+  const assetSeason = numeric(currentSeason?.season);
+  return {
+    leagueGames: snapshotGamesThroughWeek(
+      leagueGames,
+      targetSeason,
+      week,
+      includeSelectedWeek,
+    ),
+    currentSeason: currentSeason && assetSeason === targetSeason
+      ? {
+          ...currentSeason,
+          ...(includeSelectedWeek ? { current_week: numeric(week) } : {}),
+          games: snapshotGamesThroughWeek(
+            currentSeason.games || [],
+            targetSeason,
+            week,
+            includeSelectedWeek,
+            true,
+          ),
+        }
+      : currentSeason,
+  };
+}
+
 function currentSeasonWeeks(leagueGames = [], season = latestLeagueSeason(leagueGames), currentSeason = null) {
   return [...new Set(currentSeasonSourceGames(leagueGames, season, currentSeason)
     .map(game => weekForGame(game))
@@ -309,5 +356,6 @@ export {
   isCompletedGame,
   latestCompletedWeek,
   latestLeagueSeason,
+  seasonSourceSnapshot,
   weekForGame,
 };

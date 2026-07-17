@@ -54,8 +54,10 @@ test('feature registry contains failures and supports a controlled retry', async
   });
   await assert.rejects(registry.load('trophy'), /temporary chunk failure/);
   assert.equal(registry.diagnostics().trophy.state, 'error');
+  assert.equal(registry.hasLoadFailure('trophy'), true);
   const loaded = await registry.retry('trophy');
   assert.equal(loaded.id, 'trophy');
+  assert.equal(registry.hasLoadFailure('trophy'), false);
   assert.equal(attempts, 2);
 });
 

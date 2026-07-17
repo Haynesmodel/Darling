@@ -71,12 +71,17 @@ export function createFeatureController(): DarlingFeatureController {
       copy?.addEventListener('click', async () => {
         const field = context.document.getElementById('gauntletCopyText') as HTMLTextAreaElement | null;
         if (!field?.value) return;
-        try {
-          await context.window.navigator.clipboard?.writeText(field.value);
-        } catch {
-          field.focus();
-          field.select();
+        const clipboard = context.window.navigator.clipboard;
+        if (typeof clipboard?.writeText === 'function') {
+          try {
+            await clipboard.writeText(field.value);
+            return;
+          } catch {
+            // Fall through to a selectable text field when permission is denied.
+          }
         }
+        field.focus();
+        field.select();
       });
     },
     activate(input: FeatureActivation) {

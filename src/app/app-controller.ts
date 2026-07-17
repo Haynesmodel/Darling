@@ -101,7 +101,11 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
         status.dataError(error);
         return;
       }
-      status.error(id, LABELS[id], error, () => { void request(route, 'retry'); });
+      const reloadForFreshModuleMap = registry.hasLoadFailure(id);
+      status.error(id, LABELS[id], error, () => {
+        if (reloadForFreshModuleMap) win.location.reload();
+        else void request(route, 'retry');
+      });
     }
   };
 

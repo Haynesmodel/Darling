@@ -7,10 +7,15 @@ export default defineConfig({
   publicDir: 'public',
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    // Keep external maps for diagnostics without adding one unique map URL to
+    // every transport chunk; those comments count against the aggregate budget.
+    sourcemap: 'hidden',
     manifest: true,
     rolldownOptions: {
       output: {
+        // Runtime and tests resolve chunks through the manifest, so transport
+        // filenames can stay compact without sacrificing feature diagnostics.
+        chunkFileNames: 'assets/[hash].js',
         // These neutral helpers are shared by several lazy features. Keeping them
         // together avoids tiny duplicate transport wrappers without pulling a
         // feature implementation into the shell.

@@ -2,7 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
 
-const manifest = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'dist/.vite/manifest.json'), 'utf8'));
+const preview = process.env.PLAYWRIGHT_SERVER === 'preview';
+const manifest = preview
+  ? JSON.parse(fs.readFileSync(path.join(process.cwd(), 'dist/.vite/manifest.json'), 'utf8'))
+  : {};
 const sources = {
   history: 'src/features/history/history-controller.ts',
   current: 'src/features/current-season/current-season-controller.ts',
@@ -12,9 +15,10 @@ const sources = {
   draft: 'src/features/draft-spot/draft-spot-feature.ts',
   gauntlet: 'src/features/gauntlet/gauntlet-controller.ts',
 };
-const files = Object.fromEntries(Object.entries(sources).map(([id, source]) => [id, manifest[source].file]));
-const chartRuntime = Object.values(manifest).find(entry => /chart-runtime/.test(entry.file))?.file;
-const preview = process.env.PLAYWRIGHT_SERVER === 'preview';
+const files = preview
+  ? Object.fromEntries(Object.entries(sources).map(([id, source]) => [id, manifest[source].file]))
+  : {};
+const chartRuntime = Object.values(manifest).find(entry => entry.name === 'chart-runtime')?.file;
 const requestPattern = id => preview ? `**/${files[id]}` : `**/${sources[id]}*`;
 
 async function waitForFeature(page, id) {
@@ -88,7 +92,28 @@ test('a failed feature import is contained in its panel and other tabs remain us
   await expect(panel.getByRole('alert')).toContainText('Trophy Case could not be loaded');
   await expect(panel.getByRole('button', { name: 'Retry' })).toBeVisible();
   await expect(page).toHaveURL(/tab=trophy/);
+  await panel.getByRole('button', { name: 'Retry' }).click();
+  await waitForFeature(page, 'trophy');
+  expect(attempts).toBeGreaterThanOrEqual(2);
   await page.getByRole('tab', { name: 'League History' }).click();
   await waitForFeature(page, 'history');
   await expect(page.locator('#historyGamesTable tbody tr')).not.toHaveCount(0);
+});
+
+test('Gauntlet copy selects its fallback text when Clipboard API is unavailable', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
+  });
+  await page.goto('/?tab=gauntlet');
+  await waitForFeature(page, 'gauntlet');
+  const field = page.locator('#gauntletCopyText');
+  await expect(field).not.toHaveValue('');
+  await page.locator('#gauntletCopyBtn').click();
+  await expect(field).toBeFocused();
+  const length = (await field.inputValue()).length;
+  await expect.poll(() => field.evaluate(element => ({
+    start: element.selectionStart,
+    end: element.selectionEnd,
+    length: element.value.length,
+  }))).toEqual({ start: 0, end: length, length });
 });

@@ -5,7 +5,7 @@ The July 17, 2026 tab-splitting build replaces the synchronous all-feature entry
 | Snapshot | Entry raw | Entry gzip | Initial CSS | Total JavaScript gzip |
 | --- | ---: | ---: | ---: | ---: |
 | Before tab splitting | 852,370 | 258,468 | 85,740 | 293,628 |
-| After tab splitting | 170,878 | 51,870 | 31,570 | 299,978 |
+| After tab splitting | 170,514 | 51,746 | 31,570 | 298,900 |
 
 The entry is 80% smaller raw and gzip. Total JavaScript remains under the unchanged 300,000-byte gzip ceiling; the small increase is dynamic-entry/lifecycle overhead rather than code on the default route.
 
@@ -15,7 +15,7 @@ The manifest checker counts the shell, static dependencies, requested feature, a
 
 | Route | JavaScript gzip |
 | --- | ---: |
-| History | 102,779 |
+| History | 102,390 |
 | Draft Spot | 89,240 |
 | Historical Matchup | 217,300 |
 | Trophy Case | 223,423 |

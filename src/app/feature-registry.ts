@@ -83,6 +83,11 @@ export class FeatureRegistry {
     return this.load(id);
   }
 
+  hasLoadFailure(id: FeatureId): boolean {
+    const entry = this.#entry(id);
+    return entry.state === 'error' && !entry.controller;
+  }
+
   diagnostics(): Readonly<Record<FeatureId, unknown>> {
     return Object.freeze(Object.fromEntries((Object.keys(this.loaders) as FeatureId[]).map(id => {
       const entry = this.#entry(id);

@@ -36,13 +36,22 @@ export function updateTabOverflow(root: Document = document): void {
 export function revealActiveTab(tab: HTMLElement, root: Document = document): void {
   const strip = root.getElementById('primaryTabStrip');
   if (!(strip instanceof HTMLElement)) return;
-  const tabBox = tab.getBoundingClientRect();
-  const stripBox = strip.getBoundingClientRect();
-  let left = strip.scrollLeft;
-  if (tabBox.left < stripBox.left) left += tabBox.left - stripBox.left;
-  else if (tabBox.right > stripBox.right) left += tabBox.right - stripBox.right;
-  strip.scrollTo({ left, behavior: motionAwareScrollBehavior() });
-  requestAnimationFrame(() => updateTabOverflow(root));
+  const align = (behavior: ScrollBehavior) => {
+    const tabBox = tab.getBoundingClientRect();
+    const stripBox = strip.getBoundingClientRect();
+    let left = strip.scrollLeft;
+    if (tabBox.left < stripBox.left) left += tabBox.left - stripBox.left;
+    else if (tabBox.right > stripBox.right) left += tabBox.right - stripBox.right;
+    strip.scrollTo({ left, behavior });
+  };
+  align(motionAwareScrollBehavior());
+  requestAnimationFrame(() => {
+    updateTabOverflow(root);
+    // Compact overflow controls change the strip width as they appear. Align
+    // once more after that layout settles so the selected tab is not obscured.
+    align('auto');
+    requestAnimationFrame(() => updateTabOverflow(root));
+  });
 }
 
 export function syncPageState(id: string, root: Document = document): void {

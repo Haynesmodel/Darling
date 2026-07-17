@@ -46,7 +46,7 @@ Feature controllers serialize only their own fields. Table saved-view callbacks 
 
 `src/tables/table-runtime.tsx` contains generic rendering, saved views, and registration. Each table feature registers its stable definition and row adapter during `mount`. Duplicate registration fails, and rendering an unregistered table produces an actionable error. Table IDs and the saved-view schema remain unchanged.
 
-Chart features share one lazy `chart-runtime` output containing Observable Plot and the chart adapters. History and Draft Spot do not request it. Feature entry CSS files import their owned styles in the existing cascade layers; `src/styles/app.css` contains shell/shared styles only. Readiness is reported after the JavaScript and its CSS dependency resolve.
+Chart features share one lazy `chart-runtime` output containing Observable Plot and the chart adapters. History does not request it; Draft Spot loads it for its pick-distribution and timeline charts. Feature entry CSS files import their owned styles in the existing cascade layers; `src/styles/app.css` contains shell/shared styles only. Readiness is reported after the JavaScript and its CSS dependency resolve.
 
 ## Adding a tab
 

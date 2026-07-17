@@ -10,8 +10,8 @@ export function createFeatureController(): DarlingFeatureController {
   let selected: Record<string, unknown> | null = null;
   let activeSignal: AbortSignal | null = null;
 
-  const update = (next: any) => {
-    if (activeSignal?.aborted) return;
+  const update = (next: any, signal = activeSignal) => {
+    if (!signal || signal.aborted || signal !== activeSignal) return;
     selected = next;
     const owner = ownerOrNull(next.owner);
     context.header.feature(owner ? `${owner} Draft Spot` : 'Draft Spot Explorer', owner, owner ? `${owner} Draft Spot` : 'Draft Spot Explorer');
@@ -37,7 +37,9 @@ export function createFeatureController(): DarlingFeatureController {
       registerDraftSpotTables(context.tables);
     },
     async activate(input: FeatureActivation) {
-      activeSignal = input.signal;
+      const activationSignal = input.signal;
+      activeSignal = activationSignal;
+      const updateForActivation = (next: any) => update(next, activationSignal);
       if (input.reason !== 'tab' || !selected) {
         selected = {
           owner: input.route.draftOwner,
@@ -54,7 +56,7 @@ export function createFeatureController(): DarlingFeatureController {
       const entry = context.data.manifest.assets.DraftSpot;
       const sourceHash = context.data.manifest.assets.SeasonSummary.sha256;
       if (!entry || !sourceHash) throw new Error('Draft Spot asset is not present in the data manifest');
-      update(selected);
+      updateForActivation(selected);
       const mount = context.document.getElementById('draftSpotRoot');
       if (!mount) throw new Error('Draft Spot mount is missing');
       await mountDraftSpot({
@@ -63,8 +65,8 @@ export function createFeatureController(): DarlingFeatureController {
         sourceHash,
         dataVersion: context.data.dataVersion,
         state: selected,
-        onStateChange: update,
-        onReady: update,
+        onStateChange: updateForActivation,
+        onReady: updateForActivation,
       });
     },
     deactivate() {

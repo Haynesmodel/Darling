@@ -12,7 +12,7 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
   const byId = new Map();
   const chunks = Object.entries(manifest).filter(([, entry]) => entry.file?.endsWith('.js')).map(([id, entry]) => {
     const contents = fs.readFileSync(path.join(root, outputDir, entry.file));
-    const chunk = { id, file: entry.file, imports: entry.imports || [], isEntry: !!entry.isEntry, isDynamicEntry: !!entry.isDynamicEntry, bytes: contents.length, gzipBytes: zlib.gzipSync(contents, { level: 9 }).length };
+    const chunk = { id, name: entry.name || '', file: entry.file, imports: entry.imports || [], isEntry: !!entry.isEntry, isDynamicEntry: !!entry.isDynamicEntry, bytes: contents.length, gzipBytes: zlib.gzipSync(contents, { level: 9 }).length };
     byId.set(id, chunk);
     return chunk;
   }).sort((a, b) => b.bytes - a.bytes);
@@ -43,7 +43,7 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
   const historyChunk = requiredEntries.history;
   const initialHistory = entry && historyChunk && dataChunk ? closure([entry.id, historyChunk.id, dataChunk.id]) : [];
   const totalGzipBytes = gzipFor(chunks);
-  const vendorCopies = chunks.filter(chunk => /(?:charting-vendor|chart-runtime)/.test(`${chunk.id} ${chunk.file}`));
+  const vendorCopies = chunks.filter(chunk => /(?:charting-vendor|chart-runtime)/.test(`${chunk.id} ${chunk.name} ${chunk.file}`));
 
   if (!entry) errors.push('production JavaScript entry chunk is missing');
   else {

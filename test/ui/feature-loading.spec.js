@@ -33,7 +33,7 @@ function recordResources(page) {
   return urls;
 }
 
-test('cold History and Trophy routes request only their feature entries', async ({ page }) => {
+test('cold History, Draft Spot, and Trophy routes request only their feature entries', async ({ page }) => {
   test.skip(!preview, 'hashed resource-boundary assertions require the production preview build');
   let resources = recordResources(page);
   await page.goto('/');
@@ -43,11 +43,71 @@ test('cold History and Trophy routes request only their feature entries', async 
   expect(resources.some(url => chartRuntime && url.endsWith(chartRuntime))).toBe(false);
 
   resources.length = 0;
+  await page.goto('/?tab=draft');
+  await waitForFeature(page, 'draft');
+  expect(resources.some(url => url.endsWith(files.draft))).toBe(true);
+  for (const id of Object.keys(files).filter(id => id !== 'draft')) expect(resources.some(url => url.endsWith(files[id])), `${id} leaked into Draft Spot`).toBe(false);
+  await expect.poll(() => resources.some(url => chartRuntime && url.endsWith(chartRuntime))).toBe(true);
+
+  resources.length = 0;
   await page.goto('/?tab=trophy&trophyOwner=Joe');
   await waitForFeature(page, 'trophy');
   expect(resources.some(url => url.endsWith(files.trophy))).toBe(true);
   for (const id of Object.keys(files).filter(id => id !== 'trophy')) expect(resources.some(url => url.endsWith(files[id])), `${id} leaked into Trophy`).toBe(false);
   expect(resources.some(url => chartRuntime && url.endsWith(chartRuntime))).toBe(true);
+});
+
+test('a delayed Draft ready callback cannot add history after an immediate tab switch', async ({ page }) => {
+  await page.goto('/');
+  await waitForFeature(page, 'history');
+  await page.evaluate(() => {
+    const nativeSetTimeout = window.setTimeout.bind(window);
+    const nativeClearTimeout = window.clearTimeout.bind(window);
+    const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
+    const nativeCancelAnimationFrame = window.cancelAnimationFrame.bind(window);
+    const held = new Map();
+    let nextId = 1_000_000;
+
+    window.setTimeout = (callback, delay, ...args) => {
+      if (delay === 35) {
+        const id = nextId++;
+        held.set(id, () => callback(...args));
+        return id;
+      }
+      return nativeSetTimeout(callback, delay, ...args);
+    };
+    window.clearTimeout = id => {
+      if (!held.delete(id)) nativeClearTimeout(id);
+    };
+    window.requestAnimationFrame = callback => {
+      const id = nextId++;
+      held.set(id, () => callback(performance.now()));
+      return id;
+    };
+    window.cancelAnimationFrame = id => {
+      if (!held.delete(id)) nativeCancelAnimationFrame(id);
+    };
+    window.__releaseDraftReady = () => {
+      const callback = held.values().next().value;
+      callback?.();
+      window.setTimeout = nativeSetTimeout;
+      window.clearTimeout = nativeClearTimeout;
+      window.requestAnimationFrame = nativeRequestAnimationFrame;
+      window.cancelAnimationFrame = nativeCancelAnimationFrame;
+    };
+  });
+
+  await page.getByRole('tab', { name: 'Draft Spot' }).click();
+  await expect(page.locator('#draftOwnerSelect')).toBeVisible();
+  await page.getByRole('tab', { name: 'Trophy Case' }).click();
+  await waitForFeature(page, 'trophy');
+  await page.evaluate(() => window.__releaseDraftReady());
+  await page.waitForTimeout(100);
+  await expect(page).toHaveURL(/tab=trophy/);
+
+  await page.goBack();
+  await waitForFeature(page, 'draft');
+  await expect(page).toHaveURL(/tab=draft/);
 });
 
 test('a delayed feature remains busy and cannot overwrite a newer activation', async ({ page }) => {

@@ -5,7 +5,7 @@ The July 17, 2026 tab-splitting build replaces the synchronous all-feature entry
 | Snapshot | Entry raw | Entry gzip | Initial CSS | Total JavaScript gzip |
 | --- | ---: | ---: | ---: | ---: |
 | Before tab splitting | 852,370 | 258,468 | 85,740 | 293,628 |
-| After tab splitting | 170,462 | 51,703 | 31,570 | 298,872 |
+| After tab splitting | 170,462 | 51,698 | 31,570 | 298,892 |
 
 The entry is 80% smaller raw and gzip. Total JavaScript remains under the unchanged 300,000-byte gzip ceiling; the small increase is dynamic-entry/lifecycle overhead rather than code on the default route.
 
@@ -15,15 +15,15 @@ The manifest checker counts the shell, static dependencies, requested feature, a
 
 | Route | JavaScript gzip |
 | --- | ---: |
-| History | 102,337 |
-| Draft Spot | 89,240 |
-| Historical Matchup | 217,300 |
-| Trophy Case | 223,423 |
-| Head to Head | 223,643 |
-| Dynasty Rankings | 224,498 |
-| Current Season | 231,123 |
+| History | 102,332 |
+| Draft Spot | 223,061 |
+| Historical Matchup | 217,295 |
+| Trophy Case | 223,418 |
+| Head to Head | 223,638 |
+| Dynasty Rankings | 224,493 |
+| Current Season | 231,118 |
 
-Chart routes include the shared 407,447-byte raw / 134,308-byte gzip `chart-runtime` chunk. It contains the single Observable Plot/vendor copy and is absent from cold History and Draft Spot requests.
+Chart routes include the shared 407,377-byte raw / 134,250-byte gzip `chart-runtime` chunk. It contains the single Observable Plot/vendor copy and is absent from cold History requests. Draft Spot requests this runtime for its pick-distribution and timeline charts, so its complete cold-route closure includes the chunk.
 
 ## Enforced contracts
 

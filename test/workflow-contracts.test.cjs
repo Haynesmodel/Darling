@@ -48,6 +48,9 @@ function validateWorkflowContracts({ ci, updater, legacyDeployExists = false }) 
   if (!/permissions:[\s\S]*pages:\s*write[\s\S]*id-token:\s*write/.test(deployPages)) {
     errors.push('Pages write and OIDC permissions must be deploy-job scoped');
   }
+  if (occurrences(ci, /^\s+pages:\s*write\s*$/gm) !== 1 || occurrences(ci, /^\s+id-token:\s*write\s*$/gm) !== 1) {
+    errors.push('Pages write and OIDC permissions must occur exactly once in the complete workflow');
+  }
 
   if (/pull_request_target\s*:/.test(updater)) errors.push('updater may not use pull_request_target');
   if (/git push[^\n]*(?:\bmain\b|\$\{\{\s*github\.ref_name\s*\}\})/.test(updater)) {
@@ -63,6 +66,14 @@ function validateWorkflowContracts({ ci, updater, legacyDeployExists = false }) 
   }
   if (!/EXPECTED_AUTHOR="\$\{BOT_LOGIN\}"/.test(updater) || !/pr\.author\.login !== process\.env\.EXPECTED_AUTHOR/.test(updater)) {
     errors.push('existing automation PR ownership must match the token App slug');
+  }
+  if (!/--json number,title,author,labels,isDraft,url,baseRefName/.test(updater) || !/pr\.baseRefName !== 'main'/.test(updater)) {
+    errors.push('ownership checks must reject an automation PR retargeted away from main');
+  }
+  if (!/steps\.changes\.outputs\.changed == 'false'/.test(updater) ||
+      !/permission-pull-requests:\s*read/.test(updater) ||
+      !/Existing open PR:/.test(updater)) {
+    errors.push('no-change runs must report matching open automation PRs with a read-only token');
   }
   if (!/git status --porcelain --untracked-files=normal -- assets\/H2H\.json assets\/CurrentSeason\.json/.test(updater)) {
     errors.push('source change detection must include a newly created optional CurrentSeason file');
@@ -114,6 +125,15 @@ test('workflow contract rejects an always dependency bypass', () => {
   const changed = ci.replace("if: github.event_name == 'push' && github.ref == 'refs/heads/main'", 'if: always()');
   const errors = validateWorkflowContracts({ ci: changed, updater });
   assert.ok(errors.some(error => error.includes('always()')));
+});
+
+test('workflow contract rejects workflow-level Pages write permissions', () => {
+  const changed = ci.replace(
+    'permissions:\n  contents: read',
+    'permissions:\n  contents: read\n  pages: write\n  id-token: write',
+  );
+  const errors = validateWorkflowContracts({ ci: changed, updater });
+  assert.ok(errors.some(error => error.includes('exactly once')));
 });
 
 module.exports = { validateWorkflowContracts };

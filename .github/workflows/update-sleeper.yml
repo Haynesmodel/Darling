@@ -200,6 +200,40 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Record no-change lookup credential phase
+        if: steps.changes.outputs.changed == 'false'
+        run: echo "FAILED_PHASE=credential/token generation" >> "$GITHUB_ENV"
+
+      - name: Mint read-only automation lookup token
+        if: steps.changes.outputs.changed == 'false'
+        id: app-read-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.DARLING_AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.DARLING_AUTOMATION_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-pull-requests: read
+
+      - name: Report existing automation pull requests on no-change
+        if: steps.changes.outputs.changed == 'false'
+        env:
+          GH_TOKEN: ${{ steps.app-read-token.outputs.token }}
+          SEASON: ${{ steps.resolve.outputs.season }}
+        shell: bash
+        run: |
+          BRANCH="automation/sleeper-${SEASON}"
+          EXISTING_PRS="$(gh pr list --state open --head "${BRANCH}" \
+            --json number,url,baseRefName \
+            --jq '.[] | "- Existing open PR: \(.url) (base: \(.baseRefName))"')"
+          if [[ -n "${EXISTING_PRS}" ]]; then
+            {
+              echo
+              echo "Open automation PRs using ${BRANCH}:"
+              echo "${EXISTING_PRS}"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Summarize candidate changes
         if: steps.changes.outputs.changed == 'true'
         shell: bash
@@ -246,14 +280,17 @@ jobs:
           echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
 
           gh auth setup-git
-          gh pr list --state open --head "${BRANCH}" --base main \
-            --json number,title,author,labels,isDraft,url > "${RUNNER_TEMP}/sleeper-prs.json"
+          gh pr list --state open --head "${BRANCH}" \
+            --json number,title,author,labels,isDraft,url,baseRefName > "${RUNNER_TEMP}/sleeper-prs.json"
           EXPECTED_TITLE="${TITLE}" EXPECTED_AUTHOR="${BOT_LOGIN}" node <<'NODE'
           const fs = require('node:fs');
           const prs = JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/sleeper-prs.json`, 'utf8'));
           if (prs.length > 1) throw new Error(`Refusing ambiguous automation state: found ${prs.length} open PRs.`);
           if (prs.length === 1) {
             const pr = prs[0];
+            if (pr.baseRefName !== 'main') {
+              throw new Error(`Existing automation PR #${pr.number} targets ${pr.baseRefName}, not main.`);
+            }
             const labels = new Set(pr.labels.map(label => label.name));
             if (pr.title !== process.env.EXPECTED_TITLE || !labels.has('data-pipeline') || !labels.has('automated')) {
               throw new Error('Existing automation PR does not have the expected title and labels.');

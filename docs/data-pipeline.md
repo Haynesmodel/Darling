@@ -119,7 +119,7 @@ Normal runs generate candidate H2H and CurrentSeason files, preserve a private b
 - `assets/DerivedStats.json`
 - `assets/asset-manifest.json`
 
-An unexpected staged path fails closed. No-change runs create no commit, push, or PR noise. Changed runs mint a short-lived repository-scoped App token, create one commit from current `main`, and update `automation/sleeper-<season>` with an explicit force-with-lease. The workflow creates or refreshes exactly one draft PR to `main`, labels it `data-pipeline` and `automated`, and returns refreshed PRs to draft. Humans must not commit to the bot branch.
+An unexpected staged path fails closed. No-change runs create no commit, push, or PR noise; a read-only lookup reports any existing season PR in the run summary for human inspection. Changed runs mint a short-lived repository-scoped App token, create one commit from current `main`, and update `automation/sleeper-<season>` with an explicit force-with-lease. The workflow creates or refreshes exactly one draft PR to `main`, labels it `data-pipeline` and `automated`, and returns refreshed PRs to draft. Humans must not commit to the bot branch.
 
 The generated PR body defines before/after manifest hashes, H2H additions/removals/changes using canonical game identity, CurrentSeason status counts, the sorted changed files, completed validation, and the reviewer checklist. `SeasonSummary.draft.json` remains noncanonical.
 

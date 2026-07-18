@@ -1,5 +1,5 @@
 import { byDateAsc, byDateDesc, isPlayoffGame, isRegularGame, sidesForTeam } from './core-helpers.js';
-import { headToHeadContext } from './gauntlet-data.js';
+import { headToHeadContext } from './shared/head-to-head-context.js';
 
 function numeric(value) {
   if (value === null || value === undefined || value === '') return null;

@@ -2,48 +2,7 @@ const DEFAULT_HISTOGRAM_BINS = 18;
 const DEFAULT_BLOWOUT_MARGIN = 29;
 const DEFAULT_CLOSE_GAME_MARGIN = 5;
 
-function seedText(value) {
-  if (typeof value === 'string') return value;
-  if (value === null || value === undefined) return '';
-  if (typeof value === 'number' && Number.isFinite(value)) return `${value}`;
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return String(value);
-  }
-}
-
-function hashSeed(value) {
-  const text = seedText(value);
-  let hash = 2166136261 >>> 0;
-  for (let i = 0; i < text.length; i += 1) {
-    hash ^= text.charCodeAt(i);
-    hash = Math.imul(hash, 16777619) >>> 0;
-  }
-  return hash >>> 0;
-}
-
-function seededRng(seed) {
-  let state = hashSeed(seed) || 1;
-  return function rng() {
-    state ^= state << 13;
-    state >>>= 0;
-    state ^= state >>> 17;
-    state >>>= 0;
-    state ^= state << 5;
-    state >>>= 0;
-    return state / 4294967296;
-  };
-}
-
-function gaussianSample(mean, stdev, rng) {
-  if (!Number.isFinite(stdev) || stdev <= 0) return mean;
-  const u1 = Math.max(rng(), Number.EPSILON);
-  const u2 = Math.max(rng(), Number.EPSILON);
-  const mag = Math.sqrt(-2 * Math.log(u1));
-  const z0 = mag * Math.cos(2 * Math.PI * u2);
-  return mean + z0 * stdev;
-}
+import { gaussianSample, hashSeed, seededRng } from './shared/simulation-math.js';
 
 function weightedSample(events, rng) {
   const clean = events.filter(event => Number.isFinite(event?.score) && Number.isFinite(event?.weight) && event.weight > 0);

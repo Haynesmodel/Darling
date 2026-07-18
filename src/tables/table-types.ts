@@ -124,7 +124,11 @@ export interface TableRenderPayload {
 }
 
 export interface DarlingTableRuntime {
+  register(tableId: TableId, definition: TableRegistryEntry, adapter: TableRowAdapter): void;
+  isRegistered(tableId: TableId): boolean;
   render(tableId: TableId, payload: TableRenderPayload): void;
   unmount(tableId: TableId): void;
   listSavedViews(): SavedTableView[];
 }
+
+export type TableRowAdapter = (rows: unknown[], context: TableContext) => DarlingTableRow[];

@@ -5,17 +5,6 @@
 @import "./shell.css" layer(shell);
 @import "./primitives.css" layer(primitives);
 @import "./controls.css" layer(components);
-@import "./charts.css" layer(components);
 @import "../components/search/search.css" layer(components);
-@import "../components/tables/table.css" layer(components);
-@import "./features/history.css" layer(features);
-@import "./features/current-season.css" layer(features);
-@import "./features/curse-tracker.css" layer(features);
-@import "./features/rivalry.css" layer(features);
-@import "./features/trophy.css" layer(features);
-@import "./features/dynasty.css" layer(features);
-@import "./features/dynasty-details.css" layer(features);
-@import "./features/draft-spot.css" layer(features);
-@import "./features/gauntlet.css" layer(features);
 @import "./utilities.css" layer(utilities);
 @import "./motion.css" layer(utilities);

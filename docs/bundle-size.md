@@ -1,23 +1,41 @@
-# Production JavaScript bundle baseline
+# Production JavaScript bundle budgets
 
-The data-layer hardening merge (`449aaea`) produced one production JavaScript chunk:
+The July 17, 2026 tab-splitting build replaces the synchronous all-feature entry with a shell plus seven dynamic feature entries.
 
-| Snapshot | Entry bytes | Entry gzip | Data runtime | Total gzip |
+| Snapshot | Entry raw | Entry gzip | Initial CSS | Total JavaScript gzip |
 | --- | ---: | ---: | ---: | ---: |
-| `449aaea` baseline | about 1,020,260 | about 272,150 | bundled into entry | about 272,150 |
-| Hotfix split | about 826,600 | about 251,100 | about 195,900 / 17,700 gzip | about 268,800 |
-| Historical snapshot/rules remediation (`f4b65a4`) | about 852,400 | about 258,500 | about 3,400 / 1,600 gzip | about 293,700 |
+| Before tab splitting | 852,370 | 258,468 | 85,740 | 293,628 |
+| After tab splitting | 170,462 | 51,698 | 31,570 | 298,892 |
 
-The generated validator source is roughly 345 KB before Vite minification. It is now reached through a dynamic import with the typed data loader, so schema validation does not inflate the initial entry chunk or execute before league data is requested.
+The entry is 80% smaller raw and gzip. Total JavaScript remains under the unchanged 300,000-byte gzip ceiling; the small increase is dynamic-entry/lifecycle overhead rather than code on the default route.
 
-`scripts/data/bundle-budget.json` records the baseline and enforceable budgets:
+## Cold route closures
 
-- Entry JavaScript must remain below 855 KB.
-- Total JavaScript gzip must remain below 300 KB.
-- A dedicated dynamic `load-league-assets` chunk must exist.
+The manifest checker counts the shell, static dependencies, requested feature, and validated data path once per route.
 
-`npm run check:bundle` measures the built files using `dist/.vite/manifest.json`. `npm run build` runs this check automatically after the output audit.
+| Route | JavaScript gzip |
+| --- | ---: |
+| History | 102,332 |
+| Draft Spot | 223,061 |
+| Historical Matchup | 217,295 |
+| Trophy Case | 223,418 |
+| Head to Head | 223,638 |
+| Dynasty Rankings | 224,493 |
+| Current Season | 231,118 |
 
-The remaining entry chunk is still large because it contains the established application, Observable Plot, table runtime, and feature renderers. Future reductions should prioritize feature-level dynamic imports rather than weakening the data validation boundary.
+Chart routes include the shared 407,377-byte raw / 134,250-byte gzip `chart-runtime` chunk. It contains the single Observable Plot/vendor copy and is absent from cold History requests. Draft Spot requests this runtime for its pick-distribution and timeline charts, so its complete cold-route closure includes the chunk.
 
-The July 2026 remediation raised the entry ceiling from 850 KB to 855 KB after adding shared historical week-snapshot and postseason-rule inference to the synchronous Current Season view. The measured entry increased by about 2.4 KB (roughly 0.3%), while the existing 300 KB total-gzip ceiling remains unchanged. The 5 KB adjustment records that required correctness cost while retaining less than 3 KB of entry headroom.
+## Enforced contracts
+
+`scripts/data/bundle-budget.json` and `npm run check:bundle` enforce:
+
+- entry at or below 350,000 raw and 120,000 gzip;
+- cold History at or below 200,000 gzip;
+- every feature-owned entry at or below 50,000 gzip;
+- total JavaScript at or below 300,000 gzip;
+- every non-validator application chunk below 500,000 raw;
+- dynamic manifest entries for all seven tabs and `load-league-assets`;
+- no feature controller or Plot module in the entry's static closure;
+- no duplicate Plot/vendor output.
+
+Use `node scripts/check_bundle_size.cjs --json` for machine-readable evidence. The human report lists emitted chunks, the cold History closure, and required dynamic entries. Playwright resource tests derive hashed filenames from `dist/.vite/manifest.json`; do not assert literal hashes.

@@ -318,6 +318,36 @@ test('bundle measurement enforces a separate data runtime chunk', async () => {
   });
 });
 
+test('bundle measurement rejects duplicate named chart runtime chunks', async () => {
+  await withTempRepo((root) => {
+    const distDir = path.join(root, 'dist');
+    const assetDir = path.join(distDir, 'assets');
+    fs.mkdirSync(path.join(distDir, '.vite'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'scripts', 'data'), { recursive: true });
+    fs.mkdirSync(assetDir, { recursive: true });
+    fs.writeFileSync(path.join(root, 'scripts', 'data', 'bundle-budget.json'), JSON.stringify({
+      baseline: { commit: 'fixture', largest_chunk_bytes: 100, largest_chunk_gzip_bytes: 100 },
+      budgets: {
+        entry_chunk_max_bytes: 1000,
+        total_javascript_gzip_max_bytes: 1000,
+        plot_vendor_max_copies: 1,
+      },
+    }));
+    fs.writeFileSync(path.join(distDir, '.vite', 'manifest.json'), JSON.stringify({
+      'src/main.ts': { file: 'assets/index.js', isEntry: true },
+      '_chart-a.js': { file: 'assets/a.js', name: 'chart-runtime' },
+      '_chart-b.js': { file: 'assets/b.js', name: 'chart-runtime' },
+    }));
+    fs.writeFileSync(path.join(assetDir, 'index.js'), 'export const app = true;\n');
+    fs.writeFileSync(path.join(assetDir, 'a.js'), 'export const chartA = true;\n');
+    fs.writeFileSync(path.join(assetDir, 'b.js'), 'export const chartB = true;\n');
+
+    const result = measureBundle(root);
+    assert.equal(result.vendorCopies.length, 2);
+    assert.ok(result.errors.some(error => error.includes('Plot/vendor emitted 2 copies')));
+  });
+});
+
 test('hero asset validation checks required responsive variants', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-hero-assets-'));
   try {

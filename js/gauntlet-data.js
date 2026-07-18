@@ -1,4 +1,5 @@
 import { byDateDesc, isPlayoffGame, isRegularGame, isSaundersGame, roundOrder, sidesForTeam, sum } from './core-helpers.js';
+import { headToHeadContext } from './shared/head-to-head-context.js';
 
 function teamSeasonId(owner, season) {
   return `${owner}:${season}`;
@@ -224,28 +225,6 @@ function summarizeMeetings(meetings, ownerA, ownerB) {
     highestCombined,
     mostRecent: games[0] || null,
     meetings: games,
-  };
-}
-
-function headToHeadContext(ownerA, ownerB, leagueGames = [], selectedSeasons = []) {
-  const seasonSet = new Set((selectedSeasons || []).map(Number).filter(Number.isFinite));
-  const meetings = leagueGames.filter(game => (
-    (game.teamA === ownerA && game.teamB === ownerB) ||
-    (game.teamA === ownerB && game.teamB === ownerA)
-  ));
-
-  const allTime = summarizeMeetings(meetings, ownerA, ownerB);
-  const selectedGames = seasonSet.size
-    ? meetings.filter(game => seasonSet.has(Number(game.season)))
-    : [];
-  const selected = seasonSet.size ? summarizeMeetings(selectedGames, ownerA, ownerB) : null;
-
-  return {
-    ownerA,
-    ownerB,
-    selectedSeasons: [...seasonSet].sort((a, b) => a - b),
-    allTime,
-    selected,
   };
 }
 

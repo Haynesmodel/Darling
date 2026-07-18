@@ -11,6 +11,8 @@ The Darling targets WCAG 2.2 Level AA as its engineering baseline. Automated che
 - Left/Right Arrow wrap from first to last and last to first; Home/End move to the edges without changing the page.
 - Enter or Space activates the focused tab.
 - Activation synchronizes the selected tab, panel visibility, URL state, theme context, browser history, and horizontal reveal.
+- Lazy activation keeps the labelled selected panel visible, marks it `aria-busy="true"`, and uses one polite global status announcement until its controller and CSS are ready.
+- Feature import failures use a panel-scoped alert and Retry action; other initialized tabs remain usable and the requested URL is preserved.
 - Mobile overflow uses visible scroll buttons, a scrollbar, edge state, and automatic active-tab reveal. Search remains a separate utility action.
 
 ### History filter disclosures
@@ -59,7 +61,7 @@ The axe suite has no global rule exclusions or element exclusions.
 - Give every control a visible or programmatic name.
 - Reuse the global focus ring; do not remove outlines without an equal or stronger replacement.
 - Keep live regions concise. Do not make complete tables or feature panels live.
-- For a new tab, add the tab and panel relationship in `index.html`, add the tab ID mapping in `src/accessibility/tablist.ts`, and route all activation through `showPage()`.
+- For a new tab, add the tab and panel relationship in `index.html`, add the tab ID mapping in `src/accessibility/tablist.ts`, and route activation through the app controller/feature registry. Test slow readiness, import failure, Retry, rapid supersession, and focus-after-ready.
 - For a new modal, use native `<dialog>` when possible, record the opener, set intentional initial focus, lock scrolling, contain focus, and restore the opener.
 - For charts, expose one concise chart name and retain a textual table or list when the graphic contains information not otherwise present.
 - Mark decorative emoji and images hidden from assistive technology; provide visible or visually hidden text when the symbol carries meaning.

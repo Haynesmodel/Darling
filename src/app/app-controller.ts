@@ -85,7 +85,7 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
       await registry.mount(id, controller, context);
       if (disposed || signal.aborted || activationId !== activationCount) return;
       const activate = () => controller.activate({ route, activationId, signal, reason });
-      if (reason === 'tab') await router.runReplacing(activate); else await router.runWithoutPush(activate);
+      if (reason === 'tab' || id === 'pulse') await router.runReplacing(activate); else await router.runWithoutPush(activate);
       if (disposed || signal.aborted || activationId !== activationCount) return;
       activeFeature = id;
       activeController = controller;

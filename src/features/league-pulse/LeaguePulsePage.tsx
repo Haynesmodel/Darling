@@ -37,9 +37,18 @@ function MatchupCard({ matchup }: { matchup: PulseMatchupModel }) {
 
 function Matchups({ model }: { model: LeaguePulseViewModel }) {
   if (!model.matchups.length) return null;
+  const groups = model.state.phase === 'postseason'
+    ? [
+        { title: 'Championship bracket', rows: model.matchups.filter(matchup => matchup.type !== 'Saunders') },
+        { title: 'Saunders bracket', rows: model.matchups.filter(matchup => matchup.type === 'Saunders') },
+      ].filter(group => group.rows.length)
+    : [{ title: '', rows: model.matchups }];
   return <section class="card pulse-matchups" aria-labelledby="pulseMatchupsTitle">
     <div class="pulse-section-heading"><div><p class="pulse-eyebrow">Spotlight</p><h3 id="pulseMatchupsTitle">Week {model.state.spotlightWeek} matchups</h3></div></div>
-    <div class="pulse-matchup-grid">{model.matchups.map(matchup => <MatchupCard key={`${matchup.ownerA}-${matchup.ownerB}`} matchup={matchup} />)}</div>
+    {groups.map(group => <div class="pulse-matchup-group" key={group.title || 'week'}>
+      {group.title && <h4>{group.title}</h4>}
+      <div class="pulse-matchup-grid">{group.rows.map(matchup => <MatchupCard key={`${matchup.ownerA}-${matchup.ownerB}`} matchup={matchup} />)}</div>
+    </div>)}
   </section>;
 }
 
@@ -65,7 +74,7 @@ function YearInReview({ model }: { model: LeaguePulseViewModel }) {
   return <>
     <section class="card pulse-final-standings" aria-labelledby="pulseFinalStandingsTitle">
       <p class="pulse-eyebrow">Final table</p>
-      <h3 id="pulseFinalStandingsTitle">Final standings</h3>
+      <h3 id="pulseFinalStandingsTitle">{year.season} final standings</h3>
       <ol class="pulse-standing-list">
         {year.finalStandings.map(row => <li key={row.owner}>
           <span class="pulse-seed">{row.finish}</span><span><strong>{row.owner}</strong><small>{row.record} · {row.pointsFor.toFixed(2)} PF</small></span>
@@ -76,7 +85,7 @@ function YearInReview({ model }: { model: LeaguePulseViewModel }) {
     </section>
     <section class="card pulse-superlatives" aria-labelledby="pulseSuperlativesTitle">
       <p class="pulse-eyebrow">Season superlatives</p>
-      <h3 id="pulseSuperlativesTitle">The year by the numbers</h3>
+      <h3 id="pulseSuperlativesTitle">{year.season} by the numbers</h3>
       <div class="pulse-superlative-grid">
         {year.superlatives.map(item => <article key={item.label}>
           <small>{item.label}</small><strong>{item.value}</strong><span>{item.detail}</span>

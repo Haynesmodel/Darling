@@ -13,6 +13,10 @@ test('bare route renders the canonical 2025 year in review', async ({ page }) =>
 });
 
 test('explicit Pulse canonicalizes and browser history restores filtered History state', async ({ page }) => {
+  await page.goto('/?tab=pulse');
+  await page.waitForLoadState('networkidle');
+  await expect(page).not.toHaveURL(/tab=pulse/);
+
   await page.goto('/?tab=history&team=Joe&seasons=2024');
   await page.waitForLoadState('networkidle');
   const prior = page.url();

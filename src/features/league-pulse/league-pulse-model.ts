@@ -162,6 +162,16 @@ function standingsSection(data: PulseModelData, state: PulseSeasonState, pathnam
   if (!data.currentSeason || !['regular-season', 'postseason', 'finalizing'].includes(state.phase)) return null;
   const base = { leagueGames: data.leagueGames, seasonSummaries: data.seasonSummaries, currentSeason: data.currentSeason, season: state.season, week: state.spotlightWeek };
   const href = pathUrl(pathname, { tab: 'current', selectedCurrentSeason: state.season, selectedCurrentWeek: state.spotlightWeek, selectedFocus: 'standings' });
+  if (state.phase === 'postseason') {
+    const standings = buildCurrentSeasonStandings(base);
+    const activeOwners = new Set(data.currentSeason.games
+      .filter(game => game.week === state.spotlightWeek)
+      .flatMap(game => [game.teamA, game.teamB]));
+    return {
+      mode: 'current-table', heading: 'Road to the trophies', href,
+      rows: standings.filter((row: any) => activeOwners.has(row.owner)).map((row: any) => ({ owner: row.owner, seed: row.rank, record: row.record })),
+    };
+  }
   if (state.isLive) {
     const rules = resolveCurrentSeasonRules(data.currentSeason, data.currentSeason.teams.length);
     const projected = buildProjectedStandings({ ...base, rules, projectionMode: 'ifScoresHold' });
@@ -191,7 +201,9 @@ function seriesFor(games: H2HGame[], ownerA: string, ownerB: string) {
 }
 
 function matchingRivalry(rivalries: RivalryDefinition[], ownerA: string, ownerB: string): RivalryDefinition | null {
-  return rivalries.find(rivalry => rivalry.members.includes(ownerA) && rivalry.members.includes(ownerB)) || null;
+  return rivalries
+    .filter(rivalry => rivalry.members.includes(ownerA) && rivalry.members.includes(ownerB))
+    .sort((a, b) => Number(b.type === 'pair') - Number(a.type === 'pair') || a.slug.localeCompare(b.slug))[0] || null;
 }
 
 function featuredMatchup(data: PulseModelData, state: PulseSeasonState, matchups: PulseMatchupModel[], pathname: string): PulseFeaturedMatchup | null {
@@ -213,7 +225,7 @@ function featuredMatchup(data: PulseModelData, state: PulseSeasonState, matchups
   return {
     heading: chosen.rivalry ? 'Featured rivalry' : 'Matchup to watch',
     name: chosen.rivalry?.name || `${chosen.ownerA} vs ${chosen.ownerB}`,
-    note: chosen.rivalry?.note || 'Selected from the closest all-time series in this snapshot.',
+    note: chosen.rivalry ? chosen.rivalry.note || 'A configured league rivalry.' : 'Selected from the closest all-time series in this snapshot.',
     ownerA: chosen.ownerA, ownerB: chosen.ownerB,
     series: `${chosen.ownerA} ${chosen.series.winsA}–${chosen.series.winsB}${chosen.series.ties ? `–${chosen.series.ties}` : ''} ${chosen.ownerB}`,
     latestResult,
@@ -283,28 +295,36 @@ function longestWinStreak(games: H2HGame[]) {
 }
 
 function yearInReview(data: PulseModelData, state: PulseSeasonState, pathname: string): PulseYearInReview | null {
-  if (state.phase !== 'offseason' || state.season === null) return null;
-  const rows = completedSummaryRows(data.seasonSummaries, state.season).rows.slice().sort((a, b) => a.finish - b.finish || a.owner.localeCompare(b.owner));
+  if (!['offseason', 'preseason'].includes(state.phase) || state.season === null) return null;
+  const reviewSeason = state.phase === 'preseason'
+    ? latestCompleteSeason(data.seasonSummaries.filter(row => Number(row.season) < state.season))
+    : state.season;
+  if (reviewSeason === null) return null;
+  const rows = completedSummaryRows(data.seasonSummaries, reviewSeason).rows.slice().sort((a, b) => a.finish - b.finish || a.owner.localeCompare(b.owner));
   const champion = rows.find(row => row.champion);
   const saunders = rows.find(row => row.saunders);
   if (!champion || !saunders) return null;
   const runnerUp = rows.find(row => row.finish === 2) || null;
-  const games = seasonGames(data, state);
+  const games = data.leagueGames.filter(game => Number(game.season) === reviewSeason);
   const sideRows = games.flatMap(game => [{ owner: game.teamA, opponent: game.teamB, score: game.scoreA, opponentScore: game.scoreB, game }, { owner: game.teamB, opponent: game.teamA, score: game.scoreB, opponentScore: game.scoreA, game }]);
   const points = rows.slice().sort((a, b) => b.points_for - a.points_for || a.owner.localeCompare(b.owner))[0];
   const bestRecord = rows.slice().sort((a, b) => ((b.wins + 0.5 * b.ties) / Math.max(1, b.wins + b.losses + b.ties)) - ((a.wins + 0.5 * a.ties) / Math.max(1, a.wins + a.losses + a.ties)) || b.points_for - a.points_for || a.owner.localeCompare(b.owner))[0];
   const high = sideRows.slice().sort((a, b) => b.score - a.score || a.owner.localeCompare(b.owner))[0];
   const close = games.slice().sort((a, b) => Math.abs(a.scoreA - a.scoreB) - Math.abs(b.scoreA - b.scoreB) || String(a.date).localeCompare(String(b.date)))[0];
   const streak = longestWinStreak(games);
-  const seasonHref = historyLink(data, pathname, { selectedSeasons: new Set([state.season]) });
+  const seasonHref = historyLink(data, pathname, { selectedSeasons: new Set([reviewSeason]) });
   const superlatives: PulseSuperlative[] = [];
   if (points) superlatives.push({ label: 'Points leader', value: points.owner, detail: `${formatScore(points.points_for)} points`, href: seasonHref });
   if (bestRecord) superlatives.push({ label: 'Best regular-season record', value: bestRecord.owner, detail: `${bestRecord.wins}-${bestRecord.losses}${bestRecord.ties ? `-${bestRecord.ties}` : ''}`, href: seasonHref });
-  if (high) superlatives.push({ label: 'Highest weekly score', value: high.owner, detail: `${formatScore(high.score)} vs ${high.opponent}`, href: historyLink(data, pathname, { selectedTeam: high.owner, selectedSeasons: new Set([state.season]), selectedGameSort: 'scoreDesc', selectedGameLimit: 1, selectedFocus: 'games' }) });
+  if (high) superlatives.push({ label: 'Highest weekly score', value: high.owner, detail: `${formatScore(high.score)} vs ${high.opponent}`, href: historyLink(data, pathname, { selectedTeam: high.owner, selectedSeasons: new Set([reviewSeason]), selectedGameSort: 'scoreDesc', selectedGameLimit: 1, selectedFocus: 'games' }) });
   if (close) superlatives.push({ label: 'Closest game', value: `${close.teamA} vs ${close.teamB}`, detail: `${formatScore(close.scoreA)}–${formatScore(close.scoreB)}`, href: seasonHref });
   if (streak?.best) superlatives.push({ label: 'Longest win streak', value: streak.owner, detail: `${streak.best} games`, href: seasonHref });
+  const championship = games
+    .filter(game => String(game.round || '').toLowerCase().includes('championship'))
+    .sort((a, b) => String(b.date).localeCompare(String(a.date)))[0] || null;
   return {
-    champion: champion.owner, runnerUp: runnerUp?.owner || null, saunders: saunders.owner,
+    season: reviewSeason, champion: champion.owner, runnerUp: runnerUp?.owner || null, saunders: saunders.owner,
+    championshipResult: championship ? `${championship.teamA} ${formatScore(championship.scoreA)}–${formatScore(championship.scoreB)} ${championship.teamB}` : null,
     finalStandings: rows.map(row => ({ finish: row.finish, owner: row.owner, record: `${row.wins}-${row.losses}${row.ties ? `-${row.ties}` : ''}`, pointsFor: row.points_for })),
     superlatives,
   };
@@ -315,10 +335,17 @@ function heroModel(data: PulseModelData, state: PulseSeasonState, year: PulseYea
   const historyHref = season === null ? pathUrl(pathname, { tab: 'history' }) : historyLink(data, pathname, { selectedSeasons: new Set([season]) });
   if (state.phase === 'offseason' && year) return {
     phase: state.phase, season, eyebrow: 'League Pulse · Offseason', title: `${season} Year in Review`,
-    summary: `${year.champion} claimed the championship${year.runnerUp ? ` over ${year.runnerUp}` : ''}. ${year.saunders} won the Saunders Bowl.`,
+    summary: `${year.champion} claimed the championship${year.runnerUp ? ` over ${year.runnerUp}` : ''}${year.championshipResult ? ` — ${year.championshipResult}` : ''}. ${year.saunders} won the Saunders Bowl.`,
     badge: 'Offseason', generatedAt: data.currentSeason?.generated_at || null,
     primaryAction: { label: `Open ${year.champion}'s Trophy Case`, href: pathUrl(pathname, { tab: 'trophy', selectedTrophyOwner: year.champion }) },
     secondaryAction: { label: `Explore ${season} history`, href: historyHref },
+  };
+  if (state.phase === 'preseason' && year) return {
+    phase: state.phase, season, eyebrow: 'League Pulse · Preseason', title: `${season} Preview`,
+    summary: `The schedule is available and competition has not started. ${year.champion} enters as the defending champion; ${year.saunders} holds the latest Saunders title.`,
+    badge: 'Scheduled', generatedAt: data.currentSeason?.generated_at || null,
+    primaryAction: { label: 'Open Week 1 matchups', href: pathUrl(pathname, { tab: 'current', selectedCurrentSeason: season, selectedCurrentWeek: state.spotlightWeek }) },
+    secondaryAction: { label: `Review ${year.season}`, href: historyLink(data, pathname, { selectedSeasons: new Set([year.season]) }) },
   };
   const details: Record<PulsePhase, [string, string, string, PulseHeroModel['badge']]> = {
     preseason: ['Season starts soon', `${season} Preview`, 'The schedule is available; competition has not started yet.', 'Scheduled'],

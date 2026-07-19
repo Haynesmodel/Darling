@@ -6,9 +6,9 @@ The July 19, 2026 League Pulse build keeps the shell split and adds an eighth dy
 | --- | ---: | ---: | ---: | ---: |
 | Before tab splitting | 852,370 | 258,468 | 85,740 | 293,628 |
 | After tab splitting | 170,462 | 51,698 | 31,570 | 298,892 |
-| League Pulse home | 171,369 | 52,035 | 31,590 | 306,442 |
+| League Pulse home | 171,382 | 52,050 | 31,590 | 306,830 |
 
-The Pulse-owned entry is 53,709 bytes raw / 15,783 bytes gzip, and its feature CSS is 4,888 bytes raw / 1,348 bytes gzip. The cold Pulse route remains smaller than the former History default and does not include Observable Plot.
+The Pulse controller entry is 23,779 bytes raw / 6,875 bytes gzip. Its extracted model dependency is 23,615 bytes raw / 7,445 bytes gzip, keeping combined Pulse feature logic at 14,320 bytes gzip. Feature CSS is 5,059 bytes raw / 1,378 bytes gzip. The cold Pulse route remains smaller than the former History default and does not include Observable Plot.
 
 ## Cold route closures
 
@@ -16,8 +16,8 @@ The manifest checker counts the shell, static dependencies, requested feature, a
 
 | Route | JavaScript gzip |
 | --- | ---: |
-| League Pulse | 100,224 |
-| History | 103,318 |
+| League Pulse | 100,608 |
+| History | 103,336 |
 | Draft Spot | 223,061 |
 | Historical Matchup | 217,295 |
 | Trophy Case | 223,418 |
@@ -41,6 +41,6 @@ Chart routes include the shared 407,377-byte raw / 134,250-byte gzip `chart-runt
 - no feature controller or Plot module in the entry's static closure;
 - no duplicate Plot/vendor output.
 
-The aggregate ceiling changed once from 300,000 to 315,000 bytes because the measured total is 306,442 bytes after verifying that Pulse is lazy, its 100,224-byte cold route is below target, Plot is absent, and shared helpers are not duplicated. The observed build leaves 8,558 bytes of policy headroom and stays below the implementation plan's 310,000-byte acceptance threshold.
+The aggregate ceiling changed once from 300,000 to 315,000 bytes because the measured total is 306,830 bytes after verifying that Pulse is lazy, its 100,608-byte cold route is below target, Plot is absent, and shared helpers are not duplicated. The observed build leaves 8,170 bytes of policy headroom and stays below the implementation plan's 310,000-byte acceptance threshold.
 
 Use `node scripts/check_bundle_size.cjs --json` for machine-readable evidence. The human report lists emitted chunks, the cold History and Pulse closures, and required dynamic entries. Playwright resource tests derive hashed filenames from `dist/.vite/manifest.json`; do not assert literal hashes.

@@ -78,3 +78,30 @@ test('canonical 2025 snapshot builds an authoritative year in review without mut
   assert.ok(model.record);
   assert.equal(JSON.stringify(data), before);
 });
+
+test('preseason and postseason models expose their phase-specific context', () => {
+  const historical = [{ season: 2025, date: '2025-12-28', teamA: 'Joe', teamB: 'Shap', scoreA: 120, scoreB: 100, week: 17, round: 'Championship', type: 'Playoff' }];
+  const base = { leagueGames: historical, seasonSummaries: summary(2025), rivalries: [], derivedStats: null, dataVersion: 'fixture' };
+  const preseason = pulse.buildLeaguePulseModel({ ...base, currentSeason: current([game()]) }, { pathname: '/Darling/' });
+  assert.equal(preseason.state.phase, 'preseason');
+  assert.equal(preseason.yearInReview.season, 2025);
+  assert.match(preseason.hero.summary, /defending champion/i);
+  assert.equal(preseason.hero.secondaryAction.label, 'Review 2025');
+
+  const postseason = pulse.buildLeaguePulseModel({
+    ...base,
+    currentSeason: current([game({ week: 16, type: 'Playoff', round: 'Semi Final', status: 'live', scoreA: 80, scoreB: 70 })], { current_week: 16 }),
+  }, { pathname: '/Darling/' });
+  assert.equal(postseason.state.phase, 'postseason');
+  assert.equal(postseason.standings.heading, 'Road to the trophies');
+
+  const rivalry = pulse.buildLeaguePulseModel({
+    ...base,
+    rivalries: [
+      { slug: 'group', name: 'Group rivalry', type: 'group', members: ['Joe', 'Shap', 'Other'] },
+      { slug: 'pair', name: 'Pair rivalry', type: 'pair', members: ['Joe', 'Shap'] },
+    ],
+    currentSeason: current([game()]),
+  }, { pathname: '/Darling/' });
+  assert.equal(rivalry.featuredMatchup.name, 'Pair rivalry');
+});

@@ -11,6 +11,9 @@
 .pulse-badge-live{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
 .pulse-primary-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(260px,1fr);gap:var(--space-4)}
 .pulse-matchup-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-3)}
+.pulse-matchup-group{display:grid;gap:var(--space-2)}
+.pulse-matchup-group+.pulse-matchup-group{margin-top:var(--space-4)}
+.pulse-matchup-group h4{margin:var(--space-2) 0 0}
 .pulse-matchup-card,.pulse-superlative-grid article{display:grid;gap:var(--space-2);padding:var(--space-3);border:1px solid var(--border);border-radius:var(--radius-panel);background:color-mix(in srgb,var(--panel) 88%,var(--bg))}
 .pulse-card-topline{display:flex;justify-content:space-between;gap:var(--space-2);font-size:.78rem;text-transform:uppercase;letter-spacing:.04em}
 .pulse-scoreline{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.45rem 1rem;align-items:baseline;font-size:1rem}

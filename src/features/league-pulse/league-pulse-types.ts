@@ -88,9 +88,11 @@ export interface PulseRecordModel {
 export interface PulseSuperlative { label: string; value: string; detail: string; href?: string }
 
 export interface PulseYearInReview {
+  season: number;
   champion: string;
   runnerUp: string | null;
   saunders: string;
+  championshipResult: string | null;
   finalStandings: Array<{ finish: number; owner: string; record: string; pointsFor: number }>;
   superlatives: PulseSuperlative[];
 }

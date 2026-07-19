@@ -58,9 +58,9 @@ function showPage(id, doc) {
     window.darlingAccessibility.syncPageState(id);
     return;
   }
-  const resolvedId = ['history', 'current', 'rivalry', 'trophy', 'dynasty', 'draft', 'gauntlet'].includes(id)
+  const resolvedId = ['pulse', 'history', 'current', 'rivalry', 'trophy', 'dynasty', 'draft', 'gauntlet'].includes(id)
     ? id
-    : 'history';
+    : 'pulse';
   const activeTabId = `tab${resolvedId[0].toUpperCase()}${resolvedId.slice(1)}Btn`;
   root.querySelectorAll('[role="tab"], .tab').forEach((tab) => {
     const selected = tab.id === activeTabId;

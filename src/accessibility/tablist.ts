@@ -1,6 +1,7 @@
 import { motionAwareScrollBehavior } from './motion';
 
 const TAB_IDS: Record<string, string> = {
+  pulse: 'tabPulseBtn',
   history: 'tabHistoryBtn',
   current: 'tabCurrentBtn',
   rivalry: 'tabRivalryBtn',
@@ -55,7 +56,7 @@ export function revealActiveTab(tab: HTMLElement, root: Document = document): vo
 }
 
 export function syncPageState(id: string, root: Document = document): void {
-  const resolvedId = Object.hasOwn(TAB_IDS, id) ? id : 'history';
+  const resolvedId = Object.hasOwn(TAB_IDS, id) ? id : 'pulse';
   const activeTabId = TAB_IDS[resolvedId];
   let activeTab: HTMLElement | null = null;
   const activePanel = root.getElementById(`page-${resolvedId}`);

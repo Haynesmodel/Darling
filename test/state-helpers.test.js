@@ -240,6 +240,18 @@ test('history game query URL fields validate, cap, and round-trip', () => {
   assert.equal(url, '/Darling/?tab=history&gameResult=W&gameMinScore=150&gameSort=scoreDesc&gameLimit=1&focus=games');
 });
 
+test('Pulse URL is canonical, strips stale state, and curses focus round-trips', () => {
+  const pulse = buildUrlFromState({
+    tab: 'pulse', selectedTeam: 'Joe', selectedCurrentWeek: 8,
+    selectedRivalryTeamA: 'Joe', selectedGameSort: 'scoreDesc', selectedFocus: 'games',
+    pathname: '/Darling/',
+  });
+  assert.equal(pulse, '/Darling/');
+  const curses = parseUrlState('?tab=history&focus=curses');
+  assert.equal(curses.focus, 'curses');
+  assert.equal(buildUrlFromState({ tab: 'history', selectedFocus: 'curses', pathname: '/Darling/' }), '/Darling/?tab=history&focus=curses');
+});
+
 test('applyFacetFilters honors team and facet selections', () => {
   const games = [
     { teamA: 'Joe', teamB: 'Shap', season: 2025, type: 'Regular', round: '', date: '2025-09-07', scoreA: 100, scoreB: 90, _weekByTeam: { Joe: 1, Shap: 1 } },

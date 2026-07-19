@@ -27,7 +27,7 @@ test('feature boundary checker rejects eager shell imports', () => {
     fs.mkdirSync(path.join(root, 'js'), { recursive: true });
     fs.writeFileSync(path.join(root, 'src', 'main.tsx'), "import './features/history/controller';\n");
     fs.writeFileSync(path.join(root, 'src', 'app', 'app-controller.ts'), 'export {};\n');
-    fs.writeFileSync(path.join(root, 'src', 'app', 'feature-registry.ts'), "export const x = { history: () => import('../features/history/controller'), current: () => import('../features/current/controller'), rivalry: () => import('../features/rivalry/controller'), trophy: () => import('../features/trophy/controller'), dynasty: () => import('../features/dynasty/controller'), draft: () => import('../features/draft/controller'), gauntlet: () => import('../features/gauntlet/controller') };\n");
+    fs.writeFileSync(path.join(root, 'src', 'app', 'feature-registry.ts'), "export const x = { pulse: () => import('../features/pulse/controller'), history: () => import('../features/history/controller'), current: () => import('../features/current/controller'), rivalry: () => import('../features/rivalry/controller'), trophy: () => import('../features/trophy/controller'), dynasty: () => import('../features/dynasty/controller'), draft: () => import('../features/draft/controller'), gauntlet: () => import('../features/gauntlet/controller') };\n");
     fs.writeFileSync(path.join(root, 'src', 'features', 'history', 'controller.ts'), 'export {};\n');
     fs.writeFileSync(path.join(root, 'src', 'styles', 'app.css'), '@import "./features/history.css";\n');
     const failures = checkFeatureBoundaries(root);
@@ -47,7 +47,7 @@ test('feature boundary checker rejects sibling-relative cross-feature imports', 
     fs.mkdirSync(path.join(root, 'src', 'styles'), { recursive: true });
     fs.writeFileSync(path.join(root, 'src', 'main.tsx'), 'export {};\n');
     fs.writeFileSync(path.join(root, 'src', 'app', 'app-controller.ts'), 'export {};\n');
-    fs.writeFileSync(path.join(root, 'src', 'app', 'feature-registry.ts'), "export const x = { history: () => import('../features/history/controller'), current: () => import('../features/current/controller'), rivalry: () => import('../features/rivalry/controller'), trophy: () => import('../features/trophy/controller'), dynasty: () => import('../features/dynasty/controller'), draft: () => import('../features/draft/controller'), gauntlet: () => import('../features/gauntlet/controller') };\n");
+    fs.writeFileSync(path.join(root, 'src', 'app', 'feature-registry.ts'), "export const x = { pulse: () => import('../features/pulse/controller'), history: () => import('../features/history/controller'), current: () => import('../features/current/controller'), rivalry: () => import('../features/rivalry/controller'), trophy: () => import('../features/trophy/controller'), dynasty: () => import('../features/dynasty/controller'), draft: () => import('../features/draft/controller'), gauntlet: () => import('../features/gauntlet/controller') };\n");
     fs.writeFileSync(path.join(root, 'src', 'features', 'history', 'controller.ts'), "import '../rivalry/controller';\n");
     fs.writeFileSync(path.join(root, 'src', 'features', 'rivalry', 'controller.ts'), 'export {};\n');
     fs.writeFileSync(path.join(root, 'src', 'styles', 'app.css'), '@layer reset, base, components, utilities;\n');

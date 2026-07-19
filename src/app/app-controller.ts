@@ -12,10 +12,10 @@ import type { DarlingTableRuntime } from '../tables/table-types';
 import type { DarlingSearchRuntime } from '../search/search-types';
 
 const LABELS: Record<FeatureId, string> = {
-  history: 'League History', current: 'Current Season', rivalry: 'Head to Head', trophy: 'Trophy Case', dynasty: 'Dynasty Rankings', draft: 'Draft Spot', gauntlet: 'Historical Matchup',
+  pulse: 'League Pulse', history: 'League History', current: 'Current Season', rivalry: 'Head to Head', trophy: 'Trophy Case', dynasty: 'Dynasty Rankings', draft: 'Draft Spot', gauntlet: 'Historical Matchup',
 };
 const TAB_IDS: Record<string, FeatureId> = {
-  tabHistoryBtn: 'history', tabCurrentBtn: 'current', tabRivalryBtn: 'rivalry', tabTrophyBtn: 'trophy', tabDynastyBtn: 'dynasty', tabDraftBtn: 'draft', tabGauntletBtn: 'gauntlet',
+  tabPulseBtn: 'pulse', tabHistoryBtn: 'history', tabCurrentBtn: 'current', tabRivalryBtn: 'rivalry', tabTrophyBtn: 'trophy', tabDynastyBtn: 'dynasty', tabDraftBtn: 'draft', tabGauntletBtn: 'gauntlet',
 };
 
 export interface BootstrapOptions {
@@ -132,7 +132,7 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
     abortController?.abort();
     doc.getElementById('primaryTabStrip')?.removeEventListener('click', onTabClick);
     win.removeEventListener('popstate', onPopState);
-    await activeController?.deactivate?.('history');
+    await activeController?.deactivate?.('pulse');
     await registry.dispose();
   };
 }

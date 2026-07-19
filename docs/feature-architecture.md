@@ -4,7 +4,7 @@ Darling's shell loads league data once and activates each major tab through a li
 
 ## Lifecycle
 
-`src/app/feature-contract.ts` defines the seven `FeatureId` values and the controller lifecycle:
+`src/app/feature-contract.ts` defines the eight `FeatureId` values and the controller lifecycle:
 
 - `mount(context)` runs once for a cached controller. Bind long-lived listeners and register owned tables here.
 - `activate(input)` may run repeatedly. Apply the complete route idempotently and render only while `input.signal` remains active.
@@ -28,7 +28,7 @@ The context and search hydration are created once per application boot. Feature 
 
 ## Registry, loading, and races
 
-`src/app/feature-registry.ts` is the only feature loader map. Every value is a literal `import()` so the Vite manifest records seven dynamic entries. The registry caches import promises and controller instances, mounts once, validates controller IDs, records load/error diagnostics, and permits a controlled retry.
+`src/app/feature-registry.ts` is the only feature loader map. Every value is a literal `import()` so the Vite manifest records eight dynamic entries. The registry caches import promises and controller instances, mounts once, validates controller IDs, records load/error diagnostics, and permits a controlled retry.
 
 The app controller increments an activation ID and aborts the previous signal for every bootstrap, tab, search, retry, or `popstate` activation. A superseded import may finish and remain cached, but it is checked before mount, activation, readiness, focus, and shell-visible state updates.
 
@@ -38,7 +38,7 @@ Support/test diagnostics are read-only at `window.darlingFeatureDiagnostics`; va
 
 ## Routing and state
 
-All activation paths use `src/app/router.ts` and the existing byte-compatible URL parser/builder. A tab click creates one provisional history entry immediately; successful activation replaces it with the feature's canonical state. Bootstrap and browser navigation apply routes without pushing recursively. Focus targets run only after the requested feature is ready.
+All activation paths use `src/app/router.ts` and the existing byte-compatible URL parser/builder. League Pulse owns the canonical bare path; explicit and implicit legacy state is inferred before the Pulse fallback. A tab click creates one provisional history entry immediately; successful activation replaces it with the feature's canonical state. Bootstrap and browser navigation apply routes without pushing recursively. Focus targets run only after the requested feature is ready.
 
 Feature controllers serialize only their own fields. Table saved-view callbacks return to the owning controller; the table runtime never switches features or interprets feature URL state.
 
@@ -46,7 +46,7 @@ Feature controllers serialize only their own fields. Table saved-view callbacks 
 
 `src/tables/table-runtime.tsx` contains generic rendering, saved views, and registration. Each table feature registers its stable definition and row adapter during `mount`. Duplicate registration fails, and rendering an unregistered table produces an actionable error. Table IDs and the saved-view schema remain unchanged.
 
-Chart features share one lazy `chart-runtime` output containing Observable Plot and the chart adapters. History does not request it; Draft Spot loads it for its pick-distribution and timeline charts. Feature entry CSS files import their owned styles in the existing cascade layers; `src/styles/app.css` contains shell/shared styles only. Readiness is reported after the JavaScript and its CSS dependency resolve.
+Chart features share one lazy `chart-runtime` output containing Observable Plot and the chart adapters. Pulse and History do not request it; Draft Spot loads it for its pick-distribution and timeline charts. Feature entry CSS files import their owned styles in the existing cascade layers; `src/styles/app.css` contains shell/shared styles only. Readiness is reported after the JavaScript and its CSS dependency resolve.
 
 ## Adding a tab
 

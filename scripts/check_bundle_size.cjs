@@ -42,6 +42,8 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
   const dataChunk = namedDataChunk?.isDynamicEntry ? namedDataChunk : null;
   const historyChunk = requiredEntries.history;
   const initialHistory = entry && historyChunk && dataChunk ? closure([entry.id, historyChunk.id, dataChunk.id]) : [];
+  const pulseChunk = requiredEntries['league-pulse'];
+  const pulseRoute = entry && pulseChunk ? closure([entry.id, pulseChunk.id, ...(dataChunk ? [dataChunk.id] : [])]) : [];
   const totalGzipBytes = gzipFor(chunks);
   const vendorCopies = chunks.filter(chunk => /(?:charting-vendor|chart-runtime)/.test(`${chunk.id} ${chunk.name} ${chunk.file}`));
 
@@ -52,6 +54,8 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
   }
   if (limits.require_data_runtime_chunk && !dataChunk) errors.push(namedDataChunk ? 'data loader chunk exists but is not marked as a dynamic entry' : 'data loader and generated validators were not split into a dedicated dynamic chunk');
   if (limits.initial_history_gzip_max_bytes && gzipFor(initialHistory) > limits.initial_history_gzip_max_bytes) errors.push(`initial History route ${gzipFor(initialHistory)} gzip exceeds ${limits.initial_history_gzip_max_bytes}`);
+  if (limits.pulse_route_gzip_max_bytes && gzipFor(pulseRoute) > limits.pulse_route_gzip_max_bytes) errors.push(`cold Pulse route ${gzipFor(pulseRoute)} gzip exceeds ${limits.pulse_route_gzip_max_bytes}`);
+  if (pulseRoute.some(chunk => /(?:charting-vendor|chart-runtime)/.test(`${chunk.id} ${chunk.name} ${chunk.file}`))) errors.push('cold Pulse route contains Plot/chart runtime');
   if (limits.feature_chunk_gzip_max_bytes) Object.entries(requiredEntries).filter(([name]) => name !== 'load-league-assets').forEach(([name, chunk]) => {
     if (chunk && chunk.gzipBytes > limits.feature_chunk_gzip_max_bytes) errors.push(`${name} feature chunk ${chunk.gzipBytes} gzip exceeds ${limits.feature_chunk_gzip_max_bytes}`);
   });
@@ -64,7 +68,7 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
   }
   if (limits.plot_vendor_max_copies !== undefined && vendorCopies.length > limits.plot_vendor_max_copies) errors.push(`Plot/vendor emitted ${vendorCopies.length} copies; maximum is ${limits.plot_vendor_max_copies}`);
   if (totalGzipBytes > limits.total_javascript_gzip_max_bytes) errors.push(`total JavaScript gzip ${totalGzipBytes} bytes exceeds ${limits.total_javascript_gzip_max_bytes}`);
-  return { errors, chunks, totalGzipBytes, dataChunk, entry, entryClosure, initialHistory, initialHistoryGzipBytes: gzipFor(initialHistory), initialHistoryBytes: bytesFor(initialHistory), requiredEntries, vendorCopies, budget };
+  return { errors, chunks, totalGzipBytes, dataChunk, entry, entryClosure, initialHistory, initialHistoryGzipBytes: gzipFor(initialHistory), initialHistoryBytes: bytesFor(initialHistory), pulseRoute, pulseRouteGzipBytes: gzipFor(pulseRoute), pulseRouteBytes: bytesFor(pulseRoute), requiredEntries, vendorCopies, budget };
 }
 
 if (require.main === module) {
@@ -74,6 +78,7 @@ if (require.main === module) {
     console.log(`Bundle baseline ${result.budget.baseline.commit}: ${result.budget.baseline.largest_chunk_bytes} bytes / ${result.budget.baseline.largest_chunk_gzip_bytes} gzip in one chunk.`);
     result.chunks.forEach(chunk => console.log(`- ${chunk.file}: ${chunk.bytes} bytes, ${chunk.gzipBytes} gzip${chunk.isEntry ? ' (entry)' : chunk.isDynamicEntry ? ' (dynamic)' : ''}`));
     if (result.initialHistory.length) console.log(`Cold History JavaScript: ${result.initialHistoryBytes} bytes, ${result.initialHistoryGzipBytes} gzip across ${result.initialHistory.length} chunks.`);
+    if (result.pulseRoute.length) console.log(`Cold Pulse JavaScript: ${result.pulseRouteBytes} bytes, ${result.pulseRouteGzipBytes} gzip across ${result.pulseRoute.length} chunks.`);
     const dynamics = Object.entries(result.requiredEntries || {}).filter(([, chunk]) => chunk).map(([name]) => name);
     if (dynamics.length) console.log(`Required dynamic entries: ${dynamics.join(', ')}.`);
     if (!result.errors.length) console.log(`Bundle budget passed; total JavaScript gzip ${result.totalGzipBytes} bytes.`);

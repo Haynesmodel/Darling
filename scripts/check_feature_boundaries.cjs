@@ -61,7 +61,7 @@ function checkFeatureBoundaries(root = process.cwd()) {
   }
   if (fs.existsSync(path.join(root, 'js/history-controller.js'))) failures.push('js/history-controller.js must be deleted or reduced to an explicitly allowlisted compatibility shim');
   const registry = read('src/app/feature-registry.ts');
-  ['history', 'current', 'rivalry', 'trophy', 'dynasty', 'draft', 'gauntlet'].forEach(id => {
+  ['pulse', 'history', 'current', 'rivalry', 'trophy', 'dynasty', 'draft', 'gauntlet'].forEach(id => {
     if (!new RegExp(`${id}:\\s*\\(\\)\\s*=>\\s*import\\(`).test(registry)) failures.push(`feature registry must use a literal dynamic loader for ${id}`);
   });
   if (/from\s+["'][^"']*features\//.test(registry)) failures.push('feature registry must not statically import feature modules');

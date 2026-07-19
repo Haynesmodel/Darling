@@ -207,6 +207,7 @@ main{padding:16px}
 .page[hidden]{display:none}
 .page.visible{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,1fr);gap:16px;width:100%;min-width:0}
 #page-history.page.visible{grid-template-columns:minmax(0,1fr)}
+#page-pulse.page.visible{grid-template-columns:minmax(0,1fr)}
 #page-current.page.visible{grid-template-columns:minmax(0,1fr)}
 #page-rivalry.page.visible{grid-template-columns:minmax(0,1fr)}
 #page-trophy.page.visible{grid-template-columns:minmax(0,1fr)}

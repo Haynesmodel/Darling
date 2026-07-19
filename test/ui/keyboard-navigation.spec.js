@@ -4,32 +4,34 @@ test('primary tabs use manual activation with roving focus', async ({ page }) =>
   await page.goto('/');
   await page.waitForLoadState('networkidle');
 
+  const pulse = page.getByRole('tab', { name: 'League Pulse' });
   const history = page.getByRole('tab', { name: 'League History' });
   const current = page.getByRole('tab', { name: 'Current Season' });
   const gauntlet = page.getByRole('tab', { name: 'Historical Matchup' });
 
-  await expect(history).toHaveAttribute('aria-selected', 'true');
-  await expect(history).toHaveAttribute('tabindex', '0');
+  await expect(pulse).toHaveAttribute('aria-selected', 'true');
+  await expect(pulse).toHaveAttribute('tabindex', '0');
+  await expect(history).toHaveAttribute('tabindex', '-1');
   await expect(current).toHaveAttribute('tabindex', '-1');
   await page.locator('[data-theme-preference="dark"]').focus();
   await page.keyboard.press('Tab');
-  await expect(history).toBeFocused();
-  await history.focus();
+  await expect(pulse).toBeFocused();
+  await pulse.focus();
   await page.keyboard.press('ArrowLeft');
   await expect(gauntlet).toBeFocused();
   await expect(gauntlet).toHaveAttribute('aria-selected', 'false');
-  await expect(page.getByRole('tabpanel', { name: 'League History' })).toBeVisible();
+  await expect(page.getByRole('tabpanel', { name: 'League Pulse' })).toBeVisible();
+  await page.keyboard.press('ArrowRight');
+  await expect(pulse).toBeFocused();
   await page.keyboard.press('ArrowRight');
   await expect(history).toBeFocused();
-  await page.keyboard.press('ArrowRight');
-  await expect(current).toBeFocused();
-  await expect(current).toHaveAttribute('aria-selected', 'false');
-  await expect(page.getByRole('tabpanel', { name: 'League History' })).toBeVisible();
+  await expect(history).toHaveAttribute('aria-selected', 'false');
+  await expect(page.getByRole('tabpanel', { name: 'League Pulse' })).toBeVisible();
 
   await page.keyboard.press('Enter');
-  await expect(current).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('tabpanel', { name: 'Current Season' })).toBeVisible();
-  await expect(page.getByRole('tabpanel', { name: 'League History' })).toBeHidden();
+  await expect(history).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tabpanel', { name: 'League History' })).toBeVisible();
+  await expect(page.getByRole('tabpanel', { name: 'League Pulse' })).toBeHidden();
 
   await page.keyboard.press('End');
   await expect(gauntlet).toBeFocused();
@@ -38,8 +40,8 @@ test('primary tabs use manual activation with roving focus', async ({ page }) =>
   await expect.poll(() => new URL(page.url()).searchParams.get('tab')).toBe('gauntlet');
 
   await page.keyboard.press('Home');
-  await expect(history).toBeFocused();
-  await expect(history).toHaveAttribute('aria-selected', 'false');
+  await expect(pulse).toBeFocused();
+  await expect(pulse).toHaveAttribute('aria-selected', 'false');
 });
 
 test('Draft Spot pick board supports spatial arrows, Home, End, and selection', async ({ page }) => {
@@ -108,12 +110,12 @@ test('wrapped edge focus is revealed in the mobile tab strip without activating 
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto('/');
   await page.waitForLoadState('networkidle');
-  const history = page.getByRole('tab', { name: 'League History' });
+  const pulse = page.getByRole('tab', { name: 'League Pulse' });
   const gauntlet = page.getByRole('tab', { name: 'Historical Matchup' });
-  await history.focus();
+  await pulse.focus();
   await page.keyboard.press('ArrowLeft');
   await expect(gauntlet).toBeFocused();
-  await expect(history).toHaveAttribute('aria-selected', 'true');
+  await expect(pulse).toHaveAttribute('aria-selected', 'true');
   await expect.poll(() => gauntlet.evaluate(tab => {
     const strip = tab.parentElement;
     const tabBox = tab.getBoundingClientRect();
@@ -123,7 +125,7 @@ test('wrapped edge focus is revealed in the mobile tab strip without activating 
 });
 
 test('facet disclosure supports Arrow, Home, End, Space, Tab, and Escape', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
   const toggle = page.locator('.dropdown-toggle[data-target="seasonFilters"]');
   const all = page.locator('#seasonFilters .season-all');
@@ -179,7 +181,7 @@ test('Dynasty dialog contains focus, locks the page, ignores search shortcuts, a
 test('browser Back closes the Dynasty dialog before hiding its tabpanel', async ({ page }) => {
   await page.goto('/');
   await page.waitForLoadState('networkidle');
-  const history = page.getByRole('tab', { name: 'League History' });
+  const pulse = page.getByRole('tab', { name: 'League Pulse' });
   await page.getByRole('tab', { name: 'Dynasty Rankings' }).click();
   await page.locator('#dynastyBestWindows .dynasty-window-card').first().click();
 
@@ -191,26 +193,26 @@ test('browser Back closes the Dynasty dialog before hiding its tabpanel', async 
   await expect(dialog).toBeHidden();
   await expect(dialog).toBeEmpty();
   await expect(page.locator('body')).not.toHaveClass(/no-scroll/);
-  await expect(page.getByRole('tabpanel', { name: 'League History' })).toBeVisible();
-  await expect(history).toBeFocused();
+  await expect(page.getByRole('tabpanel', { name: 'League Pulse' })).toBeVisible();
+  await expect(pulse).toBeFocused();
   await expect.poll(() => page.evaluate(() => ({
     tab: new URL(window.location.href).searchParams.get('tab'),
     header: document.querySelector('header h2')?.textContent,
     title: document.title,
     accentTheme: document.documentElement.dataset.accentTheme,
-    ownerTheme: document.documentElement.dataset.ownerTheme,
+    ownerTheme: document.documentElement.dataset.ownerTheme || null,
     seasonMode: document.documentElement.dataset.seasonMode,
     selectedTab: document.querySelector('[role="tab"][aria-selected="true"]')?.id,
     visiblePanel: document.querySelector('[role="tabpanel"]:not([hidden])')?.id,
   }))).toEqual({
     tab: null,
-    header: 'Joe',
-    title: 'Joe — League History',
-    accentTheme: 'owner',
-    ownerTheme: 'Joe',
+    header: 'League Pulse',
+    title: '2025 Year in Review',
+    accentTheme: 'league',
+    ownerTheme: null,
     seasonMode: 'regular',
-    selectedTab: 'tabHistoryBtn',
-    visiblePanel: 'page-history',
+    selectedTab: 'tabPulseBtn',
+    visiblePanel: 'page-pulse',
   });
 });
 

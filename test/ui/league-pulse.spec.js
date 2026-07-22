@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './coverage-fixture.js';
 
 test('bare route renders the canonical 2025 year in review', async ({ page }) => {
   await page.goto('/');

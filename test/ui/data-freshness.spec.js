@@ -58,6 +58,43 @@ test('an optional integrity mismatch is visible as a partial snapshot', async ({
   expect(diagnostics.optionalFailures).toContainEqual({ asset: 'CurrentSeason', reason: 'integrity', code: 'SIZE_MISMATCH' });
 });
 
+test('warning disclosure is not clipped by the narrow mobile hero', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.route('**/assets/CurrentSeason.json*', route => {
+    return route.fulfill({ status: 200, contentType: 'application/json', body: '{"tampered":true}' });
+  });
+  await page.goto('/?tab=history');
+  await expect(page.locator('.data-freshness summary')).toContainText('Snapshot partially available');
+  await page.locator('.data-freshness summary').click();
+  await page.locator('.data-freshness-panel p').evaluate(element => {
+    element.textContent += ` ${'Additional verification guidance remains visible on narrow screens. '.repeat(4)}`;
+  });
+
+  const geometry = await page.evaluate(() => {
+    const hero = document.querySelector('.site-hero');
+    const panel = document.querySelector('.data-freshness-panel');
+    const nav = document.querySelector('.primary-nav');
+    if (!hero || !panel || !nav) return null;
+    const heroBox = hero.getBoundingClientRect();
+    const panelBox = panel.getBoundingClientRect();
+    const overlapY = Math.max(panelBox.top, nav.getBoundingClientRect().top) + 1;
+    const overlapX = panelBox.left + Math.min(16, panelBox.width / 2);
+    return {
+      overflow: getComputedStyle(hero).overflow,
+      extendsPastHero: panelBox.bottom > heroBox.bottom,
+      panelBottom: panelBox.bottom,
+      viewportHeight: window.innerHeight,
+      overlapOwner: document.elementFromPoint(overlapX, overlapY)?.closest('.data-freshness-panel') !== null,
+    };
+  });
+
+  expect(geometry).not.toBeNull();
+  expect(geometry.overflow).toBe('visible');
+  expect(geometry.extendsPastHero).toBe(true);
+  expect(geometry.panelBottom).toBeLessThanOrEqual(geometry.viewportHeight);
+  expect(geometry.overlapOwner).toBe(true);
+});
+
 test('Draft Spot uses its own version and evicts a failed verification promise', async ({ page }) => {
   let attempts = 0;
   const requests = [];

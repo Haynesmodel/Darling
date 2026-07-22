@@ -1,7 +1,19 @@
 #!/usr/bin/env node
 const fs = require('node:fs');
 const path = require('node:path');
-const { readJson, sha256Json } = require('./data/canonical-json.cjs');
+const { TextDecoder } = require('node:util');
+const { sha256Json } = require('./data/canonical-json.cjs');
+
+function readUtf8Json(filePath) {
+  const bytes = fs.readFileSync(filePath);
+  let text;
+  try {
+    text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    throw new Error('not valid UTF-8');
+  }
+  return JSON.parse(text);
+}
 
 function safeOutputPath(outputRoot, assetPath) {
   if (typeof assetPath !== 'string') return null;
@@ -19,7 +31,7 @@ function auditBuiltAssets(root = process.cwd(), outputDir = 'dist') {
   if (!fs.existsSync(manifestPath)) return [`${outputDir}/assets/asset-manifest.json is missing`];
   let manifest;
   try {
-    manifest = readJson(manifestPath);
+    manifest = readUtf8Json(manifestPath);
   } catch (error) {
     return [`${outputDir}/assets/asset-manifest.json is invalid: ${error.message}`];
   }
@@ -47,7 +59,7 @@ function auditBuiltAssets(root = process.cwd(), outputDir = 'dist') {
     }
     let value;
     try {
-      value = readJson(builtPath);
+      value = readUtf8Json(builtPath);
     } catch (error) {
       errors.push(`${outputDir}/${assetPath} is invalid JSON: ${error.message}`);
       continue;

@@ -9,6 +9,10 @@
   color:var(--hero-text);
   background:#111827;
 }
+.site-hero:has(.data-freshness[open]){
+  z-index:60;
+  overflow:visible;
+}
 .site-hero-media,
 .site-hero-media img,
 .site-hero-overlay{

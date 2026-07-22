@@ -319,6 +319,43 @@ test('built asset audit rejects byte and semantic hash mismatches', async () => 
   });
 });
 
+test('built asset audit rejects malformed UTF-8 in the manifest and JSON assets', async () => {
+  await withTempRepo((root) => {
+    const assetDir = path.join(root, 'dist', 'assets');
+    fs.mkdirSync(assetDir, { recursive: true });
+    const malformedAsset = Buffer.concat([
+      Buffer.from('{"value":"'),
+      Buffer.from([0xc3]),
+      Buffer.from('"}'),
+    ]);
+    const replacementValue = JSON.parse(malformedAsset.toString('utf8'));
+    const manifest = {
+      assets: {
+        H2H: {
+          path: 'assets/H2H.json',
+          required: true,
+          bytes: malformedAsset.byteLength,
+          sha256: sha256Json(replacementValue),
+        },
+      },
+      media: { leagueHero: { variants: [] } },
+    };
+    const manifestPath = path.join(assetDir, 'asset-manifest.json');
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+    fs.writeFileSync(path.join(assetDir, 'H2H.json'), malformedAsset);
+
+    assert.ok(auditBuiltAssets(root).some(error => error.includes('H2H.json is invalid JSON: not valid UTF-8')));
+
+    const malformedManifest = Buffer.concat([
+      Buffer.from('{"assets":{},"label":"'),
+      Buffer.from([0xc3]),
+      Buffer.from('"}'),
+    ]);
+    fs.writeFileSync(manifestPath, malformedManifest);
+    assert.ok(auditBuiltAssets(root).some(error => error.includes('asset-manifest.json is invalid: not valid UTF-8')));
+  });
+});
+
 test('bundle measurement enforces a separate data runtime chunk', async () => {
   await withTempRepo((root) => {
     const distDir = path.join(root, 'dist');
@@ -558,7 +595,7 @@ test('coverage reporter maps inline source maps back to original TypeScript file
   });
 });
 
-test('coverage reporter excludes type-only TypeScript files', async () => {
+test('coverage reporter excludes type-only TypeScript files with nested multiline properties', async () => {
   await withTempRepo((root) => {
     fs.mkdirSync(path.join(root, 'coverage', '.v8'), { recursive: true });
     fs.mkdirSync(path.join(root, 'src', 'theme'), { recursive: true });
@@ -567,7 +604,19 @@ test('coverage reporter excludes type-only TypeScript files', async () => {
     const typeOnlyPath = path.join(root, 'src', 'theme', 'theme-types.ts');
     fs.writeFileSync(entryPointPath, "import './helpers.js';\n");
     fs.writeFileSync(helperPath, 'const covered = true;\nexport { covered };\n');
-    fs.writeFileSync(typeOnlyPath, 'export type Mode = \"dark\" | \"light\";\nexport interface ThemeShape {\n  mode: Mode;\n}\n');
+    fs.writeFileSync(typeOnlyPath, [
+      'import type { External } from \"./external\";',
+      'export type Mode = \"dark\" | \"light\";',
+      'export interface ThemeShape {',
+      '  mode: Mode;',
+      '  dataNote: {',
+      '    freshness: { status: \"fresh\"; reason: string };',
+      '    versions: Array<{ name: string; sha: string }>;',
+      '  };',
+      '  external?: External;',
+      '}',
+      '',
+    ].join('\n'));
     fs.writeFileSync(path.join(root, 'coverage', '.v8', 'coverage.json'), JSON.stringify({
       result: [entryPointPath, helperPath].map(filePath => ({
         url: pathToFileURL(filePath).href,

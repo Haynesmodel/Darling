@@ -9,6 +9,17 @@ export function createFeatureController(): DarlingFeatureController {
   let context: AppContext;
   let root: HTMLElement | null = null;
   let activeSignal: AbortSignal | null = null;
+  let unsubscribeFreshness: (() => void) | null = null;
+
+  const renderCurrent = () => {
+    if (!root || !activeSignal || activeSignal.aborted) return null;
+    const model = buildLeaguePulseModel(context.data, {
+      pathname: context.window.location.pathname,
+      freshness: context.freshness.currentAssessment() || context.data.diagnostics.freshness,
+    });
+    render(h(LeaguePulsePage, { model }), root);
+    return model;
+  };
 
   return {
     id: 'pulse',
@@ -16,13 +27,13 @@ export function createFeatureController(): DarlingFeatureController {
       context = nextContext;
       root = context.document.getElementById('leaguePulseRoot');
       if (!root) throw new Error('League Pulse mount #leaguePulseRoot is missing');
+      unsubscribeFreshness = context.freshness.subscribe(() => { renderCurrent(); });
     },
     activate(input: FeatureActivation) {
       activeSignal = input.signal;
       if (input.signal.aborted || !root) return;
-      const model = buildLeaguePulseModel(context.data, { pathname: context.window.location.pathname });
-      if (input.signal.aborted || activeSignal !== input.signal) return;
-      render(h(LeaguePulsePage, { model }), root);
+      const model = renderCurrent();
+      if (!model) return;
       if (input.signal.aborted || activeSignal !== input.signal) return;
       context.header.feature('League Pulse', null, model.hero.title);
       context.theme.league(model.state.phase === 'postseason' ? 'postseason' : 'regular');
@@ -31,6 +42,8 @@ export function createFeatureController(): DarlingFeatureController {
     deactivate() { activeSignal = null; },
     dispose() {
       activeSignal = null;
+      unsubscribeFreshness?.();
+      unsubscribeFreshness = null;
       if (root) render(null, root);
       root = null;
     },

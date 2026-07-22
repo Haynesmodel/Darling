@@ -62,6 +62,8 @@ export function createFeatureController(): DarlingFeatureController {
       await mountDraftSpot({
         mount,
         assetPath: entry.path,
+        assetSha256: entry.sha256,
+        assetBytes: entry.bytes,
         sourceHash,
         dataVersion: context.data.dataVersion,
         state: selected,

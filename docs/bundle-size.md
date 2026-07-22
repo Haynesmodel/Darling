@@ -7,8 +7,11 @@ The July 19, 2026 League Pulse build keeps the shell split and adds an eighth dy
 | Before tab splitting | 852,370 | 258,468 | 85,740 | 293,628 |
 | After tab splitting | 170,462 | 51,698 | 31,570 | 298,892 |
 | League Pulse home | 171,382 | 52,050 | 31,590 | 306,830 |
+| Cache-safe data freshness | 177,866 | 54,157 | 33,660 | 310,895 |
 
 The Pulse controller entry is 23,779 bytes raw / 6,875 bytes gzip. Its extracted model dependency is 23,615 bytes raw / 7,445 bytes gzip, keeping combined Pulse feature logic at 14,320 bytes gzip. Feature CSS is 5,059 bytes raw / 1,378 bytes gzip. The cold Pulse route remains smaller than the former History default and does not include Observable Plot.
+
+The cache-safe build adds the global freshness disclosure and browser verification transport without a hashing dependency. Its lazy data-loader chunk is 4,296 bytes raw / 1,886 bytes gzip; the measured cold Pulse closure is 104,671 bytes gzip, and the aggregate build retains 4,105 bytes of headroom under the unchanged ceiling.
 
 ## Cold route closures
 

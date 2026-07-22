@@ -1,0 +1,69 @@
+.data-freshness-loading,
+.data-freshness summary{
+  display:inline-flex;
+  min-block-size:44px;
+  align-items:center;
+  gap:8px;
+  padding:8px 12px;
+  border:1px solid color-mix(in srgb, var(--text-on-accent) 40%, transparent);
+  border-radius:var(--radius-pill);
+  color:var(--text-on-accent);
+  background:color-mix(in srgb, var(--overlay-backdrop) 88%, transparent);
+  box-shadow:var(--shadow-pop);
+  backdrop-filter:blur(10px);
+  font-size:12px;
+  font-weight:800;
+}
+.data-freshness{
+  position:relative;
+}
+.data-freshness summary{
+  cursor:pointer;
+  list-style:none;
+}
+.data-freshness summary::-webkit-details-marker{display:none}
+.data-freshness summary:focus-visible{
+  outline:var(--focus-ring-width) solid var(--text-on-accent);
+  outline-offset:var(--focus-ring-offset);
+}
+.data-freshness-dot{
+  inline-size:9px;
+  block-size:9px;
+  flex:0 0 auto;
+  border:1px solid currentcolor;
+  border-radius:50%;
+  background:var(--status-win-text);
+}
+.data-freshness-notice .data-freshness-dot{background:var(--status-champ)}
+.data-freshness-warning .data-freshness-dot{background:var(--status-error-text)}
+.data-freshness-panel{
+  position:absolute;
+  z-index:20;
+  inset-block-start:calc(100% + 8px);
+  inset-inline-end:0;
+  inline-size:min(360px, calc(100vw - 32px));
+  padding:16px;
+  border:1px solid var(--border-strong);
+  border-radius:var(--radius-panel);
+  color:var(--text-primary);
+  background:var(--surface-elevated);
+  box-shadow:var(--shadow-pop);
+  font-size:14px;
+  font-weight:400;
+}
+.data-freshness-panel p{margin:8px 0 12px;color:var(--text-secondary)}
+.data-freshness-panel dl{display:grid;gap:8px;margin:0 0 12px}
+.data-freshness-panel dl div{display:grid;grid-template-columns:72px 1fr;gap:8px}
+.data-freshness-panel dt{color:var(--text-muted);font-weight:700}
+.data-freshness-panel dd{margin:0;overflow-wrap:anywhere}
+
+@media (max-width:640px){
+  .data-freshness-panel{inset-inline-start:0;inset-inline-end:auto}
+}
+
+@media (forced-colors:active){
+  .data-freshness-loading,
+  .data-freshness summary,
+  .data-freshness-panel{border:2px solid CanvasText;forced-color-adjust:auto}
+  .data-freshness-dot{background:CanvasText}
+}

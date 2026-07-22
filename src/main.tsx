@@ -3,6 +3,7 @@ import './styles/app.css';
 import { render } from 'preact';
 import ThemeToggle from './components/theme/ThemeToggle';
 import GlobalSearch from './components/search/GlobalSearch';
+import DataFreshnessBadge, { createDataFreshnessRuntime } from './components/data-freshness/DataFreshnessBadge';
 import { createDarlingThemeRuntime, type DarlingThemeRuntime } from './theme/apply-theme';
 import { createSearchRuntime } from './search/search-runtime';
 import type { DarlingSearchRuntime } from './search/search-types';
@@ -40,6 +41,7 @@ interface BrowserDocument {
 const themeRuntime = createDarlingThemeRuntime();
 const searchRuntime = createSearchRuntime();
 const tableRuntime = createTableRuntime();
+const freshnessRuntime = createDataFreshnessRuntime();
 const browser = globalThis as unknown as {
   window?: BrowserWindow;
   document?: BrowserDocument;
@@ -74,16 +76,23 @@ function mountGlobalSearch() {
   render(<GlobalSearch runtime={searchRuntime} portal={portal as any} />, mount as Parameters<typeof render>[1]);
 }
 
+function mountDataFreshness() {
+  const mount = browser.document?.getElementById('dataFreshnessRoot');
+  if (!mount) return;
+  render(<DataFreshnessBadge runtime={freshnessRuntime} />, mount as Parameters<typeof render>[1]);
+}
+
 function mountShell() {
   mountThemeControls();
   mountGlobalSearch();
+  mountDataFreshness();
   bindTablist(document);
   bindDropdownChecklists(document);
   subscribeToReducedMotion((reduced) => {
     document.documentElement.dataset.reducedMotion = reduced ? 'reduce' : 'no-preference';
     window.dispatchEvent(new CustomEvent('darling:motionchange', { detail: { reduced } }));
   });
-  void bootstrapDarlingApp({ tableRuntime, searchRuntime });
+  void bootstrapDarlingApp({ tableRuntime, searchRuntime, freshnessRuntime });
 }
 
 if (browser.document?.readyState === 'loading') {

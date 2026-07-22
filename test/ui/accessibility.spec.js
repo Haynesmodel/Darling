@@ -47,6 +47,19 @@ test('mobile navigation and history disclosure have no automated violations', as
   await expectNoViolations(page);
 });
 
+test('expanded data freshness disclosure has no automated violations or mobile hero overlap', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.locator('.data-freshness summary').click();
+  await expect(page.locator('.data-freshness-panel')).toBeVisible();
+  await expect.poll(async () => {
+    const toolbar = await page.locator('.site-hero-toolbar').boundingBox();
+    const title = await page.locator('.site-hero .inner').boundingBox();
+    return toolbar && title ? toolbar.y + toolbar.height <= title.y : false;
+  }).toBe(true);
+  await expectNoViolations(page, '.site-hero-toolbar');
+});
+
 test('command palette has no automated violations', async ({ page }) => {
   await page.goto('/');
   await page.waitForLoadState('networkidle');

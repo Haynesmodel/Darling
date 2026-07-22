@@ -1,6 +1,7 @@
 import type { LoadedLeagueAssets } from '../data/load-league-assets';
 import type { DarlingTableRuntime } from '../tables/table-types';
 import type { FeatureId } from './feature-contract';
+import type { DataFreshnessRuntime } from '../components/data-freshness/DataFreshnessBadge';
 
 export type LeagueDataSnapshot = Readonly<LoadedLeagueAssets>;
 export type AppRoute = ReturnType<typeof import('../../js/state-helpers.js').parseUrlState> & { tab: FeatureId };
@@ -54,6 +55,7 @@ export interface AppContext {
   readonly theme: ThemeContextService;
   readonly status: FeatureStatusService;
   readonly tables: DarlingTableRuntime;
+  readonly freshness: DataFreshnessRuntime;
   readonly diagnostics: AppDiagnostics;
   readonly document: Document;
   readonly window: Window;

@@ -10,6 +10,7 @@ import { createThemeContextService } from './services/theme-context-service';
 import type { AppContext, AppDiagnostics, AppRoute } from './app-types';
 import type { DarlingTableRuntime } from '../tables/table-types';
 import type { DarlingSearchRuntime } from '../search/search-types';
+import type { DataFreshnessRuntime } from '../components/data-freshness/DataFreshnessBadge';
 
 const LABELS: Record<FeatureId, string> = {
   pulse: 'League Pulse', history: 'League History', current: 'Current Season', rivalry: 'Head to Head', trophy: 'Trophy Case', dynasty: 'Dynasty Rankings', draft: 'Draft Spot', gauntlet: 'Historical Matchup',
@@ -21,6 +22,7 @@ const TAB_IDS: Record<string, FeatureId> = {
 export interface BootstrapOptions {
   tableRuntime: DarlingTableRuntime;
   searchRuntime: DarlingSearchRuntime;
+  freshnessRuntime?: DataFreshnessRuntime;
   win?: Window;
   doc?: Document;
 }
@@ -51,6 +53,13 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
   const contextPromise = dataPromise.then(data => {
     win.darlingDataDiagnostics = data.diagnostics;
     win.__darlingDataVersion = data.dataVersion;
+    options.freshnessRuntime?.publish({
+      currentSeason: data.currentSeason,
+      seasonSummaries: data.seasonSummaries,
+      optionalFailures: data.diagnostics.optionalFailures,
+      dataVersion: data.dataVersion,
+      coreVerified: ['H2H', 'SeasonSummary'].every(asset => data.diagnostics.integrity.verifiedAssets.includes(asset)),
+    });
     options.searchRuntime.hydrate({ leagueGames: data.leagueGames, seasonSummaries: data.seasonSummaries, rivalries: data.rivalries, currentSeason: data.currentSeason });
     return {
       data,
@@ -60,6 +69,9 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
       theme: createThemeContextService(win),
       status,
       tables: options.tableRuntime,
+      freshness: options.freshnessRuntime || {
+        publish() {}, current: () => null, currentAssessment: () => data.diagnostics.freshness, subscribe: () => () => {},
+      },
       diagnostics,
       document: doc,
       window: win,

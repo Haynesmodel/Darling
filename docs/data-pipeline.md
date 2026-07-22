@@ -101,6 +101,16 @@ The manifest includes Draft Spot with `required: false` so the main historical a
 
 The manifest does not hash itself, contain wall-clock generation timestamps, or record ignored local iCloud placeholder state. Unchanged tracked inputs therefore produce byte-identical output in local development and CI. The browser exposes diagnostics at `window.darlingDataDiagnostics` and the full version at `window.__darlingDataVersion`.
 
+## Runtime cache and integrity contract
+
+The browser requests `asset-manifest.json` with `cache: no-store`. Every JSON asset URL then includes its full manifest SHA-256 as a `v` query parameter. The first content-versioned request may use the HTTP cache; the browser reads the response once, checks its raw byte count, parses strict UTF-8 JSON, recreates the repository's canonical JSON representation, and verifies the canonical SHA-256 with Web Crypto.
+
+A size, UTF-8, parse, or digest mismatch gets one deterministic retry with `cache: reload`. Required H2H and SeasonSummary failures stop application readiness. Rivalries, CurrentSeason, and DerivedStats retain typed optional fallbacks, and lazy Draft Spot applies the same verification before schema and SeasonSummary dependency checks. Web Crypto unavailability fails closed for required data.
+
+This detects mixed, stale, truncated, or accidentally replaced deployment assets. It is not an authenticity signature: the manifest and assets share one origin, so a party able to replace both remains outside the trust boundary. Expected and actual values are available in typed diagnostics without exposing response bodies.
+
+The global data disclosure classifies valid data by league lifecycle. Weekly active snapshots age after six days and warn after eight, live-labelled scores warn after 30 minutes, and a complete finalized season remains final during the offseason regardless of age. On August 15, a missing current-year snapshot becomes a season-gap warning. The disclosure reassesses locally every 15 minutes and on tab visibility without polling or mutating the boot snapshot.
+
 ## Media rules and iCloud recovery
 
 The twelve files under `assets/hero/` are runtime-required. Validation checks their magic bytes, decoder format, exact width, aspect ratio, size budget, SHA-256, and manifest metadata.
@@ -119,7 +129,7 @@ UPDATE_LIVE=1 VALIDATE_ONLY=1 SEASON=2025 CURRENT_WEEK=1 scripts/update_sleeper_
 
 ## Deployment audit
 
-`npm run build` performs generated drift, data, semantic, manifest, and media checks before Vite builds. It then audits `dist/` against the manifest. Pages runs the same checks before uploading the artifact.
+`npm run build` performs generated drift, data, semantic, manifest, and media checks before Vite builds. It then audits every declared JSON file in `dist/`—including runtime-optional files—for path containment, presence, raw byte count, valid JSON, and canonical SHA-256 parity. Pages runs the same checks before uploading the artifact.
 
 Useful recovery commands:
 
@@ -130,7 +140,7 @@ npm run generate:manifest
 npm run generate:data-types # schema/type drift
 npm run generate:data-validators
 npm run test:assets         # inspect the complete snapshot
-npm run audit:dist          # confirm built output inventory
+npm run audit:dist          # confirm built output inventory, bytes, and hashes
 ```
 
 ## Current measurements

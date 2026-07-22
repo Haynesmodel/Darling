@@ -3,6 +3,7 @@ import { buildCurrentSeasonStandings, isCompletedGame } from '../../../js/curren
 import { buildLiveMovement, buildProjectedStandings, resolveCurrentSeasonRules } from '../../../js/current-season-command-data.js';
 import { buildUrlFromState } from '../../../js/state-helpers.js';
 import type { CurrentSeasonData, CurrentSeasonGame, H2HGame, RivalryDefinition, SeasonSummaryRow } from '../../data/generated/asset-types';
+import { assessDataFreshness } from '../../data/data-freshness';
 import type {
   LeaguePulseViewModel,
   PulseCurseModel,
@@ -371,7 +372,7 @@ function quickLinks(data: PulseModelData, state: PulseSeasonState, featured: Pul
   ];
 }
 
-export function buildLeaguePulseModel(data: PulseModelData, options: { pathname?: string } = {}): LeaguePulseViewModel {
+export function buildLeaguePulseModel(data: PulseModelData, options: { pathname?: string; freshness?: NonNullable<PulseModelData['diagnostics']>['freshness'] } = {}): LeaguePulseViewModel {
   const pathname = options.pathname || '/';
   const state = resolvePulseSeasonState(data);
   const matchups = matchupModels(data, state, pathname);
@@ -382,11 +383,21 @@ export function buildLeaguePulseModel(data: PulseModelData, options: { pathname?
   if (!data.rivalries.length) usedFallbacks.push('Rivalries');
   if (!data.derivedStats) usedFallbacks.push('DerivedStats');
   if (state.phase === 'finalizing') usedFallbacks.push('SeasonSummary');
+  const freshness = options.freshness || data.diagnostics?.freshness || assessDataFreshness({
+    currentSeason: data.currentSeason,
+    seasonSummaries: data.seasonSummaries,
+    optionalFailures: data.diagnostics?.optionalFailures,
+  });
   return {
     state, hero: heroModel(data, state, year, pathname), matchups,
     standings: standingsSection(data, state, pathname), yearInReview: year,
     featuredMatchup: featured, curse: curseModel(data, pathname), record: recordModel(data, state, pathname),
     quickLinks: quickLinks(data, state, featured, year, pathname),
-    dataNote: { generatedAt: data.currentSeason?.generated_at || null, dataVersion: data.dataVersion, usedFallbacks },
+    dataNote: {
+      freshness,
+      dataVersion: data.dataVersion,
+      usedFallbacks,
+      coreVerified: ['H2H', 'SeasonSummary'].every(asset => data.diagnostics?.integrity.verifiedAssets.includes(asset)) || !data.diagnostics,
+    },
   };
 }

@@ -1,4 +1,5 @@
 import type { LeaguePulseViewModel, PulseLink, PulseMatchupModel } from './league-pulse-types';
+import { shortDataVersion } from '../../data/data-version';
 
 function ActionLink({ link, className = '' }: { link?: PulseLink; className?: string }) {
   return link ? <a class={className} href={link.href}>{link.label}</a> : null;
@@ -134,13 +135,13 @@ function QuickLinks({ model }: { model: LeaguePulseViewModel }) {
 }
 
 export function LeaguePulsePage({ model }: { model: LeaguePulseViewModel }) {
-  const updated = model.dataNote.generatedAt ? new Date(model.dataNote.generatedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : null;
+  const partial = model.dataNote.freshness.partial ? ' · Some current-season details unavailable' : '';
   return <div class="league-pulse">
     <PulseHero model={model} />
     <div class="pulse-primary-grid"><Matchups model={model} /><Standings model={model} /></div>
     <YearInReview model={model} />
     <div class="pulse-story-grid"><Featured model={model} /><Record model={model} /><Curse model={model} /></div>
     <QuickLinks model={model} />
-    <p class="pulse-data-note">{updated ? `Updated ${updated}. ` : ''}Snapshot {model.dataNote.dataVersion}.{model.dataNote.usedFallbacks.length ? ` Fallbacks: ${model.dataNote.usedFallbacks.join(', ')}.` : ''}</p>
+    <p class="pulse-data-note">{model.dataNote.freshness.label} · Snapshot {shortDataVersion(model.dataNote.dataVersion)} · {model.dataNote.coreVerified ? 'Core verified' : 'Verification unavailable'}{partial}</p>
   </div>;
 }

@@ -1,5 +1,17 @@
 import { expect, test } from '@playwright/test';
 
+test('data freshness disclosure uses native keyboard activation', async ({ page }) => {
+  await page.goto('/');
+  const summary = page.locator('.data-freshness summary');
+  const details = page.locator('.data-freshness');
+  await summary.focus();
+  await page.keyboard.press('Enter');
+  await expect(details).toHaveAttribute('open', '');
+  await expect(summary).toBeFocused();
+  await page.keyboard.press('Space');
+  await expect(details).not.toHaveAttribute('open', '');
+});
+
 test('primary tabs use manual activation with roving focus', async ({ page }) => {
   await page.goto('/');
   await page.waitForLoadState('networkidle');

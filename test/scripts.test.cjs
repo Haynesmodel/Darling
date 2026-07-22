@@ -11,6 +11,7 @@ const sharp = require('sharp');
 const { checkRepoHygiene } = require('../scripts/check_repo_hygiene.cjs');
 const { checkCssHygiene, runCli: runCssHygieneCli } = require('../scripts/check_css_hygiene.cjs');
 const { auditBuiltAssets } = require('../scripts/audit_built_assets.cjs');
+const { canonicalJson, sha256Json } = require('../scripts/data/canonical-json.cjs');
 const { measureBundle } = require('../scripts/check_bundle_size.cjs');
 const { FORMATS, HERO_WIDTHS, generateHeroImages, resolveSource } = require('../scripts/generate_hero_images.cjs');
 const { createStaticServer, normalizeBasePath, resolvePath } = require('../scripts/serve_static.cjs');
@@ -260,25 +261,54 @@ test('built asset audit requires every manifested deployable asset', async () =>
   await withTempRepo((root) => {
     const assetDir = path.join(root, 'dist', 'assets');
     fs.mkdirSync(path.join(assetDir, 'hero'), { recursive: true });
+    const empty = [];
+    const descriptor = (assetPath, required) => ({
+      path: assetPath,
+      required,
+      bytes: Buffer.byteLength(canonicalJson(empty)),
+      sha256: sha256Json(empty),
+    });
     fs.writeFileSync(path.join(assetDir, 'asset-manifest.json'), JSON.stringify({
       assets: {
-        H2H: { path: 'assets/H2H.json', required: true },
-        Rivalries: { path: 'assets/Rivalries.json', required: false },
+        H2H: descriptor('assets/H2H.json', true),
+        Rivalries: descriptor('assets/Rivalries.json', false),
       },
-      derived: { path: 'assets/DerivedStats.json', required: false },
+      derived: descriptor('assets/DerivedStats.json', false),
       media: {
         leagueHero: {
           variants: [{ path: 'assets/hero/league-480.jpg' }],
         },
       },
     }));
-    fs.writeFileSync(path.join(assetDir, 'H2H.json'), '[]');
-    fs.writeFileSync(path.join(assetDir, 'Rivalries.json'), '[]');
+    fs.writeFileSync(path.join(assetDir, 'H2H.json'), canonicalJson(empty));
+    fs.writeFileSync(path.join(assetDir, 'Rivalries.json'), canonicalJson(empty));
+    fs.writeFileSync(path.join(assetDir, 'DerivedStats.json'), canonicalJson(empty));
     fs.writeFileSync(path.join(assetDir, 'hero', 'league-480.jpg'), 'image');
     assert.deepEqual(auditBuiltAssets(root), []);
 
     fs.rmSync(path.join(assetDir, 'H2H.json'));
     assert.ok(auditBuiltAssets(root).some(error => error.includes('H2H.json is missing')));
+
+    fs.writeFileSync(path.join(assetDir, 'H2H.json'), canonicalJson(empty));
+    fs.rmSync(path.join(assetDir, 'DerivedStats.json'));
+    assert.ok(auditBuiltAssets(root).some(error => error.includes('DerivedStats.json is missing')));
+  });
+});
+
+test('built asset audit rejects byte and semantic hash mismatches', async () => {
+  await withTempRepo((root) => {
+    const assetDir = path.join(root, 'dist', 'assets');
+    fs.mkdirSync(assetDir, { recursive: true });
+    const expected = { value: 1 };
+    const entry = {
+      path: 'assets/H2H.json', required: true,
+      bytes: Buffer.byteLength(canonicalJson(expected)), sha256: sha256Json(expected),
+    };
+    fs.writeFileSync(path.join(assetDir, 'asset-manifest.json'), JSON.stringify({ assets: { H2H: entry }, media: { leagueHero: { variants: [] } } }));
+    fs.writeFileSync(path.join(assetDir, 'H2H.json'), `${canonicalJson(expected)} `);
+    assert.ok(auditBuiltAssets(root).some(error => error.includes('byte size')));
+    fs.writeFileSync(path.join(assetDir, 'H2H.json'), canonicalJson({ value: 2 }));
+    assert.ok(auditBuiltAssets(root).some(error => error.includes('hash')));
   });
 });
 

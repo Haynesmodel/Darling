@@ -1,4 +1,5 @@
 import type { CurrentSeasonData, H2HGame, RivalryDefinition, SeasonSummaryRow } from '../../data/generated/asset-types';
+import type { DataFreshnessAssessment, OptionalAssetFailure } from '../../data/data-freshness';
 
 export type PulsePhase = 'preseason' | 'regular-season' | 'postseason' | 'finalizing' | 'offseason' | 'historical-fallback';
 
@@ -107,7 +108,12 @@ export interface LeaguePulseViewModel {
   curse: PulseCurseModel | null;
   record: PulseRecordModel | null;
   quickLinks: PulseLink[];
-  dataNote: { generatedAt: string | null; dataVersion: string; usedFallbacks: string[] };
+  dataNote: {
+    freshness: DataFreshnessAssessment;
+    dataVersion: string;
+    usedFallbacks: string[];
+    coreVerified: boolean;
+  };
 }
 
 export interface PulseModelData {
@@ -117,4 +123,9 @@ export interface PulseModelData {
   currentSeason: CurrentSeasonData | null;
   derivedStats?: unknown;
   dataVersion: string;
+  diagnostics?: {
+    freshness: DataFreshnessAssessment;
+    optionalFailures: OptionalAssetFailure[];
+    integrity: { verifiedAssets: string[] };
+  };
 }

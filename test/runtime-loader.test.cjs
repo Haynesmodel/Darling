@@ -178,6 +178,25 @@ test('runtime loader rejects stale DerivedStats dependencies and uses fallbacks'
   assert.ok(warnings.some(message => message.includes('dependency hashes do not match')));
 });
 
+test('runtime loader contains CurrentSeason semantic failures as optional', async () => {
+  const current = clone(assetValues['assets/CurrentSeason.json']);
+  current.games[0].season = current.season - 1;
+  const manifest = manifestWithValue('CurrentSeason', current);
+  const loaded = await loadLeagueAssets({
+    basePath: '/',
+    logger: { warn() {}, error() {} },
+    fetchFn: createFetch({
+      'assets/asset-manifest.json': manifest,
+      'assets/CurrentSeason.json': current,
+    }),
+  });
+  assert.ok(loaded.leagueGames.length > 0);
+  assert.equal(loaded.currentSeason, null);
+  assert.deepEqual(loaded.diagnostics.optionalFailures.find(failure => failure.asset === 'CurrentSeason'), {
+    asset: 'CurrentSeason', reason: 'invalid', code: 'SEMANTIC_ERROR',
+  });
+});
+
 test('runtime loader prefixes every request with the configured base path', async () => {
   const requests = [];
   const loaded = await loadLeagueAssets({

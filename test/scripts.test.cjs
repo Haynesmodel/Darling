@@ -292,6 +292,13 @@ test('built asset audit requires every manifested deployable asset', async () =>
     fs.writeFileSync(path.join(assetDir, 'H2H.json'), canonicalJson(empty));
     fs.rmSync(path.join(assetDir, 'DerivedStats.json'));
     assert.ok(auditBuiltAssets(root).some(error => error.includes('DerivedStats.json is missing')));
+
+    fs.writeFileSync(path.join(assetDir, 'DerivedStats.json'), canonicalJson(empty));
+    const outside = path.join(root, 'outside.json');
+    fs.writeFileSync(outside, canonicalJson(empty));
+    fs.rmSync(path.join(assetDir, 'Rivalries.json'));
+    fs.symlinkSync(outside, path.join(assetDir, 'Rivalries.json'));
+    assert.ok(auditBuiltAssets(root).some(error => error.includes('Rivalries.json resolves outside')));
   });
 });
 

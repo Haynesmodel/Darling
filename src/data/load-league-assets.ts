@@ -102,12 +102,9 @@ function normalizeCurrentSeason(current: CurrentSeasonData): CurrentSeasonData {
   };
 }
 
-function runtimeSemanticCheck(games: H2HGame[], current: CurrentSeasonData | null, version: string): void {
+function runtimeRequiredSemanticCheck(games: H2HGame[], version: string): void {
   const invalid = games.find(game => game.teamA === game.teamB);
   if (invalid) throw new DataLoadError('SEMANTIC_ERROR', 'H2H', `Invalid self-matchup in ${invalid.season} week ${invalid.week}`, version);
-  if (current?.games.some(game => game.season !== current.season)) {
-    throw new DataLoadError('SEMANTIC_ERROR', 'CurrentSeason', 'A current-season game has the wrong season', version);
-  }
 }
 
 export async function loadLeagueAssets(options: LoaderOptions = {}): Promise<LoadedLeagueAssets> {
@@ -189,7 +186,16 @@ export async function loadLeagueAssets(options: LoaderOptions = {}): Promise<Loa
   const rawGames = normalizeHistoricalGames(h2h);
   const leagueGames = dedupeGames(rawGames as never[]) as H2HGame[];
   const derivedWeeksSet = deriveWeeksInPlace(leagueGames as never[]) as Set<number>;
-  const currentSeason = currentValue ? normalizeCurrentSeason(currentValue) : null;
+  let currentSeason = currentValue ? normalizeCurrentSeason(currentValue) : null;
+  if (currentSeason?.games.some(game => game.season !== currentSeason?.season)) {
+    currentSeason = null;
+    optionalAssetFailures.push('CurrentSeason');
+    optionalFailures.push({ asset: 'CurrentSeason', reason: 'invalid', code: 'SEMANTIC_ERROR' });
+    failedOptionalAssets.push('CurrentSeason');
+    const index = loadedAssets.indexOf('CurrentSeason');
+    if (index >= 0) loadedAssets.splice(index, 1);
+    logger.warn('[Darling] Optional CurrentSeason unavailable: a game has the wrong season');
+  }
   let derivedStats = derivedValue;
   if (derivedStats && Object.entries(manifest.derived.source_hashes).some(([name, hash]) => derivedStats?.source_hashes[name as keyof DerivedStats['source_hashes']] !== hash)) {
     derivedStats = null;
@@ -200,7 +206,7 @@ export async function loadLeagueAssets(options: LoaderOptions = {}): Promise<Loa
     if (index >= 0) loadedAssets.splice(index, 1);
     logger.warn('[Darling] Optional DerivedStats unavailable: source dependency hashes do not match the manifest');
   }
-  runtimeSemanticCheck(leagueGames, currentSeason, version);
+  runtimeRequiredSemanticCheck(leagueGames, version);
   const finalizedWeeks = currentSeason?.games.filter(game => game.status === 'final').map(game => game.week) || [];
   optionalAssetFailures.sort();
   optionalFailures.sort((a, b) => a.asset.localeCompare(b.asset) || a.reason.localeCompare(b.reason));

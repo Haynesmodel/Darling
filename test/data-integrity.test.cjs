@@ -49,3 +49,22 @@ test('versioned URLs use the full digest and preserve an existing query', () => 
   assert.equal(transport.versionedAssetUrl('assets/H2H.json?source=test', '/Darling', digest), `/Darling/assets/H2H.json?source=test&v=${'a'.repeat(64)}`);
   assert.throws(() => transport.versionedAssetUrl('assets/H2H.json', '/', 'sha256:abc'), error => error.code === 'INVALID_MANIFEST');
 });
+
+test('verified transport fails closed without SHA-256 support', async () => {
+  const entry = nodeCanonical.readJson(path.join(root, 'assets/asset-manifest.json')).assets.H2H;
+  const body = fs.readFileSync(path.join(root, entry.path));
+  let requests = 0;
+  await assert.rejects(transport.fetchVerifiedJson({
+    name: 'H2H', path: entry.path, sha256: entry.sha256, bytes: entry.bytes, dataVersion: 'test-version',
+  }, {
+    fetchFn: async () => {
+      requests += 1;
+      return {
+        ok: true, status: 200,
+        async arrayBuffer() { return body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength); },
+      };
+    },
+    digestFn: async () => { throw new Error('unavailable'); },
+  }), error => error.code === 'INTEGRITY_UNAVAILABLE' && error.details.attempts === 1);
+  assert.equal(requests, 1);
+});

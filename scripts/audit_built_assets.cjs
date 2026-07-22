@@ -9,6 +9,10 @@ function safeOutputPath(outputRoot, assetPath) {
   return resolved === outputRoot || resolved.startsWith(`${outputRoot}${path.sep}`) ? resolved : null;
 }
 
+function isWithinOutput(outputRoot, candidate) {
+  return candidate === outputRoot || candidate.startsWith(`${outputRoot}${path.sep}`);
+}
+
 function auditBuiltAssets(root = process.cwd(), outputDir = 'dist') {
   const manifestPath = path.join(root, outputDir, 'assets', 'asset-manifest.json');
   const errors = [];
@@ -20,6 +24,7 @@ function auditBuiltAssets(root = process.cwd(), outputDir = 'dist') {
     return [`${outputDir}/assets/asset-manifest.json is invalid: ${error.message}`];
   }
   const outputRoot = path.resolve(root, outputDir);
+  const realOutputRoot = fs.realpathSync(outputRoot);
   const jsonAssets = [...Object.values(manifest.assets || {}), manifest.derived].filter(Boolean);
   for (const asset of jsonAssets) {
     const assetPath = asset.path;
@@ -30,6 +35,10 @@ function auditBuiltAssets(root = process.cwd(), outputDir = 'dist') {
     }
     if (!fs.existsSync(builtPath)) {
       errors.push(`${outputDir}/${assetPath} is missing`);
+      continue;
+    }
+    if (!isWithinOutput(realOutputRoot, fs.realpathSync(builtPath))) {
+      errors.push(`${outputDir}/${assetPath} resolves outside the build output`);
       continue;
     }
     const actualBytes = fs.statSync(builtPath).size;
@@ -52,6 +61,7 @@ function auditBuiltAssets(root = process.cwd(), outputDir = 'dist') {
     const builtPath = safeOutputPath(outputRoot, variant.path);
     if (!builtPath) errors.push(`${outputDir}/${variant.path} escapes the build output`);
     else if (!fs.existsSync(builtPath)) errors.push(`${outputDir}/${variant.path} is missing`);
+    else if (!isWithinOutput(realOutputRoot, fs.realpathSync(builtPath))) errors.push(`${outputDir}/${variant.path} resolves outside the build output`);
   }
   const assetRoot = path.join(root, outputDir, 'assets');
   if (fs.existsSync(assetRoot)) {

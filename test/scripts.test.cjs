@@ -348,6 +348,32 @@ test('bundle measurement rejects duplicate named chart runtime chunks', async ()
   });
 });
 
+test('bundle measurement enforces the cold Pulse route and excludes chart runtime', async () => {
+  await withTempRepo((root) => {
+    const distDir = path.join(root, 'dist');
+    const assetDir = path.join(distDir, 'assets');
+    fs.mkdirSync(path.join(distDir, '.vite'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'scripts', 'data'), { recursive: true });
+    fs.mkdirSync(assetDir, { recursive: true });
+    fs.writeFileSync(path.join(root, 'scripts', 'data', 'bundle-budget.json'), JSON.stringify({
+      baseline: { commit: 'fixture', largest_chunk_bytes: 100, largest_chunk_gzip_bytes: 100 },
+      budgets: {
+        entry_chunk_max_bytes: 1000, total_javascript_gzip_max_bytes: 1000, pulse_route_gzip_max_bytes: 1000,
+        required_dynamic_entries: { 'league-pulse': 'src/features/league-pulse/league-pulse-controller.ts' },
+      },
+    }));
+    fs.writeFileSync(path.join(distDir, '.vite', 'manifest.json'), JSON.stringify({
+      'src/main.tsx': { file: 'assets/index.js', isEntry: true },
+      'src/features/league-pulse/league-pulse-controller.ts': { file: 'assets/pulse.js', isDynamicEntry: true },
+    }));
+    fs.writeFileSync(path.join(assetDir, 'index.js'), 'export const app = true;\n');
+    fs.writeFileSync(path.join(assetDir, 'pulse.js'), 'export const pulse = true;\n');
+    const result = measureBundle(root);
+    assert.deepEqual(result.errors, []);
+    assert.ok(result.pulseRouteGzipBytes > 0);
+  });
+});
+
 test('hero asset validation checks required responsive variants', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-hero-assets-'));
   try {

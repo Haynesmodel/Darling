@@ -21,7 +21,7 @@ function isFiniteInput(value) {
 
 const GAME_RESULTS = new Set(['W', 'L', 'T']);
 const GAME_SORTS = new Set(['dateDesc', 'scoreDesc', 'scoreAsc', 'marginDesc', 'marginAsc', 'combinedDesc']);
-const FOCUS_TARGETS = new Set(['top', 'overview', 'games', 'standings', 'playoff-picture']);
+const FOCUS_TARGETS = new Set(['top', 'overview', 'games', 'curses', 'standings', 'playoff-picture']);
 
 function enumParam(params, key, allowed) {
   const value = params.get(key);
@@ -246,6 +246,7 @@ function buildUrlFromState(opts = {}) {
   const pathname = opts.pathname || (typeof window !== 'undefined' ? window.location.pathname : '');
 
   const params = new URLSearchParams();
+  if (tab === 'pulse') return pathname;
   if (tab) params.set('tab', tab);
   if (tab !== 'trophy' && tab !== 'dynasty' && tab !== 'gauntlet' && tab !== 'draft' && selectedTeam && selectedTeam !== allTeams) params.set('team', selectedTeam);
   if (tab === 'rivalry') {

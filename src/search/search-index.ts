@@ -27,7 +27,7 @@ export function buildSearchIndex(data: SearchHydrationData): BuiltSearchIndex {
 
   const documents: SearchDocument[] = [];
   const add = (document: SearchDocument | null) => { if (document) documents.push(document); };
-  ['history', 'current', 'playoff-picture', 'trophy', 'dynasty', 'draft', 'gauntlet'].forEach(feature => {
+  ['pulse', 'history', 'current', 'playoff-picture', 'trophy', 'dynasty', 'draft', 'gauntlet'].forEach(feature => {
     add(buildIntentDocument({ kind: 'feature', feature: feature as never }, data));
   });
   ['theme-system', 'theme-light', 'theme-dark', 'export-history'].forEach(command => {

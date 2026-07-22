@@ -13,6 +13,7 @@ export function applyFocusTarget(doc: Document, focus?: string | null): void {
     top: '#mainContent',
     overview: '#teamOverview',
     games: '#historyGamesCard',
+    curses: '#curseTracker',
     standings: '#currentStandings',
     'playoff-picture': '#currentPlayoffPicture',
   };

@@ -144,6 +144,7 @@ export function parseSearchIntents(rawQuery: string, context: SearchIntentContex
   }
   if (!owners.length && /^(?:historical matchup|gauntlet)$/.test(query)) return [{ kind: 'feature', feature: 'gauntlet' }];
   if (!owners.length && query === 'playoff picture') return [{ kind: 'feature', feature: 'playoff-picture' }];
+  if (!owners.length && /^(?:pulse|league pulse|home|dashboard)$/.test(query)) return [{ kind: 'feature', feature: 'pulse' }];
   if (!owners.length && query === 'current season') return [{ kind: 'feature', feature: 'current' }];
   if (query === 'league history' || query === 'history') return [{ kind: 'feature', feature: 'history' }];
 

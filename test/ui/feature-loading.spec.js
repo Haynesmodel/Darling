@@ -7,6 +7,7 @@ const manifest = preview
   ? JSON.parse(fs.readFileSync(path.join(process.cwd(), 'dist/.vite/manifest.json'), 'utf8'))
   : {};
 const sources = {
+  pulse: 'src/features/league-pulse/league-pulse-controller.ts',
   history: 'src/features/history/history-controller.ts',
   current: 'src/features/current-season/current-season-controller.ts',
   rivalry: 'src/features/rivalry/rivalry-controller.ts',
@@ -33,13 +34,13 @@ function recordResources(page) {
   return urls;
 }
 
-test('cold History, Draft Spot, and Trophy routes request only their feature entries', async ({ page }) => {
+test('cold Pulse, Draft Spot, and Trophy routes request only their feature entries', async ({ page }) => {
   test.skip(!preview, 'hashed resource-boundary assertions require the production preview build');
   let resources = recordResources(page);
   await page.goto('/');
-  await waitForFeature(page, 'history');
-  expect(resources.some(url => url.endsWith(files.history))).toBe(true);
-  for (const id of Object.keys(files).filter(id => id !== 'history')) expect(resources.some(url => url.endsWith(files[id])), `${id} leaked into History`).toBe(false);
+  await waitForFeature(page, 'pulse');
+  expect(resources.some(url => url.endsWith(files.pulse))).toBe(true);
+  for (const id of Object.keys(files).filter(id => id !== 'pulse')) expect(resources.some(url => url.endsWith(files[id])), `${id} leaked into Pulse`).toBe(false);
   expect(resources.some(url => chartRuntime && url.endsWith(chartRuntime))).toBe(false);
 
   resources.length = 0;
@@ -58,7 +59,7 @@ test('cold History, Draft Spot, and Trophy routes request only their feature ent
 });
 
 test('a delayed Draft ready callback cannot add history after an immediate tab switch', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await waitForFeature(page, 'history');
   await page.evaluate(() => {
     const nativeSetTimeout = window.setTimeout.bind(window);
@@ -111,7 +112,7 @@ test('a delayed Draft ready callback cannot add history after an immediate tab s
 });
 
 test('a delayed feature remains busy and cannot overwrite a newer activation', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await waitForFeature(page, 'history');
   let intercepted;
   const interceptedPromise = new Promise(resolve => { intercepted = resolve; });
@@ -144,7 +145,7 @@ test('a failed feature import is contained in its panel and other tabs remain us
     if (attempts === 1) await route.abort('failed');
     else await route.continue();
   });
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await waitForFeature(page, 'history');
   await page.getByRole('tab', { name: 'Trophy Case' }).click();
   const panel = page.locator('#page-trophy');

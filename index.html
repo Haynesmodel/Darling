@@ -52,7 +52,8 @@
   <nav class="primary-nav" aria-label="Primary">
     <div class="tab-strip-shell">
       <div id="primaryTabStrip" class="tab-strip" role="tablist" aria-label="League sections">
-        <button class="tab active" id="tabHistoryBtn" type="button" role="tab" aria-selected="true" aria-controls="page-history" tabindex="0">League History</button>
+        <button class="tab active" id="tabPulseBtn" type="button" role="tab" aria-selected="true" aria-controls="page-pulse" tabindex="0">League Pulse</button>
+        <button class="tab" id="tabHistoryBtn" type="button" role="tab" aria-selected="false" aria-controls="page-history" tabindex="-1">League History</button>
         <button class="tab" id="tabCurrentBtn" type="button" role="tab" aria-selected="false" aria-controls="page-current" tabindex="-1">Current Season</button>
         <button class="tab" id="tabRivalryBtn" type="button" role="tab" aria-selected="false" aria-controls="page-rivalry" tabindex="-1">Head to Head</button>
         <button class="tab" id="tabTrophyBtn" type="button" role="tab" aria-selected="false" aria-controls="page-trophy" tabindex="-1">Trophy Case</button>
@@ -68,7 +69,12 @@
 
   <main id="mainContent" tabindex="-1">
     <div id="appStatus" class="status-banner status-loading" role="status" aria-live="polite">Loading league data...</div>
-    <section id="page-history" class="page visible" role="tabpanel" aria-labelledby="tabHistoryBtn">
+    <section id="page-pulse" class="page visible" role="tabpanel" aria-labelledby="tabPulseBtn">
+      <h2 class="visually-hidden">League Pulse</h2>
+      <div id="leaguePulseRoot"></div>
+    </section>
+
+    <section id="page-history" class="page" role="tabpanel" aria-labelledby="tabHistoryBtn" hidden>
       <h2 class="visually-hidden">League History</h2>
       <div class="card">
         <div class="controls filters">

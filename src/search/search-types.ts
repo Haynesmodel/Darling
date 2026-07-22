@@ -1,6 +1,6 @@
 export type SearchCategory = 'navigate' | 'owner' | 'season' | 'rivalry' | 'game-query' | 'record' | 'command';
 
-export type SearchFocusTarget = 'top' | 'overview' | 'games' | 'standings' | 'playoff-picture';
+export type SearchFocusTarget = 'top' | 'overview' | 'games' | 'curses' | 'standings' | 'playoff-picture';
 export type SearchCommand = 'theme-system' | 'theme-light' | 'theme-dark' | 'export-history';
 
 export type SearchAction =
@@ -30,7 +30,7 @@ export type SearchIntent =
   | { kind: 'score-threshold'; owner?: string; season?: number; min?: number; max?: number }
   | { kind: 'game-extreme'; metric: 'largest-loss-margin' | 'largest-win-margin' | 'highest-score' | 'lowest-score'; owner?: string; season?: number }
   | { kind: 'game-filter'; owner?: string; season?: number; result: 'W' | 'L' | 'T' }
-  | { kind: 'feature'; feature: 'history' | 'current' | 'playoff-picture' | 'trophy' | 'dynasty' | 'draft' | 'gauntlet'; owner?: string }
+  | { kind: 'feature'; feature: 'pulse' | 'history' | 'current' | 'playoff-picture' | 'trophy' | 'dynasty' | 'draft' | 'gauntlet'; owner?: string }
   | { kind: 'draft-pick'; pick: number }
   | { kind: 'draft-zone'; zone: 'early' | 'middle' | 'late' }
   | { kind: 'draft-owner'; owner: string }

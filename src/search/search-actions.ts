@@ -233,6 +233,7 @@ export function buildIntentDocument(intent: SearchIntent, data: SearchHydrationD
   }
   if (intent.kind === 'feature') {
     const definitions = {
+      pulse: ['League Pulse', 'What matters in the league right now', 'pulse'],
       history: ['League History', 'Browse every season and matchup', 'history'],
       current: ['Current Season', 'Open the current-season command center', 'current'],
       'playoff-picture': ['Playoff picture', 'Current Season / Playoff picture', 'current'],

@@ -49,7 +49,7 @@ The Darling targets WCAG 2.2 Level AA as its engineering baseline. Automated che
 
 Run:
 
-- `npm run test:a11y` for axe WCAG A/AA scans of all seven pages in light and dark themes plus overlay and expanded-table states.
+- `npm run test:a11y` for axe WCAG A/AA scans of all eight pages in light and dark themes plus overlay and expanded-table states.
 - `npm run test:keyboard` for tablist, disclosure, dialog, skip-link, reduced-motion, and responsive interaction checks.
 - `npm run test:ui` for the complete browser suite.
 

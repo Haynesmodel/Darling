@@ -5,6 +5,7 @@ export type FeatureLoadState = 'idle' | 'loading' | 'ready' | 'error';
 type Loader = () => Promise<DarlingFeatureModule>;
 
 export const featureLoaders: Record<FeatureId, Loader> = {
+  pulse: () => import('../features/league-pulse/league-pulse-controller'),
   history: () => import('../features/history/history-controller'),
   current: () => import('../features/current-season/current-season-controller'),
   rivalry: () => import('../features/rivalry/rivalry-controller'),

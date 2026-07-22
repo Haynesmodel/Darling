@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 const pages = [
+  ['pulse', 'League Pulse'],
   ['history', 'League History'],
   ['current', 'Current Season'],
   ['rivalry', 'Head to Head'],
@@ -39,7 +40,7 @@ for (const theme of ['light', 'dark']) {
 
 test('mobile navigation and history disclosure have no automated violations', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
   await page.locator('.dropdown-toggle[data-target="seasonFilters"]').click();
   await expect(page.locator('#seasonFilters')).toBeVisible();
@@ -63,7 +64,7 @@ test('Dynasty window dialog has no automated violations', async ({ page }) => {
 });
 
 test('expanded interactive table state has no automated violations', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
   await page.locator('#historyGamesTable .table-expand-button').first().click();
   await expect(page.locator('#historyGamesTable .table-expanded-row').first()).toBeVisible();

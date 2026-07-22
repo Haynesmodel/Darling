@@ -1,6 +1,6 @@
 import type { AppContext, AppRoute } from './app-types';
 
-export const FEATURE_IDS = ['history', 'current', 'rivalry', 'trophy', 'dynasty', 'draft', 'gauntlet'] as const;
+export const FEATURE_IDS = ['pulse', 'history', 'current', 'rivalry', 'trophy', 'dynasty', 'draft', 'gauntlet'] as const;
 export type FeatureId = typeof FEATURE_IDS[number];
 
 export interface FeatureActivation {

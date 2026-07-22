@@ -1,40 +1,4 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { test, expect } from '@playwright/test';
-
-function slugifyTitle(title) {
-  return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-}
-
-async function startBrowserCoverage(page, browserName) {
-  if (browserName !== 'chromium') return null;
-  const session = await page.context().newCDPSession(page);
-  await session.send('Profiler.enable');
-  await session.send('Profiler.startPreciseCoverage', {
-    callCount: true,
-    detailed: true,
-  });
-  return session;
-}
-
-async function stopBrowserCoverage(session, title) {
-  if (!session) return;
-  let coverage;
-  try {
-    coverage = await session.send('Profiler.takePreciseCoverage');
-    await session.send('Profiler.stopPreciseCoverage');
-    await session.send('Profiler.disable');
-  } finally {
-    await session.detach();
-  }
-
-  const outDir = path.join(process.cwd(), 'coverage', '.v8');
-  fs.mkdirSync(outDir, { recursive: true });
-  fs.writeFileSync(
-    path.join(outDir, `ui-${slugifyTitle(title)}.json`),
-    JSON.stringify({ result: coverage.result }, null, 2),
-  );
-}
+import { expect, test } from './coverage-fixture.js';
 
 async function downloadText(download) {
   const stream = await download.createReadStream();
@@ -60,7 +24,7 @@ async function computedContrastRatio(locator) {
   });
 }
 
-test.beforeEach(async ({ page, browserName }, testInfo) => {
+test.beforeEach(async ({ page }, testInfo) => {
   const browserErrors = [];
   const expectedFailureTest = testInfo.title.includes('fetch failure');
 
@@ -81,12 +45,9 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
 
   page.__browserErrors = browserErrors;
   page.__allowExpectedFailure = expectedFailureTest;
-  page.__browserCoverageSession = await startBrowserCoverage(page, browserName);
 });
 
 test.afterEach(async ({ page }, testInfo) => {
-  await stopBrowserCoverage(page.__browserCoverageSession, testInfo.title);
-
   const errors = page.__browserErrors || [];
   if (page.__allowExpectedFailure) {
     const unexpected = errors.filter(error =>
@@ -103,7 +64,7 @@ test.afterEach(async ({ page }, testInfo) => {
 });
 
 test('page loads and renders the history tables', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
 
   await expect(page.locator('#appStatus')).toBeHidden();
@@ -132,7 +93,7 @@ test('page loads and renders the history tables', async ({ page }) => {
 
 test('optional CurrentSeason fetch failure leaves history usable', async ({ page }) => {
   await page.route('**/assets/CurrentSeason.json', route => route.fulfill({ status: 500, body: '{}' }));
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
 
   await expect(page.locator('#appStatus')).toBeHidden();
@@ -143,7 +104,7 @@ test('optional CurrentSeason fetch failure leaves history usable', async ({ page
 });
 
 test('theme toggle switches color scheme and persists after reload', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
 
   await expect(page.locator('#themeControls .theme-toggle')).toBeVisible();
@@ -161,7 +122,7 @@ test('theme toggle switches color scheme and persists after reload', async ({ pa
 });
 
 test('changing the team updates the rendered rows and url state', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
 
   const teamSelect = page.locator('#teamSelect');
@@ -300,7 +261,7 @@ test('historical Current Season standings match the selected week snapshot', asy
 });
 
 test('rivalry tab renders a tale of the tape and saved rivalry selection', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
 
   await page.locator('#teamSelect').selectOption('Joel');
@@ -412,7 +373,7 @@ test('trophy case url restores the trophy page and owner selection', async ({ pa
 });
 
 test('history filters do not leak into dynasty controls', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
 
   await page.locator('#teamSelect').selectOption('Joel');
@@ -433,7 +394,7 @@ test('history filters do not leak into dynasty controls', async ({ page }) => {
 });
 
 test('browser back restores the previous history state after a tab change', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
 
   await page.locator('#teamSelect').selectOption('Joel');
@@ -460,7 +421,7 @@ test('browser back restores the previous history state after a tab change', asyn
 });
 
 test('dynasty tab renders controls and responds to calculator changes', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
 
   await page.locator('#tabDynastyBtn').click();
@@ -744,7 +705,7 @@ test('url state restores selected team and facet filters on load', async ({ page
 });
 
 test('global search opens by shortcut and navigates to an owner season', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
 
   const trigger = page.locator('.search-trigger');
@@ -782,7 +743,7 @@ test('global search resolves rivalry and browser back restores the previous view
 });
 
 test('global search navigates to season, score threshold, and record deep links', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
 
   const search = async (query) => {
@@ -1031,7 +992,7 @@ test('history game-query deep links survive direct loads and reloads', async ({ 
 });
 
 test('dynamic structured results remain in recents after reopen and reload', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
   await page.evaluate(() => window.darlingSearch.clearRecent());
   const trigger = page.locator('.search-trigger');
@@ -1068,7 +1029,7 @@ test('dynamic structured results remain in recents after reopen and reload', asy
 });
 
 test('global search parser recognizes supported league phrases without guessing invalid entities', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
 
   const results = await page.evaluate(() => {
@@ -1124,7 +1085,7 @@ test('global search parser recognizes supported league phrases without guessing 
 
 test('global search executes theme commands and uses a keyboard-safe mobile sheet', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
   const trigger = page.locator('.search-trigger');
   await trigger.click();
@@ -1147,7 +1108,7 @@ test('global search executes theme commands and uses a keyboard-safe mobile shee
 });
 
 test('global search restores focus to the keyboard shortcut invoker', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
   const teamSelect = page.locator('#teamSelect');
   await teamSelect.focus();
@@ -1160,7 +1121,7 @@ test('global search restores focus to the keyboard shortcut invoker', async ({ p
 });
 
 test('facet dropdowns keep expanded state in sync and close with escape', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
 
   const seasonButton = page.locator('.dropdown-toggle[data-target="seasonFilters"]');
@@ -1186,7 +1147,7 @@ test('facet dropdowns keep expanded state in sync and close with escape', async 
 });
 
 test('facet dropdowns support keyboard navigation and checkbox toggling', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
 
   const seasonButton = page.locator('.dropdown-toggle[data-target="seasonFilters"]');
@@ -1261,7 +1222,7 @@ test('export history command honors game-query filters, ordering, and limit', as
 });
 
 test('unchanged history state does not rebuild rendered table rows', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
 
   const mutationCount = await page.locator('#historyGamesTable tbody').evaluate((tbody) => {
@@ -1287,7 +1248,7 @@ test('unchanged history state does not rebuild rendered table rows', async ({ pa
 });
 
 test('all-teams fun facts do not rebuild for unrelated filter changes', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
 
   await page.locator('#teamSelect').selectOption('__ALL__');
@@ -1314,7 +1275,7 @@ test('all-teams fun facts do not rebuild for unrelated filter changes', async ({
 });
 
 test('league summary is removed after returning from all-teams view', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
 
   await page.locator('#teamSelect').selectOption('__ALL__');
@@ -1395,7 +1356,7 @@ test('fetch failure surfaces an error banner instead of a blank page', async ({ 
     });
   });
 
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
 
   await expect(page.locator('#appStatus')).toBeVisible();
@@ -1464,7 +1425,7 @@ test('Draft Spot timeline highlights normalized selections using the normalized 
 });
 
 test('global search reaches Draft Spot picks, zones, and owner history', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
   await page.locator('.search-trigger').click();
   const search = page.getByRole('combobox', { name: /Search owners, seasons/i });

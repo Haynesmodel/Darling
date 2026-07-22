@@ -11,7 +11,10 @@ export interface PulseSeasonState {
   summaryComplete: boolean;
 }
 
-export interface PulseLink { label: string; href: string }
+export interface PulseLink {
+  label: string;
+  href: string;
+}
 
 export interface PulseHeroModel {
   phase: PulsePhase;
@@ -86,7 +89,12 @@ export interface PulseRecordModel {
   href: string;
 }
 
-export interface PulseSuperlative { label: string; value: string; detail: string; href?: string }
+export interface PulseSuperlative {
+  label: string;
+  value: string;
+  detail: string;
+  href?: string;
+}
 
 export interface PulseYearInReview {
   season: number;
@@ -96,6 +104,23 @@ export interface PulseYearInReview {
   championshipResult: string | null;
   finalStandings: Array<{ finish: number; owner: string; record: string; pointsFor: number }>;
   superlatives: PulseSuperlative[];
+}
+
+interface PulseIntegrityDiagnostics {
+  verifiedAssets: string[];
+}
+
+interface PulseDataNote {
+  freshness: DataFreshnessAssessment;
+  dataVersion: string;
+  usedFallbacks: string[];
+  coreVerified: boolean;
+}
+
+interface PulseDiagnostics {
+  freshness: DataFreshnessAssessment;
+  optionalFailures: OptionalAssetFailure[];
+  integrity: PulseIntegrityDiagnostics;
 }
 
 export interface LeaguePulseViewModel {
@@ -108,12 +133,7 @@ export interface LeaguePulseViewModel {
   curse: PulseCurseModel | null;
   record: PulseRecordModel | null;
   quickLinks: PulseLink[];
-  dataNote: {
-    freshness: DataFreshnessAssessment;
-    dataVersion: string;
-    usedFallbacks: string[];
-    coreVerified: boolean;
-  };
+  dataNote: PulseDataNote;
 }
 
 export interface PulseModelData {
@@ -123,9 +143,5 @@ export interface PulseModelData {
   currentSeason: CurrentSeasonData | null;
   derivedStats?: unknown;
   dataVersion: string;
-  diagnostics?: {
-    freshness: DataFreshnessAssessment;
-    optionalFailures: OptionalAssetFailure[];
-    integrity: { verifiedAssets: string[] };
-  };
+  diagnostics?: PulseDiagnostics;
 }

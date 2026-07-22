@@ -92,7 +92,7 @@ test('page loads and renders the history tables', async ({ page }) => {
 });
 
 test('optional CurrentSeason fetch failure leaves history usable', async ({ page }) => {
-  await page.route('**/assets/CurrentSeason.json', route => route.fulfill({ status: 500, body: '{}' }));
+  await page.route('**/assets/CurrentSeason.json*', route => route.fulfill({ status: 500, body: '{}' }));
   await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
 
@@ -1348,7 +1348,7 @@ test('all-teams export uses the ALL filename and includes both sides of a game',
 });
 
 test('fetch failure surfaces an error banner instead of a blank page', async ({ page }) => {
-  await page.route('**/assets/H2H.json', route => {
+  await page.route('**/assets/H2H.json*', route => {
     route.fulfill({
       status: 500,
       contentType: 'text/plain',
@@ -1442,7 +1442,7 @@ test('global search reaches Draft Spot picks, zones, and owner history', async (
 });
 
 test('optional Draft Spot fetch failure leaves the rest of the app usable', async ({ page }) => {
-  await page.route('**/assets/DraftSpot.json', route => route.fulfill({ status: 500, body: '{}' }));
+  await page.route('**/assets/DraftSpot.json*', route => route.fulfill({ status: 500, body: '{}' }));
   await page.goto('/?tab=draft');
   await page.waitForLoadState('networkidle');
   await expect(page.locator('#draftSpotRoot')).toContainText('Draft Spot is unavailable');

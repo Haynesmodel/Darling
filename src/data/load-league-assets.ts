@@ -1,5 +1,12 @@
 import { dedupeGames, deriveWeeksInPlace } from '../../js/core-helpers.js';
 import { DataLoadError } from './data-errors';
+import { assessDataFreshness, type DataFreshnessAssessment, type OptionalAssetFailure } from './data-freshness';
+import {
+  fetchManifestJson,
+  fetchVerifiedJson,
+  type JsonAssetDescriptor,
+  type VerifiedJsonResult,
+} from './verified-json-fetch';
 import {
   SUPPORTED_DERIVED_GENERATOR_VERSION,
   SUPPORTED_MANIFEST_VERSION,
@@ -32,6 +39,17 @@ export interface DataDiagnostics {
   latestCompletedWeek: number | null;
   loadedAssets: string[];
   optionalAssetFailures: string[];
+  optionalFailures: OptionalAssetFailure[];
+  integrity: {
+    algorithm: 'SHA-256';
+    urlVersioning: 'asset-sha256-query';
+    manifestCache: 'no-store';
+    verifiedAssets: string[];
+    recoveredAssets: string[];
+    failedOptionalAssets: string[];
+  };
+  freshness: DataFreshnessAssessment;
+  loadedAt: string;
 }
 
 export interface LoadedLeagueAssets {
@@ -51,21 +69,8 @@ interface LoaderOptions {
   fetchFn?: typeof fetch;
   basePath?: string;
   logger?: Pick<Console, 'warn' | 'error'>;
-}
-
-function assetUrl(path: string, basePath: string): string {
-  const base = basePath.endsWith('/') ? basePath : `${basePath}/`;
-  return `${base}${path.replace(/^\//, '')}`;
-}
-
-async function fetchUnknown(fetchFn: typeof fetch, url: string, asset: string, dataVersion: string | null): Promise<unknown> {
-  const response = await fetchFn(url);
-  if (!response.ok) throw new DataLoadError('HTTP_ERROR', asset, `${asset}: HTTP ${response.status}`, dataVersion);
-  try {
-    return await response.json() as unknown;
-  } catch (error) {
-    throw new DataLoadError('INVALID_ASSET', asset, `${asset}: invalid JSON (${(error as Error).message})`, dataVersion);
-  }
+  digestFn?: (bytes: Uint8Array) => Promise<string>;
+  now?: Date;
 }
 
 function assertVersionSupport(manifest: AssetManifest): void {
@@ -97,12 +102,9 @@ function normalizeCurrentSeason(current: CurrentSeasonData): CurrentSeasonData {
   };
 }
 
-function runtimeSemanticCheck(games: H2HGame[], current: CurrentSeasonData | null, version: string): void {
+function runtimeRequiredSemanticCheck(games: H2HGame[], version: string): void {
   const invalid = games.find(game => game.teamA === game.teamB);
   if (invalid) throw new DataLoadError('SEMANTIC_ERROR', 'H2H', `Invalid self-matchup in ${invalid.season} week ${invalid.week}`, version);
-  if (current?.games.some(game => game.season !== current.season)) {
-    throw new DataLoadError('SEMANTIC_ERROR', 'CurrentSeason', 'A current-season game has the wrong season', version);
-  }
 }
 
 export async function loadLeagueAssets(options: LoaderOptions = {}): Promise<LoadedLeagueAssets> {
@@ -110,7 +112,7 @@ export async function loadLeagueAssets(options: LoaderOptions = {}): Promise<Loa
   if (typeof fetchFn !== 'function') throw new Error('loadLeagueAssets requires a fetch function');
   const basePath = options.basePath || import.meta.env.BASE_URL || '/';
   const logger = options.logger || console;
-  const manifestValue = await fetchUnknown(fetchFn, assetUrl('assets/asset-manifest.json', basePath), 'asset-manifest.json', null);
+  const manifestValue = await fetchManifestJson('assets/asset-manifest.json', { fetchFn, basePath });
   if (!isAssetManifest(manifestValue)) {
     throw new DataLoadError('INVALID_MANIFEST', 'asset-manifest.json', formatValidatorErrors('asset-manifest.json', getValidatorErrors('AssetManifest')), null);
   }
@@ -119,20 +121,54 @@ export async function loadLeagueAssets(options: LoaderOptions = {}): Promise<Loa
   const version = manifest.data_version;
   const loadedAssets = ['asset-manifest.json'];
   const optionalAssetFailures: string[] = [];
+  const optionalFailures: OptionalAssetFailure[] = [];
+  const verifiedAssets: string[] = [];
+  const recoveredAssets: string[] = [];
+  const failedOptionalAssets: string[] = [];
+
+  function descriptor(name: string, entry: { path: string; sha256: string; bytes: number }): JsonAssetDescriptor {
+    return { name, path: entry.path, sha256: entry.sha256, bytes: entry.bytes, dataVersion: version };
+  }
+
+  async function verified<T>(entry: JsonAssetDescriptor): Promise<VerifiedJsonResult<T>> {
+    const result = await fetchVerifiedJson<T>(entry, {
+      fetchFn,
+      basePath,
+      digestFn: options.digestFn,
+      logger,
+    });
+    verifiedAssets.push(entry.name);
+    if (result.cacheRecovered) recoveredAssets.push(entry.name);
+    return result;
+  }
 
   const requiredPromise = Promise.all([
-    fetchUnknown(fetchFn, assetUrl(manifest.assets.H2H.path, basePath), 'H2H', version),
-    fetchUnknown(fetchFn, assetUrl(manifest.assets.SeasonSummary.path, basePath), 'SeasonSummary', version),
+    verified<unknown>(descriptor('H2H', manifest.assets.H2H)),
+    verified<unknown>(descriptor('SeasonSummary', manifest.assets.SeasonSummary)),
   ]);
 
-  async function optional<T>(name: ValidatorName, path: string, guard: (value: unknown) => value is T): Promise<T | null> {
+  function failureReason(error: unknown): OptionalAssetFailure['reason'] {
+    if (!(error instanceof DataLoadError)) return 'invalid';
+    if (error.code === 'HTTP_ERROR') return 'http';
+    if (['INTEGRITY_MISMATCH', 'SIZE_MISMATCH', 'INVALID_UTF8', 'INTEGRITY_UNAVAILABLE'].includes(error.code)) return 'integrity';
+    return 'invalid';
+  }
+
+  async function optional<T>(name: ValidatorName, entry: JsonAssetDescriptor, guard: (value: unknown) => value is T): Promise<T | null> {
     try {
-      const value = await fetchUnknown(fetchFn, assetUrl(path, basePath), name, version);
+      const result = await verified<unknown>(entry);
+      const value = result.value;
       if (!guard(value)) throw new DataLoadError('INVALID_ASSET', name, formatValidatorErrors(name, getValidatorErrors(name)), version);
       loadedAssets.push(name);
       return value;
     } catch (error) {
       optionalAssetFailures.push(name);
+      failedOptionalAssets.push(name);
+      optionalFailures.push({
+        asset: name,
+        reason: failureReason(error),
+        code: error instanceof DataLoadError ? error.code : 'UNKNOWN_ERROR',
+      });
       logger.warn(`[Darling] Optional ${name} unavailable: ${(error as Error).message}`);
       return null;
     }
@@ -140,27 +176,55 @@ export async function loadLeagueAssets(options: LoaderOptions = {}): Promise<Loa
 
   const [required, rivalriesValue, currentValue, derivedValue] = await Promise.all([
     requiredPromise,
-    optional('Rivalries', manifest.assets.Rivalries.path, isRivalries),
-    optional('CurrentSeason', manifest.assets.CurrentSeason.path, isCurrentSeason),
-    optional('DerivedStats', manifest.derived.path, isDerivedStats),
+    optional('Rivalries', descriptor('Rivalries', manifest.assets.Rivalries), isRivalries),
+    optional('CurrentSeason', descriptor('CurrentSeason', manifest.assets.CurrentSeason), isCurrentSeason),
+    optional('DerivedStats', descriptor('DerivedStats', manifest.derived), isDerivedStats),
   ]);
-  const h2h = validateRequired(required[0], 'H2H', isH2H, version);
-  const seasonSummary = validateRequired(required[1], 'SeasonSummary', isSeasonSummary, version);
+  const h2h = validateRequired(required[0].value, 'H2H', isH2H, version);
+  const seasonSummary = validateRequired(required[1].value, 'SeasonSummary', isSeasonSummary, version);
   loadedAssets.push('H2H', 'SeasonSummary');
   const rawGames = normalizeHistoricalGames(h2h);
   const leagueGames = dedupeGames(rawGames as never[]) as H2HGame[];
   const derivedWeeksSet = deriveWeeksInPlace(leagueGames as never[]) as Set<number>;
-  const currentSeason = currentValue ? normalizeCurrentSeason(currentValue) : null;
+  let currentSeason = currentValue ? normalizeCurrentSeason(currentValue) : null;
+  if (currentSeason?.games.some(game => game.season !== currentSeason?.season)) {
+    currentSeason = null;
+    optionalAssetFailures.push('CurrentSeason');
+    optionalFailures.push({ asset: 'CurrentSeason', reason: 'invalid', code: 'SEMANTIC_ERROR' });
+    failedOptionalAssets.push('CurrentSeason');
+    const index = loadedAssets.indexOf('CurrentSeason');
+    if (index >= 0) loadedAssets.splice(index, 1);
+    logger.warn('[Darling] Optional CurrentSeason unavailable: a game has the wrong season');
+  }
   let derivedStats = derivedValue;
   if (derivedStats && Object.entries(manifest.derived.source_hashes).some(([name, hash]) => derivedStats?.source_hashes[name as keyof DerivedStats['source_hashes']] !== hash)) {
     derivedStats = null;
     optionalAssetFailures.push('DerivedStats');
+    optionalFailures.push({ asset: 'DerivedStats', reason: 'stale-dependency', code: 'SEMANTIC_ERROR' });
+    failedOptionalAssets.push('DerivedStats');
     const index = loadedAssets.indexOf('DerivedStats');
     if (index >= 0) loadedAssets.splice(index, 1);
     logger.warn('[Darling] Optional DerivedStats unavailable: source dependency hashes do not match the manifest');
   }
-  runtimeSemanticCheck(leagueGames, currentSeason, version);
+  runtimeRequiredSemanticCheck(leagueGames, version);
   const finalizedWeeks = currentSeason?.games.filter(game => game.status === 'final').map(game => game.week) || [];
+  optionalAssetFailures.sort();
+  optionalFailures.sort((a, b) => a.asset.localeCompare(b.asset) || a.reason.localeCompare(b.reason));
+  optionalFailures.forEach(Object.freeze);
+  const freshness = assessDataFreshness({
+    currentSeason,
+    seasonSummaries: seasonSummary,
+    optionalFailures,
+    now: options.now,
+  });
+  const integrity = Object.freeze({
+    algorithm: 'SHA-256' as const,
+    urlVersioning: 'asset-sha256-query' as const,
+    manifestCache: 'no-store' as const,
+    verifiedAssets: Object.freeze(verifiedAssets.slice().sort()) as unknown as string[],
+    recoveredAssets: Object.freeze(recoveredAssets.slice().sort()) as unknown as string[],
+    failedOptionalAssets: Object.freeze(failedOptionalAssets.slice().sort()) as unknown as string[],
+  });
   const diagnostics: DataDiagnostics = {
     dataVersion: version,
     manifestVersion: manifest.manifest_version,
@@ -168,7 +232,17 @@ export async function loadLeagueAssets(options: LoaderOptions = {}): Promise<Loa
     latestCompletedWeek: finalizedWeeks.length ? Math.max(...finalizedWeeks) : null,
     loadedAssets: loadedAssets.slice().sort(),
     optionalAssetFailures,
+    optionalFailures,
+    integrity,
+    freshness,
+    loadedAt: new Date().toISOString(),
   };
+  Object.freeze(diagnostics.loadedAssets);
+  Object.freeze(diagnostics.optionalAssetFailures);
+  Object.freeze(diagnostics.optionalFailures);
+  Object.freeze(diagnostics.freshness.partialAssets);
+  Object.freeze(diagnostics.freshness);
+  Object.freeze(diagnostics);
   return {
     rawGames,
     leagueGames,

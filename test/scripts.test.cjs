@@ -11,6 +11,7 @@ const sharp = require('sharp');
 const { checkRepoHygiene } = require('../scripts/check_repo_hygiene.cjs');
 const { checkCssHygiene, runCli: runCssHygieneCli } = require('../scripts/check_css_hygiene.cjs');
 const { auditBuiltAssets } = require('../scripts/audit_built_assets.cjs');
+const { canonicalJson, sha256Json } = require('../scripts/data/canonical-json.cjs');
 const { measureBundle } = require('../scripts/check_bundle_size.cjs');
 const { FORMATS, HERO_WIDTHS, generateHeroImages, resolveSource } = require('../scripts/generate_hero_images.cjs');
 const { createStaticServer, normalizeBasePath, resolvePath } = require('../scripts/serve_static.cjs');
@@ -260,25 +261,98 @@ test('built asset audit requires every manifested deployable asset', async () =>
   await withTempRepo((root) => {
     const assetDir = path.join(root, 'dist', 'assets');
     fs.mkdirSync(path.join(assetDir, 'hero'), { recursive: true });
+    const empty = [];
+    const descriptor = (assetPath, required) => ({
+      path: assetPath,
+      required,
+      bytes: Buffer.byteLength(canonicalJson(empty)),
+      sha256: sha256Json(empty),
+    });
     fs.writeFileSync(path.join(assetDir, 'asset-manifest.json'), JSON.stringify({
       assets: {
-        H2H: { path: 'assets/H2H.json', required: true },
-        Rivalries: { path: 'assets/Rivalries.json', required: false },
+        H2H: descriptor('assets/H2H.json', true),
+        Rivalries: descriptor('assets/Rivalries.json', false),
       },
-      derived: { path: 'assets/DerivedStats.json', required: false },
+      derived: descriptor('assets/DerivedStats.json', false),
       media: {
         leagueHero: {
           variants: [{ path: 'assets/hero/league-480.jpg' }],
         },
       },
     }));
-    fs.writeFileSync(path.join(assetDir, 'H2H.json'), '[]');
-    fs.writeFileSync(path.join(assetDir, 'Rivalries.json'), '[]');
+    fs.writeFileSync(path.join(assetDir, 'H2H.json'), canonicalJson(empty));
+    fs.writeFileSync(path.join(assetDir, 'Rivalries.json'), canonicalJson(empty));
+    fs.writeFileSync(path.join(assetDir, 'DerivedStats.json'), canonicalJson(empty));
     fs.writeFileSync(path.join(assetDir, 'hero', 'league-480.jpg'), 'image');
     assert.deepEqual(auditBuiltAssets(root), []);
 
     fs.rmSync(path.join(assetDir, 'H2H.json'));
     assert.ok(auditBuiltAssets(root).some(error => error.includes('H2H.json is missing')));
+
+    fs.writeFileSync(path.join(assetDir, 'H2H.json'), canonicalJson(empty));
+    fs.rmSync(path.join(assetDir, 'DerivedStats.json'));
+    assert.ok(auditBuiltAssets(root).some(error => error.includes('DerivedStats.json is missing')));
+
+    fs.writeFileSync(path.join(assetDir, 'DerivedStats.json'), canonicalJson(empty));
+    const outside = path.join(root, 'outside.json');
+    fs.writeFileSync(outside, canonicalJson(empty));
+    fs.rmSync(path.join(assetDir, 'Rivalries.json'));
+    fs.symlinkSync(outside, path.join(assetDir, 'Rivalries.json'));
+    assert.ok(auditBuiltAssets(root).some(error => error.includes('Rivalries.json resolves outside')));
+  });
+});
+
+test('built asset audit rejects byte and semantic hash mismatches', async () => {
+  await withTempRepo((root) => {
+    const assetDir = path.join(root, 'dist', 'assets');
+    fs.mkdirSync(assetDir, { recursive: true });
+    const expected = { value: 1 };
+    const entry = {
+      path: 'assets/H2H.json', required: true,
+      bytes: Buffer.byteLength(canonicalJson(expected)), sha256: sha256Json(expected),
+    };
+    fs.writeFileSync(path.join(assetDir, 'asset-manifest.json'), JSON.stringify({ assets: { H2H: entry }, media: { leagueHero: { variants: [] } } }));
+    fs.writeFileSync(path.join(assetDir, 'H2H.json'), `${canonicalJson(expected)} `);
+    assert.ok(auditBuiltAssets(root).some(error => error.includes('byte size')));
+    fs.writeFileSync(path.join(assetDir, 'H2H.json'), canonicalJson({ value: 2 }));
+    assert.ok(auditBuiltAssets(root).some(error => error.includes('hash')));
+  });
+});
+
+test('built asset audit rejects malformed UTF-8 in the manifest and JSON assets', async () => {
+  await withTempRepo((root) => {
+    const assetDir = path.join(root, 'dist', 'assets');
+    fs.mkdirSync(assetDir, { recursive: true });
+    const malformedAsset = Buffer.concat([
+      Buffer.from('{"value":"'),
+      Buffer.from([0xc3]),
+      Buffer.from('"}'),
+    ]);
+    const replacementValue = JSON.parse(malformedAsset.toString('utf8'));
+    const manifest = {
+      assets: {
+        H2H: {
+          path: 'assets/H2H.json',
+          required: true,
+          bytes: malformedAsset.byteLength,
+          sha256: sha256Json(replacementValue),
+        },
+      },
+      media: { leagueHero: { variants: [] } },
+    };
+    const manifestPath = path.join(assetDir, 'asset-manifest.json');
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+    fs.writeFileSync(path.join(assetDir, 'H2H.json'), malformedAsset);
+
+    assert.ok(auditBuiltAssets(root).some(error => error.includes('H2H.json is invalid JSON: not valid UTF-8')));
+
+    const malformedManifest = Buffer.concat([
+      Buffer.from('{"assets":{},"label":"'),
+      Buffer.from([0xc3]),
+      Buffer.from('"}'),
+    ]);
+    fs.writeFileSync(manifestPath, malformedManifest);
+    assert.ok(auditBuiltAssets(root).some(error => error.includes('asset-manifest.json is invalid: not valid UTF-8')));
   });
 });
 
@@ -521,7 +595,7 @@ test('coverage reporter maps inline source maps back to original TypeScript file
   });
 });
 
-test('coverage reporter excludes type-only TypeScript files', async () => {
+test('coverage reporter excludes type-only TypeScript files with nested multiline properties', async () => {
   await withTempRepo((root) => {
     fs.mkdirSync(path.join(root, 'coverage', '.v8'), { recursive: true });
     fs.mkdirSync(path.join(root, 'src', 'theme'), { recursive: true });
@@ -530,7 +604,19 @@ test('coverage reporter excludes type-only TypeScript files', async () => {
     const typeOnlyPath = path.join(root, 'src', 'theme', 'theme-types.ts');
     fs.writeFileSync(entryPointPath, "import './helpers.js';\n");
     fs.writeFileSync(helperPath, 'const covered = true;\nexport { covered };\n');
-    fs.writeFileSync(typeOnlyPath, 'export type Mode = \"dark\" | \"light\";\nexport interface ThemeShape {\n  mode: Mode;\n}\n');
+    fs.writeFileSync(typeOnlyPath, [
+      'import type { External } from \"./external\";',
+      'export type Mode = \"dark\" | \"light\";',
+      'export interface ThemeShape {',
+      '  mode: Mode;',
+      '  dataNote: {',
+      '    freshness: { status: \"fresh\"; reason: string };',
+      '    versions: Array<{ name: string; sha: string }>;',
+      '  };',
+      '  external?: External;',
+      '}',
+      '',
+    ].join('\n'));
     fs.writeFileSync(path.join(root, 'coverage', '.v8', 'coverage.json'), JSON.stringify({
       result: [entryPointPath, helperPath].map(filePath => ({
         url: pathToFileURL(filePath).href,

@@ -45,6 +45,14 @@ The Darling targets WCAG 2.2 Level AA as its engineering baseline. Automated che
 - Enter/Space use native button activation.
 - Empty picks are noninteractive, low samples include text/border treatment, and champion/Saunders states never rely on color alone.
 
+### Data freshness disclosure
+
+- The shell uses native `details`/`summary`, so the status is keyboard-operable without a custom disclosure state machine.
+- Every severity includes a concise text label in addition to the status dot; color is never the only signal.
+- Expanded content provides the absolute update time, short snapshot version, verification state, lifecycle explanation, and a clearly named reload action when recovery is useful.
+- Fifteen-minute relative-state reassessments are not live-region announcements. Visibility-based reassessment performs no network request and does not move focus.
+- The wrapping hero toolbar keeps the disclosure and theme controls available at narrow widths and preserves borders in forced-colors mode.
+
 ## Automated checks
 
 Run:

@@ -113,6 +113,8 @@ export interface DraftSpotViewModel {
 export interface DraftSpotMountOptions {
   mount: HTMLElement;
   assetPath: string;
+  assetSha256: string;
+  assetBytes: number;
   sourceHash: string;
   dataVersion: string;
   state?: Partial<DraftSpotState> & DraftSpotUrlState;

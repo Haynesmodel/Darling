@@ -49,7 +49,8 @@ Primary web-served data:
 Data pipeline:
 - JSON Schema Draft 2020-12 files under `schemas/` are the authoritative contracts.
 - Runtime payloads are treated as unknown until generated standalone validators accept them.
-- The app exposes the active snapshot through `window.darlingDataDiagnostics` for support and debugging.
+- The app fetches a revalidated manifest, verifies each content-versioned JSON response against its byte count and canonical SHA-256, and exposes the frozen result through `window.darlingDataDiagnostics` for support and debugging.
+- The hero data-status disclosure distinguishes active freshness, live-score delay, finalized offseason data, missing new-season data, and optional partial availability.
 - See [`docs/data-pipeline.md`](./docs/data-pipeline.md) for updates, schema migrations, rule IDs, known exceptions, drift recovery, and iCloud hero handling.
 
 Theme and hero assets:

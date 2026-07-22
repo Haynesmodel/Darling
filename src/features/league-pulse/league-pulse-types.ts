@@ -1,4 +1,5 @@
 import type { CurrentSeasonData, H2HGame, RivalryDefinition, SeasonSummaryRow } from '../../data/generated/asset-types';
+import type { DataFreshnessAssessment, OptionalAssetFailure } from '../../data/data-freshness';
 
 export type PulsePhase = 'preseason' | 'regular-season' | 'postseason' | 'finalizing' | 'offseason' | 'historical-fallback';
 
@@ -10,7 +11,10 @@ export interface PulseSeasonState {
   summaryComplete: boolean;
 }
 
-export interface PulseLink { label: string; href: string }
+export interface PulseLink {
+  label: string;
+  href: string;
+}
 
 export interface PulseHeroModel {
   phase: PulsePhase;
@@ -85,7 +89,12 @@ export interface PulseRecordModel {
   href: string;
 }
 
-export interface PulseSuperlative { label: string; value: string; detail: string; href?: string }
+export interface PulseSuperlative {
+  label: string;
+  value: string;
+  detail: string;
+  href?: string;
+}
 
 export interface PulseYearInReview {
   season: number;
@@ -107,7 +116,12 @@ export interface LeaguePulseViewModel {
   curse: PulseCurseModel | null;
   record: PulseRecordModel | null;
   quickLinks: PulseLink[];
-  dataNote: { generatedAt: string | null; dataVersion: string; usedFallbacks: string[] };
+  dataNote: {
+    freshness: DataFreshnessAssessment;
+    dataVersion: string;
+    usedFallbacks: string[];
+    coreVerified: boolean;
+  };
 }
 
 export interface PulseModelData {
@@ -117,4 +131,9 @@ export interface PulseModelData {
   currentSeason: CurrentSeasonData | null;
   derivedStats?: unknown;
   dataVersion: string;
+  diagnostics?: {
+    freshness: DataFreshnessAssessment;
+    optionalFailures: OptionalAssetFailure[];
+    integrity: { verifiedAssets: string[] };
+  };
 }

@@ -3,6 +3,7 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const { fileURLToPath } = require('node:url');
+const { transformSync } = require('esbuild');
 const { TraceMap, originalPositionFor } = require('@jridgewell/trace-mapping');
 
 const defaultRoot = process.cwd();
@@ -30,44 +31,26 @@ function relativeSourcePath(root, filePath) {
   return path.relative(realPathSafe(root), realPathSafe(filePath));
 }
 
-function stripComments(src) {
-  return src
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/(^|\s)\/\/.*$/gm, '');
-}
-
 function isTypeOnlySourceFile(filePath) {
   const ext = path.extname(filePath);
   if (ext !== '.ts' && ext !== '.tsx') return false;
   if (!fs.existsSync(filePath)) return false;
 
-  let src = stripComments(fs.readFileSync(filePath, 'utf8')).trim();
+  const src = fs.readFileSync(filePath, 'utf8');
   if (!src) return false;
 
   try {
-    const ts = require('typescript');
-    const output = ts.transpileModule(src, {
-      compilerOptions: {
-        module: ts.ModuleKind.ESNext,
-        target: ts.ScriptTarget.ES2022,
-        removeComments: true,
-      },
-      fileName: filePath,
-    }).outputText.replace(/export\s*\{\s*\};?/g, '').trim();
-    if (!output) return true;
+    const output = transformSync(src, {
+      loader: ext === '.tsx' ? 'tsx' : 'ts',
+      format: 'esm',
+      target: 'es2022',
+      sourcefile: filePath,
+    }).code;
+    return output.replace(/export\s*\{\s*\};?/g, '').trim() === '';
   } catch {
-    // Fall through to the lightweight syntax check for minimal test fixtures.
+    // A source file that cannot be parsed must remain in the coverage set.
+    return false;
   }
-
-  src = src
-    .replace(/import\s+type[\s\S]*?;\s*/g, '')
-    .replace(/export\s+interface\s+\w+[^{]*\{[\s\S]*?^\s*\}\s*/gm, '')
-    .replace(/interface\s+\w+[^{]*\{[\s\S]*?^\s*\}\s*/gm, '')
-    .replace(/export\s+type\s+\w+[\s\S]*?;\s*/g, '')
-    .replace(/type\s+\w+[\s\S]*?;\s*/g, '')
-    .replace(/export\s+type\s+\{[\s\S]*?\};?\s*/g, '');
-
-  return src.trim() === '';
 }
 
 function getLineStarts(src){

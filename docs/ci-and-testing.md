@@ -68,7 +68,7 @@ On pushes to `main`, two post-gate jobs continue the same artifact's provenance 
 
 Pull requests run the complete quality gate but skip both Pages jobs. The workflow defaults to `contents: read`; only `deploy_pages` receives job-scoped `pages: write` and `id-token: write`. Workflow-level cancellation stops superseded CI runs, a production concurrency group serializes deploy calls, and the immediately preceding current-main check provides a second stale-run defense.
 
-The SHA-named generic CI artifact and the GitHub Pages artifact have different roles. The generic artifact is the one-day, digest-addressable build consumed by browser tests and packaging. `actions/upload-pages-artifact` only converts that downloaded directory into GitHub Pages' transport format; no post-test checkout, install, build, minification, or file rewrite is allowed.
+The SHA-named generic CI artifact and the GitHub Pages artifact have different roles. The generic artifact is the one-day, digest-verified build consumed by browser tests and packaging. `actions/upload-pages-artifact` only converts that downloaded directory into GitHub Pages' transport format; no post-test checkout, install, build, minification, or file rewrite is allowed.
 
 The exact-artifact delivery path was integrated in [pull request #42](https://github.com/Haynesmodel/Darling/pull/42). Its contract is enforced by [`test/workflow-contracts.test.cjs`](../test/workflow-contracts.test.cjs), including mutation tests for gate dependencies, build duplication, digest enforcement, permissions, main-only conditions, deploy-action cardinality, the stable gate name, and restoration of the legacy workflow.
 

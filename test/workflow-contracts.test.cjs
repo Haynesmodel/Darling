@@ -5,7 +5,6 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 const workflowDirectory = path.join(root, '.github', 'workflows');
-const ciPath = path.join(workflowDirectory, 'ci.yml');
 const legacyDeployPath = path.join(workflowDirectory, 'deploy-pages.yml');
 
 const REQUIRED_ARTIFACT_NAME = 'darling-dist-${{ github.sha }}';
@@ -25,6 +24,11 @@ function extractJob(workflow, jobName) {
 
 function countMatches(source, pattern) {
   return [...source.matchAll(pattern)].length;
+}
+
+function actionRef(job, action) {
+  const match = job.match(new RegExp(`uses:\\s*${action.replace('/', '\\/')}@([0-9a-f]{40})`));
+  return match ? match[1] : '';
 }
 
 function validatePinnedActions(workflows, errors) {
@@ -62,7 +66,7 @@ function validateWorkflowContracts({ workflows, legacyDeployExists }) {
     errors.push('CI-003: legacy deploy-pages.yml must be removed');
   }
 
-  const buildCommands = countMatches(allWorkflowSource, /^\s*run:\s+npm run build\s*$/gm);
+  const buildCommands = countMatches(allWorkflowSource, /\bnpm run build\b/g);
   if (buildCommands !== 1 || !/^\s*run:\s+npm run build\s*$/m.test(qualityBuild)) {
     errors.push('ARCH-001: quality_build must contain the only workflow-level npm run build');
   }
@@ -108,6 +112,15 @@ function validateWorkflowContracts({ workflows, legacyDeployExists }) {
     if (!/digest-mismatch:\s*error/.test(block)) {
       errors.push(`CI-002: ${jobName} must fail on digest mismatch`);
     }
+  }
+
+  const downloadActionRefs = [
+    actionRef(chromium, 'actions/download-artifact'),
+    actionRef(webkit, 'actions/download-artifact'),
+    actionRef(packagePages, 'actions/download-artifact'),
+  ];
+  if (downloadActionRefs.some(ref => !ref) || new Set(downloadActionRefs).size !== 1) {
+    errors.push('ARCH-002: Chromium, WebKit, and package_pages must use the same pinned download-artifact revision');
   }
 
   if (packagePages) {
@@ -176,6 +189,10 @@ function validateWorkflowContracts({ workflows, legacyDeployExists }) {
     if (!/branch:\s*'main'/.test(deployPages)) {
       errors.push('SEC-003: stale-run check must query main');
     }
+    if (!/if\s*\(\s*currentMainSha\s*!==\s*context\.sha\s*\)/.test(deployPages)
+      || !/`[^`]*\$\{currentMainSha\}[^`]*\$\{context\.sha\}[^`]*`/s.test(deployPages)) {
+      errors.push('SEC-003: stale-run check must compare and report both the current main SHA and run SHA');
+    }
     if (countMatches(deployPages, /uses:\s*actions\/deploy-pages@/g) !== 1) {
       errors.push('REL-001: deploy_pages must invoke deploy-pages exactly once');
     }
@@ -203,6 +220,9 @@ function validateWorkflowContracts({ workflows, legacyDeployExists }) {
   }
   if (!/needs:\s*\[quality_build,\s*chromium,\s*coverage,\s*webkit_smoke\]/.test(gate)) {
     errors.push('ARCH-003: gate must retain its quality dependency list');
+  }
+  if (!/run:\s*node scripts\/check_ci_results\.cjs/.test(gate)) {
+    errors.push('ARCH-003: gate must retain the aggregate CI evaluator');
   }
 
   if (/\bwrite-all\b/.test(allWorkflowSource)) {
@@ -283,6 +303,17 @@ test('contract rejects missing package digest enforcement', () => {
   assert.match(validateWorkflowContracts(mutated).join('\n'), /package_pages must fail on digest mismatch/);
 });
 
+test('contract rejects a different download action revision for Pages packaging', () => {
+  const fixture = readRepositoryFixture();
+  const mutated = mutateJob(fixture, 'package_pages', block => (
+    block.replace(
+      /actions\/download-artifact@[0-9a-f]{40}/,
+      'actions/download-artifact@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    )
+  ));
+  assert.match(validateWorkflowContracts(mutated).join('\n'), /must use the same pinned download-artifact revision/);
+});
+
 test('contract rejects broad workflow-level Pages permissions', () => {
   const fixture = readRepositoryFixture();
   const mutated = mutateCi(fixture, ci => ci.replace(
@@ -314,6 +345,24 @@ test('contract rejects a renamed stable gate', () => {
   const fixture = readRepositoryFixture();
   const mutated = mutateJob(fixture, 'gate', block => block.replace('name: ci / gate', 'name: CI gate'));
   assert.match(validateWorkflowContracts(mutated).join('\n'), /gate name must remain exactly ci \/ gate/);
+});
+
+test('contract rejects removal of the aggregate gate evaluator', () => {
+  const fixture = readRepositoryFixture();
+  const mutated = mutateJob(fixture, 'gate', block => block.replace(
+    'run: node scripts/check_ci_results.cjs',
+    'run: echo gate passed',
+  ));
+  assert.match(validateWorkflowContracts(mutated).join('\n'), /gate must retain the aggregate CI evaluator/);
+});
+
+test('contract rejects an inverted stale-main comparison', () => {
+  const fixture = readRepositoryFixture();
+  const mutated = mutateJob(fixture, 'deploy_pages', block => block.replace(
+    'if (currentMainSha !== context.sha)',
+    'if (currentMainSha === context.sha)',
+  ));
+  assert.match(validateWorkflowContracts(mutated).join('\n'), /stale-run check must compare and report both/);
 });
 
 test('contract rejects restoration of the legacy Pages workflow', () => {

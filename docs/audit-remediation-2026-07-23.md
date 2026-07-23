@@ -11,7 +11,7 @@
 - Coverage overrides decreased from 31 to 21 without lowering global, per-file, or changed-file thresholds. `src/theme/theme-context.ts` no longer has a zero-percent override.
 - Raw coverage output is capped at 25,000,000 bytes and retained in `coverage-meta.json` with its limit.
 - Bundle evidence is refreshed in `docs/bundle-size.md`; the Sleeper workflow is unchanged.
-- Recommendation #1 is implemented by the integrated CI delivery path: Pages packages the SHA-named artifact already consumed by Chromium and WebKit, starts only after `ci / gate`, rejects stale `main` runs, and confines Pages/OIDC writes to the deploy job. Workflow contract tests protect those invariants.
+- Recommendation #1 is implemented by [pull request #42](https://github.com/Haynesmodel/Darling/pull/42): Pages packages the SHA-named artifact already consumed by Chromium and WebKit, starts only after `ci / gate`, rejects stale `main` runs, and confines Pages/OIDC writes to the deploy job. Workflow contract tests protect those invariants.
 
 ## Measured local evidence
 

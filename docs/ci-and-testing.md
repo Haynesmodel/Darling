@@ -70,7 +70,7 @@ Pull requests run the complete quality gate but skip both Pages jobs. The workfl
 
 The SHA-named generic CI artifact and the GitHub Pages artifact have different roles. The generic artifact is the one-day, digest-addressable build consumed by browser tests and packaging. `actions/upload-pages-artifact` only converts that downloaded directory into GitHub Pages' transport format; no post-test checkout, install, build, minification, or file rewrite is allowed.
 
-The exact-artifact delivery contract is enforced by [`test/workflow-contracts.test.cjs`](../test/workflow-contracts.test.cjs), including mutation tests for gate dependencies, build duplication, digest enforcement, permissions, main-only conditions, deploy-action cardinality, the stable gate name, and restoration of the legacy workflow.
+The exact-artifact delivery path was integrated in [pull request #42](https://github.com/Haynesmodel/Darling/pull/42). Its contract is enforced by [`test/workflow-contracts.test.cjs`](../test/workflow-contracts.test.cjs), including mutation tests for gate dependencies, build duplication, digest enforcement, permissions, main-only conditions, deploy-action cardinality, the stable gate name, and restoration of the legacy workflow.
 
 ## Pages failure triage and rollback
 

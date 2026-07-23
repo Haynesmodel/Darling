@@ -12,7 +12,7 @@
     "pre_change_total_javascript_gzip_bytes": 312170,
     "pre_change_chart_runtime_bytes": 407377,
     "pre_change_chart_runtime_gzip_bytes": 134793,
-    "post_change_total_javascript_gzip_bytes": 275187,
+    "post_change_total_javascript_gzip_bytes": 275209,
     "post_change_chart_runtime_bytes": 294294,
     "post_change_chart_runtime_gzip_bytes": 97674,
     "reason": "Replace the broad Plot namespace prebundle with the nine APIs Darling uses and ratchet route/runtime ceilings."

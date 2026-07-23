@@ -9,10 +9,10 @@ The July 23, 2026 chart-runtime optimization keeps Observable Plot and one share
 | Chart-runtime raw | 407,377 | 294,294 | -113,083 | 305,000 |
 | Chart-runtime gzip | 134,793 | 97,674 | -37,119 | 100,000 |
 | Entry raw | 177,873 | 177,873 | 0 | 190,000 |
-| Entry gzip | 54,267 | 54,264 | -3 | 56,000 |
-| Aggregate JavaScript gzip | 312,170 | 275,187 | -36,983 | 280,000 |
+| Entry gzip | 54,267 | 54,266 | -1 | 56,000 |
+| Aggregate JavaScript gzip | 312,170 | 275,209 | -36,961 | 280,000 |
 
-The aggregate build regained 36,983 gzip bytes and now retains 4,813 bytes below the ratcheted ceiling. The chart runtime regained 37,119 gzip bytes while preserving its existing legal-comment policy.
+The aggregate build regained 36,961 gzip bytes and now retains 4,791 bytes below the ratcheted ceiling. The chart runtime regained 37,119 gzip bytes while preserving its existing legal-comment policy.
 
 ## Route closures
 
@@ -20,14 +20,14 @@ Static closures count the production entry, selected feature, verified data load
 
 | Route | Before static | Before settled | After static | After settled | Settled ceiling |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| League Pulse | 105,184 | 105,184 | 105,173 | 105,173 | 115,000 |
-| History | 107,883 | 107,883 | 107,872 | 107,872 | 115,000 |
-| Current Season | 235,850 | 239,187 | 198,723 | 202,059 | 205,000 |
-| Head to Head | 228,480 | 228,480 | 191,352 | 191,352 | 205,000 |
+| League Pulse | 105,184 | 105,184 | 105,182 | 105,182 | 115,000 |
+| History | 107,883 | 107,883 | 107,879 | 107,879 | 115,000 |
+| Current Season | 235,850 | 239,187 | 198,725 | 202,061 | 205,000 |
+| Head to Head | 228,480 | 228,480 | 191,355 | 191,355 | 205,000 |
 | Trophy Case | 228,348 | 228,348 | 191,223 | 191,223 | 205,000 |
-| Dynasty Rankings | 229,481 | 229,481 | 192,356 | 192,356 | 205,000 |
-| Draft Spot | 93,701 | 228,494 | 93,858 | 191,532 | 205,000 |
-| Historical Matchup | 222,285 | 222,285 | 185,159 | 185,159 | 205,000 |
+| Dynasty Rankings | 229,481 | 229,481 | 192,358 | 192,358 | 205,000 |
+| Draft Spot | 93,701 | 228,494 | 93,869 | 191,543 | 205,000 |
+| Historical Matchup | 222,285 | 222,285 | 185,161 | 185,161 | 205,000 |
 
 The manifest contains exactly one named `chart-runtime`. Current Season, Head to Head, Trophy Case, Dynasty Rankings, Draft Spot, and Historical Matchup settle on that same hashed file. Pulse, History, and the entry closure exclude it. Draft Spot’s static closure remains Plot-free and adds the runtime only through its guarded chart import.
 

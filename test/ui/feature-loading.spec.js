@@ -85,6 +85,8 @@ test('Draft contains a failed chart-runtime request without disabling its contro
   await waitForFeature(page, 'draft');
   await expect(page.locator('.draft-pick-chart')).toHaveAttribute('data-chart-state', 'error');
   await expect(page.locator('.draft-zone-chart')).toHaveAttribute('data-chart-state', 'error');
+  await expect(page.locator('.draft-pick-chart .chart-error')).toHaveAttribute('role', 'status');
+  await expect(page.locator('.draft-zone-chart .chart-error')).toHaveAttribute('role', 'status');
   await expect(page.locator('.draft-pick-board')).toBeVisible();
   await expect(page.locator('.draft-zone-grid')).toBeVisible();
   await expect(page.locator('#draftMetricSelect')).toBeEnabled();

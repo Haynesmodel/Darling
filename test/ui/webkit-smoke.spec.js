@@ -57,6 +57,7 @@ test('WEBKIT-02 restores deep links and browser history', async ({ page }) => {
   ];
   for (const route of routes) {
     await page.goto(route.url);
+    await page.waitForLoadState('networkidle');
     await expect(page.getByRole('tab', { name: route.tab })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByRole('tabpanel', { name: route.tab })).toBeVisible();
     await route.verify();
@@ -64,7 +65,9 @@ test('WEBKIT-02 restores deep links and browser history', async ({ page }) => {
   }
 
   await page.goto('/');
+  await page.waitForLoadState('networkidle');
   await page.goto('/?tab=history&team=Joe&seasons=2024');
+  await page.waitForLoadState('networkidle');
   const historyUrl = page.url();
   await page.getByRole('tab', { name: 'League Pulse' }).click();
   await page.goBack();

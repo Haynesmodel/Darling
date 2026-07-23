@@ -17,6 +17,7 @@ module.exports = defineConfig({
   retries: process.env.CI ? 1 : 0,
   forbidOnly: Boolean(process.env.CI),
   failOnFlakyTests: Boolean(process.env.CI),
+  reporter: process.env.CI ? [['dot'], ['html', { open: 'never' }]] : 'list',
   workers: process.env.PLAYWRIGHT_WORKERS
     ? Number(process.env.PLAYWRIGHT_WORKERS)
     : (usePreview || process.env.CI || process.env.COLLECT_COVERAGE === '1' ? 1 : undefined),

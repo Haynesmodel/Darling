@@ -178,6 +178,7 @@ test('current season tab renders matchups and links to head to head context', as
   await expect(page.locator('#tabRivalryBtn')).toHaveClass(/active/);
   await expect(page.locator('#rivalryHeadline')).toBeVisible();
   await expect(page.locator('#rivalryScopeSelect')).toHaveValue('allTime');
+  await page.waitForLoadState('networkidle');
 
   await page.goto('/?tab=current&currentOwner=Joe&currentView=owners');
   await page.waitForLoadState('networkidle');

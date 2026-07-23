@@ -180,3 +180,47 @@ test('manifest and declared asset maximum sizes fail before parsing or fetching'
   );
   assert.equal(requests, 0);
 });
+
+test('a chunked manifest without Content-Length cancels as soon as the limit is exceeded', async () => {
+  const chunks = [
+    Buffer.alloc(128 * 1024, 0x20),
+    Buffer.alloc(128 * 1024 + 1, 0x20),
+    Buffer.alloc(1, 0x20),
+  ];
+  let reads = 0;
+  let cancelled = false;
+  let usedArrayBufferFallback = false;
+  await assert.rejects(
+    transport.fetchManifestJson('assets/asset-manifest.json', {
+      fetchFn: async () => ({
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        body: {
+          getReader() {
+            return {
+              async read() {
+                const value = chunks[reads];
+                reads += 1;
+                return value ? { done: false, value } : { done: true, value: undefined };
+              },
+              async cancel() {
+                cancelled = true;
+              },
+            };
+          },
+        },
+        async arrayBuffer() {
+          usedArrayBufferFallback = true;
+          throw new Error('streaming responses must not use the arrayBuffer fallback');
+        },
+      }),
+    }),
+    error => error.code === 'INVALID_MANIFEST'
+      && error.details.actualBytes === transport.MANIFEST_MAX_BYTES + 1
+      && error.details.maximumBytes === transport.MANIFEST_MAX_BYTES,
+  );
+  assert.equal(reads, 2);
+  assert.equal(cancelled, true);
+  assert.equal(usedArrayBufferFallback, false);
+});

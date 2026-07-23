@@ -8,13 +8,13 @@ The July 19, 2026 League Pulse build keeps the shell split and adds an eighth dy
 | After tab splitting | 170,462 | 51,698 | 31,570 | 298,892 |
 | League Pulse home | 171,382 | 52,050 | 31,590 | 306,830 |
 | Cache-safe data freshness | 177,866 | 54,142 | 33,728 | 310,894 |
-| Audit acceptance coverage | 177,873 | 54,159 | 33,728 | 311,058 |
+| Audit acceptance coverage | 177,873 | 54,159 | 33,728 | 311,263 |
 
-The Pulse controller entry is 24,145 bytes raw / 7,010 bytes gzip. Its shared curse-tracker dependency is 23,615 bytes raw / 7,443 bytes gzip, keeping those combined feature chunks at 14,453 bytes gzip. Feature CSS is 5,059 bytes raw / 1,378 bytes gzip. The cold Pulse route remains smaller than the former History default and does not include Observable Plot.
+The Pulse controller entry is 24,145 bytes raw / 7,012 bytes gzip. Its shared curse-tracker dependency is 23,615 bytes raw / 7,444 bytes gzip, keeping those combined feature chunks at 14,456 bytes gzip. Feature CSS is 5,059 bytes raw / 1,378 bytes gzip. The cold Pulse route remains smaller than the former History default and does not include Observable Plot.
 
 The cache-safe build adds the global freshness disclosure and browser verification transport without a hashing dependency. Its lazy data-loader chunk is 4,468 bytes raw / 1,908 bytes gzip; the measured cold Pulse closure is 104,674 bytes gzip, and the aggregate build retains 4,106 bytes of headroom under the unchanged ceiling.
 
-The July 23 audit-remediation build adds only test-facing snapshot infrastructure and transport size guards to the product surface. Its cold History closure is 107,419 bytes gzip, its cold Pulse closure is 104,832 bytes gzip, and the aggregate build retains 3,942 bytes of headroom under the unchanged ceiling.
+The July 23 audit-remediation build adds only test-facing snapshot infrastructure and bounded streaming transport guards to the product surface. Its cold History closure is 107,615 bytes gzip, its cold Pulse closure is 105,029 bytes gzip, and the aggregate build retains 3,737 bytes of headroom under the unchanged ceiling.
 
 ## Cold route closures
 
@@ -22,14 +22,14 @@ The values below use each route's production-manifest static-import closure, cou
 
 | Route | JavaScript gzip |
 | --- | ---: |
-| League Pulse | 104,832 |
-| History | 107,419 |
-| Draft Spot | 227,566 |
-| Historical Matchup | 221,307 |
-| Trophy Case | 227,346 |
-| Head to Head | 227,549 |
-| Dynasty Rankings | 228,477 |
-| Current Season | 234,908 |
+| League Pulse | 105,029 |
+| History | 107,615 |
+| Draft Spot | 227,763 |
+| Historical Matchup | 221,502 |
+| Trophy Case | 227,541 |
+| Head to Head | 227,743 |
+| Dynasty Rankings | 228,672 |
+| Current Season | 235,103 |
 
 Each value is the complete transitive JavaScript closure for a cold direct route, including the shell, shared feature core, verified data loader, and validator chunks. Chart routes also include the shared 407,377-byte raw / 134,250-byte gzip `chart-runtime` chunk. It contains the single Observable Plot/vendor copy and is absent from cold Pulse and History requests. Draft Spot requests this runtime dynamically for its pick-distribution and timeline charts, so its complete closure includes that dynamic import.
 

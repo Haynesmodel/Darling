@@ -12,7 +12,9 @@ This record supersedes the July 16 release snapshot for the eight-tab shell, Lea
 | Freshness disclosure | Playwright Chromium keyboard + forced colors | Pass | Native disclosure focus, logical order, reload naming, warning state | @Haynesmodel | None |
 | Time-only reassessment | Playwright Chromium fake clock | Pass | No assertive region or duplicate freshness summary after reassessment | @Haynesmodel | None |
 | Narrow layout | Playwright Chromium, 320/375/390/768 widths | Pass | Pulse and disclosure do not clip or overflow | @Haynesmodel | None |
-| WebKit smoke | Playwright WebKit | Blocked locally | Playwright does not ship WebKit for the local macOS 13 ARM64 host; the required six-test production-preview lane remains enforced in hosted CI | @Haynesmodel | Confirm the required PR check |
+| WebKit smoke | Hosted Playwright WebKit | Pass | [Run 30013620852](https://github.com/Haynesmodel/Darling/actions/runs/30013620852) passed all six production-preview smoke tests on the first attempt and `ci / gate` passed | @Haynesmodel | None |
+
+Local automation note: Playwright does not publish a WebKit binary for this macOS 13 ARM64 host, so hosted CI is the authoritative automated WebKit environment.
 
 ## Manual environment gates
 

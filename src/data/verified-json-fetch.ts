@@ -48,6 +48,58 @@ export function versionedAssetUrl(path: string, basePath: string, sha256: string
   return `${withoutFragment}${separator}v=${sha256.slice('sha256:'.length)}${fragment}`;
 }
 
+function responseSizeError(
+  asset: string,
+  dataVersion: string | null,
+  actualBytes: number,
+  maximumBytes: number,
+  attempts: number,
+): DataLoadError {
+  return new DataLoadError(
+    asset === 'asset-manifest.json' ? 'INVALID_MANIFEST' : 'SIZE_MISMATCH',
+    asset,
+    `${asset}: response exceeds the maximum allowed size`,
+    dataVersion,
+    { actualBytes, maximumBytes, attempts },
+  );
+}
+
+async function streamedResponseBytes(
+  response: Response,
+  asset: string,
+  dataVersion: string | null,
+  attempts: number,
+  maximumBytes: number,
+): Promise<Uint8Array | null> {
+  const body = response.body;
+  if (!body || typeof body.getReader !== 'function') return null;
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value?.byteLength) continue;
+    totalBytes += value.byteLength;
+    if (totalBytes > maximumBytes) {
+      try {
+        void reader.cancel().catch(() => undefined);
+      } catch {
+        // Cancellation is best-effort; the size failure remains authoritative.
+      }
+      throw responseSizeError(asset, dataVersion, totalBytes, maximumBytes, attempts);
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
+
 async function responseBytes(
   response: Response,
   asset: string,
@@ -57,24 +109,13 @@ async function responseBytes(
 ): Promise<Uint8Array> {
   const declaredLength = Number(response.headers?.get?.('content-length'));
   if (Number.isFinite(declaredLength) && declaredLength > maximumBytes) {
-    throw new DataLoadError(
-      asset === 'asset-manifest.json' ? 'INVALID_MANIFEST' : 'SIZE_MISMATCH',
-      asset,
-      `${asset}: response exceeds the maximum allowed size`,
-      dataVersion,
-      { actualBytes: declaredLength, attempts },
-    );
+    throw responseSizeError(asset, dataVersion, declaredLength, maximumBytes, attempts);
   }
   try {
-    const bytes = new Uint8Array(await response.arrayBuffer());
+    const streamed = await streamedResponseBytes(response, asset, dataVersion, attempts, maximumBytes);
+    const bytes = streamed || new Uint8Array(await response.arrayBuffer());
     if (bytes.byteLength > maximumBytes) {
-      throw new DataLoadError(
-        asset === 'asset-manifest.json' ? 'INVALID_MANIFEST' : 'SIZE_MISMATCH',
-        asset,
-        `${asset}: response exceeds the maximum allowed size`,
-        dataVersion,
-        { actualBytes: bytes.byteLength, attempts },
-      );
+      throw responseSizeError(asset, dataVersion, bytes.byteLength, maximumBytes, attempts);
     }
     return bytes;
   } catch (error) {

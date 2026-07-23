@@ -14,6 +14,7 @@ export interface DataLoadErrorDetails {
   actualSha256?: string;
   expectedBytes?: number;
   actualBytes?: number;
+  maximumBytes?: number;
   attempts?: number;
 }
 

@@ -28,6 +28,8 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - name: Select npm 11.18.0
+        run: npm install --global npm@11.18.0
       - name: Install dependencies
         run: npm ci
       - name: Audit dependencies
@@ -77,6 +79,8 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - name: Select npm 11.18.0
+        run: npm install --global npm@11.18.0
       - name: Install dependencies
         run: npm ci
       - name: Download production artifact
@@ -141,6 +145,8 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - name: Select npm 11.18.0
+        run: npm install --global npm@11.18.0
       - name: Install dependencies
         run: npm ci
       - name: Install Chromium
@@ -202,6 +208,8 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - name: Select npm 11.18.0
+        run: npm install --global npm@11.18.0
       - name: Install dependencies
         run: npm ci
       - name: Download production artifact

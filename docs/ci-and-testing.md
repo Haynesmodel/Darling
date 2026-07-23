@@ -12,6 +12,7 @@ npm ci
 ```
 
 The repository uses `engine-strict=true`; an unsupported Node or npm major fails during installation. Run `nvm use 24` if that happens. The browser compilation target remains ES2022.
+The package-manager contract is npm 11.18.0; CI installs that declared version before `npm ci` so the lockfile toolchain does not drift with Node patch releases.
 
 ## Local browser commands
 

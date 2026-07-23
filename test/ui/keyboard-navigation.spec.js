@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './coverage-fixture.js';
 
 test('data freshness disclosure uses native keyboard activation', async ({ page }) => {
   await page.goto('/');

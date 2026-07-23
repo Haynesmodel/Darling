@@ -1,4 +1,4 @@
-const { defineConfig } = require('@playwright/test');
+const { defineConfig, devices } = require('@playwright/test');
 
 const usePreview = process.env.PLAYWRIGHT_SERVER === 'preview';
 const host = 'http://127.0.0.1:8000';
@@ -15,12 +15,28 @@ module.exports = defineConfig({
   testDir: './test/ui',
   timeout: 30_000,
   retries: process.env.CI ? 1 : 0,
+  forbidOnly: Boolean(process.env.CI),
+  failOnFlakyTests: Boolean(process.env.CI),
   workers: process.env.PLAYWRIGHT_WORKERS
     ? Number(process.env.PLAYWRIGHT_WORKERS)
-    : (usePreview || process.env.CI ? 1 : undefined),
+    : (usePreview || process.env.CI || process.env.COLLECT_COVERAGE === '1' ? 1 : undefined),
+  projects: [
+    {
+      name: 'chromium',
+      testIgnore: /webkit-smoke\.spec\.js/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'webkit-smoke',
+      testMatch: /webkit-smoke\.spec\.js/,
+      use: { ...devices['Desktop Safari'] },
+    },
+  ],
   use: {
     baseURL,
     trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
   },
   webServer: {
     command: serverCommand,

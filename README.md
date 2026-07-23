@@ -3,7 +3,7 @@
 Live site: https://haynesmodel.github.io/Darling/
 
 The live site is a Vite-built static page backed by JSON assets in `assets/`.
-Requires Node 20.x. Use [`.nvmrc`](./.nvmrc) or `nvm use` to match the supported runtime.
+Requires Node 24.x and npm 11.x. Run `nvm use 24` (using [`.nvmrc`](./.nvmrc)) before installing dependencies; strict engine checks reject unsupported runtimes.
 
 Run locally:
 - `npm run dev`
@@ -28,14 +28,17 @@ Test locally:
 - `npm run test:tables` runs the interactive table engine, row-adapter, quick-filter, and saved-view schema tests.
 - `npm run test:unit` regenerates the chart bundle, then runs typecheck, hygiene, asset validation, chart tests, Node unit tests, and Python tests.
 - `npm run test:scripts` runs the script helper tests, including the Python update helpers.
-- `npm run test:ui` runs the Playwright browser tests against the Vite dev server.
+- `npm run test:ui` runs the named Chromium suite and focused WebKit smoke project against the Vite dev server.
+- `npm run test:ui:chromium` runs only the full 108-test Chromium project.
+- `npm run test:ui:webkit` runs only the six WebKit compatibility smoke contracts.
 - `npm run test:a11y` runs axe WCAG A/AA scans across pages and interaction states.
 - `npm run test:keyboard` runs tab, disclosure, dialog, skip-link, motion, and responsive keyboard checks.
-- `npm run test:ui:preview` runs the Playwright browser tests against a previously built `dist/` bundle under `/Darling/`.
-- `npm run test:ui:preview:serial` is the explicit one-worker diagnostic form; preview runs use one worker by default for local/CI parity.
-- `npm run test:coverage` runs the Node tests, browser tests, and coverage check.
-- `npm run test:ci` runs the local unit, GitHub Pages production build, and built-output UI checks that mirror CI.
-- GitHub branch protection should require the `CI / unit`, `CI / ui`, and `CI / coverage` checks.
+- `npm run test:ui:preview:chromium` runs the Chromium project against a previously built `dist/` bundle under `/Darling/`.
+- `npm run test:ui:preview:webkit` runs the WebKit smoke project against that same bundle. Preview, CI, and coverage modes use one worker.
+- `npm run test:coverage` merges c8 Node coverage with source-mapped, instrumented Chromium coverage and enforces global, per-file, and changed-file policy.
+- `npm run test:ci` sets `CI=1` for every child, runs quality checks, builds once, and exercises that production bundle with Chromium and WebKit.
+- GitHub branch protection should require only the stable `ci / gate` check after that context has appeared successfully on the default branch.
+- See [`docs/ci-and-testing.md`](./docs/ci-and-testing.md) for the job graph, artifact contract, coverage policy, and failure triage.
 
 Primary web-served data:
 - `assets/H2H.json`

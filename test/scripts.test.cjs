@@ -18,6 +18,7 @@ const { createStaticServer, normalizeBasePath, resolvePath } = require('../scrip
 const { syncPublicAssets } = require('../scripts/sync_public_assets.cjs');
 const { validateHeroAssets } = require('../scripts/validate_assets.cjs');
 const { buildCoverageSummary, isTypeOnlySourceFile } = require('../scripts/v8_coverage_report.cjs');
+const { propagateResult } = require('../scripts/run_tests_with_coverage.cjs');
 
 async function withTempRepo(fn) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-hygiene-'));
@@ -662,20 +663,33 @@ test('coverage reporter fails when a source file never appears in coverage outpu
   });
 });
 
-test('coverage summary checker accepts a valid summary file', async () => {
+test('coverage policy checker accepts all four metrics', async () => {
   await withTempRepo((root) => {
     fs.mkdirSync(path.join(root, 'coverage'));
+    const metrics = {
+      lines: { pct: 100 },
+      statements: { pct: 100 },
+      functions: { pct: 100 },
+      branches: { pct: 100 },
+    };
     fs.writeFileSync(path.join(root, 'coverage', 'coverage-summary.json'), JSON.stringify({
-      total: {
-        lines: {
-          pct: 100,
-        },
-      },
+      total: metrics,
+      [path.join(root, 'js', 'app.js')]: metrics,
     }));
+    fs.writeFileSync(path.join(root, 'coverage.config.cjs'), [
+      'module.exports = {',
+      '  global: { lines: 80, statements: 80, functions: 80, branches: 80 },',
+      '  perFile: { lines: 80, statements: 80, functions: 80, branches: 80 },',
+      '  changedFiles: { lines: 80, statements: 80, functions: 80, branches: 80 },',
+      '  overrides: {},',
+      '};',
+      '',
+    ].join('\n'));
 
     const result = runNode(path.join(__dirname, '..', 'scripts', 'check_coverage.cjs'), [], root);
     assert.equal(result.status, 0);
-    assert.match(result.stdout, /Coverage 100% meets minimum 80%/);
+    assert.match(result.stdout, /Coverage gate passed/);
+    assert.match(result.stdout, /branches 100%/);
   });
 });
 
@@ -690,6 +704,15 @@ test('run_tests_with_coverage can execute in a minimal temp repo', async () => {
     const result = runNode(path.join(__dirname, '..', 'scripts', 'run_tests_with_coverage.cjs'), [], root);
     assert.equal(result.status, 0);
   });
+});
+
+test('run_tests_with_coverage propagates child status and termination signals', () => {
+  const calls = [];
+  const processApi = { pid: 42, kill: (...args) => calls.push(args) };
+  assert.equal(propagateResult({ status: 0, signal: null }, processApi), 0);
+  assert.equal(propagateResult({ status: null, signal: null }, processApi), 1);
+  assert.equal(propagateResult({ status: null, signal: 'SIGTERM' }, processApi), 1);
+  assert.deepEqual(calls, [[42, 'SIGTERM']]);
 });
 
 test('asset validation cli accepts the canonical bundle', async () => {

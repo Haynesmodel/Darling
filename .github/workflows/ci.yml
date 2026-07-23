@@ -7,128 +7,257 @@ on:
       - main
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  unit:
-    name: unit
+  quality_build:
+    name: quality + build
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      dist_digest: ${{ steps.dist.outputs.artifact-digest }}
     env:
-      CI: true
-
+      CI: '1'
+      VITE_BASE_PATH: /Darling/
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
-
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
-
       - name: Install dependencies
         run: npm ci
+      - name: Audit dependencies
+        run: npm audit --audit-level=moderate
+      - name: Run quality, unit, and data checks
+        run: npm run test:unit
+      - name: Build and audit production site
+        run: npm run build
+      - name: Upload immutable production artifact
+        id: dist
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: darling-dist-${{ github.sha }}
+          path: dist/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+      - name: Summarize quality and artifact
+        if: always()
+        env:
+          ARTIFACT_DIGEST: ${{ steps.dist.outputs.artifact-digest }}
+        run: |
+          {
+            echo '### Quality + build'
+            echo "- Node: $(node --version)"
+            echo "- npm: $(npm --version)"
+            echo "- Artifact: darling-dist-${GITHUB_SHA}"
+            echo "- Digest: ${ARTIFACT_DIGEST:-unavailable}"
+            if [[ -d dist ]]; then
+              echo "- Files: $(find dist -type f | wc -l | tr -d ' ')"
+              echo "- Bytes: $(du -sk dist | awk '{print $1 * 1024}')"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Run CSS architecture checks
-        run: npm run lint:css && npm run check:css
-
-      - name: Run unit/data test suite
-        run: npm run test:unit:core
-
-      - name: Run production build
-        run: VITE_BASE_PATH=/Darling/ npm run build
-
-  ui:
-    name: ui
+  chromium:
+    name: browser / chromium
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: unit
+    needs: quality_build
     env:
-      CI: true
-
+      CI: '1'
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
-
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
-
       - name: Install dependencies
         run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-
-      - name: Build production site
-        run: VITE_BASE_PATH=/Darling/ npm run build
-
-      - name: Run functional, keyboard, responsive, and accessibility UI suite
-        run: npm run test:ui:preview
-
-      - name: Upload Playwright report
+      - name: Download production artifact
+        id: dist
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: darling-dist-${{ github.sha }}
+          path: dist/
+          digest-mismatch: error
+      - name: Validate production artifact
+        run: |
+          test -f dist/index.html
+          test -f dist/assets/asset-manifest.json
+          test -f dist/.vite/manifest.json
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run full Chromium preview suite
+        run: npm run test:ui:preview:chromium
+      - name: Upload Chromium Playwright report
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: playwright-report
+          name: playwright-report-chromium-${{ github.run_id }}-${{ github.run_attempt }}
           path: playwright-report/
           if-no-files-found: ignore
           retention-days: 7
-
-      - name: Upload Playwright test results
+      - name: Upload Chromium test results
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: test-results
+          name: test-results-chromium-${{ github.run_id }}-${{ github.run_attempt }}
           path: test-results/
           if-no-files-found: ignore
           retention-days: 7
+      - name: Summarize Chromium lane
+        if: always()
+        env:
+          ARTIFACT_DIGEST: ${{ needs.quality_build.outputs.dist_digest }}
+        run: |
+          {
+            echo '### Browser / Chromium'
+            echo "- Playwright: $(npx playwright --version)"
+            echo '- Project: chromium'
+            echo "- Artifact digest validated: ${ARTIFACT_DIGEST:-unavailable}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   coverage:
     name: coverage
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    needs: ui
+    needs: quality_build
     env:
-      CI: true
-
+      CI: '1'
+      COVERAGE_BASE_SHA: ${{ github.event.pull_request.base.sha }}
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Check out repository with comparison history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 20
+          fetch-depth: 0
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
           cache: npm
-
       - name: Install dependencies
         run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-
-      - name: Run coverage gate
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run corrected Node and browser coverage gate
         run: npm run test:coverage
-
-      - name: Upload Playwright report
-        if: failure()
-        uses: actions/upload-artifact@v4
+      - name: Upload compact coverage reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: playwright-report
+          name: coverage-summary-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            coverage/coverage-summary.json
+            coverage/coverage-final.json
+            coverage/coverage-meta.json
+            coverage/lcov.info
+            coverage/text-summary.txt
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Upload coverage diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            coverage/html/
+            coverage/raw/
+          if-no-files-found: ignore
+          retention-days: 2
+      - name: Summarize coverage lane
+        if: always()
+        run: |
+          {
+            echo '### Coverage'
+            if [[ -f coverage/text-summary.txt ]]; then
+              echo '```text'
+              cat coverage/text-summary.txt
+              echo '```'
+            else
+              echo '- Coverage summary unavailable; inspect diagnostics.'
+            fi
+            if [[ -d coverage/raw ]]; then
+              echo "- Raw bytes: $(du -sk coverage/raw | awk '{print $1 * 1024}')"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  webkit_smoke:
+    name: browser / webkit-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: quality_build
+    env:
+      CI: '1'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Download production artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: darling-dist-${{ github.sha }}
+          path: dist/
+          digest-mismatch: error
+      - name: Validate production artifact
+        run: |
+          test -f dist/index.html
+          test -f dist/assets/asset-manifest.json
+          test -f dist/.vite/manifest.json
+      - name: Install WebKit
+        run: npx playwright install --with-deps webkit
+      - name: Run focused WebKit smoke suite
+        run: npm run test:ui:preview:webkit
+      - name: Upload WebKit Playwright report
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-report-webkit-${{ github.run_id }}-${{ github.run_attempt }}
           path: playwright-report/
           if-no-files-found: ignore
           retention-days: 7
-
-      - name: Upload Playwright test results
+      - name: Upload WebKit test results
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: test-results
+          name: test-results-webkit-${{ github.run_id }}-${{ github.run_attempt }}
           path: test-results/
           if-no-files-found: ignore
           retention-days: 7
+      - name: Summarize WebKit lane
+        if: always()
+        env:
+          ARTIFACT_DIGEST: ${{ needs.quality_build.outputs.dist_digest }}
+        run: |
+          {
+            echo '### Browser / WebKit smoke'
+            echo "- Playwright: $(npx playwright --version)"
+            echo '- Project: webkit-smoke'
+            echo '- Coverage: disabled'
+            echo "- Artifact digest validated: ${ARTIFACT_DIGEST:-unavailable}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  gate:
+    name: ci / gate
+    if: always()
+    needs: [quality_build, chromium, coverage, webkit_smoke]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Require every CI lane
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: node scripts/check_ci_results.cjs

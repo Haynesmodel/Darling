@@ -1,8 +1,25 @@
 import { defineConfig } from 'vite';
 import preact from '@preact/preset-vite';
+import istanbul from 'vite-plugin-istanbul';
+
+const collectCoverage = process.env.COLLECT_COVERAGE === '1';
 
 export default defineConfig({
-  plugins: [preact()],
+  plugins: [
+    preact(),
+    ...(collectCoverage ? [istanbul({
+      include: ['src/**/*.{ts,tsx}', 'js/**/*.js'],
+      exclude: [
+        'src/data/generated/**',
+        'js/charting/vendor/**',
+        'test/**',
+        '**/*.d.ts',
+      ],
+      extension: ['.js', '.ts', '.tsx'],
+      requireEnv: false,
+      forceBuildInstrument: false,
+    })] : []),
+  ],
   base: process.env.VITE_BASE_PATH || '/',
   publicDir: 'public',
   build: {

@@ -65,7 +65,6 @@ function directPlotImports({
     const stat = fsImpl.statSync(target);
     if (stat.isDirectory()) {
       fsImpl.readdirSync(target, { withFileTypes: true })
-        .filter(entry => entry.name !== 'vendor')
         .forEach(entry => visit(path.join(target, entry.name)));
       return;
     }

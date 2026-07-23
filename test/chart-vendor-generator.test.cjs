@@ -98,11 +98,15 @@ test('normal write emits the same bytes as in-memory generation', async () => {
 test('authored browser imports of the Plot package are rejected', async () => {
   await withTempDir(root => {
     const source = path.join(root, 'src', 'feature.ts');
+    const nestedVendorSource = path.join(root, 'src', 'vendor', 'feature.ts');
     fs.mkdirSync(path.dirname(source), { recursive: true });
+    fs.mkdirSync(path.dirname(nestedVendorSource), { recursive: true });
     fs.writeFileSync(source, "import { plot } from '@observablehq/plot';\n");
-    assert.deepEqual(directPlotImports({ root }), ['src/feature.ts']);
+    fs.writeFileSync(nestedVendorSource, "import { barY } from '@observablehq/plot';\n");
+    assert.deepEqual(directPlotImports({ root }), ['src/feature.ts', 'src/vendor/feature.ts']);
     assert.throws(() => assertImportBoundary({ root }), /src\/feature\.ts/);
     fs.writeFileSync(source, "import { plot } from '../js/charting/vendor/charting-vendor.js';\n");
+    fs.writeFileSync(nestedVendorSource, "import { barY } from '../../js/charting/vendor/charting-vendor.js';\n");
     assert.deepEqual(directPlotImports({ root }), []);
   });
 });

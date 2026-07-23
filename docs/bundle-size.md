@@ -10,7 +10,7 @@ The July 19, 2026 League Pulse build keeps the shell split and adds an eighth dy
 | Cache-safe data freshness | 177,866 | 54,142 | 33,728 | 310,894 |
 | Audit acceptance coverage | 177,873 | 54,159 | 33,728 | 311,058 |
 
-The Pulse controller entry is 24,145 bytes raw / 7,010 bytes gzip. Its extracted model dependency is 23,615 bytes raw / 7,443 bytes gzip, keeping combined Pulse feature logic at 14,453 bytes gzip. Feature CSS is 5,059 bytes raw / 1,378 bytes gzip. The cold Pulse route remains smaller than the former History default and does not include Observable Plot.
+The Pulse controller entry is 24,145 bytes raw / 7,010 bytes gzip. Its shared curse-tracker dependency is 23,615 bytes raw / 7,443 bytes gzip, keeping those combined feature chunks at 14,453 bytes gzip. Feature CSS is 5,059 bytes raw / 1,378 bytes gzip. The cold Pulse route remains smaller than the former History default and does not include Observable Plot.
 
 The cache-safe build adds the global freshness disclosure and browser verification transport without a hashing dependency. Its lazy data-loader chunk is 4,468 bytes raw / 1,908 bytes gzip; the measured cold Pulse closure is 104,674 bytes gzip, and the aggregate build retains 4,106 bytes of headroom under the unchanged ceiling.
 
@@ -24,14 +24,14 @@ The manifest checker counts the shell, static dependencies, requested feature, a
 | --- | ---: |
 | League Pulse | 104,832 |
 | History | 107,419 |
-| Draft Spot | 223,061 |
-| Historical Matchup | 217,295 |
-| Trophy Case | 223,418 |
-| Head to Head | 223,638 |
-| Dynasty Rankings | 224,493 |
-| Current Season | 231,118 |
+| Draft Spot | 227,566 |
+| Historical Matchup | 221,307 |
+| Trophy Case | 227,346 |
+| Head to Head | 227,549 |
+| Dynasty Rankings | 228,477 |
+| Current Season | 234,908 |
 
-Chart routes include the shared 407,377-byte raw / 134,250-byte gzip `chart-runtime` chunk. It contains the single Observable Plot/vendor copy and is absent from cold History requests. Draft Spot requests this runtime for its pick-distribution and timeline charts, so its complete cold-route closure includes the chunk.
+Each value is the complete transitive JavaScript closure for a cold direct route, including the shell, shared feature core, verified data loader, and validator chunks. Chart routes also include the shared 407,377-byte raw / 134,250-byte gzip `chart-runtime` chunk. It contains the single Observable Plot/vendor copy and is absent from cold Pulse and History requests. Draft Spot requests this runtime dynamically for its pick-distribution and timeline charts, so its complete closure includes that dynamic import.
 
 ## Enforced contracts
 

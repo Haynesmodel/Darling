@@ -15,8 +15,8 @@
 
 - Node/unit coverage tests: 268 passed.
 - Instrumented Chromium: 113 passed, one intentional production-build-only assertion skipped.
-- Coverage: 91.46% lines, 88.99% statements, 88.34% functions, 78.88% branches.
-- Raw coverage: 5,367,709 / 25,000,000 bytes after removing converted V8 intermediates.
+- Coverage: 91.48% lines, 89.00% statements, 88.34% functions, 78.89% branches.
+- Raw coverage: 5,367,712 / 25,000,000 bytes after removing converted V8 intermediates.
 - Production build: 177,873-byte entry, 54,159-byte entry gzip, 104,832-byte cold Pulse, 107,419-byte cold History, 311,058-byte total JavaScript gzip.
 
 ## Explicitly open operational gates

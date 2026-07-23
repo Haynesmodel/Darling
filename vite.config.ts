@@ -1,8 +1,53 @@
+import path from 'node:path';
 import { defineConfig } from 'vite';
 import preact from '@preact/preset-vite';
+import instrumentLibrary from 'istanbul-lib-instrument';
+
+const collectCoverage = process.env.COLLECT_COVERAGE === '1';
+const { createInstrumenter } = instrumentLibrary;
+
+function toPosix(value: string) {
+  return value.split(path.sep).join('/');
+}
+
+function isCoverageSource(id: string) {
+  const filename = id.split('?')[0];
+  const relative = toPosix(path.relative(process.cwd(), filename));
+  if (!relative || relative.startsWith('../') || path.isAbsolute(relative)) return false;
+  if (relative.endsWith('.d.ts')) return false;
+  if (relative.startsWith('src/data/generated/') || relative.startsWith('js/charting/vendor/')) return false;
+  return /^src\/.*\.(?:ts|tsx)$/.test(relative) || /^js\/.*\.js$/.test(relative);
+}
+
+function createCoveragePlugin() {
+  const instrumenter = createInstrumenter({
+    coverageGlobalScopeFunc: false,
+    coverageGlobalScope: 'globalThis',
+    preserveComments: true,
+    produceSourceMap: true,
+    autoWrap: true,
+    esModules: true,
+    compact: false,
+    parserPlugins: ['typescript', 'jsx'],
+  });
+  return {
+    name: 'darling:istanbul',
+    apply: 'serve' as const,
+    enforce: 'pre' as const,
+    transform(source: string, id: string, options?: { ssr?: boolean }) {
+      if (options?.ssr || !isCoverageSource(id)) return null;
+      const filename = id.split('?')[0];
+      const code = instrumenter.instrumentSync(source, filename);
+      return { code, map: instrumenter.lastSourceMap() };
+    },
+  };
+}
 
 export default defineConfig({
-  plugins: [preact()],
+  plugins: [
+    ...(collectCoverage ? [createCoveragePlugin()] : []),
+    preact(),
+  ],
   base: process.env.VITE_BASE_PATH || '/',
   publicDir: 'public',
   build: {

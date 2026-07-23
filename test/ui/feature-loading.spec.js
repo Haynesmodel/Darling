@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { expect, test } from '@playwright/test';
+import { expect, test } from './coverage-fixture.js';
 
 const preview = process.env.PLAYWRIGHT_SERVER === 'preview';
 const manifest = preview

@@ -11,6 +11,7 @@ const canonicalCurrent = JSON.parse(fs.readFileSync(path.join(root, 'assets/Curr
 const summaries = JSON.parse(fs.readFileSync(path.join(root, 'assets/SeasonSummary.json'), 'utf8'));
 let tempDir;
 let freshness;
+let freshnessRuntime;
 
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
 function currentAt(generatedAt, status = 'scheduled') {
@@ -22,9 +23,14 @@ function currentAt(generatedAt, status = 'scheduled') {
 
 test.before(async () => {
   tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-freshness-'));
-  const outfile = path.join(tempDir, 'freshness.mjs');
-  await esbuild.build({ entryPoints: [path.join(root, 'src/data/data-freshness.ts')], outfile, bundle: true, platform: 'node', format: 'esm', target: 'node20', logLevel: 'silent' });
-  freshness = await import(`${pathToFileURL(outfile).href}?${Date.now()}`);
+  const freshnessOutput = path.join(tempDir, 'freshness.mjs');
+  const runtimeOutput = path.join(tempDir, 'freshness-runtime.mjs');
+  await Promise.all([
+    esbuild.build({ entryPoints: [path.join(root, 'src/data/data-freshness.ts')], outfile: freshnessOutput, bundle: true, platform: 'node', format: 'esm', target: 'node20', logLevel: 'silent' }),
+    esbuild.build({ entryPoints: [path.join(root, 'src/components/data-freshness/DataFreshnessBadge.tsx')], outfile: runtimeOutput, bundle: true, platform: 'node', format: 'esm', target: 'node20', logLevel: 'silent' }),
+  ]);
+  freshness = await import(`${pathToFileURL(freshnessOutput).href}?${Date.now()}`);
+  freshnessRuntime = await import(`${pathToFileURL(runtimeOutput).href}?${Date.now()}`);
 });
 
 test.after(() => fs.rmSync(tempDir, { recursive: true, force: true }));
@@ -67,4 +73,29 @@ test('optional failures overlay partial state without hiding a stale warning', (
   assert.equal(assessment.label, 'Data may be stale');
   assert.equal(assessment.partial, true);
   assert.deepEqual(assessment.partialAssets, ['Rivalries']);
+});
+
+test('freshness runtime replays published state to a late subscriber', () => {
+  const runtime = freshnessRuntime.createDataFreshnessRuntime();
+  const snapshot = {
+    currentSeason: canonicalCurrent,
+    seasonSummaries: summaries,
+    optionalFailures: [],
+    dataVersion: 'sha256:fixture',
+    coreVerified: true,
+  };
+  runtime.publish(snapshot);
+
+  let notifications = 0;
+  const unsubscribe = runtime.subscribe(() => {
+    notifications += 1;
+  });
+  assert.equal(notifications, 1);
+  assert.equal(runtime.current(), snapshot);
+
+  runtime.publish({ ...snapshot, dataVersion: 'sha256:updated' });
+  assert.equal(notifications, 2);
+  unsubscribe();
+  runtime.publish({ ...snapshot, dataVersion: 'sha256:ignored' });
+  assert.equal(notifications, 2);
 });

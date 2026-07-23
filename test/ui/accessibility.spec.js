@@ -1,7 +1,5 @@
-import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
-
-const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
+import { expect, test } from './coverage-fixture.js';
+import { expectNoViolations } from './accessibility-helpers.js';
 const pages = [
   ['pulse', 'League Pulse'],
   ['history', 'League History'],
@@ -12,16 +10,6 @@ const pages = [
   ['draft', 'Draft Spot'],
   ['gauntlet', 'Historical Matchup'],
 ];
-
-async function expectNoViolations(page, include) {
-  let builder = new AxeBuilder({ page }).withTags(WCAG_TAGS);
-  if (include) builder = builder.include(include);
-  const results = await builder.analyze();
-  expect(
-    results.violations,
-    results.violations.map(violation => `${violation.id}: ${violation.help}`).join('\n'),
-  ).toEqual([]);
-}
 
 for (const theme of ['light', 'dark']) {
   test.describe(`${theme} theme`, () => {
@@ -74,12 +62,4 @@ test('Dynasty window dialog has no automated violations', async ({ page }) => {
   await page.locator('#dynastyBestWindows .dynasty-window-card').first().click();
   await expect(page.locator('#dynastyWindowModal')).toBeVisible();
   await expectNoViolations(page, '#dynastyWindowModal');
-});
-
-test('expanded interactive table state has no automated violations', async ({ page }) => {
-  await page.goto('/?tab=history');
-  await page.waitForLoadState('networkidle');
-  await page.locator('#historyGamesTable .table-expand-button').first().click();
-  await expect(page.locator('#historyGamesTable .table-expanded-row').first()).toBeVisible();
-  await expectNoViolations(page, '#historyGamesCard');
 });

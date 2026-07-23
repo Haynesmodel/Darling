@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { expect, test } from '@playwright/test';
+import { expect, test } from './coverage-fixture.js';
 
 const manifest = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'assets/asset-manifest.json'), 'utf8'));
 
@@ -120,7 +120,7 @@ test('Draft Spot uses its own version and evicts a failed verification promise',
 });
 
 test('a long-open Pulse and global badge reassess together without network polling', async ({ page }) => {
-  await page.clock.install({ time: new Date('2026-08-14T23:59:00Z') });
+  await page.clock.setFixedTime(new Date('2026-08-14T23:59:00Z'));
   let dataRequests = 0;
   page.on('request', request => {
     if (request.url().includes('/assets/') && request.url().includes('.json')) dataRequests += 1;
@@ -128,7 +128,7 @@ test('a long-open Pulse and global badge reassess together without network polli
   await page.goto('/');
   await expect(page.locator('.data-freshness summary')).toContainText('2025 season final');
   const bootRequests = dataRequests;
-  await page.clock.fastForward(2 * 60 * 1000);
+  await page.clock.setFixedTime(new Date('2026-08-15T00:01:00Z'));
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   await expect(page.locator('.data-freshness summary')).toContainText('2026 data not available');
   await expect(page.locator('.pulse-data-note')).toContainText('2026 data not available');

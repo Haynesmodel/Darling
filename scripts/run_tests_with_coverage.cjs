@@ -1,18 +1,33 @@
-/* Run tests with V8 coverage output for c8 to consume. */
+/* Select the JavaScript tests executed by c8's Node coverage child. */
 const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
+function selectTestFiles(root = process.cwd()) {
+  const testDir = path.join(root, 'test');
+  return fs.readdirSync(testDir)
+    .filter(file => /\.test\.(js|cjs)$/.test(file))
+    .filter(file => file !== 'data.test.js')
+    .map(file => path.join('test', file))
+    .sort();
+}
 
-const coverageDir = path.join(process.cwd(), 'coverage', '.v8');
-fs.rmSync(coverageDir, { recursive: true, force: true });
-fs.mkdirSync(coverageDir, { recursive: true });
+function propagateResult(result, processApi = process) {
+  if (result.signal) {
+    processApi.kill(processApi.pid, result.signal);
+    return 1;
+  }
+  return result.status ?? 1;
+}
 
-const env = { ...process.env, NODE_V8_COVERAGE: coverageDir };
-const testDir = path.join(process.cwd(), 'test');
-const testFiles = fs.readdirSync(testDir)
-  .filter(file => /\.test\.(js|cjs)$/.test(file))
-  .filter(file => file !== 'data.test.js')
-  .map(file => path.join('test', file))
-  .sort();
-const res = spawnSync(process.execPath, ['--test', ...testFiles], { stdio: 'inherit', env });
-process.exit(res.status ?? 1);
+function run(root = process.cwd()) {
+  const result = spawnSync(process.execPath, ['--test', ...selectTestFiles(root)], {
+    cwd: root,
+    stdio: 'inherit',
+    env: process.env,
+  });
+  return propagateResult(result);
+}
+
+if (require.main === module) process.exit(run());
+
+module.exports = { propagateResult, run, selectTestFiles };

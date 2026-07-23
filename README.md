@@ -36,7 +36,7 @@ Test locally:
 - `npm run test:ui:preview:chromium` runs the Chromium project against a previously built `dist/` bundle under `/Darling/`.
 - `npm run test:ui:preview:webkit` runs the WebKit smoke project against that same bundle. Preview, CI, and coverage modes use one worker.
 - `npm run test:coverage` merges c8 Node coverage with source-mapped, instrumented Chromium coverage and enforces global, per-file, and changed-file policy.
-- `npm run test:ci` sets `CI=1` for every child, runs quality checks, builds once, and exercises that production bundle with Chromium and WebKit.
+- `npm run test:ci` sets `CI=1` for every child, runs quality checks, builds once, and exercises that production bundle with Chromium plus WebKit when Playwright supports the local platform. Hosted CI always requires WebKit.
 - GitHub branch protection should require only the stable `ci / gate` check after that context has appeared successfully on the default branch.
 - See [`docs/ci-and-testing.md`](./docs/ci-and-testing.md) for the job graph, artifact contract, coverage policy, and failure triage.
 

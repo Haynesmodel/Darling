@@ -37,7 +37,7 @@ const {
   runCommand,
   runSequence,
 } = require('../scripts/process_runner.cjs');
-const { reportFailure, runCi } = require('../scripts/run_ci.cjs');
+const { detectLocalWebKitSupport, reportFailure, runCi } = require('../scripts/run_ci.cjs');
 const {
   assertCoverageDirectory,
   cleanCoverageDirectory,
@@ -549,7 +549,9 @@ test('preview launcher sets environment portably and selects named projects', as
 
 test('local CI orchestrator sets CI and builds exactly once', async () => {
   const calls = [];
-  await runCi(async (...args) => calls.push(args));
+  await runCi(async (...args) => calls.push(args), {
+    detectWebKitSupport: () => ({ platform: 'fixture', supported: true }),
+  });
   assert.deepEqual(calls.map(call => call[0]), [
     'npm version',
     'unit and data checks',
@@ -573,6 +575,46 @@ test('local CI orchestrator sets CI and builds exactly once', async () => {
     console.error = originalError;
     process.exitCode = originalExitCode;
   }
+});
+
+test('local CI skips only unavailable WebKit builds while hosted WebKit remains required', async () => {
+  assert.deepEqual(detectLocalWebKitSupport({
+    utils: { hostPlatform: 'mac13-arm64' },
+    registry: {
+      registry: {
+        findExecutable: browser => {
+          assert.equal(browser, 'webkit');
+          return { downloadURLs: [] };
+        },
+      },
+    },
+  }), {
+    platform: 'mac13-arm64',
+    supported: false,
+  });
+
+  const calls = [];
+  const warnings = [];
+  const originalWarn = console.warn;
+  console.warn = message => warnings.push(message);
+  try {
+    await runCi(async (...args) => calls.push(args), {
+      detectWebKitSupport: () => ({ platform: 'mac13-arm64', supported: false }),
+    });
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  assert.deepEqual(calls.map(call => call[0]), [
+    'npm version',
+    'unit and data checks',
+    'production build',
+    'Chromium production preview',
+  ]);
+  assert.deepEqual(warnings, [
+    'Skipping local WebKit production preview: Playwright does not publish WebKit for mac13-arm64. '
+      + 'Hosted CI still requires the WebKit smoke lane.',
+  ]);
 });
 
 test('coverage orchestrator enables instrumentation only for Chromium', async () => {

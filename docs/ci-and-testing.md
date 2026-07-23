@@ -19,7 +19,7 @@ The package-manager contract is npm 11.18.0; CI installs that declared version b
 - `npm run test:ui:chromium` runs the full Chromium suite against the Vite development server.
 - `npm run test:ui:webkit` runs the focused six-case WebKit smoke suite.
 - `npm run test:ui:preview:chromium` and `npm run test:ui:preview:webkit` use an existing `/Darling/` production build.
-- `npm run test:ci` sets `CI=1`, runs quality checks, builds once, then runs both production-preview projects.
+- `npm run test:ci` sets `CI=1`, runs quality checks, builds once, runs the Chromium production-preview project, and runs WebKit when the pinned Playwright release publishes a build for the local platform. When WebKit is unavailable, the command logs the detected platform and skips only that local lane; hosted CI always requires WebKit.
 
 Install only the browsers needed for local work:
 

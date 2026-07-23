@@ -245,6 +245,24 @@ test('repeating the search shortcut does not retain a duplicate scroll lock', as
   await expect(trigger).toBeFocused();
 });
 
+test('command palette wraps focus in both Tab directions', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+  await page.locator('.search-trigger').click();
+
+  const dialog = page.getByRole('dialog', { name: 'Search The Darling' });
+  const first = dialog.getByRole('button', { name: 'Close search' });
+  const last = dialog.getByRole('option').last();
+  await expect(dialog).toBeVisible();
+  await expect(last).toBeVisible();
+
+  await first.focus();
+  await page.keyboard.press('Shift+Tab');
+  await expect(last).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(first).toBeFocused();
+});
+
 test('the Dynasty heatmap is locally scrollable on mobile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?tab=dynasty');

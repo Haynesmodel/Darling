@@ -255,6 +255,7 @@ test('command palette wraps focus in both Tab directions', async ({ page }) => {
   const last = dialog.getByRole('option').last();
   await expect(dialog).toBeVisible();
   await expect(last).toBeVisible();
+  await expect(dialog.getByRole('combobox')).toBeFocused();
 
   await first.focus();
   await page.keyboard.press('Shift+Tab');

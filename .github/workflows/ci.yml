@@ -71,6 +71,7 @@ jobs:
     needs: quality_build
     env:
       CI: '1'
+      PLAYWRIGHT_JSON_OUTPUT_FILE: test-results/playwright-results.json
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -119,13 +120,11 @@ jobs:
         if: always()
         env:
           ARTIFACT_DIGEST: ${{ needs.quality_build.outputs.dist_digest }}
-        run: |
-          {
-            echo '### Browser / Chromium'
-            echo "- Playwright: $(npx playwright --version)"
-            echo '- Project: chromium'
-            echo "- Artifact digest validated: ${ARTIFACT_DIGEST:-unavailable}"
-          } >> "$GITHUB_STEP_SUMMARY"
+          ARTIFACT_VALIDATION: ${{ steps.dist.outcome }}
+          JOB_STATUS: ${{ job.status }}
+          REPORT_ARTIFACT_NAME: playwright-report-chromium-${{ github.run_id }}-${{ github.run_attempt }}
+          RESULTS_ARTIFACT_NAME: test-results-chromium-${{ github.run_id }}-${{ github.run_attempt }}
+        run: node scripts/summarize_ci.cjs browser chromium
 
   coverage:
     name: coverage
@@ -178,20 +177,10 @@ jobs:
           retention-days: 2
       - name: Summarize coverage lane
         if: always()
-        run: |
-          {
-            echo '### Coverage'
-            if [[ -f coverage/text-summary.txt ]]; then
-              echo '```text'
-              cat coverage/text-summary.txt
-              echo '```'
-            else
-              echo '- Coverage summary unavailable; inspect diagnostics.'
-            fi
-            if [[ -d coverage/raw ]]; then
-              echo "- Raw bytes: $(du -sk coverage/raw | awk '{print $1 * 1024}')"
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          JOB_STATUS: ${{ job.status }}
+          DIAGNOSTICS_ARTIFACT_NAME: coverage-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+        run: node scripts/summarize_ci.cjs coverage
 
   webkit_smoke:
     name: browser / webkit-smoke
@@ -200,6 +189,7 @@ jobs:
     needs: quality_build
     env:
       CI: '1'
+      PLAYWRIGHT_JSON_OUTPUT_FILE: test-results/playwright-results.json
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -213,6 +203,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Download production artifact
+        id: dist
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: darling-dist-${{ github.sha }}
@@ -247,14 +238,11 @@ jobs:
         if: always()
         env:
           ARTIFACT_DIGEST: ${{ needs.quality_build.outputs.dist_digest }}
-        run: |
-          {
-            echo '### Browser / WebKit smoke'
-            echo "- Playwright: $(npx playwright --version)"
-            echo '- Project: webkit-smoke'
-            echo '- Coverage: disabled'
-            echo "- Artifact digest validated: ${ARTIFACT_DIGEST:-unavailable}"
-          } >> "$GITHUB_STEP_SUMMARY"
+          ARTIFACT_VALIDATION: ${{ steps.dist.outcome }}
+          JOB_STATUS: ${{ job.status }}
+          REPORT_ARTIFACT_NAME: playwright-report-webkit-${{ github.run_id }}-${{ github.run_attempt }}
+          RESULTS_ARTIFACT_NAME: test-results-webkit-${{ github.run_id }}-${{ github.run_attempt }}
+        run: node scripts/summarize_ci.cjs browser webkit-smoke
 
   gate:
     name: ci / gate

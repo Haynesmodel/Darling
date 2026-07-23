@@ -60,9 +60,15 @@ After that job, three independent lanes run in parallel:
 
 `ci / gate` uses `if: always()` and requires every lane to conclude successfully. Branch protection should transition to that single stable context only after it exists on the default branch. The standalone Pages workflow intentionally continues to build independently until the deferred deployment-gating project is resumed.
 
+## Delivery and rollback shape
+
+The runtime, dependency, coverage, CI-topology, and WebKit phases were delivered in one draft pull request instead of four sequential pull requests. These contracts share the same runtime and lockfile, and validating the corrected coverage baseline and one-build artifact graph requires the complete topology. Keeping them together provides one atomic acceptance run while the draft state preserves a review boundary before merge.
+
+The commit history remains phase-oriented, so a regression can be isolated and reverted by concern during review. Before merge, the whole program can be rolled back by closing the draft branch; after merge, revert the merge commit for an atomic rollback or revert an individual follow-up commit when its change is independent. Pages artifact consumption remains deferred, so this delivery shape does not expand the deployment rollback surface.
+
 ## Failure triage
 
-Browser failures upload lane-, run-, and attempt-specific Playwright reports and test results. Coverage always uploads compact summaries and uploads HTML/raw maps on failure. Job summaries include runtime versions, the production artifact identity/digest, and lane details.
+Browser failures upload lane-, run-, and attempt-specific Playwright reports and test results. Coverage always uploads compact summaries and uploads HTML/raw maps on failure. Browser job summaries include the engine revision, result counts, duration, production artifact digest, and failure artifact names. Coverage summaries include all four metrics and threshold sets, source/exclusion/override and changed-file counts, raw bytes, and report-conversion duration.
 
 For a browser failure, first inspect the Playwright trace and the static-server lifecycle log. Do not increase timeouts to hide a refused connection. For a coverage failure, read the scope/file/metric line in the gate output; add behavior-focused tests or review a narrow expiring override. For an artifact failure, confirm `index.html`, `assets/asset-manifest.json`, and `.vite/manifest.json` were present in the producer before rerunning.
 

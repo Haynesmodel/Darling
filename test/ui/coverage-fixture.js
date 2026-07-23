@@ -1,21 +1,14 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import coverageLibrary from 'istanbul-lib-coverage';
 import { expect, test as base } from '@playwright/test';
+import {
+  coverageModeEnabled,
+  persistWorkerCoverage,
+  safeName,
+} from './coverage-runtime.js';
 
-const coverageEnabled = process.env.COLLECT_COVERAGE === '1';
+const coverageEnabled = coverageModeEnabled();
 const { createCoverageMap } = coverageLibrary;
-
-function safeName(value) {
-  return String(value).replace(/[^a-zA-Z0-9_.-]+/g, '-');
-}
-
-function writeAtomically(filePath, value) {
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  const temporary = `${filePath}.${process.pid}.tmp`;
-  fs.writeFileSync(temporary, `${JSON.stringify(value)}\n`);
-  fs.renameSync(temporary, filePath);
-}
 
 const test = base.extend({
   coverageState: [async ({}, use, workerInfo) => {
@@ -34,14 +27,6 @@ const test = base.extend({
     };
     await use(state);
 
-    if (state.map.files().length === 0) {
-      if (state.failedTests === 0) {
-        throw new Error('Coverage mode completed with zero instrumented application files.');
-      }
-      console.error('Coverage collection found zero instrumented files after a test failure; preserving the test failure as authoritative.');
-      return;
-    }
-
     const runId = safeName(process.env.COVERAGE_RUN_ID || process.env.GITHUB_RUN_ID || 'local');
     const filename = [
       'worker',
@@ -51,7 +36,7 @@ const test = base.extend({
       runId,
     ].join('-');
     const outputPath = path.join(process.cwd(), 'coverage', 'raw', 'browser', `${filename}.json`);
-    writeAtomically(outputPath, state.map.toJSON());
+    persistWorkerCoverage({ enabled: coverageEnabled, state, outputPath });
   }, { scope: 'worker' }],
 
   browserCoverage: [async ({ page, browserName, coverageState }, use, testInfo) => {

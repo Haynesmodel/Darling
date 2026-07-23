@@ -11,6 +11,13 @@ const serverURL = usePreview ? `${host}${normalizedBasePath}` : `${host}/index.h
 const serverCommand = usePreview
   ? `node scripts/serve_static.cjs 8000 127.0.0.1 dist ${normalizedBasePath}`
   : 'npm run dev -- --port 8000';
+const reporter = process.env.CI
+  ? [
+    ['dot'],
+    ['html', { open: 'never' }],
+    ['json', { outputFile: process.env.PLAYWRIGHT_JSON_OUTPUT_FILE || 'test-results/playwright-results.json' }],
+  ]
+  : 'list';
 
 module.exports = defineConfig({
   testDir: './test/ui',
@@ -18,7 +25,7 @@ module.exports = defineConfig({
   retries: process.env.CI ? 1 : 0,
   forbidOnly: Boolean(process.env.CI),
   failOnFlakyTests: Boolean(process.env.CI),
-  reporter: process.env.CI ? [['dot'], ['html', { open: 'never' }]] : 'list',
+  reporter,
   workers: process.env.PLAYWRIGHT_WORKERS
     ? Number(process.env.PLAYWRIGHT_WORKERS)
     : (usePreview || process.env.CI || process.env.COLLECT_COVERAGE === '1' ? 1 : undefined),

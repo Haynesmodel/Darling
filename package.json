@@ -44,9 +44,9 @@
     "test:ui": "playwright test",
     "test:ui:chromium": "playwright test --project=chromium",
     "test:ui:webkit": "playwright test --project=webkit-smoke",
-    "test:ui:preview": "PLAYWRIGHT_SERVER=preview playwright test",
-    "test:ui:preview:chromium": "PLAYWRIGHT_SERVER=preview playwright test --project=chromium",
-    "test:ui:preview:webkit": "PLAYWRIGHT_SERVER=preview playwright test --project=webkit-smoke",
+    "test:ui:preview": "node scripts/run_playwright_preview.cjs",
+    "test:ui:preview:chromium": "node scripts/run_playwright_preview.cjs chromium",
+    "test:ui:preview:webkit": "node scripts/run_playwright_preview.cjs webkit",
     "serve": "npm run dev -- --port 8000",
     "test:ci": "node scripts/run_ci.cjs"
   },
@@ -68,8 +68,7 @@
     "stylelint": "17.14.0",
     "stylelint-config-standard": "40.0.0",
     "typescript": "^7.0.2",
-    "vite": "^8.1.4",
-    "vite-plugin-istanbul": "9.0.1"
+    "vite": "^8.1.4"
   },
   "dependencies": {
     "@observablehq/plot": "^0.6.17",

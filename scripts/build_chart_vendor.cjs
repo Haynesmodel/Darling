@@ -70,7 +70,9 @@ function directPlotImports({
     }
     if (!/\.(?:[cm]?js|tsx?)$/.test(target)) return;
     const contents = fsImpl.readFileSync(target, 'utf8');
-    if (/['"]@observablehq\/plot['"]/.test(contents)) matches.push(path.relative(root, target));
+    if (/['"`]@observablehq\/plot(?:[/?#][^'"`]*)?['"`]/.test(contents)) {
+      matches.push(path.relative(root, target));
+    }
   };
   sourceRoots.forEach(sourceRoot => visit(path.join(root, sourceRoot)));
   return matches.sort();

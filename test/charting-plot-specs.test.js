@@ -12,11 +12,22 @@ import {
   trophyCareerPlotOptions,
 } from '../js/charting/plot-specs.js';
 
-const { Plot } = chartVendor;
+const APPROVED_EXPORTS = [
+  'areaY',
+  'barX',
+  'barY',
+  'dot',
+  'lineY',
+  'plot',
+  'ruleX',
+  'ruleY',
+  'text',
+];
 
-test('local chart vendor bundle exposes only Plot APIs', () => {
-  assert.equal(typeof Plot.plot, 'function');
-  assert.deepEqual(Object.keys(chartVendor), ['Plot']);
+test('local chart vendor exposes exactly the approved Plot functions', () => {
+  assert.deepEqual(Object.keys(chartVendor).sort(), APPROVED_EXPORTS);
+  APPROVED_EXPORTS.forEach(name => assert.equal(typeof chartVendor[name], 'function', name));
+  assert.equal('Plot' in chartVendor, false);
 });
 
 test('plot specs are deterministic plain option objects', () => {

@@ -6,14 +6,29 @@
     "largest_chunk_bytes": 1020260,
     "largest_chunk_gzip_bytes": 272150
   },
+  "optimization_baseline": {
+    "base_commit": "2f61d1a",
+    "description": "Merged-base chart-runtime optimization comparison",
+    "pre_change_total_javascript_gzip_bytes": 312170,
+    "pre_change_chart_runtime_bytes": 407377,
+    "pre_change_chart_runtime_gzip_bytes": 134793,
+    "post_change_total_javascript_gzip_bytes": 275187,
+    "post_change_chart_runtime_bytes": 294294,
+    "post_change_chart_runtime_gzip_bytes": 97674,
+    "reason": "Replace the broad Plot namespace prebundle with the nine APIs Darling uses and ratchet route/runtime ceilings."
+  },
   "budgets": {
-    "entry_chunk_max_bytes": 350000,
-    "entry_chunk_gzip_max_bytes": 120000,
-    "initial_history_gzip_max_bytes": 200000,
-    "pulse_route_gzip_max_bytes": 140000,
-    "total_javascript_gzip_max_bytes": 315000,
+    "entry_chunk_max_bytes": 190000,
+    "entry_chunk_gzip_max_bytes": 56000,
+    "total_javascript_gzip_max_bytes": 280000,
     "feature_chunk_gzip_max_bytes": 50000,
-    "non_validator_chunk_max_bytes": 500000,
+    "non_validator_chunk_max_bytes": 320000,
+    "chart_runtime_max_bytes": 305000,
+    "chart_runtime_gzip_max_bytes": 100000,
+    "chart_runtime_exact_copies": 1,
+    "chart_runtime_excluded_routes": ["league-pulse", "history"],
+    "chart_runtime_required_routes": ["current-season", "rivalry", "trophy", "dynasty", "draft-spot", "gauntlet"],
+    "chart_runtime_dynamic_routes": ["draft-spot"],
     "plot_vendor_max_copies": 1,
     "require_data_runtime_chunk": true,
     "forbidden_initial_modules": ["src/features/", "history-controller.js", "plot-charts", "charting-vendor"],
@@ -27,6 +42,20 @@
       "draft-spot": "src/features/draft-spot/draft-spot-feature.ts",
       "gauntlet": "src/features/gauntlet/gauntlet-controller.ts",
       "load-league-assets": "src/data/load-league-assets.ts"
+    },
+    "settled_dynamic_entries": {
+      "current-season": ["current-season-odds"],
+      "draft-spot": ["chart-runtime"]
+    },
+    "route_settled_gzip_max_bytes": {
+      "league-pulse": 115000,
+      "history": 115000,
+      "current-season": 205000,
+      "rivalry": 205000,
+      "trophy": 205000,
+      "dynasty": 205000,
+      "draft-spot": 205000,
+      "gauntlet": 205000
     }
   }
 }

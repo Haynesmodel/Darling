@@ -72,3 +72,9 @@
   color:var(--header);
   font-size:13px;
 }
+
+@media (max-width:420px){
+  .chart-fallback:is(ol, ul) li{
+    grid-template-columns:minmax(0,1fr);
+  }
+}

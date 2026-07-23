@@ -34,28 +34,74 @@ function recordResources(page) {
   return urls;
 }
 
-test('cold Pulse, Draft Spot, and Trophy routes request only their feature entries', async ({ page }) => {
+test('every cold route requests only its feature entry and chart routes share one runtime', async ({ browser, baseURL }) => {
   test.skip(!preview, 'hashed resource-boundary assertions require the production preview build');
-  let resources = recordResources(page);
-  await page.goto('/');
-  await waitForFeature(page, 'pulse');
-  expect(resources.some(url => url.endsWith(files.pulse))).toBe(true);
-  for (const id of Object.keys(files).filter(id => id !== 'pulse')) expect(resources.some(url => url.endsWith(files[id])), `${id} leaked into Pulse`).toBe(false);
-  expect(resources.some(url => chartRuntime && url.endsWith(chartRuntime))).toBe(false);
+  expect(chartRuntime).toBeTruthy();
+  const routes = {
+    pulse: '/',
+    history: '/?tab=history',
+    current: '/?tab=current&currentOwner=Joe',
+    rivalry: '/?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel',
+    trophy: '/?tab=trophy&trophyOwner=Joe',
+    dynasty: '/?tab=dynasty&dynastyOwner=Joe',
+    draft: '/?tab=draft',
+    gauntlet: '/?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019',
+  };
+  const chartRoutes = new Set(['current', 'rivalry', 'trophy', 'dynasty', 'draft', 'gauntlet']);
+  const observedChartRuntimeUrls = new Set();
 
-  resources.length = 0;
+  for (const [id, url] of Object.entries(routes)) {
+    const context = await browser.newContext({ baseURL });
+    const page = await context.newPage();
+    const resources = recordResources(page);
+    await page.goto(url);
+    await waitForFeature(page, id);
+    expect(resources.some(resource => resource.endsWith(files[id])), `${id} feature entry was not requested`).toBe(true);
+    for (const otherId of Object.keys(files).filter(candidate => candidate !== id)) {
+      expect(resources.some(resource => resource.endsWith(files[otherId])), `${otherId} leaked into ${id}`).toBe(false);
+    }
+    if (chartRoutes.has(id)) {
+      await expect.poll(() => resources.some(resource => resource.endsWith(chartRuntime))).toBe(true);
+      resources.filter(resource => resource.endsWith(chartRuntime)).forEach(resource => observedChartRuntimeUrls.add(resource));
+    } else {
+      expect(resources.some(resource => resource.endsWith(chartRuntime)), `${id} loaded chart-runtime`).toBe(false);
+    }
+    await context.close();
+  }
+
+  expect([...observedChartRuntimeUrls]).toEqual([expect.stringMatching(new RegExp(`${chartRuntime.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`))]);
+});
+
+const chartRuntimePattern = () => preview
+  ? `**/${chartRuntime}`
+  : '**/js/charting/vendor/charting-vendor.js*';
+
+test('Draft contains a failed chart-runtime request without disabling its controls', async ({ page }) => {
+  const runtimePattern = chartRuntimePattern();
+  const pageErrors = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+  await page.route(runtimePattern, route => route.abort('failed'));
   await page.goto('/?tab=draft');
   await waitForFeature(page, 'draft');
-  expect(resources.some(url => url.endsWith(files.draft))).toBe(true);
-  for (const id of Object.keys(files).filter(id => id !== 'draft')) expect(resources.some(url => url.endsWith(files[id])), `${id} leaked into Draft Spot`).toBe(false);
-  await expect.poll(() => resources.some(url => chartRuntime && url.endsWith(chartRuntime))).toBe(true);
+  await expect(page.locator('.draft-pick-chart')).toHaveAttribute('data-chart-state', 'error');
+  await expect(page.locator('.draft-zone-chart')).toHaveAttribute('data-chart-state', 'error');
+  await expect(page.locator('.draft-pick-board')).toBeVisible();
+  await expect(page.locator('.draft-zone-grid')).toBeVisible();
+  await expect(page.locator('#draftMetricSelect')).toBeEnabled();
+  expect(pageErrors).toEqual([]);
+});
 
-  resources.length = 0;
-  await page.goto('/?tab=trophy&trophyOwner=Joe');
-  await waitForFeature(page, 'trophy');
-  expect(resources.some(url => url.endsWith(files.trophy))).toBe(true);
-  for (const id of Object.keys(files).filter(id => id !== 'trophy')) expect(resources.some(url => url.endsWith(files[id])), `${id} leaked into Trophy`).toBe(false);
-  expect(resources.some(url => chartRuntime && url.endsWith(chartRuntime))).toBe(true);
+test('Draft charts recover on a normal reload after a runtime failure', async ({ page }) => {
+  const runtimePattern = chartRuntimePattern();
+  await page.route(runtimePattern, route => route.abort('failed'));
+  await page.goto('/?tab=draft');
+  await waitForFeature(page, 'draft');
+  await expect(page.locator('.draft-pick-chart')).toHaveAttribute('data-chart-state', 'error');
+  await page.unroute(runtimePattern);
+  await page.reload();
+  await waitForFeature(page, 'draft');
+  await expect(page.locator('.draft-pick-chart svg[role="img"]')).toBeVisible();
+  await expect(page.locator('.draft-zone-chart svg[role="img"]')).toBeVisible();
 });
 
 test('a delayed Draft ready callback cannot add history after an immediate tab switch', async ({ page }) => {

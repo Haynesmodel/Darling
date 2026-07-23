@@ -1,4 +1,13 @@
-import { Plot } from './vendor/charting-vendor.js';
+import {
+  areaY,
+  barX,
+  dot,
+  lineY,
+  plot,
+  ruleX,
+  ruleY,
+  text,
+} from './vendor/charting-vendor.js';
 import {
   currentOddsMovementRows,
   currentProjectedSeedRows,
@@ -62,13 +71,13 @@ function markOptions(mark) {
 
 function plotMark(mark) {
   const options = markOptions(mark);
-  if (mark.type === 'areaY') return Plot.areaY(mark.data, options);
-  if (mark.type === 'barX') return Plot.barX(mark.data, options);
-  if (mark.type === 'dot') return Plot.dot(mark.data, options);
-  if (mark.type === 'lineY') return Plot.lineY(mark.data, options);
-  if (mark.type === 'ruleX') return Plot.ruleX(mark.data, options);
-  if (mark.type === 'ruleY') return Plot.ruleY(mark.data, options);
-  if (mark.type === 'text') return Plot.text(mark.data, options);
+  if (mark.type === 'areaY') return areaY(mark.data, options);
+  if (mark.type === 'barX') return barX(mark.data, options);
+  if (mark.type === 'dot') return dot(mark.data, options);
+  if (mark.type === 'lineY') return lineY(mark.data, options);
+  if (mark.type === 'ruleX') return ruleX(mark.data, options);
+  if (mark.type === 'ruleY') return ruleY(mark.data, options);
+  if (mark.type === 'text') return text(mark.data, options);
   return null;
 }
 
@@ -96,7 +105,7 @@ function renderSpec(host, spec, opts = {}) {
     return null;
   }
   try {
-    const svg = Plot.plot(toPlotOptions(spec));
+    const svg = plot(toPlotOptions(spec));
     return mountChart(host, svg, {
       ariaLabel: opts.ariaLabel || spec.ariaLabel,
       className: opts.className,

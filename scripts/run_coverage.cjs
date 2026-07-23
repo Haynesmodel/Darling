@@ -14,6 +14,15 @@ function cleanCoverageDirectory(root) {
   fs.rmSync(coverageDirectory, { recursive: true, force: true });
 }
 
+function cleanNodeV8Directory(root) {
+  const rawDirectory = path.resolve(root, 'coverage', 'raw');
+  const nodeV8Directory = path.resolve(rawDirectory, 'node-v8');
+  if (path.dirname(nodeV8Directory) !== rawDirectory || path.basename(nodeV8Directory) !== 'node-v8') {
+    throw new Error(`Refusing to clean unexpected Node V8 coverage path: ${nodeV8Directory}`);
+  }
+  fs.rmSync(nodeV8Directory, { recursive: true, force: true });
+}
+
 function localBinary(root, name, platform) {
   return path.join(root, 'node_modules', '.bin', platform === 'win32' ? `${name}.cmd` : name);
 }
@@ -41,6 +50,7 @@ async function runCoverage({ root, run, environment, now }) {
     process.execPath,
     'scripts/run_tests_with_coverage.cjs',
   ], { cwd: root, env: sharedEnv });
+  cleanNodeV8Directory(root);
   await run('instrumented Chromium coverage', playwrightBinary, ['test', '--project=chromium'], {
     cwd: root,
     env: {
@@ -69,6 +79,7 @@ if (require.main === module) {
 module.exports = {
   assertCoverageDirectory,
   cleanCoverageDirectory,
+  cleanNodeV8Directory,
   coverageRunId,
   localBinary,
   runCoverage,

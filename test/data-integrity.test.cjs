@@ -12,6 +12,38 @@ let tempDir;
 let browserCanonical;
 let transport;
 
+function responseFromBytes(bytes, { contentLength } = {}) {
+  const body = Buffer.from(bytes);
+  return {
+    ok: true,
+    status: 200,
+    headers: {
+      get(name) {
+        return name.toLowerCase() === 'content-length' && contentLength !== undefined
+          ? String(contentLength)
+          : null;
+      },
+    },
+    async arrayBuffer() {
+      return body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength);
+    },
+  };
+}
+
+function descriptorFor(value, name = 'Fixture') {
+  const body = Buffer.from(nodeCanonical.canonicalJson(value));
+  return {
+    descriptor: {
+      name,
+      path: `assets/${name}.json`,
+      sha256: nodeCanonical.sha256Json(value),
+      bytes: body.byteLength,
+      dataVersion: 'sha256:fixture',
+    },
+    body,
+  };
+}
+
 test.before(async () => {
   tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-integrity-'));
   await Promise.all([
@@ -67,4 +99,128 @@ test('verified transport fails closed without SHA-256 support', async () => {
     digestFn: async () => { throw new Error('unavailable'); },
   }), error => error.code === 'INTEGRITY_UNAVAILABLE' && error.details.attempts === 1);
   assert.equal(requests, 1);
+});
+
+test('invalid UTF-8 retries once, recovers, and then fails closed when repeated', async () => {
+  const { descriptor, body } = descriptorFor(0, 'Utf8Fixture');
+  const invalid = Buffer.from([0xc3, 0x28]);
+  const caches = [];
+  const recovered = await transport.fetchVerifiedJson(descriptor, {
+    fetchFn: async (_url, init) => {
+      caches.push(init.cache);
+      return responseFromBytes(caches.length === 1 ? invalid : body);
+    },
+    logger: { warn() {} },
+  });
+  assert.equal(recovered.cacheRecovered, true);
+  assert.equal(recovered.attempts, 2);
+  assert.deepEqual(caches, ['force-cache', 'reload']);
+
+  await assert.rejects(
+    transport.fetchVerifiedJson(descriptor, {
+      fetchFn: async () => responseFromBytes(invalid),
+      logger: { warn() {} },
+    }),
+    error => error.code === 'INVALID_UTF8' && error.details.attempts === 2,
+  );
+});
+
+test('invalid JSON retries once and can recover from a fresh canonical body', async () => {
+  const { descriptor, body } = descriptorFor(0, 'JsonFixture');
+  const invalid = Buffer.from('{\n');
+  let attempts = 0;
+  const recovered = await transport.fetchVerifiedJson(descriptor, {
+    fetchFn: async () => responseFromBytes(++attempts === 1 ? invalid : body),
+    logger: { warn() {} },
+  });
+  assert.equal(recovered.value, 0);
+  assert.equal(recovered.cacheRecovered, true);
+  assert.equal(attempts, 2);
+});
+
+test('equal byte lengths do not bypass canonical SHA-256 verification', async () => {
+  const { descriptor } = descriptorFor({ value: 'a' }, 'HashFixture');
+  const wrongBody = Buffer.from(nodeCanonical.canonicalJson({ value: 'b' }));
+  assert.equal(wrongBody.byteLength, descriptor.bytes);
+  await assert.rejects(
+    transport.fetchVerifiedJson(descriptor, {
+      fetchFn: async () => responseFromBytes(wrongBody),
+      logger: { warn() {} },
+    }),
+    error => error.code === 'INTEGRITY_MISMATCH'
+      && error.details.actualBytes === descriptor.bytes
+      && error.details.attempts === 2,
+  );
+});
+
+test('manifest and declared asset maximum sizes fail before parsing or fetching', async () => {
+  const oversizedManifest = Buffer.alloc(transport.MANIFEST_MAX_BYTES + 1, 0x20);
+  await assert.rejects(
+    transport.fetchManifestJson('assets/asset-manifest.json', {
+      fetchFn: async () => responseFromBytes(oversizedManifest),
+    }),
+    error => error.code === 'INVALID_MANIFEST' && error.details.actualBytes === oversizedManifest.byteLength,
+  );
+
+  let requests = 0;
+  await assert.rejects(
+    transport.fetchVerifiedJson({
+      name: 'Oversized',
+      path: 'assets/Oversized.json',
+      sha256: `sha256:${'a'.repeat(64)}`,
+      bytes: transport.ASSET_MAX_BYTES + 1,
+      dataVersion: 'sha256:fixture',
+    }, {
+      fetchFn: async () => {
+        requests += 1;
+        return responseFromBytes(Buffer.alloc(0));
+      },
+    }),
+    error => error.code === 'INVALID_MANIFEST',
+  );
+  assert.equal(requests, 0);
+});
+
+test('a chunked manifest without Content-Length cancels as soon as the limit is exceeded', async () => {
+  const chunks = [
+    Buffer.alloc(128 * 1024, 0x20),
+    Buffer.alloc(128 * 1024 + 1, 0x20),
+    Buffer.alloc(1, 0x20),
+  ];
+  let reads = 0;
+  let cancelled = false;
+  let usedArrayBufferFallback = false;
+  await assert.rejects(
+    transport.fetchManifestJson('assets/asset-manifest.json', {
+      fetchFn: async () => ({
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        body: {
+          getReader() {
+            return {
+              async read() {
+                const value = chunks[reads];
+                reads += 1;
+                return value ? { done: false, value } : { done: true, value: undefined };
+              },
+              async cancel() {
+                cancelled = true;
+              },
+            };
+          },
+        },
+        async arrayBuffer() {
+          usedArrayBufferFallback = true;
+          throw new Error('streaming responses must not use the arrayBuffer fallback');
+        },
+      }),
+    }),
+    error => error.code === 'INVALID_MANIFEST'
+      && error.details.actualBytes === transport.MANIFEST_MAX_BYTES + 1
+      && error.details.maximumBytes === transport.MANIFEST_MAX_BYTES,
+  );
+  assert.equal(reads, 2);
+  assert.equal(cancelled, true);
+  assert.equal(usedArrayBufferFallback, false);
 });

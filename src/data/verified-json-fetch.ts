@@ -2,7 +2,8 @@ import { canonicalJsonBytes, sha256Bytes } from './canonical-json';
 import { DataLoadError } from './data-errors';
 
 const SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/;
-const MANIFEST_MAX_BYTES = 256 * 1024;
+export const MANIFEST_MAX_BYTES = 256 * 1024;
+export const ASSET_MAX_BYTES = 16 * 1024 * 1024;
 
 export interface JsonAssetDescriptor {
   name: string;
@@ -47,10 +48,78 @@ export function versionedAssetUrl(path: string, basePath: string, sha256: string
   return `${withoutFragment}${separator}v=${sha256.slice('sha256:'.length)}${fragment}`;
 }
 
-async function responseBytes(response: Response, asset: string, dataVersion: string | null, attempts = 1): Promise<Uint8Array> {
+function responseSizeError(
+  asset: string,
+  dataVersion: string | null,
+  actualBytes: number,
+  maximumBytes: number,
+  attempts: number,
+): DataLoadError {
+  return new DataLoadError(
+    asset === 'asset-manifest.json' ? 'INVALID_MANIFEST' : 'SIZE_MISMATCH',
+    asset,
+    `${asset}: response exceeds the maximum allowed size`,
+    dataVersion,
+    { actualBytes, maximumBytes, attempts },
+  );
+}
+
+async function streamedResponseBytes(
+  response: Response,
+  asset: string,
+  dataVersion: string | null,
+  attempts: number,
+  maximumBytes: number,
+): Promise<Uint8Array | null> {
+  const body = response.body;
+  if (!body || typeof body.getReader !== 'function') return null;
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value?.byteLength) continue;
+    totalBytes += value.byteLength;
+    if (totalBytes > maximumBytes) {
+      try {
+        void reader.cancel().catch(() => undefined);
+      } catch {
+        // Cancellation is best-effort; the size failure remains authoritative.
+      }
+      throw responseSizeError(asset, dataVersion, totalBytes, maximumBytes, attempts);
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
+
+async function responseBytes(
+  response: Response,
+  asset: string,
+  dataVersion: string | null,
+  attempts = 1,
+  maximumBytes = ASSET_MAX_BYTES,
+): Promise<Uint8Array> {
+  const declaredLength = Number(response.headers?.get?.('content-length'));
+  if (Number.isFinite(declaredLength) && declaredLength > maximumBytes) {
+    throw responseSizeError(asset, dataVersion, declaredLength, maximumBytes, attempts);
+  }
   try {
-    return new Uint8Array(await response.arrayBuffer());
+    const streamed = await streamedResponseBytes(response, asset, dataVersion, attempts, maximumBytes);
+    const bytes = streamed || new Uint8Array(await response.arrayBuffer());
+    if (bytes.byteLength > maximumBytes) {
+      throw responseSizeError(asset, dataVersion, bytes.byteLength, maximumBytes, attempts);
+    }
+    return bytes;
   } catch (error) {
+    if (error instanceof DataLoadError) throw error;
     throw new DataLoadError('INVALID_ASSET', asset, `${asset}: response could not be read`, dataVersion, { attempts });
   }
 }
@@ -79,10 +148,7 @@ export async function fetchManifestJson(
     cache: 'no-store',
     headers: { Accept: 'application/json' },
   }, 'asset-manifest.json', null);
-  const bytes = await responseBytes(response, 'asset-manifest.json', null);
-  if (bytes.byteLength > MANIFEST_MAX_BYTES) {
-    throw new DataLoadError('INVALID_MANIFEST', 'asset-manifest.json', 'Asset manifest is unexpectedly large');
-  }
+  const bytes = await responseBytes(response, 'asset-manifest.json', null, 1, MANIFEST_MAX_BYTES);
   let text: string;
   try {
     text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
@@ -108,7 +174,13 @@ async function verifyAttempt<T>(
     cache,
     headers: { Accept: 'application/json' },
   }, descriptor.name, descriptor.dataVersion);
-  const bytes = await responseBytes(response, descriptor.name, descriptor.dataVersion, attempt);
+  const bytes = await responseBytes(
+    response,
+    descriptor.name,
+    descriptor.dataVersion,
+    attempt,
+    Math.min(descriptor.bytes, ASSET_MAX_BYTES),
+  );
   if (bytes.byteLength !== descriptor.bytes) {
     throw new DataLoadError('SIZE_MISMATCH', descriptor.name, `${descriptor.name}: response size does not match the manifest`, descriptor.dataVersion, {
       expectedBytes: descriptor.bytes,
@@ -174,7 +246,12 @@ export async function fetchVerifiedJson<T = unknown>(
   descriptor: JsonAssetDescriptor,
   options: VerifiedJsonFetchOptions = {},
 ): Promise<VerifiedJsonResult<T>> {
-  if (!SHA256_PATTERN.test(descriptor.sha256) || !Number.isSafeInteger(descriptor.bytes) || descriptor.bytes < 0) {
+  if (
+    !SHA256_PATTERN.test(descriptor.sha256)
+    || !Number.isSafeInteger(descriptor.bytes)
+    || descriptor.bytes < 0
+    || descriptor.bytes > ASSET_MAX_BYTES
+  ) {
     throw new DataLoadError('INVALID_MANIFEST', descriptor.name, `${descriptor.name}: invalid integrity descriptor`, descriptor.dataVersion);
   }
   const fetchFn = options.fetchFn || globalThis.fetch;

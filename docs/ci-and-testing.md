@@ -47,6 +47,7 @@ The instrumented pass omits the dedicated axe-only specs because they exercise t
 Coverage includes runtime JavaScript, TypeScript, and TSX in `js/`, `scripts/`, and `src/`. Generated schema validators, type-only declarations, tests, build output, and the generated chart vendor bundle are excluded for explicit generator/vendor reasons. Policy covers lines, statements, functions, and branches globally, per file, and for PR-authored files compared with the exact pull-request base SHA. An exception must identify its owner, reason, baseline thresholds, and expiry.
 
 Generated reports are ignored under `coverage/`. CI retains compact reports for seven days and uploads raw maps only after failures.
+After c8 converts Node's temporary V8 output to Istanbul JSON, the intermediate `node-v8` directory is removed. The merge step fails when retained raw Istanbul coverage exceeds 25,000,000 bytes and records both `rawBytes` and `rawByteLimit` in `coverage-meta.json`. Coverage overrides are grouped by behavior area and must be reduced to 15 or fewer before their October 22, 2026 expiry.
 
 ## CI artifact graph
 
@@ -73,3 +74,9 @@ Browser failures upload lane-, run-, and attempt-specific Playwright reports and
 For a browser failure, first inspect the Playwright trace and the static-server lifecycle log. Do not increase timeouts to hide a refused connection. For a coverage failure, read the scope/file/metric line in the gate output; add behavior-focused tests or review a narrow expiring override. For an artifact failure, confirm `index.html`, `assets/asset-manifest.json`, and `.vite/manifest.json` were present in the producer before rerunning.
 
 Pages deployment and Sleeper update triggers, permissions, inputs, and mutation behavior are deliberately unchanged by this CI program.
+
+## Stabilization and release evidence
+
+- [July 23 accessibility release verification](accessibility-release-verification-2026-07-23.md) records automated coverage and the remaining device/assistive-technology gates.
+- [Final-topology stabilization window](ci-stabilization-2026-07-23.md) defines the ten-run post-merge window and records which runs are eligible.
+- [Post-implementation audit remediation](audit-remediation-2026-07-23.md) maps the audit workstreams to delivered evidence and explicit follow-ups.

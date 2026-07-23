@@ -18,7 +18,7 @@ The July 23 audit-remediation build adds only test-facing snapshot infrastructur
 
 ## Cold route closures
 
-The manifest checker counts the shell, static dependencies, requested feature, and validated data path once per route.
+The values below use each route's production-manifest static-import closure, counting the shell, shared dependencies, requested feature, and verified data path once. Draft Spot additionally includes the chart runtime that it requests dynamically during its initial render.
 
 | Route | JavaScript gzip |
 | --- | ---: |

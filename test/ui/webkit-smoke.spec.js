@@ -96,8 +96,9 @@ test('WEBKIT-03 supports mobile manual tab activation and reveal', async ({ page
 });
 
 test('WEBKIT-04 contains focus and restores state for the Dynasty dialog', async ({ page }) => {
-  await page.goto('/?tab=dynasty');
+  await page.goto('/');
   const opener = page.locator('#dynastyBestWindows .dynasty-window-card').first();
+  await page.getByRole('tab', { name: 'Dynasty Rankings' }).click();
   await opener.focus();
   await opener.click();
   const dialog = page.getByRole('dialog');

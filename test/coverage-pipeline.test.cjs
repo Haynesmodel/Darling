@@ -87,7 +87,7 @@ test('Istanbul preserves uncovered nested branches and uncalled functions', () =
     fs.writeFileSync(rawPath, JSON.stringify(rawMap));
 
     const merged = mergeCoverageMaps(root, [rawPath]);
-    const result = merged.fileCoverageFor(filePath).toSummary();
+    const result = merged.fileCoverageFor(fs.realpathSync.native(filePath)).toSummary();
     assert.ok(result.branches.pct < 100, JSON.stringify(result.branches));
     assert.ok(result.functions.pct < 100, JSON.stringify(result.functions));
     assert.ok(result.lines.pct < 100, JSON.stringify(result.lines));
@@ -102,7 +102,7 @@ test('never-loaded authored files are added at zero percent', () => {
     fs.writeFileSync(missingPath, 'export function Missing(){ return <div>missing</div>; }\n');
     const map = createCoverageMap(rawMap);
     addUncoveredSourceFiles(root, map, [coveredPath, missingPath]);
-    const missing = map.fileCoverageFor(missingPath).toSummary();
+    const missing = map.fileCoverageFor(fs.realpathSync.native(missingPath)).toSummary();
     assert.equal(missing.statements.pct, 0);
     assert.equal(missing.functions.pct, 0);
     assert.equal(missing.lines.pct, 0);
@@ -137,6 +137,16 @@ test('malformed, missing, and outside-repository maps fail clearly', () => {
     fs.writeFileSync(malformed, '{');
     assert.throws(() => mergeCoverageMaps(root, [malformed]), new RegExp(`Malformed coverage map .*${path.basename(malformed)}`));
     assert.throws(() => normalizeCoveragePath(root, path.join(root, '..', 'outside.js')), /outside repository/);
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-outside-'));
+    try {
+      const outsideFile = path.join(outside, 'outside.js');
+      const link = path.join(root, 'src', 'linked.js');
+      fs.writeFileSync(outsideFile, 'export const outside = true;\n');
+      fs.symlinkSync(outsideFile, link);
+      assert.throws(() => normalizeCoveragePath(root, link), /outside repository/);
+    } finally {
+      fs.rmSync(outside, { recursive: true, force: true });
+    }
   });
 });
 
@@ -312,6 +322,7 @@ test('coverage orchestrator enables instrumentation only for Chromium', async ()
     assert.equal(calls[2][3].env.COLLECT_COVERAGE, '1');
     assert.equal(calls[2][3].env.COVERAGE_RUN_ID, 'fixture-run');
     assert.ok(calls.filter(call => call[3].env.COLLECT_COVERAGE).length === 1);
+    assert.ok(calls.every(call => call[3].cwd === root));
   });
 });
 

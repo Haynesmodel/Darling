@@ -16,18 +16,19 @@ function runCommand(label, command, args, options = {}) {
       shell: false,
     });
 
-    const forward = forwardSignal.bind(null, child);
-    process.once('SIGINT', forward);
-    process.once('SIGTERM', forward);
+    const forwardInterrupt = forwardSignal.bind(null, child, 'SIGINT');
+    const forwardTermination = forwardSignal.bind(null, child, 'SIGTERM');
+    process.once('SIGINT', forwardInterrupt);
+    process.once('SIGTERM', forwardTermination);
 
     child.once('error', error => {
-      process.removeListener('SIGINT', forward);
-      process.removeListener('SIGTERM', forward);
+      process.removeListener('SIGINT', forwardInterrupt);
+      process.removeListener('SIGTERM', forwardTermination);
       reject(new Error(`${label} could not start: ${error.message}`));
     });
     child.once('exit', (code, signal) => {
-      process.removeListener('SIGINT', forward);
-      process.removeListener('SIGTERM', forward);
+      process.removeListener('SIGINT', forwardInterrupt);
+      process.removeListener('SIGTERM', forwardTermination);
       if (signal) {
         reject(new Error(`${label} terminated by ${signal}`));
       } else if (code !== 0) {

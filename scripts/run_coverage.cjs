@@ -28,7 +28,7 @@ async function runCoverage({ root, run, environment, now }) {
   const c8Binary = localBinary(root, 'c8', process.platform);
   const playwrightBinary = localBinary(root, 'playwright', process.platform);
 
-  await run('asset validation', npmCommand, ['run', 'test:assets'], { env: sharedEnv });
+  await run('asset validation', npmCommand, ['run', 'test:assets'], { cwd: root, env: sharedEnv });
   await run('Node coverage', c8Binary, [
     '--temp-directory=coverage/raw/node-v8',
     '--reports-dir=coverage/raw/node',
@@ -40,8 +40,9 @@ async function runCoverage({ root, run, environment, now }) {
     '--exclude=scripts/build_chart_vendor.cjs',
     process.execPath,
     'scripts/run_tests_with_coverage.cjs',
-  ], { env: sharedEnv });
+  ], { cwd: root, env: sharedEnv });
   await run('instrumented Chromium coverage', playwrightBinary, ['test', '--project=chromium'], {
+    cwd: root,
     env: {
       ...sharedEnv,
       COLLECT_COVERAGE: '1',
@@ -49,8 +50,8 @@ async function runCoverage({ root, run, environment, now }) {
       COVERAGE_RUN_ID: coverageRunId(environment, now),
     },
   });
-  await run('coverage merge and reports', process.execPath, ['scripts/merge_coverage.cjs'], { env: sharedEnv });
-  await run('coverage policy gate', process.execPath, ['scripts/check_coverage.cjs'], { env: sharedEnv });
+  await run('coverage merge and reports', process.execPath, ['scripts/merge_coverage.cjs'], { cwd: root, env: sharedEnv });
+  await run('coverage policy gate', process.execPath, ['scripts/check_coverage.cjs'], { cwd: root, env: sharedEnv });
 }
 
 if (require.main === module) {

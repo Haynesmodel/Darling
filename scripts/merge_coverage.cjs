@@ -47,8 +47,10 @@ function isTypeOnlySourceFile(filePath) {
 }
 
 function isCoverageSource(root, filePath) {
-  const absoluteRoot = path.resolve(root);
-  const absolutePath = path.resolve(filePath);
+  const resolvedRoot = path.resolve(root);
+  const resolvedPath = path.resolve(filePath);
+  const absoluteRoot = fs.existsSync(resolvedRoot) ? fs.realpathSync.native(resolvedRoot) : resolvedRoot;
+  const absolutePath = fs.existsSync(resolvedPath) ? fs.realpathSync.native(resolvedPath) : resolvedPath;
   const relativePath = toPosix(path.relative(absoluteRoot, absolutePath));
   if (!relativePath || relativePath.startsWith('../') || path.isAbsolute(relativePath)) return false;
   if (!SOURCE_ROOTS.includes(relativePath.split('/')[0])) return false;
@@ -113,8 +115,10 @@ function discoverCoverageMaps(root = process.cwd()) {
 function normalizeCoveragePath(root, filePath) {
   let candidate = filePath;
   if (candidate.startsWith('file://')) candidate = fileURLToPath(candidate);
-  const absolutePath = path.resolve(root, candidate);
-  const relativePath = path.relative(path.resolve(root), absolutePath);
+  const resolvedRoot = fs.realpathSync.native(path.resolve(root));
+  const resolvedPath = path.resolve(root, candidate);
+  const absolutePath = fs.existsSync(resolvedPath) ? fs.realpathSync.native(resolvedPath) : resolvedPath;
+  const relativePath = path.relative(resolvedRoot, absolutePath);
   if (!relativePath || relativePath.startsWith(`..${path.sep}`) || path.isAbsolute(relativePath)) {
     throw new Error(`Coverage map path resolves outside repository: ${filePath}`);
   }
@@ -167,7 +171,8 @@ function createEmptyFileCoverage(filePath) {
 function addUncoveredSourceFiles(root, coverageMap, sourceFiles = collectSourceFiles(root)) {
   const covered = new Set(coverageMap.files().map(file => path.resolve(file)));
   for (const filePath of sourceFiles) {
-    if (!covered.has(path.resolve(filePath))) coverageMap.addFileCoverage(createEmptyFileCoverage(filePath));
+    const absolutePath = normalizeCoveragePath(root, filePath);
+    if (!covered.has(absolutePath)) coverageMap.addFileCoverage(createEmptyFileCoverage(absolutePath));
   }
   return coverageMap;
 }

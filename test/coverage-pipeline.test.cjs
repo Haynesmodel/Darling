@@ -20,7 +20,9 @@ const {
 } = require('../scripts/merge_coverage.cjs');
 const {
   evaluateCoverage,
+  normalizeSummary,
   resolveChangedFiles,
+  runCli: runCoverageGateCli,
   validateOverrides,
 } = require('../scripts/check_coverage.cjs');
 const { evaluateResults, runCli: runCiGateCli } = require('../scripts/check_ci_results.cjs');
@@ -216,6 +218,41 @@ test('override metadata is required', () => {
   });
   assert.equal(errors.length, 1);
   assert.match(errors[0], /reason, owner, and YYYY-MM-DD expiry/);
+});
+
+test('coverage gate normalizes report paths and handles pass, policy failure, and missing input', () => {
+  withTempRepo(root => {
+    const sourcePath = path.join(root, 'src', 'covered.js');
+    const report = { total: summary(90), [sourcePath]: summary(90) };
+    const normalized = normalizeSummary(root, report);
+    assert.deepEqual([...normalized.files.keys()], ['src/covered.js']);
+
+    const coverageDirectory = path.join(root, 'coverage');
+    fs.mkdirSync(coverageDirectory, { recursive: true });
+    fs.writeFileSync(path.join(coverageDirectory, 'coverage-summary.json'), JSON.stringify(report));
+    const passingConfig = {
+      global: { lines: 80, statements: 80, functions: 75, branches: 70 },
+      perFile: { lines: 80, statements: 80, functions: 75, branches: 70 },
+      changedFiles: { lines: 80, statements: 80, functions: 75, branches: 70 },
+      overrides: {},
+    };
+    const originalLog = console.log;
+    const originalError = console.error;
+    console.log = () => {};
+    console.error = () => {};
+    try {
+      assert.equal(runCoverageGateCli(root, { config: passingConfig, changedFiles: ['src/covered.js'] }), 0);
+      assert.equal(runCoverageGateCli(root, {
+        config: { ...passingConfig, global: { ...passingConfig.global, lines: 95 } },
+        changedFiles: [],
+      }), 1);
+      fs.rmSync(coverageDirectory, { recursive: true });
+      assert.equal(runCoverageGateCli(root, { config: passingConfig, changedFiles: [] }), 1);
+    } finally {
+      console.log = originalLog;
+      console.error = originalError;
+    }
+  });
 });
 
 test('changed-file discovery uses the explicit base SHA', () => {

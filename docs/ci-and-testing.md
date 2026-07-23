@@ -42,6 +42,7 @@ CI, preview, and coverage modes use one worker. CI rejects committed focused tes
 7. enforces `coverage.config.cjs`.
 
 Normal development, production builds, Chromium previews, and WebKit never enable instrumentation or create raw coverage maps. Exact `COLLECT_COVERAGE=1` is required.
+The instrumented pass omits the dedicated axe-only specs because they exercise the scanner rather than additional application paths; those checks remain required in the full production Chromium lane.
 
 Coverage includes runtime JavaScript, TypeScript, and TSX in `js/`, `scripts/`, and `src/`. Generated schema validators, type-only declarations, tests, build output, and the generated chart vendor bundle are excluded for explicit generator/vendor reasons. Policy covers lines, statements, functions, and branches globally, per file, and for PR-authored files compared with the exact pull-request base SHA. An exception must identify its owner, reason, baseline thresholds, and expiry.
 

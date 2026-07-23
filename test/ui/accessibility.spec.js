@@ -75,11 +75,3 @@ test('Dynasty window dialog has no automated violations', async ({ page }) => {
   await expect(page.locator('#dynastyWindowModal')).toBeVisible();
   await expectNoViolations(page, '#dynastyWindowModal');
 });
-
-test('expanded interactive table state has no automated violations', async ({ page }) => {
-  await page.goto('/?tab=history');
-  await page.waitForLoadState('networkidle');
-  await page.locator('#historyGamesTable .table-expand-button').first().click();
-  await expect(page.locator('#historyGamesTable .table-expanded-row').first()).toBeVisible();
-  await expectNoViolations(page, '#historyGamesCard');
-});

@@ -33,11 +33,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Audit dependencies
+        id: audit
         run: npm audit --audit-level=moderate
       - name: Run quality, unit, and data checks
+        id: unit_data
         run: npm run test:unit
       - name: Build and audit production site
+        id: build
         run: npm run build
+      - name: Record bundle-budget result
+        id: bundle_budget
+        if: ${{ always() && hashFiles('dist/.vite/manifest.json') != '' }}
+        run: npm run check:bundle
       - name: Upload immutable production artifact
         id: dist
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -51,11 +58,19 @@ jobs:
         if: always()
         env:
           ARTIFACT_DIGEST: ${{ steps.dist.outputs.artifact-digest }}
+          AUDIT_RESULT: ${{ steps.audit.outcome }}
+          UNIT_DATA_RESULT: ${{ steps.unit_data.outcome }}
+          BUILD_RESULT: ${{ steps.build.outcome }}
+          BUNDLE_BUDGET_RESULT: ${{ steps.bundle_budget.outcome }}
         run: |
           {
             echo '### Quality + build'
             echo "- Node: $(node --version)"
             echo "- npm: $(npm --version)"
+            echo "- Dependency audit: ${AUDIT_RESULT}"
+            echo "- Unit/data checks: ${UNIT_DATA_RESULT}"
+            echo "- Production build: ${BUILD_RESULT}"
+            echo "- Bundle budget: ${BUNDLE_BUDGET_RESULT}"
             echo "- Artifact: darling-dist-${GITHUB_SHA}"
             echo "- Digest: ${ARTIFACT_DIGEST:-unavailable}"
             if [[ -d dist ]]; then

@@ -1,6 +1,5 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { resolveChangedFiles } = require('./check_coverage.cjs');
 
 const METRICS = ['lines', 'statements', 'functions', 'branches'];
 
@@ -82,6 +81,7 @@ function coverageSummary(root, environment = process.env) {
   }
   let changedFilesStatus = '0';
   try {
+    const { resolveChangedFiles } = require('./check_coverage.cjs');
     changedFilesStatus = String(resolveChangedFiles(root, environment.COVERAGE_BASE_SHA).length);
   } catch (error) {
     changedFilesStatus = `unavailable (${error.message})`;

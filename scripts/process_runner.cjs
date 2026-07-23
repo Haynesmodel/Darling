@@ -10,7 +10,7 @@ function escapeWindowsCommand(value) {
 
 function escapeWindowsArgument(value) {
   let escaped = String(value);
-  escaped = escaped.replace(/(?=(\\+?))\1"/g, '$1$1\\"');
+  escaped = escaped.replace(/(?=(\\+?)?)\1"/g, '$1$1\\"');
   escaped = escaped.replace(/(?=(\\+?))\1$/, '$1$1');
   escaped = `"${escaped}"`;
   // npm, c8, and Playwright are cmd-shim scripts. cmd.exe parses their

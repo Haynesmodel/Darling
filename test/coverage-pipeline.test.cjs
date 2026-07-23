@@ -30,6 +30,7 @@ const {
 } = require('../scripts/check_coverage.cjs');
 const { evaluateResults, runCli: runCiGateCli } = require('../scripts/check_ci_results.cjs');
 const {
+  escapeWindowsArgument,
   forwardSignal,
   npmCommand,
   resolveSpawn,
@@ -507,6 +508,7 @@ test('Windows cmd shims use ComSpec with escaped arguments', () => {
   assert.match(resolved.args[3], /Program\^ Files\\nodejs\\npm\.cmd/);
   assert.match(resolved.args[3], /\^+&/);
   assert.doesNotMatch(resolved.args[3], /test & verify/);
+  assert.equal(escapeWindowsArgument('say"hi').includes('say\\^^^"hi'), true);
   assert.deepEqual(
     resolveSpawn('npm', ['run', 'test'], { platform: 'linux' }),
     { command: 'npm', args: ['run', 'test'], options: {} },
@@ -720,6 +722,21 @@ test('structured CI summaries include browser and coverage diagnostics', () => {
       console.error = originalError;
     }
     assert.match(fs.readFileSync(emitted, 'utf8'), /Browser \/ Chromium/);
+  });
+});
+
+test('browser summary starts without repository dependencies', () => {
+  withTempRepo(root => {
+    const standaloneSummary = path.join(root, 'scripts', 'summarize_ci.cjs');
+    fs.copyFileSync(path.join(process.cwd(), 'scripts', 'summarize_ci.cjs'), standaloneSummary);
+    const result = spawnSync(process.execPath, [standaloneSummary, 'browser', 'chromium'], {
+      cwd: root,
+      encoding: 'utf8',
+      env: {},
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /### Browser \/ Chromium/);
+    assert.match(result.stdout, /Playwright: unavailable; browser unavailable/);
   });
 });
 

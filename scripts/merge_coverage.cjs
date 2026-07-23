@@ -8,6 +8,7 @@ const { createInstrumenter } = require('istanbul-lib-instrument');
 const libReport = require('istanbul-lib-report');
 const reports = require('istanbul-reports');
 
+const RAW_COVERAGE_MAX_BYTES = 25_000_000;
 const SOURCE_ROOTS = ['js', 'scripts', 'src'];
 const SOURCE_EXTENSIONS = new Set(['.js', '.cjs', '.ts', '.tsx']);
 const EXCLUDED_PREFIXES = [
@@ -112,6 +113,29 @@ function discoverCoverageMaps(root = process.cwd()) {
   ].sort();
 }
 
+function directoryBytes(directory) {
+  if (!fs.existsSync(directory)) return 0;
+  let total = 0;
+  const pending = [directory];
+  while (pending.length) {
+    const current = pending.pop();
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const entryPath = path.join(current, entry.name);
+      if (entry.isDirectory()) pending.push(entryPath);
+      else total += fs.statSync(entryPath).size;
+    }
+  }
+  return total;
+}
+
+function assertRawCoverageSize(root = process.cwd(), maximumBytes = RAW_COVERAGE_MAX_BYTES) {
+  const actualBytes = directoryBytes(path.join(root, 'coverage', 'raw'));
+  if (actualBytes > maximumBytes) {
+    throw new Error(`Raw coverage size ${actualBytes} bytes exceeds allowed ${maximumBytes} bytes.`);
+  }
+  return actualBytes;
+}
+
 function normalizeCoveragePath(root, filePath) {
   let candidate = filePath;
   if (candidate.startsWith('file://')) candidate = fileURLToPath(candidate);
@@ -205,6 +229,7 @@ function runCli(root = process.cwd()) {
   const started = Date.now();
   try {
     const mapFiles = discoverCoverageMaps(root);
+    const rawBytes = assertRawCoverageSize(root);
     const sourceFiles = collectSourceFiles(root);
     const merged = addUncoveredSourceFiles(root, mergeCoverageMaps(root, mapFiles), sourceFiles);
     const sorted = sortCoverageMap(merged);
@@ -214,6 +239,8 @@ function runCli(root = process.cwd()) {
       sourceFiles: sourceFiles.length,
       excludedFiles: Math.max(0, countTrackedCandidates(root) - sourceFiles.length),
       rawMaps: mapFiles.length,
+      rawBytes,
+      rawByteLimit: RAW_COVERAGE_MAX_BYTES,
       reportMilliseconds: Date.now() - started,
     };
     fs.writeFileSync(path.join(root, 'coverage', 'coverage-meta.json'), `${JSON.stringify(metadata, null, 2)}\n`);
@@ -229,12 +256,15 @@ if (require.main === module) process.exit(runCli());
 
 module.exports = {
   addUncoveredSourceFiles,
+  assertRawCoverageSize,
   collectSourceFiles,
+  directoryBytes,
   discoverCoverageMaps,
   isCoverageSource,
   isTypeOnlySourceFile,
   mergeCoverageMaps,
   normalizeCoveragePath,
+  RAW_COVERAGE_MAX_BYTES,
   runCli,
   sortCoverageMap,
   writeCoverageReports,

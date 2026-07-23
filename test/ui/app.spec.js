@@ -1,5 +1,221 @@
 import { expect, test } from './coverage-fixture.js';
 
+test('theme context helpers cover owner, rivalry, postseason, and league fallbacks', async ({ page }) => {
+  await page.goto('/');
+  if (process.env.PLAYWRIGHT_SERVER === 'preview') {
+    await page.locator('[data-theme-preference="dark"]').click();
+    await expect(page.locator('html')).toHaveAttribute('data-color-scheme', 'dark');
+    return;
+  }
+  const result = await page.evaluate(async () => {
+    const theme = await import('/src/theme/theme-context.ts');
+    return {
+      owner: theme.ownerOrUndefined(' Joe '),
+      emptyOwner: theme.ownerOrUndefined(''),
+      allOwner: theme.ownerOrUndefined('__ALL__'),
+      regular: theme.seasonModeFromLabels(['', 'Regular']),
+      saunders: theme.seasonModeFromLabels(['Saunders Final']),
+      playoff: theme.seasonModeFromLabels(['Wild Card']),
+      currentByLabel: theme.seasonModeFromCurrentWeek({ gameTypes: ['Championship'] }),
+      currentByWeek: theme.seasonModeFromCurrentWeek({ week: 15, regularSeasonMaxWeek: 14 }),
+      currentRegular: theme.seasonModeFromCurrentWeek({ week: '14', regularSeasonMaxWeek: '14' }),
+      ownerContext: theme.buildOwnerThemeContext('Joe'),
+      leagueContext: theme.buildOwnerThemeContext('__ALL__'),
+      rivalryContext: theme.buildRivalryThemeContext('Joe', 'Joel'),
+      rivalryFallback: theme.buildRivalryThemeContext('Joe', 'Joe'),
+      emptyRivalry: theme.buildRivalryThemeContext('', ''),
+      appRivalry: theme.buildThemeContextFromAppState({
+        accentKind: 'rivalry',
+        rivalryA: 'Joe',
+        rivalryB: 'Joel',
+        seasonMode: 'postseason',
+      }),
+      appOwner: theme.buildThemeContextFromAppState({
+        accentKind: 'owner',
+        owner: 'Joe',
+        allTeams: '__ALL__',
+      }),
+      appLeague: theme.buildThemeContextFromAppState({}),
+    };
+  });
+  expect(result).toEqual({
+    owner: 'Joe',
+    emptyOwner: undefined,
+    allOwner: undefined,
+    regular: 'regular',
+    saunders: 'saunders',
+    playoff: 'postseason',
+    currentByLabel: 'postseason',
+    currentByWeek: 'postseason',
+    currentRegular: 'regular',
+    ownerContext: { accentKind: 'owner', owner: 'Joe', seasonMode: 'regular' },
+    leagueContext: { accentKind: 'league', seasonMode: 'regular' },
+    rivalryContext: { accentKind: 'rivalry', rivalryA: 'Joe', rivalryB: 'Joel', seasonMode: 'regular' },
+    rivalryFallback: { accentKind: 'owner', owner: 'Joe', seasonMode: 'regular' },
+    emptyRivalry: { accentKind: 'league', seasonMode: 'regular' },
+    appRivalry: {
+      accentKind: 'rivalry',
+      rivalryA: 'Joe',
+      rivalryB: 'Joel',
+      seasonMode: 'postseason',
+    },
+    appOwner: { accentKind: 'owner', owner: 'Joe', seasonMode: 'regular' },
+    appLeague: { accentKind: 'league', seasonMode: 'regular' },
+  });
+});
+
+test('verified JSON transport rejects malformed and oversized browser responses', async ({ page }) => {
+  await page.goto('/');
+  if (process.env.PLAYWRIGHT_SERVER === 'preview') {
+    await expect(page.locator('.data-freshness summary')).toContainText('2025 season final');
+    return;
+  }
+  const result = await page.evaluate(async () => {
+    const transport = await import('/src/data/verified-json-fetch.ts');
+    const canonical = await import('/src/data/canonical-json.ts');
+    const body = new TextEncoder().encode('0\n');
+    const expectedSha256 = await canonical.sha256Bytes(body);
+    const descriptor = {
+      name: 'Fixture',
+      path: 'assets/Fixture.json',
+      sha256: expectedSha256,
+      bytes: body.byteLength,
+      dataVersion: 'sha256:fixture',
+    };
+    const response = (bytes, options = {}) => ({
+      ok: options.ok ?? true,
+      status: options.status ?? 200,
+      headers: {
+        get(name) {
+          return name.toLowerCase() === 'content-length' && options.contentLength !== undefined
+            ? String(options.contentLength)
+            : null;
+        },
+      },
+      async arrayBuffer() {
+        if (options.readError) throw new Error('read failed');
+        return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+      },
+    });
+    const errorCode = async callback => {
+      try {
+        await callback();
+        return 'NO_ERROR';
+      } catch (error) {
+        return error.code || error.message;
+      }
+    };
+
+    const nativeFetch = globalThis.fetch;
+    const defaultManifest = new TextEncoder().encode('{}');
+    globalThis.fetch = async () => response(defaultManifest);
+    const manifestWithDefaults = await transport.fetchManifestJson('assets/asset-manifest.json');
+    globalThis.fetch = undefined;
+    const missingManifestFetch = await errorCode(() => transport.fetchManifestJson('assets/asset-manifest.json'));
+    const missingAssetFetch = await errorCode(() => transport.fetchVerifiedJson(descriptor));
+    globalThis.fetch = nativeFetch;
+
+    const fragmentUrl = transport.versionedAssetUrl(
+      '/assets/Fixture.json?source=test#proof',
+      '/Darling',
+      expectedSha256,
+    );
+    const invalidUrlHash = await errorCode(() => Promise.resolve(
+      transport.versionedAssetUrl('assets/Fixture.json', '/', 'sha256:bad'),
+    ));
+    const requestFailure = await errorCode(() => transport.fetchManifestJson('assets/asset-manifest.json', {
+      fetchFn: async () => { throw new Error('offline'); },
+    }));
+    const httpFailure = await errorCode(() => transport.fetchManifestJson('assets/asset-manifest.json', {
+      fetchFn: async () => response(defaultManifest, { ok: false, status: 503 }),
+    }));
+    const invalidManifestUtf8 = await errorCode(() => transport.fetchManifestJson('assets/asset-manifest.json', {
+      fetchFn: async () => response(new Uint8Array([0xc3, 0x28])),
+    }));
+    const invalidManifestJson = await errorCode(() => transport.fetchManifestJson('assets/asset-manifest.json', {
+      fetchFn: async () => response(new TextEncoder().encode('{\n')),
+    }));
+    const declaredOversize = await errorCode(() => transport.fetchVerifiedJson(descriptor, {
+      fetchFn: async () => response(body, { contentLength: descriptor.bytes + 1 }),
+    }));
+    const readFailure = await errorCode(() => transport.fetchVerifiedJson(descriptor, {
+      fetchFn: async () => response(body, { readError: true }),
+    }));
+    const invalidDescriptors = [];
+    for (const patch of [
+      { sha256: 'sha256:bad' },
+      { bytes: 1.5 },
+      { bytes: -1 },
+      { bytes: transport.ASSET_MAX_BYTES + 1 },
+    ]) {
+      invalidDescriptors.push(await errorCode(() => transport.fetchVerifiedJson({ ...descriptor, ...patch }, {
+        fetchFn: async () => response(body),
+      })));
+    }
+    let attempts = 0;
+    const recovered = await transport.fetchVerifiedJson(descriptor, {
+      fetchFn: async () => response(++attempts === 1 ? new TextEncoder().encode('1\n') : body),
+    });
+    return {
+      declaredOversize,
+      fragmentUrl,
+      httpFailure,
+      invalidDescriptors,
+      invalidManifestJson,
+      invalidManifestUtf8,
+      invalidUrlHash,
+      manifestWithDefaults,
+      missingAssetFetch,
+      missingManifestFetch,
+      readFailure,
+      recovered: { attempts: recovered.attempts, cacheRecovered: recovered.cacheRecovered },
+      requestFailure,
+    };
+  });
+  expect(result).toEqual({
+    declaredOversize: 'SIZE_MISMATCH',
+    fragmentUrl: `/Darling/assets/Fixture.json?source=test&v=${result.fragmentUrl.match(/v=([0-9a-f]+)/)[1]}#proof`,
+    httpFailure: 'HTTP_ERROR',
+    invalidDescriptors: ['INVALID_MANIFEST', 'INVALID_MANIFEST', 'INVALID_MANIFEST', 'INVALID_MANIFEST'],
+    invalidManifestJson: 'INVALID_MANIFEST',
+    invalidManifestUtf8: 'INVALID_UTF8',
+    invalidUrlHash: 'INVALID_MANIFEST',
+    manifestWithDefaults: {},
+    missingAssetFetch: 'fetchVerifiedJson requires a fetch function',
+    missingManifestFetch: 'fetchManifestJson requires a fetch function',
+    readFailure: 'INVALID_ASSET',
+    recovered: { attempts: 2, cacheRecovered: true },
+    requestFailure: 'HTTP_ERROR',
+  });
+  expect(result.fragmentUrl).toMatch(/^\/Darling\/assets\/Fixture\.json\?source=test&v=[0-9a-f]{64}#proof$/);
+});
+
+test('Pulse controller guard paths reject a missing mount and remain disposable', async ({ page }) => {
+  await page.goto('/');
+  if (process.env.PLAYWRIGHT_SERVER === 'preview') {
+    await expect(page.getByRole('tabpanel', { name: 'League Pulse' })).toBeVisible();
+    return;
+  }
+  const result = await page.evaluate(async () => {
+    const { createFeatureController } = await import('/src/features/league-pulse/league-pulse-controller.ts');
+    const controller = createFeatureController();
+    let mountError = '';
+    try {
+      controller.mount({
+        document: { getElementById: () => null },
+        freshness: { subscribe: () => () => {} },
+      });
+    } catch (error) {
+      mountError = error.message;
+    }
+    controller.activate({ signal: new AbortController().signal });
+    controller.dispose();
+    controller.dispose();
+    return mountError;
+  });
+  expect(result).toBe('League Pulse mount #leaguePulseRoot is missing');
+});
+
 async function downloadText(download) {
   const stream = await download.createReadStream();
   const chunks = [];

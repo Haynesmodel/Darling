@@ -407,7 +407,7 @@
   border:1px solid var(--border);
   border-radius:12px;
   background:var(--surface-panel-alt);
-  color:inherit;
+  color:var(--text-primary);
   cursor:pointer;
   font:inherit;
   text-align:left;
@@ -434,7 +434,7 @@
 .dynasty-slump-range{
   font-size:11px;
   font-weight:800;
-  color:var(--muted);
+  color:var(--text-secondary);
 }
 .dynasty-slump-score{
   flex:0 0 auto;
@@ -442,7 +442,7 @@
   text-align:right;
   white-space:nowrap;
   font-variant-numeric:tabular-nums;
-  color:var(--header);
+  color:var(--text-primary);
 }
 
 .dynasty-formula{
@@ -490,4 +490,7 @@
   background:var(--surface-panel);
   border-color:var(--border);
   color:var(--text);
+}
+:root[data-color-scheme="dark"] .dynasty-slump-item:hover{
+  background:var(--surface-control-hover);
 }

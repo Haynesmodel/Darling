@@ -94,7 +94,7 @@ function coverageSummary(root, environment = process.env) {
     `- Changed-file thresholds: ${formatThresholds(config?.changedFiles)}`,
     `- Files: ${metadata?.sourceFiles ?? 'unavailable'} authored, ${metadata?.excludedFiles ?? 'unavailable'} excluded, ${Object.keys(config?.overrides || {}).length} overrides`,
     `- Changed files checked: ${changedFilesStatus}`,
-    `- Raw output: ${directoryBytes(path.join(root, 'coverage', 'raw'))} bytes`,
+    `- Raw output: ${metadata?.rawBytes ?? directoryBytes(path.join(root, 'coverage', 'raw'))} / ${metadata?.rawByteLimit ?? 'unavailable'} bytes`,
     `- Report conversion: ${formatDuration(metadata?.reportMilliseconds)}`,
   ];
   if (environment.JOB_STATUS && environment.JOB_STATUS !== 'success') {

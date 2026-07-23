@@ -8,10 +8,13 @@ The July 19, 2026 League Pulse build keeps the shell split and adds an eighth dy
 | After tab splitting | 170,462 | 51,698 | 31,570 | 298,892 |
 | League Pulse home | 171,382 | 52,050 | 31,590 | 306,830 |
 | Cache-safe data freshness | 177,866 | 54,142 | 33,728 | 310,894 |
+| Audit acceptance coverage | 177,873 | 54,159 | 33,728 | 311,058 |
 
-The Pulse controller entry is 23,779 bytes raw / 6,875 bytes gzip. Its extracted model dependency is 23,615 bytes raw / 7,445 bytes gzip, keeping combined Pulse feature logic at 14,320 bytes gzip. Feature CSS is 5,059 bytes raw / 1,378 bytes gzip. The cold Pulse route remains smaller than the former History default and does not include Observable Plot.
+The Pulse controller entry is 24,145 bytes raw / 7,010 bytes gzip. Its extracted model dependency is 23,615 bytes raw / 7,443 bytes gzip, keeping combined Pulse feature logic at 14,453 bytes gzip. Feature CSS is 5,059 bytes raw / 1,378 bytes gzip. The cold Pulse route remains smaller than the former History default and does not include Observable Plot.
 
 The cache-safe build adds the global freshness disclosure and browser verification transport without a hashing dependency. Its lazy data-loader chunk is 4,468 bytes raw / 1,908 bytes gzip; the measured cold Pulse closure is 104,674 bytes gzip, and the aggregate build retains 4,106 bytes of headroom under the unchanged ceiling.
+
+The July 23 audit-remediation build adds only test-facing snapshot infrastructure and transport size guards to the product surface. Its cold History closure is 107,419 bytes gzip, its cold Pulse closure is 104,832 bytes gzip, and the aggregate build retains 3,942 bytes of headroom under the unchanged ceiling.
 
 ## Cold route closures
 
@@ -19,8 +22,8 @@ The manifest checker counts the shell, static dependencies, requested feature, a
 
 | Route | JavaScript gzip |
 | --- | ---: |
-| League Pulse | 100,608 |
-| History | 103,336 |
+| League Pulse | 104,832 |
+| History | 107,419 |
 | Draft Spot | 223,061 |
 | Historical Matchup | 217,295 |
 | Trophy Case | 223,418 |

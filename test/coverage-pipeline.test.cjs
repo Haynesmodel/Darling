@@ -12,6 +12,7 @@ const { createInstrumenter } = require('istanbul-lib-instrument');
 
 const {
   addUncoveredSourceFiles,
+  assertRawCoverageSize,
   collectSourceFiles,
   discoverCoverageMaps,
   isCoverageSource,
@@ -41,6 +42,7 @@ const { detectLocalWebKitSupport, reportFailure, runCi } = require('../scripts/r
 const {
   assertCoverageDirectory,
   cleanCoverageDirectory,
+  cleanNodeV8Directory,
   coverageRunId,
   localBinary,
   runCoverage,
@@ -359,6 +361,22 @@ test('coverage merge CLI writes all standard report formats', () => {
       assert.equal(fs.existsSync(path.join(root, 'coverage', report)), true, report);
     }
     assert.equal(fs.existsSync(path.join(root, 'coverage', 'html', 'index.html')), true);
+    const metadata = JSON.parse(fs.readFileSync(path.join(root, 'coverage', 'coverage-meta.json'), 'utf8'));
+    assert.equal(metadata.rawBytes > 0, true);
+    assert.equal(metadata.rawByteLimit, 25_000_000);
+  });
+});
+
+test('raw coverage size rejects an oversized fixture with actual and allowed bytes', () => {
+  withTempRepo(root => {
+    const rawDirectory = path.join(root, 'coverage', 'raw');
+    fs.mkdirSync(rawDirectory, { recursive: true });
+    fs.writeFileSync(path.join(rawDirectory, 'oversized.json'), '123456');
+    assert.equal(assertRawCoverageSize(root, 6), 6);
+    assert.throws(
+      () => assertRawCoverageSize(root, 5),
+      /Raw coverage size 6 bytes exceeds allowed 5 bytes/,
+    );
   });
 });
 
@@ -463,6 +481,10 @@ test('coverage cleanup is constrained to the repository coverage directory', () 
     fs.writeFileSync(path.join(root, 'coverage', 'temporary.json'), '{}');
     cleanCoverageDirectory(root);
     assert.equal(fs.existsSync(path.join(root, 'coverage')), false);
+    fs.mkdirSync(path.join(root, 'coverage', 'raw', 'node-v8'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'coverage', 'raw', 'node-v8', 'temporary.json'), '{}');
+    cleanNodeV8Directory(root);
+    assert.equal(fs.existsSync(path.join(root, 'coverage', 'raw', 'node-v8')), false);
     assert.throws(
       () => assertCoverageDirectory(root, path.join(root, 'not-coverage')),
       /Refusing to clean unexpected coverage path/,
@@ -713,6 +735,8 @@ test('structured CI summaries include browser and coverage diagnostics', () => {
     fs.writeFileSync(path.join(coverageDirectory, 'coverage-meta.json'), JSON.stringify({
       sourceFiles: 151,
       excludedFiles: 9,
+      rawBytes: 7,
+      rawByteLimit: 25_000_000,
       reportMilliseconds: 1621,
     }));
     const coverage = coverageSummary(root, {
@@ -722,7 +746,7 @@ test('structured CI summaries include browser and coverage diagnostics', () => {
     assert.match(coverage, /lines 90%/);
     assert.match(coverage, /151 authored, 9 excluded, 1 overrides/);
     assert.match(coverage, /Changed files checked: 0/);
-    assert.match(coverage, /Raw output: 7 bytes/);
+    assert.match(coverage, /Raw output: 7 \/ 25000000 bytes/);
     assert.match(coverage, /Report conversion: 1\.6s/);
     assert.match(coverage, /coverage-diagnostics-fixture/);
     const missingCoverage = coverageSummary(path.join(root, 'missing-root'), {

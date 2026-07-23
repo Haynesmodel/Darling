@@ -4,6 +4,7 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { pathToFileURL } = require('node:url');
 const vm = require('node:vm');
 const { createCoverageMap } = require('istanbul-lib-coverage');
 const { createInstrumenter } = require('istanbul-lib-instrument');
@@ -11,6 +12,7 @@ const { createInstrumenter } = require('istanbul-lib-instrument');
 const {
   addUncoveredSourceFiles,
   collectSourceFiles,
+  discoverCoverageMaps,
   isCoverageSource,
   isTypeOnlySourceFile,
   mergeCoverageMaps,
@@ -114,21 +116,33 @@ test('never-loaded authored files are added at zero percent', () => {
 test('source discovery excludes generated, vendor, test, and type-only files', () => {
   withTempRepo(root => {
     const runtime = path.join(root, 'src', 'runtime.ts');
+    const runtimeTsx = path.join(root, 'src', 'runtime.tsx');
     const typeOnly = path.join(root, 'src', 'types.ts');
+    const declaration = path.join(root, 'src', 'types.d.ts');
+    const malformed = path.join(root, 'src', 'malformed.ts');
     const generated = path.join(root, 'src', 'data', 'generated', 'asset-validators.ts');
     const vendor = path.join(root, 'js', 'charting', 'vendor', 'charting-vendor.js');
     fs.mkdirSync(path.dirname(generated), { recursive: true });
     fs.mkdirSync(path.dirname(vendor), { recursive: true });
     fs.writeFileSync(runtime, 'export const runtime = true;\n');
+    fs.writeFileSync(runtimeTsx, 'export const runtime = <div>ready</div>;\n');
     fs.writeFileSync(typeOnly, 'export interface Shape { value: string }\n');
+    fs.writeFileSync(declaration, 'export interface Declaration { value: string }\n');
+    fs.writeFileSync(malformed, 'export const = ;\n');
     fs.writeFileSync(generated, 'export const generated = true;\n');
     fs.writeFileSync(vendor, 'export const vendor = true;\n');
     assert.equal(isTypeOnlySourceFile(typeOnly), true);
+    assert.equal(isTypeOnlySourceFile(path.join(root, 'src', 'missing.ts')), false);
+    assert.equal(isTypeOnlySourceFile(malformed), false);
     assert.equal(isCoverageSource(root, runtime), true);
+    assert.equal(isCoverageSource(root, runtimeTsx), true);
     assert.equal(isCoverageSource(root, typeOnly), false);
+    assert.equal(isCoverageSource(root, declaration), false);
     assert.equal(isCoverageSource(root, generated), false);
     assert.equal(isCoverageSource(root, vendor), false);
-    assert.deepEqual(collectSourceFiles(root), [runtime]);
+    assert.equal(isCoverageSource(root, root), false);
+    assert.equal(isCoverageSource(path.join(root, 'missing-root'), path.join(root, 'missing-root', 'src', 'missing.js')), true);
+    assert.deepEqual(collectSourceFiles(root), [malformed, runtime, runtimeTsx]);
   });
 });
 
@@ -138,6 +152,12 @@ test('malformed, missing, and outside-repository maps fail clearly', () => {
     const malformed = path.join(root, 'malformed.json');
     fs.writeFileSync(malformed, '{');
     assert.throws(() => mergeCoverageMaps(root, [malformed]), new RegExp(`Malformed coverage map .*${path.basename(malformed)}`));
+    const invalid = path.join(root, 'invalid.json');
+    fs.writeFileSync(invalid, JSON.stringify({ source: { path: 42 } }));
+    assert.throws(() => mergeCoverageMaps(root, [invalid]), new RegExp(`Invalid coverage map .*${path.basename(invalid)}`));
+    const inside = path.join(root, 'src', 'inside.js');
+    fs.writeFileSync(inside, 'export const inside = true;\n');
+    assert.equal(normalizeCoveragePath(root, pathToFileURL(inside).href), fs.realpathSync.native(inside));
     assert.throws(() => normalizeCoveragePath(root, path.join(root, '..', 'outside.js')), /outside repository/);
     const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-outside-'));
     try {
@@ -149,6 +169,18 @@ test('malformed, missing, and outside-repository maps fail clearly', () => {
     } finally {
       fs.rmSync(outside, { recursive: true, force: true });
     }
+  });
+});
+
+test('coverage map discovery handles absent and nested raw directories', () => {
+  withTempRepo(root => {
+    assert.deepEqual(discoverCoverageMaps(root), []);
+    const nested = path.join(root, 'coverage', 'raw', 'node', 'nested');
+    fs.mkdirSync(nested, { recursive: true });
+    const mapPath = path.join(nested, 'coverage.json');
+    fs.writeFileSync(mapPath, '{}');
+    fs.writeFileSync(path.join(nested, 'ignored.txt'), '{}');
+    assert.deepEqual(discoverCoverageMaps(root), [mapPath]);
   });
 });
 
@@ -165,6 +197,13 @@ test('coverage map ordering is deterministic', () => {
 
 test('coverage merge CLI writes all standard report formats', () => {
   withTempRepo(root => {
+    const originalError = console.error;
+    console.error = () => {};
+    try {
+      assert.equal(runMergeCli(root), 1);
+    } finally {
+      console.error = originalError;
+    }
     const filePath = path.join(root, 'src', 'reported.js');
     const rawMap = instrumentAndRun(filePath, 'function reported(){ return true; }\nreported();\n');
     const rawDirectory = path.join(root, 'coverage', 'raw', 'browser');

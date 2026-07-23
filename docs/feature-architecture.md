@@ -46,7 +46,9 @@ Feature controllers serialize only their own fields. Table saved-view callbacks 
 
 `src/tables/table-runtime.tsx` contains generic rendering, saved views, and registration. Each table feature registers its stable definition and row adapter during `mount`. Duplicate registration fails, and rendering an unregistered table produces an actionable error. Table IDs and the saved-view schema remain unchanged.
 
-Chart features share one lazy `chart-runtime` output containing Observable Plot and the chart adapters. Pulse and History do not request it; Draft Spot loads it for its pick-distribution and timeline charts. Feature entry CSS files import their owned styles in the existing cascade layers; `src/styles/app.css` contains shell/shared styles only. Readiness is reported after the JavaScript and its CSS dependency resolve.
+Chart features share exactly one lazy `chart-runtime` output containing Observable Plot and the chart adapters. The committed vendor exposes only `areaY`, `barX`, `barY`, `dot`, `lineY`, `plot`, `ruleX`, `ruleY`, and `text`; authored browser code imports those functions by name and never imports the Plot package directly. Pulse, History, and the initial shell do not request the runtime. Draft Spot is the exception among chart routes: its feature and controls become ready before guarded dynamic chart imports settle, and an import failure renders feature-local chart fallbacks without disabling the rest of Draft Spot. Feature entry CSS files import their owned styles in the existing cascade layers; `src/styles/app.css` contains shell/shared styles only.
+
+Adding a Plot API is an architecture change: update the generator allowlist, regenerate the committed vendor, update the exact-export contract, run the nine-surface chart matrix, rebuild with the Pages base path, and record the bundle delta. `npm run check:charts-generated` must pass without changing the worktree.
 
 ## Adding a tab
 

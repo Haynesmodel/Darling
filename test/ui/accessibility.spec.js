@@ -33,6 +33,7 @@ test('mobile navigation and history disclosure have no automated violations', as
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
+  await expect(page.locator('#page-history')).toHaveAttribute('data-feature-state', 'ready');
   await page.locator('.dropdown-toggle[data-target="seasonFilters"]').click();
   await expect(page.locator('#seasonFilters')).toBeVisible();
   await expectNoViolations(page);

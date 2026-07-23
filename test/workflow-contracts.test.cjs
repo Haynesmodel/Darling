@@ -31,6 +31,16 @@ function actionRef(job, action) {
   return match ? match[1] : '';
 }
 
+function jobPermissions(job) {
+  const match = job.match(/^    permissions:[ \t]*\n((?:^      [a-z-]+:[ \t]*[a-z]+[ \t]*\n?)+)/m);
+  if (!match) return [];
+  return match[1]
+    .trim()
+    .split('\n')
+    .map(line => line.trim())
+    .sort();
+}
+
 function validatePinnedActions(workflows, errors) {
   for (const [filename, source] of Object.entries(workflows)) {
     for (const match of source.matchAll(ACTION_LINE)) {
@@ -66,7 +76,7 @@ function validateWorkflowContracts({ workflows, legacyDeployExists }) {
     errors.push('CI-003: legacy deploy-pages.yml must be removed');
   }
 
-  const buildCommands = countMatches(allWorkflowSource, /\bnpm run build\b/g);
+  const buildCommands = countMatches(allWorkflowSource, /\bnpm run build(?=\s|$)/g);
   if (buildCommands !== 1 || !/^\s*run:\s+npm run build\s*$/m.test(qualityBuild)) {
     errors.push('ARCH-001: quality_build must contain the only workflow-level npm run build');
   }
@@ -133,6 +143,9 @@ function validateWorkflowContracts({ workflows, legacyDeployExists }) {
     if (/\balways\(\)/.test(packagePages)) {
       errors.push('REL-001: package_pages must not use always()');
     }
+    if (JSON.stringify(jobPermissions(packagePages)) !== JSON.stringify(['contents: read'])) {
+      errors.push('SEC-001: package_pages permissions must be exactly contents: read');
+    }
     if (!packagePages.includes('uses: actions/upload-pages-artifact@')) {
       errors.push('ARCH-002: package_pages must upload dist with upload-pages-artifact');
     }
@@ -170,9 +183,11 @@ function validateWorkflowContracts({ workflows, legacyDeployExists }) {
       || !/cancel-in-progress:\s*true/.test(deployPages)) {
       errors.push('REL-002: deploy_pages must serialize production deployments');
     }
-    if (!/contents:\s*read/.test(deployPages)
-      || !/pages:\s*write/.test(deployPages)
-      || !/id-token:\s*write/.test(deployPages)) {
+    if (JSON.stringify(jobPermissions(deployPages)) !== JSON.stringify([
+      'contents: read',
+      'id-token: write',
+      'pages: write',
+    ])) {
       errors.push('SEC-002: deploy_pages must own least-privilege Pages permissions');
     }
 
@@ -321,6 +336,15 @@ test('contract rejects broad workflow-level Pages permissions', () => {
     'permissions:\n  contents: read\n  pages: write\n  id-token: write',
   ));
   assert.match(validateWorkflowContracts(mutated).join('\n'), /must not be workflow-scoped/);
+});
+
+test('contract rejects job-level permission escalation during Pages packaging', () => {
+  const fixture = readRepositoryFixture();
+  const mutated = mutateJob(fixture, 'package_pages', block => block.replace(
+    '    permissions:\n      contents: read',
+    '    permissions:\n      contents: write',
+  ));
+  assert.match(validateWorkflowContracts(mutated).join('\n'), /package_pages permissions must be exactly contents: read/);
 });
 
 test('contract rejects a duplicated deploy action', () => {

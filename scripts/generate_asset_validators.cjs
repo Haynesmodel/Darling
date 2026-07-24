@@ -11,6 +11,17 @@ function outputRootFromArgs(argv) {
   return index >= 0 ? path.resolve(argv[index + 1]) : process.cwd();
 }
 
+function specializeFormatRuntime(standaloneModule) {
+  const specialized = standaloneModule.replaceAll(
+    'require("ajv-formats/dist/formats")',
+    'require("./scripts/data/standalone-formats.cjs")',
+  );
+  if (specialized.includes('ajv-formats/dist/formats')) {
+    throw new Error('Generated validators still reference the full ajv-formats runtime');
+  }
+  return specialized;
+}
+
 function generateAssetValidators({ sourceRoot = process.cwd(), outputRoot = sourceRoot } = {}) {
   const ajv = createAjv(sourceRoot);
   const ajvStandaloneModule = standaloneCode(ajv, {
@@ -22,13 +33,7 @@ function generateAssetValidators({ sourceRoot = process.cwd(), outputRoot = sour
     validateDerivedStats: schemaId('derived-stats.schema.json'),
     validateAssetManifest: schemaId('asset-manifest.schema.json'),
   });
-  const standaloneModule = ajvStandaloneModule.replaceAll(
-    'require("ajv-formats/dist/formats")',
-    'require("./scripts/data/standalone-formats.cjs")',
-  );
-  if (standaloneModule.includes('ajv-formats/dist/formats')) {
-    throw new Error('Generated validators still reference the full ajv-formats runtime');
-  }
+  const standaloneModule = specializeFormatRuntime(ajvStandaloneModule);
   const moduleCode = esbuild.buildSync({
     stdin: {
       contents: standaloneModule,
@@ -84,4 +89,8 @@ if (require.main === module) {
   }
 }
 
-module.exports = { generateAssetValidators };
+module.exports = {
+  generateAssetValidators,
+  outputRootFromArgs,
+  specializeFormatRuntime,
+};

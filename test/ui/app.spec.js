@@ -1200,7 +1200,7 @@ test('history game-query deep links survive direct loads and reloads', async ({ 
   await expect(page.locator('[data-table-id="history-games"] .table-pagination')).toHaveCount(0);
 });
 
-test('dynamic structured results remain in recents after reopen and reload', async ({ page }) => {
+test('structured game results remain in recents after reopen and reload', async ({ page }) => {
   await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
   await page.evaluate(() => window.darlingSearch.clearRecent());
@@ -1221,8 +1221,11 @@ test('dynamic structured results remain in recents after reopen and reload', asy
   await trigger.click();
   dialog = page.getByRole('dialog', { name: 'Search The Darling' });
   await expect(dialog.getByRole('option').first()).toContainText('140+ point games');
+});
 
-  await page.keyboard.press('Escape');
+test('dynamic season and rivalry results remain in recents after reload', async ({ page }) => {
+  await page.goto('/?tab=history');
+  await page.waitForLoadState('networkidle');
   const dynamicIds = await page.evaluate(() => {
     window.darlingSearch.clearRecent();
     const results = ['2024 regular season', 'Zubs vs Joe'].map(query => window.darlingSearch.search(query)[0]);

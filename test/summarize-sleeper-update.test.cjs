@@ -300,3 +300,25 @@ test('CLI argument-validation failure also removes stale outputs', () => {
     assert.equal(fs.existsSync(value.options['json-out']), false);
   });
 });
+
+test('CLI duplicate output arguments remove every discovered stale target', () => {
+  withFixture({}, (value) => {
+    const otherBody = path.join(value.root, 'other-body.md');
+    fs.writeFileSync(value.options['body-out'], 'stale first');
+    fs.writeFileSync(otherBody, 'stale second');
+    fs.writeFileSync(value.options['json-out'], 'stale json');
+    const args = [
+      ...Object.entries(value.options).flatMap(([key, entry]) => [`--${key}`, String(entry)]),
+      '--body-out',
+      otherBody,
+    ];
+    const result = spawnSync(process.execPath, [script, ...args], {
+      encoding: 'utf8',
+      env: { ...process.env, LEAGUE_ID: 'league-123' },
+    });
+    assert.notEqual(result.status, 0);
+    assert.equal(fs.existsSync(value.options['body-out']), false);
+    assert.equal(fs.existsSync(otherBody), false);
+    assert.equal(fs.existsSync(value.options['json-out']), false);
+  });
+});

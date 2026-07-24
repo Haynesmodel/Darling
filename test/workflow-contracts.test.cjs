@@ -83,6 +83,7 @@ function validateSleeperWorkflow(source, errors) {
   const header = source.split(/^jobs:\s*$/m)[0] || '';
   const update = extractJob(source, 'update');
   const checkout = extractNamedStep(update, 'Check out trusted main branch');
+  const sourceStep = extractNamedStep(update, 'Record trusted main source');
   const resolveSeason = extractNamedStep(update, 'Resolve target season');
   const generateCandidate = extractNamedStep(update, 'Generate candidate data');
   const summarizeCandidate = extractNamedStep(update, 'Summarize and safety-check candidate');
@@ -113,6 +114,11 @@ function validateSleeperWorkflow(source, errors) {
     || !/fetch-depth:\s*0/.test(checkout)
     || !/persist-credentials:\s*false/.test(checkout)) {
     errors.push('SLEEPER-SEC-002: checkout must pin trusted main with full history and no persisted credentials');
+  }
+  if (!sourceStep.includes('sha=$(git rev-parse HEAD)')
+    || !update.includes('--base-sha "${{ steps.source.outputs.sha }}"')
+    || !update.includes('--candidate-sha "${{ steps.source.outputs.sha }}"')) {
+    errors.push('SLEEPER-OBS-001: summaries must use the exact checked-out main SHA');
   }
   const leagueSecret = 'LEAGUE_ID: ${{ secrets.SLEEPER_LEAGUE_ID }}';
   const jobHeader = update.split(/^\s{4}steps:\s*$/m)[0] || '';
@@ -170,6 +176,10 @@ function validateSleeperWorkflow(source, errors) {
   if (JSON.stringify(observedAllowlist) !== JSON.stringify(SLEEPER_ALLOWLIST)) {
     errors.push('SLEEPER-DATA-001: publication allowlist must contain exactly the five reviewed data files');
   }
+  if (!update.includes("if (status[1] !== ' ')")
+    || !update.includes('Refusing an allowed path that is not fully staged')) {
+    errors.push('SLEEPER-DATA-001: every allowed changed path must be fully staged before publication');
+  }
   for (const command of [
     'npm run generate:derived',
     'npm run generate:manifest',
@@ -180,8 +190,8 @@ function validateSleeperWorkflow(source, errors) {
       errors.push(`SLEEPER-DATA-002: workflow must run ${command}`);
     }
   }
-  if (!update.includes('--base-sha "${GITHUB_SHA}"')
-    || !update.includes('--candidate-sha "${GITHUB_SHA}"')
+  if (!update.includes('--base-sha "${{ steps.source.outputs.sha }}"')
+    || !update.includes('--candidate-sha "${{ steps.source.outputs.sha }}"')
     || !update.includes('--changed-files-file')) {
     errors.push('SLEEPER-OBS-002: candidate summary must include source SHAs and the sorted changed-file input');
   }
@@ -628,6 +638,10 @@ test('Sleeper contract rejects default-token writes, untrusted refs, and unsafe 
       /checkout must pin trusted main/,
     ],
     [
+      source => source.replace('sha=$(git rev-parse HEAD)', 'sha=${GITHUB_SHA}'),
+      /exact checked-out main SHA/,
+    ],
+    [
       source => source.replace(
         "      REQUESTED_SEASON: ${{ github.event.inputs.season }}",
         "      LEAGUE_ID: ${{ secrets.SLEEPER_LEAGUE_ID }}\n      REQUESTED_SEASON: ${{ github.event.inputs.season }}",
@@ -707,6 +721,18 @@ test('Sleeper contract rejects publication allowlist expansion', () => {
   assert.match(
     validateWorkflowContracts(mutated).join('\n'),
     /publication allowlist must contain exactly the five reviewed data files/,
+  );
+});
+
+test('Sleeper contract rejects removal of the fully-staged bundle guard', () => {
+  const fixture = readRepositoryFixture();
+  const mutated = mutateSleeper(fixture, source => source.replace(
+    "            if (status[1] !== ' ') {",
+    '            if (false) {',
+  ));
+  assert.match(
+    validateWorkflowContracts(mutated).join('\n'),
+    /every allowed changed path must be fully staged/,
   );
 });
 

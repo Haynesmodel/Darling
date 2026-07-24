@@ -386,20 +386,19 @@ function removeOutputs(options) {
   }
 }
 
-function discoverOutputOptions(argv) {
-  const options = {};
+function removeDiscoveredOutputs(argv) {
   for (let index = 0; index < argv.length - 1; index += 1) {
-    if (argv[index] === '--body-out') options['body-out'] = argv[index + 1];
-    if (argv[index] === '--json-out') options['json-out'] = argv[index + 1];
+    if (argv[index] === '--body-out' || argv[index] === '--json-out') {
+      fs.rmSync(path.resolve(argv[index + 1]), { force: true });
+    }
   }
-  return options;
 }
 
 if (require.main === module) {
   const argv = process.argv.slice(2);
-  let options = discoverOutputOptions(argv);
+  let options = {};
   try {
-    removeOutputs(options);
+    removeDiscoveredOutputs(argv);
     options = parseArgs(argv);
     writeOutputs(options, summarize(options));
   } catch (error) {
@@ -413,7 +412,6 @@ module.exports = {
   analyzeH2H,
   buildMarkdown,
   currentSeasonStats,
-  discoverOutputOptions,
   escapeMarkdown,
   parseArgs,
   summarize,

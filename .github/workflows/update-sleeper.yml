@@ -60,6 +60,11 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
+      - name: Record trusted main source
+        id: source
+        shell: bash
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Resolve target season
         id: resolve
         env:
@@ -213,8 +218,12 @@ jobs:
           );
           const entries = output.split('\0').filter(Boolean);
           for (const entry of entries) {
+            const status = entry.slice(0, 2);
             const path = entry.slice(3);
             if (!allowed.has(path)) throw new Error(`Refusing unexpected changed path: ${path}`);
+            if (status[1] !== ' ') {
+              throw new Error(`Refusing an allowed path that is not fully staged: ${path}`);
+            }
           }
           NODE
 
@@ -245,8 +254,8 @@ jobs:
             --after-dir assets \
             --season "${{ steps.resolve.outputs.season }}" \
             --run-url "${RUN_URL}" \
-            --base-sha "${GITHUB_SHA}" \
-            --candidate-sha "${GITHUB_SHA}" \
+            --base-sha "${{ steps.source.outputs.sha }}" \
+            --candidate-sha "${{ steps.source.outputs.sha }}" \
             --changed-files-file "${RUNNER_TEMP}/sleeper-changed-files.txt" \
             --body-out "${RUNNER_TEMP}/sleeper-pr-body.md" \
             --json-out "${RUNNER_TEMP}/sleeper-summary.json"

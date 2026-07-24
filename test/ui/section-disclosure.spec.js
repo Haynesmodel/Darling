@@ -1,17 +1,15 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const esbuild = require('esbuild');
-const fs = require('node:fs');
-const os = require('node:os');
-const path = require('node:path');
-const { chromium } = require('playwright');
+import { test, expect } from '@playwright/test';
+import esbuild from 'esbuild';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = path.join(__dirname, '..');
+const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '../..');
 let temp;
-let browser;
 let bundle;
 
-test.before(async () => {
+test.beforeAll(async () => {
   temp = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-disclosure-'));
   bundle = path.join(temp, 'disclosure.js');
   await esbuild.build({
@@ -24,16 +22,13 @@ test.before(async () => {
     target: 'es2022',
     logLevel: 'silent',
   });
-  browser = await chromium.launch({ headless: true });
 });
 
-test.after(async () => {
-  await browser?.close();
+test.afterAll(() => {
   fs.rmSync(temp, { recursive: true, force: true });
 });
 
-async function fixture() {
-  const page = await browser.newPage();
+async function fixture(page) {
   await page.setContent(`
     <main>
       <div id="mount"></div>
@@ -60,56 +55,53 @@ async function fixture() {
     window.updateDisclosure();
   });
   await page.waitForTimeout(40);
-  return page;
 }
 
-test('signature defaults, user overrides, empty reconciliation, and reveal work together', async () => {
-  const page = await fixture();
-  assert.equal(await page.locator('#alpha').getAttribute('open'), '');
-  assert.equal(await page.locator('#beta').getAttribute('open'), null);
-  assert.deepEqual(await page.locator('#fixture-section-jump option').allTextContents(), ['Alpha', 'Beta']);
+test('signature defaults, user overrides, empty reconciliation, and reveal work together', async ({ page }) => {
+  await fixture(page);
+  await expect(page.locator('#alpha')).toHaveAttribute('open', '');
+  await expect(page.locator('#beta')).not.toHaveAttribute('open', '');
+  await expect(page.locator('#fixture-section-jump option')).toHaveText(['Alpha', 'Beta']);
 
   await page.evaluate(() => window.disclosure.setOpen('alpha-section', false));
   await page.evaluate(() => window.updateDisclosure('one'));
-  assert.equal(await page.locator('#alpha').getAttribute('open'), null, 'same signature remembers a user close');
+  await expect(page.locator('#alpha')).not.toHaveAttribute('open', '');
 
   await page.evaluate(() => window.updateDisclosure('two'));
-  assert.equal(await page.locator('#alpha').getAttribute('open'), '', 'new signature recalculates defaults');
+  await expect(page.locator('#alpha')).toHaveAttribute('open', '');
 
   await page.evaluate(() => window.updateDisclosure('two', false));
-  assert.deepEqual(await page.locator('#fixture-section-jump option').allTextContents(), ['Alpha']);
-  assert.equal(await page.locator('#beta').isHidden(), true);
-  assert.equal(await page.evaluate(() => window.disclosure.reveal('beta-section')), false);
+  await expect(page.locator('#fixture-section-jump option')).toHaveText(['Alpha']);
+  await expect(page.locator('#beta')).toBeHidden();
+  expect(await page.evaluate(() => window.disclosure.reveal('beta-section'))).toBe(false);
 
   await page.evaluate(() => window.updateDisclosure('two', true));
-  assert.equal(await page.evaluate(() => window.disclosure.reveal('beta-section')), true);
+  expect(await page.evaluate(() => window.disclosure.reveal('beta-section'))).toBe(true);
   await page.waitForTimeout(40);
-  assert.equal(await page.locator('#beta').getAttribute('open'), '');
-  assert.equal(await page.evaluate(() => document.activeElement?.textContent), 'Beta');
-  await page.close();
+  await expect(page.locator('#beta')).toHaveAttribute('open', '');
+  expect(await page.evaluate(() => document.activeElement?.textContent)).toBe('Beta');
 });
 
-test('closing is focus-safe and repeated updates do not duplicate visible callbacks', async () => {
-  const page = await fixture();
+test('closing is focus-safe and repeated updates do not duplicate visible callbacks', async ({ page }) => {
+  await fixture(page);
   await page.locator('#inside').focus();
   await page.evaluate(() => window.disclosure.setOpen('alpha-section', false));
-  assert.equal(await page.evaluate(() => document.activeElement?.textContent), 'Alpha');
+  expect(await page.evaluate(() => document.activeElement?.textContent)).toBe('Alpha');
 
   await page.evaluate(() => {
     window.visibleCalls.alpha = 0;
     window.updateDisclosure('callbacks');
   });
   await page.waitForTimeout(40);
-  assert.equal(await page.evaluate(() => window.visibleCalls.alpha), 1);
+  expect(await page.evaluate(() => window.visibleCalls.alpha)).toBe(1);
 
   await page.evaluate(() => window.disclosure.setOpen('alpha-section', false));
   await page.waitForTimeout(20);
   await page.evaluate(() => window.disclosure.setOpen('alpha-section', true));
   await page.waitForTimeout(40);
-  assert.equal(await page.evaluate(() => window.visibleCalls.alpha), 2);
+  expect(await page.evaluate(() => window.visibleCalls.alpha)).toBe(2);
 
   await page.evaluate(() => window.disclosure.dispose());
-  assert.equal(await page.locator('#mount').textContent(), '');
-  assert.equal(await page.evaluate(() => window.disclosure.reveal('alpha-section')), false);
-  await page.close();
+  await expect(page.locator('#mount')).toHaveText('');
+  expect(await page.evaluate(() => window.disclosure.reveal('alpha-section'))).toBe(false);
 });

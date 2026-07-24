@@ -306,7 +306,7 @@ function buildMarkdown(summary) {
     '### Reproduce validation-only generation',
     '',
     '```sh',
-    `UPDATE_LIVE=1 VALIDATE_ONLY=1 SEASON=${summary.season} scripts/update_sleeper_h2h.sh`,
+    `LEAGUE_ID='<configured-league-id>' UPDATE_LIVE=1 VALIDATE_ONLY=1 SEASON=${summary.season} scripts/update_sleeper_h2h.sh`,
     '```',
     '',
   ].join('\n');

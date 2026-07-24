@@ -257,6 +257,14 @@ function validateSleeperWorkflow(source, errors) {
     || !pullRequest.includes('TITLE="[automation] Update Sleeper data for season ${SEASON}"')) {
     errors.push('SLEEPER-FUNC-006: automation PRs must use the exact draft title, base, labels, and draft reset');
   }
+  if (!pullRequest.includes("JSON.stringify({ labels: ['data-pipeline', 'automated'] })")
+    || !pullRequest.includes('--method PATCH')
+    || !pullRequest.includes('"repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}"')
+    || !pullRequest.includes('--input "${RUNNER_TEMP}/sleeper-pr-labels.json"')
+    || !pullRequest.includes("const expectedLabels = ['automated', 'data-pipeline'];")
+    || /--add-label/.test(pullRequest)) {
+    errors.push('SLEEPER-FUNC-006: refreshes must atomically replace all PR labels with the exact automation label set');
+  }
   if (/gh pr merge|--auto-merge|gh pr review|gh pr ready(?![^\n]*--undo)/.test(update)) {
     errors.push('SLEEPER-FUNC-008: workflow must not merge, approve, enable auto-merge, or mark a PR ready');
   }
@@ -866,6 +874,19 @@ test('Sleeper contract rejects non-draft, merge, approval, auto-merge, and ready
     const mutated = mutateSleeper(fixture, mutate);
     assert.match(validateWorkflowContracts(mutated).join('\n'), expected);
   }
+});
+
+test('Sleeper contract rejects a refresh that retains an extra pre-existing label', () => {
+  const fixture = readRepositoryFixture();
+  const mutated = mutateSleeper(fixture, source => source
+    .replace(
+      '            gh api \\\n              --method PATCH \\\n              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}" \\\n              --input "${RUNNER_TEMP}/sleeper-pr-labels.json" \\\n              > "${RUNNER_TEMP}/sleeper-pr-labels-response.json"\n',
+      '            gh pr edit "${PR_NUMBER}" --add-label data-pipeline --add-label automated\n',
+    ));
+  assert.match(
+    validateWorkflowContracts(mutated).join('\n'),
+    /atomically replace all PR labels with the exact automation label set/,
+  );
 });
 
 test('Sleeper contract rejects failure-artifact and recovery regressions', () => {

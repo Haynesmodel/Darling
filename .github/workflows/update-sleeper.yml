@@ -432,9 +432,30 @@ jobs:
             gh pr edit "${PR_NUMBER}" \
               --repo "${GITHUB_REPOSITORY}" \
               --title "${TITLE}" \
-              --body-file "${RUNNER_TEMP}/sleeper-pr-body.md" \
-              --add-label data-pipeline \
-              --add-label automated
+              --body-file "${RUNNER_TEMP}/sleeper-pr-body.md"
+            LABELS_REQUEST="${RUNNER_TEMP}/sleeper-pr-labels.json" node <<'NODE'
+            const fs = require('node:fs');
+            fs.writeFileSync(
+              process.env.LABELS_REQUEST,
+              `${JSON.stringify({ labels: ['data-pipeline', 'automated'] })}\n`,
+            );
+            NODE
+            gh api \
+              --method PATCH \
+              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}" \
+              --input "${RUNNER_TEMP}/sleeper-pr-labels.json" \
+              > "${RUNNER_TEMP}/sleeper-pr-labels-response.json"
+            node <<'NODE'
+            const fs = require('node:fs');
+            const response = JSON.parse(
+              fs.readFileSync(`${process.env.RUNNER_TEMP}/sleeper-pr-labels-response.json`, 'utf8'),
+            );
+            const observedLabels = (response.labels || []).map(label => label.name).sort();
+            const expectedLabels = ['automated', 'data-pipeline'];
+            if (JSON.stringify(observedLabels) !== JSON.stringify(expectedLabels)) {
+              throw new Error(`Pull request labels were not replaced exactly: ${observedLabels.join(', ')}`);
+            }
+            NODE
             if [[ "${IS_DRAFT}" != "true" ]]; then
               gh pr ready "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" --undo
             fi

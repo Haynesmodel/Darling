@@ -213,6 +213,9 @@ test('manifest hashes, source context, validations, and sorted files are determi
     ]);
     assert.match(first.markdown, /Base main SHA/);
     assert.match(first.markdown, /latest exact `ci \/ gate` result/);
+    assert.ok(first.markdown.includes(
+      "LEAGUE_ID='<configured-league-id>' UPDATE_LIVE=1 VALIDATE_ONLY=1 SEASON=2025",
+    ));
   });
 });
 

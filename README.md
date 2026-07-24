@@ -117,9 +117,13 @@ Generated or local-only files:
 
 Season update flow:
 - Set `SEASON` and `LEAGUE_ID` when needed, then confirm the Week 1 Sunday anchor exists in `scripts/sleeper_week1_anchors.json`.
-- Dry run with `UPDATE_LIVE=1 VALIDATE_ONLY=1 scripts/update_sleeper_h2h.sh` to generate and validate a temporary bundle without touching `assets/`.
-- Run `UPDATE_LIVE=1 scripts/update_sleeper_h2h.sh` to write `assets/H2H.updated.json` and `assets/CurrentSeason.updated.json` for review.
-- Review both generated files, copy them into `assets/H2H.json` and `assets/CurrentSeason.json`, update/review `assets/SeasonSummary.json` when the season is finalized, run `npm run generate:data`, review Draft Spot sample shifts, then rerun `npm run test:assets` and `npm run test:scripts` before committing.
-- The GitHub Actions workflow at [`.github/workflows/update-sleeper.yml`](./.github/workflows/update-sleeper.yml) automates the same flow, creates `assets/SeasonSummary.draft.json` when H2H changes, and files a failure alert if the run breaks.
+- Dry run locally with `UPDATE_LIVE=1 VALIDATE_ONLY=1 scripts/update_sleeper_h2h.sh`, or dispatch the main-only workflow with `validate_only: true`, to generate and validate a temporary bundle without touching tracked assets or remote Git state.
+- A full scheduled or manual workflow run validates the candidate, permits only the five reviewed data outputs, and enforces append-only H2H history before requesting a short-lived Darling GitHub App token.
+- Changed data is proposed on the bot-owned `automation/sleeper-<season>` branch in exactly one draft pull request targeting `main`. Every refresh updates the same pull request and returns it to draft.
+- Review the generated checklist and complete data diff, wait for the exact `ci / gate`, then have a human mark the latest candidate ready, approve it, and merge it. The bot cannot ready, approve, auto-merge, merge, or push directly to `main`.
+- Full no-change runs create no token, branch update, or pull request update. Failures retain safe candidate evidence for seven days and update the exact `Weekly Sleeper update failed` issue; the next successful full run closes that issue with a recovery link.
+- `assets/SeasonSummary.draft.json` remains a review aid. Complete its manual fields in a separate human-authored change before promoting anything to canonical `assets/SeasonSummary.json`.
+
+To activate 2026, first create the Sleeper league, then add the 2026 team mapping and Week 1 anchor together in a human pull request. After that change merges, update `SLEEPER_LEAGUE_ID`, run a validation-only main dispatch for 2026, and only then run a full reviewed update. Do not add placeholder configuration or follow Sleeper's previous-league chain automatically.
 
 Season notes and cleanup history live in [CHANGELOG.md](./CHANGELOG.md).

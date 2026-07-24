@@ -10,7 +10,8 @@
 - The Pulse controller mount is directly idempotent and has lifecycle/abort/dispose coverage.
 - Coverage overrides decreased from 31 to 21 without lowering global, per-file, or changed-file thresholds. `src/theme/theme-context.ts` no longer has a zero-percent override.
 - Raw coverage output is capped at 25,000,000 bytes and retained in `coverage-meta.json` with its limit.
-- Bundle evidence is refreshed in `docs/bundle-size.md`; Pages and Sleeper workflows are unchanged.
+- Bundle evidence is refreshed in `docs/bundle-size.md`; the Sleeper workflow is unchanged.
+- Recommendation #1 is implemented by [pull request #42](https://github.com/Haynesmodel/Darling/pull/42): Pages packages the SHA-named artifact already consumed by Chromium and WebKit, starts only after `ci / gate`, applies layered best-effort stale-run defenses, and confines Pages/OIDC writes to the deploy job. Workflow contract tests protect those invariants.
 
 ## Measured local evidence
 
@@ -26,4 +27,4 @@
 - Local WebKit execution is unavailable on this macOS 13 ARM64 host; the required hosted `ci / gate` run is the branch-validation evidence.
 - The ten-run clean stabilization window begins after merge and remains open in `ci-stabilization-2026-07-23.md`.
 - The next ratchet must reduce overrides to 15 or fewer before October 22, 2026.
-- Recommendations #1 and #2 remain deferred; deployment and Sleeper workflow redesign was not resumed.
+- Recommendation #1 still requires first-main-run rollout evidence after merge. Recommendation #2, the Sleeper workflow redesign, remains deferred.

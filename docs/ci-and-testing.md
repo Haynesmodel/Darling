@@ -59,13 +59,35 @@ After that job, three independent lanes run in parallel:
 - instrumented Chromium coverage against a Vite coverage server; and
 - focused WebKit smoke against the same downloaded production artifact.
 
-`ci / gate` uses `if: always()` and requires every lane to conclude successfully. Branch protection should transition to that single stable context only after it exists on the default branch. The standalone Pages workflow intentionally continues to build independently until the deferred deployment-gating project is resumed.
+`ci / gate` uses `if: always()` and requires every lane to conclude successfully. Branch protection requires only this stable context.
 
-## Delivery and rollback shape
+On pushes to `main`, two post-gate jobs continue the same artifact's provenance chain:
 
-The runtime, dependency, coverage, CI-topology, and WebKit phases were delivered in one draft pull request instead of four sequential pull requests. These contracts share the same runtime and lockfile, and validating the corrected coverage baseline and one-build artifact graph requires the complete topology. Keeping them together provides one atomic acceptance run while the draft state preserves a review boundary before merge.
+- `package_pages` needs both `quality_build` and `ci / gate`, downloads `darling-dist-<commit SHA>` with digest-mismatch enforcement, rejects an empty `index.html`, asset manifest, or hidden Vite manifest, and passes the unchanged `dist/` directory—including hidden files—to `actions/upload-pages-artifact`.
+- `deploy_pages` needs only `package_pages`, checks through the GitHub API immediately before the deploy action that the workflow SHA is still the current `main` tip, and deploys the Pages transport artifact to the `github-pages` environment.
 
-The commit history remains phase-oriented, so a regression can be isolated and reverted by concern during review. Before merge, the whole program can be rolled back by closing the draft branch; after merge, revert the merge commit for an atomic rollback or revert an individual follow-up commit when its change is independent. Pages artifact consumption remains deferred, so this delivery shape does not expand the deployment rollback surface.
+Pull requests run the complete quality gate but skip both Pages jobs. The workflow defaults to `contents: read`; only `deploy_pages` receives job-scoped `pages: write` and `id-token: write`. Workflow-level cancellation stops superseded CI runs, a production concurrency group serializes deploy calls, and the immediately preceding current-main check provides a second stale-run defense.
+
+The stale-run defense is best effort, not an atomic compare-and-deploy guarantee. A newer `main` commit can land after the API check and before GitHub accepts the deployment request. Cancellation and production serialization narrow that race, and a run that is already stale at the check fails before calling `deploy-pages`, but GitHub's Pages action does not expose an expected-main-SHA precondition.
+
+The SHA-named generic CI artifact and the GitHub Pages artifact have different roles. The generic artifact is the one-day, digest-verified build consumed by browser tests and packaging. `actions/upload-pages-artifact` only converts that downloaded directory into GitHub Pages' transport format; no post-test checkout, install, build, minification, or file rewrite is allowed.
+
+The exact-artifact delivery path was integrated in [pull request #42](https://github.com/Haynesmodel/Darling/pull/42). Its contract is enforced by [`test/workflow-contracts.test.cjs`](../test/workflow-contracts.test.cjs), including mutation tests for gate dependencies, build duplication, digest enforcement, hidden-file preservation, permissions, main-only conditions, deploy-action cardinality, the stable gate name, and restoration of the legacy workflow.
+
+## Pages failure triage and rollback
+
+The prior successful Pages deployment remains live when a new run fails before replacement. Do not copy files into Pages manually or weaken `ci / gate`.
+
+- If a quality or browser lane fails, fix the failing behavior and push a new commit. Packaging and deployment must remain blocked.
+- If the generic artifact is missing or its digest fails, inspect the `quality_build` upload and artifact name. Rerun the workflow only when the same SHA is still the current `main` tip.
+- If payload validation names a missing or empty file, fix the build or upload contents and produce a new tested artifact.
+- If the current-main check reports different SHAs, leave the stale run failed and allow the newer `main` run to finish.
+- If Pages packaging or deployment fails because of a transient GitHub incident, rerun only the current tip while its one-day generic artifact is retained.
+- If the application or pipeline must roll back, revert the offending source or pipeline pull request through the normal protected-branch workflow. The revert creates a new current-main SHA, rebuilds and retests it, and deploys that newly verified artifact.
+
+An old non-tip workflow detected by the pre-deploy check is not eligible for deployment, even if its artifact still exists. Because that check and the Pages deployment request are separate API operations, a newer `main` commit can still land in the narrow interval between them. Historical manual promotion is outside this pipeline's contract.
+
+Before merging a Pages workflow change, verify that repository Pages publishing uses GitHub Actions, the `github-pages` environment exists and permits `main`, and no legacy workflow run is still in flight. After merge, verify the environment record, source SHA, artifact digest, deployed URL, production `/Darling/` route, representative interaction, asset requests, and console.
 
 ## Failure triage
 
@@ -73,7 +95,7 @@ Browser failures upload lane-, run-, and attempt-specific Playwright reports and
 
 For a browser failure, first inspect the Playwright trace and the static-server lifecycle log. Do not increase timeouts to hide a refused connection. For a coverage failure, read the scope/file/metric line in the gate output; add behavior-focused tests or review a narrow expiring override. For an artifact failure, confirm `index.html`, `assets/asset-manifest.json`, and `.vite/manifest.json` were present in the producer before rerunning.
 
-Pages deployment and Sleeper update triggers, permissions, inputs, and mutation behavior are deliberately unchanged by this CI program.
+Sleeper update triggers, permissions, inputs, and mutation behavior remain independent of the Pages delivery path.
 
 ## Stabilization and release evidence
 

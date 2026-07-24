@@ -431,12 +431,15 @@
   gap:2px;
   min-width:0;
 }
-.dynasty-slump-range{
+.dynasty-slump-list li .dynasty-slump-main{
+  color:var(--text-primary);
+}
+.dynasty-slump-list li .dynasty-slump-range{
   font-size:11px;
   font-weight:800;
   color:var(--text-secondary);
 }
-.dynasty-slump-score{
+.dynasty-slump-list li .dynasty-slump-score{
   flex:0 0 auto;
   min-width:5ch;
   text-align:right;

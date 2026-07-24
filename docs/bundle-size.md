@@ -21,13 +21,13 @@ The July 24, 2026 semantic-navigation and compact-chrome change was measured fro
 | Metric | `ef580af` | Navigation shell | Delta | Enforced ceiling |
 | --- | ---: | ---: | ---: | ---: |
 | Entry raw | 177,873 | 178,018 | +145 | 190,000 |
-| Entry gzip | 54,266 | 54,148 | -118 | 56,000 |
+| Entry gzip | 54,266 | 54,145 | -121 | 56,000 |
 | Aggregate JavaScript gzip | 275,209 | 275,095 | -114 | 280,000 |
 | Chart-runtime raw | 294,294 | 294,294 | 0 | 305,000 |
 | Chart-runtime gzip | 97,674 | 97,674 | 0 | 100,000 |
-| Current Season settled gzip | 202,061 | 201,946 | -115 | 205,000 |
+| Current Season settled gzip | 202,061 | 201,943 | -118 | 205,000 |
 
-The grouped navigation replaces the roving-tab and overflow-arrow implementation without adding a dependency or raising a ceiling. All eight dynamic feature entries remain present, Pulse and History remain Plot-free, and the entry retains 1,852 gzip bytes of headroom.
+The grouped navigation replaces the roving-tab and overflow-arrow implementation without adding a dependency or raising a ceiling. All eight dynamic feature entries remain present, Pulse and History remain Plot-free, and the entry retains 1,855 gzip bytes of headroom.
 
 ## Route closures
 

@@ -14,7 +14,7 @@ import { bootstrapDarlingApp } from './app/app-controller';
 import { bindDropdownChecklists } from './accessibility/dropdown-checklist';
 import { focusableElements } from './accessibility/focus';
 import { prefersReducedMotion, subscribeToReducedMotion } from './accessibility/motion';
-import { bindTablist, syncPageState, updateTabOverflow } from './accessibility/tablist';
+import { bindPrimaryNavigation, syncPageState } from './accessibility/primary-navigation';
 
 type DarlingDataLoader = typeof import('./data/load-league-assets').loadLeagueAssets;
 
@@ -28,7 +28,6 @@ interface BrowserWindow {
     prefersReducedMotion: typeof prefersReducedMotion;
     focusableElements: typeof focusableElements;
     syncPageState: typeof syncPageState;
-    updateTabOverflow: typeof updateTabOverflow;
   };
 }
 
@@ -59,7 +58,6 @@ if (browser.window) {
     prefersReducedMotion,
     focusableElements,
     syncPageState,
-    updateTabOverflow,
   };
 }
 
@@ -86,7 +84,7 @@ function mountShell() {
   mountThemeControls();
   mountGlobalSearch();
   mountDataFreshness();
-  bindTablist(document);
+  bindPrimaryNavigation(document);
   bindDropdownChecklists(document);
   subscribeToReducedMotion((reduced) => {
     document.documentElement.dataset.reducedMotion = reduced ? 'reduce' : 'no-preference';

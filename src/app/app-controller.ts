@@ -2,6 +2,7 @@ import { showPage } from '../../js/render-helpers.js';
 import { applyFocusTarget } from './feature-utils';
 import { FeatureRegistry } from './feature-registry';
 import { FEATURE_IDS, type DarlingFeatureController, type FeatureId } from './feature-contract';
+import { FEATURE_NAVIGATION } from './feature-navigation';
 import { createNavigationService, normalizeFeatureId } from './router';
 import { createFeatureStatusService } from './services/feature-status';
 import { createHeaderService } from './services/header-service';
@@ -11,13 +12,7 @@ import type { AppContext, AppDiagnostics, AppRoute } from './app-types';
 import type { DarlingTableRuntime } from '../tables/table-types';
 import type { DarlingSearchRuntime } from '../search/search-types';
 import type { DataFreshnessRuntime } from '../components/data-freshness/DataFreshnessBadge';
-
-const LABELS: Record<FeatureId, string> = {
-  pulse: 'League Pulse', history: 'League History', current: 'Current Season', rivalry: 'Head to Head', trophy: 'Trophy Case', dynasty: 'Dynasty Rankings', draft: 'Draft Spot', gauntlet: 'Historical Matchup',
-};
-const TAB_IDS: Record<string, FeatureId> = {
-  tabPulseBtn: 'pulse', tabHistoryBtn: 'history', tabCurrentBtn: 'current', tabRivalryBtn: 'rivalry', tabTrophyBtn: 'trophy', tabDynastyBtn: 'dynasty', tabDraftBtn: 'draft', tabGauntletBtn: 'gauntlet',
-};
+import { isEligiblePrimaryNavigationClick } from '../accessibility/primary-navigation';
 
 export interface BootstrapOptions {
   tableRuntime: DarlingTableRuntime;
@@ -82,6 +77,8 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
     if (disposed) return;
     const id = normalizeFeatureId(route.tab);
     route.tab = id;
+    doc.documentElement.dataset.activeFeature = id;
+    doc.documentElement.dataset.heroMode = FEATURE_NAVIGATION[id].heroMode;
     activationCount += 1;
     const activationId = activationCount;
     abortController?.abort();
@@ -89,7 +86,7 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
     const signal = abortController.signal;
     showPage(id, doc);
     if (activeController && activeFeature && activeFeature !== id) await activeController.deactivate?.(id);
-    status.loading(id, LABELS[id]);
+    status.loading(id, FEATURE_NAVIGATION[id].label);
     const featurePromise = reason === 'retry' ? registry.retry(id) : registry.load(id);
     try {
       const [context, controller] = await Promise.all([contextPromise, featurePromise]);
@@ -114,7 +111,7 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
         return;
       }
       const reloadForFreshModuleMap = registry.hasLoadFailure(id);
-      status.error(id, LABELS[id], error, () => {
+      status.error(id, FEATURE_NAVIGATION[id].label, error, () => {
         if (reloadForFreshModuleMap) win.location.reload();
         else void request(route, 'retry');
       });
@@ -124,25 +121,28 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
   const initialRoute = router.parse();
   void request(initialRoute, 'bootstrap');
 
-  const onTabClick = (event: Event) => {
-    const button = event.target instanceof Element ? event.target.closest<HTMLElement>('[role="tab"]') : null;
-    const id = button ? TAB_IDS[button.id] : null;
-    if (!id) return;
-    const url = new URL(win.location.href);
-    url.searchParams.set('tab', id);
-    win.history.pushState(null, '', `${url.pathname}${url.search}`);
+  const onNavigationClick = (event: Event) => {
+    const anchor = event.target instanceof Element
+      ? event.target.closest<HTMLAnchorElement>('a[data-feature-id]')
+      : null;
+    if (!anchor || !isEligiblePrimaryNavigationClick(event as MouseEvent, anchor, win.location.href)) return;
+    const id = normalizeFeatureId(anchor.dataset.featureId);
+    event.preventDefault();
+    const destination = new URL(win.location.href);
+    destination.searchParams.set('tab', id);
+    win.history.pushState(null, '', `${destination.pathname}${destination.search}${destination.hash}`);
     const route = router.parse();
     route.tab = id;
     void request(route, 'tab');
   };
   const onPopState = () => void request(router.parse(), 'popstate');
-  doc.getElementById('primaryTabStrip')?.addEventListener('click', onTabClick);
+  doc.getElementById('primaryNavigation')?.addEventListener('click', onNavigationClick);
   win.addEventListener('popstate', onPopState);
 
   return async () => {
     disposed = true;
     abortController?.abort();
-    doc.getElementById('primaryTabStrip')?.removeEventListener('click', onTabClick);
+    doc.getElementById('primaryNavigation')?.removeEventListener('click', onNavigationClick);
     win.removeEventListener('popstate', onPopState);
     await activeController?.deactivate?.('pulse');
     await registry.dispose();

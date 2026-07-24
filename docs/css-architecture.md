@@ -16,7 +16,7 @@ The import order is deterministic, and every imported file is assigned to a laye
 
 - `tokens.css`: light/dark semantic colors, theme aliases, focus, spacing, target-size, radius, shadow, and motion tokens.
 - `base.css`: box sizing, document typography, native elements, links, and the canonical focus ring.
-- `shell.css`: hero, theme toolbar, skip link, primary navigation, tab overflow, main, and page panels.
+- `shell.css`: full/compact hero modes, theme toolbar, skip link, primary navigation groups/menus, main, and page sections.
 - `primitives.css`: cards, banners, shared tables, outcome rows, stats, callouts, and section headings.
 - `controls.css`: form controls, buttons, filter disclosures, and the mobile filter sheet.
 - `charts.css`: chart hosts, errors, empty states, notes, and textual fallback presentation.

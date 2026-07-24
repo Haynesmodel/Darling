@@ -59,6 +59,13 @@
 
 @media (max-width:640px){
   .data-freshness-panel{inset-inline-start:0;inset-inline-end:auto}
+  :root[data-hero-mode="compact"] .data-freshness-panel{
+    padding:12px;
+    font-size:12px;
+    line-height:1.25;
+  }
+  :root[data-hero-mode="compact"] .data-freshness-panel p{margin-block:6px 9px}
+  :root[data-hero-mode="compact"] .data-freshness-panel dl{gap:6px;margin-block-end:9px}
 }
 
 @media (forced-colors:active){

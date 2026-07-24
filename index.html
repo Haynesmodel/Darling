@@ -51,32 +51,51 @@
   </header>
 
   <nav class="primary-nav" aria-label="Primary">
-    <div class="tab-strip-shell">
-      <div id="primaryTabStrip" class="tab-strip" role="tablist" aria-label="League sections">
-        <button class="tab active" id="tabPulseBtn" type="button" role="tab" aria-selected="true" aria-controls="page-pulse" tabindex="0">League Pulse</button>
-        <button class="tab" id="tabHistoryBtn" type="button" role="tab" aria-selected="false" aria-controls="page-history" tabindex="-1">League History</button>
-        <button class="tab" id="tabCurrentBtn" type="button" role="tab" aria-selected="false" aria-controls="page-current" tabindex="-1">Current Season</button>
-        <button class="tab" id="tabRivalryBtn" type="button" role="tab" aria-selected="false" aria-controls="page-rivalry" tabindex="-1">Head to Head</button>
-        <button class="tab" id="tabTrophyBtn" type="button" role="tab" aria-selected="false" aria-controls="page-trophy" tabindex="-1">Trophy Case</button>
-        <button class="tab" id="tabDynastyBtn" type="button" role="tab" aria-selected="false" aria-controls="page-dynasty" tabindex="-1">Dynasty Rankings</button>
-        <button class="tab" id="tabDraftBtn" type="button" role="tab" aria-selected="false" aria-controls="page-draft" tabindex="-1">Draft Spot</button>
-        <button class="tab" id="tabGauntletBtn" type="button" role="tab" aria-selected="false" aria-controls="page-gauntlet" tabindex="-1">Historical Matchup</button>
-      </div>
-      <button id="tabScrollPrev" class="tab-scroll-button" type="button" aria-label="Scroll tabs left" hidden>‹</button>
-      <button id="tabScrollNext" class="tab-scroll-button" type="button" aria-label="Scroll tabs right" hidden>›</button>
+    <div id="primaryNavigation" class="primary-navigation">
+      <a class="primary-nav-control active" id="tabPulseBtn" data-feature-id="pulse" href="./" aria-label="Home — League Pulse" aria-current="page">Home</a>
+      <a class="primary-nav-control" id="tabCurrentBtn" data-feature-id="current" href="?tab=current" aria-label="Season — Current Season">Season</a>
+      <details class="primary-nav-group" data-navigation-group="owners">
+        <summary class="primary-nav-control">
+          Owners<span class="visually-hidden" data-current-group-label></span>
+        </summary>
+        <div class="primary-nav-menu">
+          <a id="tabHistoryBtn" data-feature-id="history" href="?tab=history">League History</a>
+          <a id="tabTrophyBtn" data-feature-id="trophy" href="?tab=trophy">Trophy Case</a>
+          <a id="tabDynastyBtn" data-feature-id="dynasty" href="?tab=dynasty">Dynasty Rankings</a>
+        </div>
+      </details>
+      <a
+        class="primary-nav-control primary-nav-rivalry"
+        id="tabRivalryBtn"
+        data-feature-id="rivalry"
+        href="?tab=rivalry"
+      >
+        <span class="primary-nav-wide-label" aria-hidden="true">Rivalries</span>
+        <span class="primary-nav-compact-label" aria-hidden="true">H2H</span>
+        <span class="visually-hidden">Rivalries — Head to Head</span>
+      </a>
+      <details class="primary-nav-group" data-navigation-group="tools">
+        <summary class="primary-nav-control">
+          Tools<span class="visually-hidden" data-current-group-label></span>
+        </summary>
+        <div class="primary-nav-menu primary-nav-menu-end">
+          <a id="tabDraftBtn" data-feature-id="draft" href="?tab=draft">Draft Spot</a>
+          <a id="tabGauntletBtn" data-feature-id="gauntlet" href="?tab=gauntlet">Historical Matchup</a>
+        </div>
+      </details>
     </div>
     <div id="globalSearchRoot" class="global-search-mount"></div>
   </nav>
 
   <main id="mainContent" tabindex="-1">
     <div id="appStatus" class="status-banner status-loading" role="status" aria-live="polite">Loading league data...</div>
-    <section id="page-pulse" class="page visible" role="tabpanel" aria-labelledby="tabPulseBtn">
-      <h2 class="visually-hidden">League Pulse</h2>
+    <section id="page-pulse" class="page visible" aria-labelledby="page-pulse-title">
+      <h2 id="page-pulse-title" class="visually-hidden">League Pulse</h2>
       <div id="leaguePulseRoot"></div>
     </section>
 
-    <section id="page-history" class="page" role="tabpanel" aria-labelledby="tabHistoryBtn" hidden>
-      <h2 class="visually-hidden">League History</h2>
+    <section id="page-history" class="page" aria-labelledby="page-history-title" hidden>
+      <h2 id="page-history-title" class="visually-hidden">League History</h2>
       <div class="card">
         <div class="controls filters">
           <label>Team:
@@ -167,8 +186,8 @@
       </div>
     </section>
 
-    <section id="page-current" class="page" role="tabpanel" aria-labelledby="tabCurrentBtn" hidden>
-      <h2 class="visually-hidden">Current Season</h2>
+    <section id="page-current" class="page" aria-labelledby="page-current-title" hidden>
+      <h2 id="page-current-title" class="visually-hidden">Current Season</h2>
       <div class="card">
         <div class="controls filters current-controls">
           <label>Season:
@@ -199,8 +218,8 @@
       <section id="currentTeamSnapshots" class="current-team-snapshots"></section>
     </section>
 
-    <section id="page-rivalry" class="page" role="tabpanel" aria-labelledby="tabRivalryBtn" hidden>
-      <h2 class="visually-hidden">Head to Head</h2>
+    <section id="page-rivalry" class="page" aria-labelledby="page-rivalry-title" hidden>
+      <h2 id="page-rivalry-title" class="visually-hidden">Head to Head</h2>
       <div class="card">
         <div class="controls filters rivalry-controls">
           <select id="rivalryTeamA" aria-label="First team"></select>
@@ -254,8 +273,8 @@
       </div>
     </section>
 
-    <section id="page-trophy" class="page" role="tabpanel" aria-labelledby="tabTrophyBtn" hidden>
-      <h2 class="visually-hidden">Trophy Case</h2>
+    <section id="page-trophy" class="page" aria-labelledby="page-trophy-title" hidden>
+      <h2 id="page-trophy-title" class="visually-hidden">Trophy Case</h2>
       <div class="trophy-toolbar">
         <select id="trophyOwnerSelect" aria-label="Trophy case owner"></select>
       </div>
@@ -294,8 +313,8 @@
       </section>
     </section>
 
-    <section id="page-dynasty" class="page" role="tabpanel" aria-labelledby="tabDynastyBtn" hidden>
-      <h2 class="visually-hidden">Dynasty Rankings</h2>
+    <section id="page-dynasty" class="page" aria-labelledby="page-dynasty-title" hidden>
+      <h2 id="page-dynasty-title" class="visually-hidden">Dynasty Rankings</h2>
       <div class="card">
         <div class="controls filters dynasty-controls">
           <label>Mode:
@@ -357,15 +376,15 @@
       <dialog id="dynastyWindowModal" class="dynasty-modal" aria-labelledby="dynastyWindowModalTitle"></dialog>
     </section>
 
-    <section id="page-draft" class="page" role="tabpanel" aria-labelledby="tabDraftBtn" hidden>
-      <h2 class="visually-hidden">Draft Spot</h2>
+    <section id="page-draft" class="page" aria-labelledby="page-draft-title" hidden>
+      <h2 id="page-draft-title" class="visually-hidden">Draft Spot</h2>
       <div id="draftSpotRoot">
         <div class="status-banner status-loading" role="status">Open Draft Spot to load its historical draft data.</div>
       </div>
     </section>
 
-    <section id="page-gauntlet" class="page" role="tabpanel" aria-labelledby="tabGauntletBtn" hidden>
-      <h2 class="visually-hidden">Historical Matchup</h2>
+    <section id="page-gauntlet" class="page" aria-labelledby="page-gauntlet-title" hidden>
+      <h2 id="page-gauntlet-title" class="visually-hidden">Historical Matchup</h2>
       <div class="card gauntlet-card">
         <h3>Historical Matchup</h3>
         <div class="card-kicker">Compare two owner-seasons using the league's scoring history.</div>

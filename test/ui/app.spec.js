@@ -1,4 +1,5 @@
 import { expect, test } from './coverage-fixture.js';
+import { activateFeature } from './navigation-helpers.js';
 
 test('theme context helpers cover owner, rivalry, postseason, and league fallbacks', async ({ page }) => {
   await page.goto('/');
@@ -193,7 +194,7 @@ test('verified JSON transport rejects malformed and oversized browser responses'
 test('Pulse controller guard paths reject a missing mount and remain disposable', async ({ page }) => {
   await page.goto('/');
   if (process.env.PLAYWRIGHT_SERVER === 'preview') {
-    await expect(page.getByRole('tabpanel', { name: 'League Pulse' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'League Pulse', exact: true })).toBeVisible();
     return;
   }
   const result = await page.evaluate(async () => {
@@ -492,7 +493,7 @@ test('rivalry tab renders a tale of the tape and saved rivalry selection', async
   await expect(page.locator('#rivalryTeamA')).toHaveValue('Joel');
   await expect(page.locator('header h2')).toHaveText('Joel');
 
-  await page.locator('#tabHistoryBtn').click();
+  await activateFeature(page, 'history');
   await expect(page.locator('#tabHistoryBtn')).toHaveClass(/active/);
   await expect(page.locator('header h2')).toHaveText('Joel');
 
@@ -579,7 +580,7 @@ test('trophy case url restores the trophy page and owner selection', async ({ pa
     return [params.get('tab'), params.get('trophyOwner')].join('|');
   })).toBe('trophy|Joel');
 
-  await page.locator('#tabHistoryBtn').click();
+  await activateFeature(page, 'history');
   await expect(page.locator('#tabHistoryBtn')).toHaveClass(/active/);
   await expect(page.locator('#teamSelect')).toBeVisible();
 
@@ -600,7 +601,7 @@ test('history filters do not leak into dynasty controls', async ({ page }) => {
   });
   await expect(page.locator('#seasonCountText')).toHaveText('1 selected');
 
-  await page.locator('#tabDynastyBtn').click();
+  await activateFeature(page, 'dynasty');
   await expect(page.locator('#tabDynastyBtn')).toHaveClass(/active/);
   await expect(page.locator('#dynastyModeSelect')).toHaveValue('calculator');
   await expect(page.locator('#dynastyOwnerSelect')).toHaveValue('Joe');
@@ -622,7 +623,7 @@ test('browser back restores the previous history state after a tab change', asyn
   await expect(page.locator('#seasonCountText')).toHaveText('1 selected');
   await expect.poll(async () => page.url()).toContain('team=Joel');
 
-  await page.locator('#tabTrophyBtn').click();
+  await activateFeature(page, 'trophy');
   await expect(page.locator('#tabTrophyBtn')).toHaveClass(/active/);
   await expect(page.locator('#trophyOwnerSelect')).toHaveValue('Joel');
 
@@ -641,7 +642,7 @@ test('dynasty tab renders controls and responds to calculator changes', async ({
   await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
 
-  await page.locator('#tabDynastyBtn').click();
+  await activateFeature(page, 'dynasty');
   await expect(page.locator('#tabDynastyBtn')).toHaveClass(/active/);
   await expect(page.locator('#page-dynasty')).toBeVisible();
   await expect(page.locator('#dynastyModeSelect')).toBeVisible();
@@ -817,9 +818,9 @@ test('Gauntlet preserves selections across ordinary tab reactivation', async ({ 
   await page.locator('#gauntletOwnerA').selectOption('Zook');
   await expect.poll(() => new URL(page.url()).searchParams.get('ga')).toMatch(/^Zook:/);
 
-  await page.locator('#tabTrophyBtn').click();
+  await activateFeature(page, 'trophy');
   await expect(page.locator('#trophyOwnerSelect')).toBeVisible();
-  await page.locator('#tabGauntletBtn').click();
+  await activateFeature(page, 'gauntlet');
   await expect(page.locator('#gauntletOwnerA')).toHaveValue('Zook');
 });
 
@@ -1585,8 +1586,8 @@ test('Draft Spot direct URLs restore controls, receipts, themes, and browser his
   await page.goto('/?tab=draft&draftMode=pick&draftOwner=Joe&draftStart=2021&draftEnd=2025&draftMetric=playoffRate&draftMinSample=2&draftNormalize=percentile&draftPick=10');
   await page.waitForLoadState('networkidle');
 
-  await expect(page.locator('#tabDraftBtn')).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('tabpanel', { name: 'Draft Spot' })).toBeVisible();
+  await expect(page.locator('#tabDraftBtn')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('region', { name: 'Draft Spot', exact: true })).toBeVisible();
   await expect(page.locator('#draftOwnerSelect')).toHaveValue('Joe');
   await expect(page.locator('#draftMetricSelect')).toHaveValue('playoffRate');
   await expect(page.locator('#draftNormalizeToggle')).toBeChecked();
@@ -1619,9 +1620,9 @@ test('Draft Spot preserves selections across ordinary tab reactivation', async (
   await page.locator('#draftOwnerSelect').selectOption('Joe');
   await expect.poll(() => new URL(page.url()).searchParams.get('draftOwner')).toBe('Joe');
 
-  await page.locator('#tabTrophyBtn').click();
+  await activateFeature(page, 'trophy');
   await expect(page.locator('#trophyOwnerSelect')).toBeVisible();
-  await page.locator('#tabDraftBtn').click();
+  await activateFeature(page, 'draft');
   await expect(page.locator('#draftOwnerSelect')).toHaveValue('Joe');
 });
 
@@ -1663,7 +1664,7 @@ test('optional Draft Spot fetch failure leaves the rest of the app usable', asyn
   await page.goto('/?tab=draft');
   await page.waitForLoadState('networkidle');
   await expect(page.locator('#draftSpotRoot')).toContainText('Draft Spot is unavailable');
-  await page.locator('#tabHistoryBtn').click();
+  await activateFeature(page, 'history');
   await expect(page.locator('#historyGamesTable')).toBeVisible();
 });
 

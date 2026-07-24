@@ -13,6 +13,22 @@
   z-index:60;
   overflow:visible;
 }
+:root[data-hero-mode="compact"] .site-hero{
+  min-block-size:156px;
+  max-block-size:none;
+  padding:64px 16px 18px;
+  place-items:end center;
+}
+:root[data-hero-mode="compact"] .site-hero:has(.data-freshness[open]){
+  min-block-size:min(420px, 82svh);
+}
+:root[data-hero-mode="compact"] .site-hero-media img{
+  object-position:center 58%;
+}
+:root[data-hero-mode="compact"] header h1{font-size:24px}
+:root[data-hero-mode="compact"] header h2{margin-block-start:2px;font-size:16px}
+:root[data-hero-mode="compact"] .banners{margin-block-start:6px}
+:root[data-hero-mode="compact"] .banner{padding:3px 8px;font-size:11px}
 .site-hero-media,
 .site-hero-media img,
 .site-hero-overlay{
@@ -103,6 +119,20 @@ header h2{margin:8px 0 0;font-weight:500;text-shadow:0 1px 6px rgba(0,0,0,.5)}
   header h1{font-size:32px}
   header h2{font-size:19px}
   .theme-toggle-option{min-width:54px}
+  :root[data-hero-mode="compact"] .site-hero{
+    min-block-size:172px;
+    padding:64px 12px 14px;
+  }
+  :root[data-hero-mode="compact"] .site-hero:has(.data-freshness[open]){
+    min-block-size:min(520px, calc(100svh - 48px));
+  }
+  :root[data-hero-mode="compact"] .site-hero-toolbar{
+    inset-inline:12px;
+  }
+  :root[data-hero-mode="compact"] .theme-toggle-option{
+    min-width:42px;
+    padding-inline:7px;
+  }
 }
 
 .skip-link{
@@ -138,69 +168,96 @@ header h2{margin:8px 0 0;font-weight:500;text-shadow:0 1px 6px rgba(0,0,0,.5)}
   background:var(--surface-panel);
   box-shadow:0 6px 18px rgba(15,23,42,.06);
 }
-.tab-strip-shell{
+.primary-navigation{
   position:relative;
   display:grid;
-  grid-template-columns:auto minmax(0,1fr) auto;
+  grid-template-columns:repeat(5, max-content);
   gap:var(--space-1);
   min-width:0;
 }
-.tab-strip{
-  grid-column:2;
-  grid-row:1;
-  display:flex;
-  gap:var(--space-2);
-  min-width:0;
-  overflow-x:auto;
-  overscroll-behavior-inline:contain;
-  scrollbar-width:thin;
-  scrollbar-color:var(--border-strong) transparent;
-  -webkit-overflow-scrolling:touch;
-}
-#tabScrollPrev{
-  grid-column:1;
-  grid-row:1;
-}
-#tabScrollNext{
-  grid-column:3;
-  grid-row:1;
-}
-.tab-strip.has-overflow-start{box-shadow:inset 12px 0 10px -12px var(--text-muted)}
-.tab-strip.has-overflow-end{box-shadow:inset -12px 0 10px -12px var(--text-muted)}
-.tab-strip.has-overflow-start.has-overflow-end{
-  box-shadow:
-    inset 12px 0 10px -12px var(--text-muted),
-    inset -12px 0 10px -12px var(--text-muted);
-}
-.tab{min-block-size:var(--control-min-block-size);border:1px solid var(--border);background:var(--surface-control);color:var(--text);border-radius:999px;padding:8px 14px;cursor:pointer;font-weight:600;white-space:nowrap}
-.tab:hover{background:var(--surface-control-hover)}
-.tab.active{background:var(--accent-primary);color:var(--text-on-accent);border-color:var(--accent-primary)}
-.tab-scroll-button{
-  display:grid;
-  place-items:center;
-  inline-size:var(--control-min-block-size);
-  block-size:var(--control-min-block-size);
+.primary-nav-control{
+  display:inline-flex;
+  min-inline-size:0;
+  min-block-size:var(--control-min-block-size);
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  padding:8px 12px;
   border:1px solid var(--border);
   border-radius:var(--radius-pill);
   color:var(--text);
   background:var(--surface-control);
-  font-size:24px;
-  line-height:1;
+  font:600 14px/1.2 inherit;
+  text-decoration:none;
+  white-space:nowrap;
   cursor:pointer;
 }
-.tab-scroll-button:disabled{opacity:.38;cursor:not-allowed}
-.tab-scroll-button[hidden]{display:none}
+.primary-nav-control:hover{background:var(--surface-control-hover)}
+.primary-nav-control.active,
+.primary-nav-group.is-current-group > summary{
+  border-color:var(--accent-primary);
+  color:var(--text-on-accent);
+  background:var(--accent-primary);
+}
+.primary-nav-group{
+  position:relative;
+}
+.primary-nav-group > summary{
+  list-style:none;
+}
+.primary-nav-group > summary::-webkit-details-marker{display:none}
+.primary-nav-group > summary::after{
+  content:"▾";
+  font-size:10px;
+}
+.primary-nav-group[open] > summary::after{content:"▴"}
+.primary-nav-menu{
+  position:absolute;
+  z-index:70;
+  inset-block-start:calc(100% + 8px);
+  inset-inline-start:0;
+  display:grid;
+  min-inline-size:210px;
+  padding:8px;
+  border:1px solid var(--border-strong);
+  border-radius:var(--radius-panel);
+  background:var(--surface-elevated);
+  box-shadow:var(--shadow-pop);
+}
+.primary-nav-menu-end{
+  inset-inline-start:auto;
+  inset-inline-end:0;
+}
+.primary-nav-menu a{
+  min-block-size:var(--touch-target-size);
+  display:flex;
+  align-items:center;
+  padding:9px 12px;
+  border-radius:var(--radius-control);
+  color:var(--text);
+  font-weight:650;
+  text-decoration:none;
+}
+.primary-nav-menu a:hover{background:var(--surface-control-hover)}
+.primary-nav-menu a.active{
+  color:var(--text-primary);
+  background:var(--accent-soft);
+  box-shadow:inset 4px 0 0 var(--accent-primary);
+}
+.primary-nav-compact-label{display:none}
 
 @media (max-width:700px){
   .primary-nav{
     grid-template-columns:minmax(0,1fr) var(--touch-target-size);
     padding-block:8px;
   }
-  .tab-strip{scroll-snap-type:inline proximity}
-  .tab{scroll-snap-align:center}
-  .tab-scroll-button{
-    inline-size:var(--touch-target-size);
-    block-size:var(--touch-target-size);
+  .primary-navigation{
+    grid-template-columns:repeat(5, minmax(0, 1fr));
+  }
+  .primary-nav-control{
+    min-block-size:var(--touch-target-size);
+    padding-inline:8px;
+    font-size:12px;
   }
   .search-trigger{
     inline-size:var(--touch-target-size);
@@ -229,21 +286,24 @@ main{padding:16px}
     gap:var(--space-1);
     padding-inline:max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-right));
   }
-  .tab-strip-shell{gap:2px}
-  .tab-scroll-button{
-    inline-size:var(--control-min-block-size);
-    block-size:var(--control-min-block-size);
+  .primary-navigation{gap:2px}
+  .primary-nav-control{
+    padding-inline:4px;
+    font-size:11px;
   }
-  .tab{padding-inline:12px}
+  .primary-nav-wide-label{display:none}
+  .primary-nav-compact-label{display:inline}
+  .primary-nav-group > summary::after{font-size:8px}
+  .primary-nav-menu{min-inline-size:190px}
 }
 
 @media (forced-colors:active){
-  .tab.active{
+  .primary-nav-control.active,
+  .primary-nav-group.is-current-group > summary,
+  .primary-nav-menu a.active{
     border:2px solid Highlight;
     text-decoration:underline;
     text-underline-offset:4px;
   }
-  .tab-strip{
-    scrollbar-color:CanvasText Canvas;
-  }
+  .primary-nav-menu{border:2px solid CanvasText}
 }

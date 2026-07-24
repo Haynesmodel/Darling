@@ -6,14 +6,17 @@ The Darling targets WCAG 2.2 Level AA as its engineering baseline. Automated che
 
 ### Primary navigation
 
-- The sticky primary navigation is a manual-activation ARIA tablist.
-- `Tab` enters at the selected tab.
-- Left/Right Arrow wrap from first to last and last to first; Home/End move to the edges without changing the page.
-- Enter or Space activates the focused tab.
-- Activation synchronizes the selected tab, panel visibility, URL state, theme context, browser history, and horizontal reveal.
+- The sticky primary navigation uses ordinary links plus native `details`/`summary` disclosures.
+- Its five controls are Home, Season, Owners, Rivalries, and Tools; Search remains a separate utility action.
+- Home and Season are direct destinations. Owners exposes League History, Trophy Case, and Dynasty Rankings. Rivalries links to Head to Head. Tools exposes Draft Spot and Historical Matchup.
+- `Tab` follows visual order, Enter activates links, and Enter or Space toggles the Owners and Tools summaries without custom roving focus.
+- Only one grouped disclosure remains open. Escape closes it and restores its summary; an outside activation closes it without moving focus.
+- Exactly one destination link exposes `aria-current="page"`. A closed grouped disclosure includes visually hidden text naming its current child.
+- Activation synchronizes the current destination, independently named page section, URL state, theme context, browser history, and full/compact hero mode.
 - Lazy activation keeps the labelled selected panel visible, marks it `aria-busy="true"`, and uses one polite global status announcement until its controller and CSS are ready.
-- Feature import failures use a panel-scoped alert and Retry action; other initialized tabs remain usable and the requested URL is preserved.
-- Mobile overflow uses visible scroll buttons, a scrollbar, edge state, and automatic active-tab reveal. Search remains a separate utility action.
+- Feature import failures use a panel-scoped alert and Retry action; other initialized destinations remain usable and the requested URL is preserved.
+- Destination anchors retain canonical `href` values. Modifier clicks, middle clicks, copied links, and direct requests use normal browser navigation; only an unmodified same-origin primary click is intercepted for SPA activation.
+- The five controls and Search do not use horizontal scrolling at supported widths.
 
 ### History filter disclosures
 
@@ -58,7 +61,7 @@ The Darling targets WCAG 2.2 Level AA as its engineering baseline. Automated che
 Run:
 
 - `npm run test:a11y` for axe WCAG A/AA scans of all eight pages in light and dark themes plus overlay and expanded-table states.
-- `npm run test:keyboard` for tablist, disclosure, dialog, skip-link, reduced-motion, and responsive interaction checks.
+- `npm run test:keyboard` for navigation links/disclosures, filters, dialogs, skip-link, reduced-motion, and responsive interaction checks.
 - `npm run test:ui` for the complete browser suite.
 
 The axe suite has no global rule exclusions or element exclusions.
@@ -69,7 +72,7 @@ The axe suite has no global rule exclusions or element exclusions.
 - Give every control a visible or programmatic name.
 - Reuse the global focus ring; do not remove outlines without an equal or stronger replacement.
 - Keep live regions concise. Do not make complete tables or feature panels live.
-- For a new tab, add the tab and panel relationship in `index.html`, add the tab ID mapping in `src/accessibility/tablist.ts`, and route activation through the app controller/feature registry. Test slow readiness, import failure, Retry, rapid supersession, and focus-after-ready.
+- For a new feature destination, add typed metadata in `src/app/feature-navigation.ts`, a canonical link and independently labelled section in `index.html`, and a literal loader in the feature registry. Route activation through the app controller and test direct/modifier links, slow readiness, import failure, Retry, rapid supersession, and focus-after-ready.
 - For a new modal, use native `<dialog>` when possible, record the opener, set intentional initial focus, lock scrolling, contain focus, and restore the opener.
 - For charts, expose one concise chart name and retain a textual table or list when the graphic contains information not otherwise present.
 - Mark decorative emoji and images hidden from assistive technology; provide visible or visually hidden text when the symbol carries meaning.
@@ -85,6 +88,6 @@ Automated CI does not replace this checklist:
 - Forced-colors emulation in a supporting browser.
 - Touch review on a narrow physical device when available.
 
-Confirm page/tab names, dialog purpose, checkbox state, focus visibility, focus restoration, chart alternatives, and concise status announcements. Record any remaining limitation in an issue with an owner and removal condition.
+Confirm page/navigation names, grouped current-state text, dialog purpose, checkbox state, focus visibility, focus restoration, chart alternatives, and concise status announcements. Record any remaining limitation in an issue with an owner and removal condition.
 
 The current dated record is [accessibility-release-verification-2026-07-16.md](accessibility-release-verification-2026-07-16.md).

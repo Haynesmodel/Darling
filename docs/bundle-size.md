@@ -14,6 +14,21 @@ The July 23, 2026 chart-runtime optimization keeps Observable Plot and one share
 
 The aggregate build regained 36,961 gzip bytes and now retains 4,791 bytes below the ratcheted ceiling. The chart runtime regained 37,119 gzip bytes while preserving its existing legal-comment policy.
 
+## Navigation shell delta
+
+The July 24, 2026 semantic-navigation and compact-chrome change was measured from clean base `ef580af` and its working-tree result with Node 24.14.0, local npm 10.9.2, Vite 8.1.4, and `VITE_BASE_PATH=/Darling/`. Hosted acceptance repeats the build with repository-declared npm 11.18.0.
+
+| Metric | `ef580af` | Navigation shell | Delta | Enforced ceiling |
+| --- | ---: | ---: | ---: | ---: |
+| Entry raw | 177,873 | 177,979 | +106 | 190,000 |
+| Entry gzip | 54,266 | 54,140 | -126 | 56,000 |
+| Aggregate JavaScript gzip | 275,209 | 275,089 | -120 | 280,000 |
+| Chart-runtime raw | 294,294 | 294,294 | 0 | 305,000 |
+| Chart-runtime gzip | 97,674 | 97,674 | 0 | 100,000 |
+| Current Season settled gzip | 202,061 | 201,938 | -123 | 205,000 |
+
+The grouped navigation replaces the roving-tab and overflow-arrow implementation without adding a dependency or raising a ceiling. All eight dynamic feature entries remain present, Pulse and History remain Plot-free, and the entry retains 1,860 gzip bytes of headroom.
+
 ## Route closures
 
 Static closures count the production entry, selected feature, verified data loader, validators, and recursive static imports exactly once. Settled closures additionally count only dynamic work started by that selected feature during normal activation: Current Season odds and Draft Spot charts. The checker deliberately does not follow every dynamic feature import from `index.html`.
@@ -45,7 +60,7 @@ The manifest contains exactly one named `chart-runtime`. Current Season, Head to
 - Plot exclusion from the entry, League Pulse, and History;
 - a dynamic, not static, Plot dependency for Draft Spot;
 - one shared runtime in every chart route;
-- dynamic manifest entries for all eight tabs and `load-league-assets`.
+- dynamic manifest entries for all eight feature destinations and `load-league-assets`.
 
 `node scripts/check_bundle_size.cjs --json` emits stable static and settled fields for every route. The human report prints the same route table plus chunk and runtime measurements. Synthetic graph tests cover cycles, shared-chunk deduplication, selected dynamics, missing/duplicate/leaked runtimes, separator normalization, and budget diagnostics.
 

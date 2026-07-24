@@ -36,12 +36,12 @@ The July 24, 2026 phase-aware Current Season change was measured from merged sem
 | Metric | `91f2ca5` | Lifecycle/disclosure | Delta | Enforced ceiling |
 | --- | ---: | ---: | ---: | ---: |
 | Entry raw | 178,018 | 178,168 | +150 | 190,000 |
-| Entry gzip | 54,145 | 54,077 | -68 | 56,000 |
-| Aggregate JavaScript gzip | 275,095 | 277,320 | +2,225 | 280,000 |
+| Entry gzip | 54,145 | 54,078 | -67 | 56,000 |
+| Aggregate JavaScript gzip | 275,095 | 277,356 | +2,261 | 280,000 |
 | Chart-runtime raw | 294,294 | 294,294 | 0 | 305,000 |
 | Chart-runtime gzip | 97,674 | 96,772 | -902 | 100,000 |
-| Current Season static gzip | 198,607 | 201,531 | +2,924 | 205,000 |
-| Current Season eligible settled gzip | 201,943 | 204,873 | +2,930 | 205,000 |
+| Current Season static gzip | 198,607 | 201,554 | +2,947 | 205,000 |
+| Current Season eligible settled gzip | 201,943 | 204,896 | +2,953 | 205,000 |
 
 No ceiling or dependency changed. The canonical finalized route is the smaller static closure at runtime because recap does not start odds work; the settled figure remains the enforced worst-case closure for an eligible live regular-season command view.
 

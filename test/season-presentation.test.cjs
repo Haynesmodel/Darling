@@ -44,21 +44,27 @@ function current(games, overrides = {}) {
 }
 
 test.before(async () => {
-  temp = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-season-domain-'));
+  const tempRoot = process.env.NODE_V8_COVERAGE
+    ? path.join(root, 'coverage')
+    : os.tmpdir();
+  fs.mkdirSync(tempRoot, { recursive: true });
+  temp = fs.mkdtempSync(path.join(tempRoot, 'darling-season-domain-'));
   await esbuild.build({
     entryPoints: [
       path.join(root, 'src/data/season-presentation.ts'),
       path.join(root, 'src/data/season-recap.ts'),
     ],
     outdir: temp, bundle: true, platform: 'node', format: 'esm', target: 'node20',
-    entryNames: '[name]', logLevel: 'silent',
+    entryNames: '[name]', sourcemap: 'inline', sourcesContent: true, logLevel: 'silent',
   });
   const presentation = await import(`${pathToFileURL(path.join(temp, 'season-presentation.js')).href}?${Date.now()}`);
   const recap = await import(`${pathToFileURL(path.join(temp, 'season-recap.js')).href}?${Date.now()}`);
   domain = { ...presentation, ...recap };
 });
 
-test.after(() => fs.rmSync(temp, { recursive: true, force: true }));
+test.after(() => {
+  if (!process.env.NODE_V8_COVERAGE) fs.rmSync(temp, { recursive: true, force: true });
+});
 
 test('resolves all six phases and regular-season boundary states', () => {
   const cases = [

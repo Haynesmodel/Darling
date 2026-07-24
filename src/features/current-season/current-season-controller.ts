@@ -75,15 +75,18 @@ export function createFeatureController(): DarlingFeatureController {
       leagueGames: context.data.leagueGames,
     });
     if (recap && !recap.finalStandings.length && ['finalizing', 'historical-fallback'].includes(presentation.phase)) {
-      recap.finalStandings = view.standings
+      const finalStandings = view.standings
         .slice()
-        .sort((a: any, b: any) => Number(a.rank) - Number(b.rank) || a.owner.localeCompare(b.owner))
-        .map((row: any) => ({
+        .sort((a: any, b: any) => Number(a.rank) - Number(b.rank) || a.owner.localeCompare(b.owner));
+      recap.finalStandings = [];
+      for (const row of finalStandings) {
+        recap.finalStandings.push({
           finish: row.rank,
           owner: row.owner,
           record: row.record,
           pointsFor: row.pointsFor,
-        }));
+        });
+      }
     }
     Object.assign(view, { presentation, recap, contextRecap });
     const key = JSON.stringify({ dataVersion: context.data.dataVersion, season: view.season, week: view.week, owner: view.commandCenter.selectedOwner, games: view.regularGames.map((game: any) => `${game.week}:${game.teamA}:${game.teamB}:${game.scoreA}:${game.scoreB}:${game.status}`).join('|') });

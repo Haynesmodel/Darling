@@ -42,24 +42,22 @@ const searchRuntime = createSearchRuntime();
 const tableRuntime = createTableRuntime();
 const freshnessRuntime = createDataFreshnessRuntime();
 const browser = globalThis as unknown as {
-  window?: BrowserWindow;
+  window: BrowserWindow;
   document?: BrowserDocument;
 };
 
-if (browser.window) {
-  browser.window.darlingTheme = themeRuntime;
-  browser.window.darlingSearch = searchRuntime;
-  browser.window.darlingTables = tableRuntime;
-  browser.window.darlingDataLoader = async options => {
-    const { loadLeagueAssets } = await import('./data/load-league-assets');
-    return loadLeagueAssets(options);
-  };
-  browser.window.darlingAccessibility = {
-    prefersReducedMotion,
-    focusableElements,
-    syncPageState,
-  };
-}
+browser.window.darlingTheme = themeRuntime;
+browser.window.darlingSearch = searchRuntime;
+browser.window.darlingTables = tableRuntime;
+browser.window.darlingDataLoader = async options => {
+  const { loadLeagueAssets } = await import('./data/load-league-assets');
+  return loadLeagueAssets(options);
+};
+browser.window.darlingAccessibility = {
+  prefersReducedMotion,
+  focusableElements,
+  syncPageState,
+};
 
 function mountThemeControls() {
   const mount = browser.document!.getElementById('themeControls');

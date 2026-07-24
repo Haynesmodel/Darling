@@ -7,7 +7,16 @@ test('primary navigation exposes five semantic controls and all eight canonical 
   await expect(navigation.locator(':scope > .primary-nav-control, :scope > .primary-nav-group')).toHaveCount(5);
   await expect(page.getByRole('link', { name: /Home/ })).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('[data-feature-id]')).toHaveCount(8);
-
+  await expect(page.locator('#page-pulse')).toHaveAttribute('data-feature-state', 'ready');
+  expect(await page.evaluate(() => ({
+    activeFeature: window.darlingFeatureDiagnostics.activeFeature,
+    activationCount: window.darlingFeatureDiagnostics.activationCount,
+    registeredFeatures: Object.keys(window.darlingFeatureDiagnostics.features).length,
+  }))).toEqual({
+    activeFeature: 'pulse',
+    activationCount: 1,
+    registeredFeatures: 8,
+  });
   await page.getByText('Owners', { exact: true }).click();
   await expect(featureDestination(page, 'history')).toBeVisible();
   await expect(featureDestination(page, 'trophy')).toBeVisible();
@@ -19,6 +28,27 @@ test('primary navigation exposes five semantic controls and all eight canonical 
   await expect(featureDestination(page, 'draft')).toBeVisible();
   await expect(featureDestination(page, 'gauntlet')).toBeVisible();
   await expect(featureDestination(page, 'gauntlet')).toHaveAttribute('href', /[?&]tab=gauntlet$/);
+});
+
+test('coverage build exercises the fallback freshness contract in authored coordinates', async ({ page }) => {
+  test.skip(!process.env.COLLECT_COVERAGE, 'The source module is available only from the instrumented development server.');
+  await page.goto('/');
+  expect(await page.evaluate(async () => {
+    const { createFallbackFreshness } = await import('/src/app/app-controller.ts');
+    const assessment = { state: 'final', detail: 'Season complete' };
+    const runtime = createFallbackFreshness(assessment);
+    runtime.publish({ ignored: true });
+    const unsubscribe = runtime.subscribe(() => {});
+    return {
+      current: runtime.current(),
+      assessment: runtime.currentAssessment(),
+      unsubscribed: unsubscribe(),
+    };
+  })).toEqual({
+    current: null,
+    assessment: { state: 'final', detail: 'Season complete' },
+    unsubscribed: undefined,
+  });
 });
 
 test('grouped menus close with Escape, outside activation, and destination selection', async ({ page }) => {

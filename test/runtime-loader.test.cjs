@@ -249,3 +249,28 @@ test('runtime loader fails closed after two required integrity mismatches', asyn
     error => error.code === 'SIZE_MISMATCH' && error.asset === 'H2H' && error.details.attempts === 2,
   );
 });
+
+test('optional assets fail after the second attempt and diagnostics remain sorted', async () => {
+  const requests = [];
+  const loaded = await loadLeagueAssets({
+    basePath: '/',
+    logger: { warn() {}, error() {} },
+    fetchFn: createFetch({
+      'assets/Rivalries.json': { wrong: 'rivalries' },
+      'assets/CurrentSeason.json': { wrong: 'current' },
+    }, requests),
+  });
+  const attemptsFor = relativePath => requests.filter(request => (
+    new URL(request.url, 'https://darling.test').pathname.endsWith(relativePath)
+  )).length;
+  assert.equal(attemptsFor('assets/Rivalries.json'), 2);
+  assert.equal(attemptsFor('assets/CurrentSeason.json'), 2);
+  assert.deepEqual(loaded.diagnostics.optionalFailures.map(failure => failure.asset), [
+    'CurrentSeason',
+    'Rivalries',
+  ]);
+  assert.deepEqual(loaded.diagnostics.integrity.failedOptionalAssets, [
+    'CurrentSeason',
+    'Rivalries',
+  ]);
+});

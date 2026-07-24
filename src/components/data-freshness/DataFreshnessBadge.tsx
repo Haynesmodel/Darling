@@ -54,6 +54,7 @@ export function createDataFreshnessRuntime(): DataFreshnessRuntime {
     subscribe(listener) {
       listeners.add(listener);
       startClock();
+      if (snapshot) listener();
       return () => {
         listeners.delete(listener);
         stopClock();

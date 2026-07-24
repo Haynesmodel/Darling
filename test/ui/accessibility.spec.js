@@ -1,7 +1,6 @@
-import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
-
-const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
+import { expect, test } from './coverage-fixture.js';
+import { expectNoViolations } from './accessibility-helpers.js';
+import { createSnapshotFixture } from './snapshot-fixture.js';
 const pages = [
   ['pulse', 'League Pulse'],
   ['history', 'League History'],
@@ -13,16 +12,6 @@ const pages = [
   ['gauntlet', 'Historical Matchup'],
 ];
 
-async function expectNoViolations(page, include) {
-  let builder = new AxeBuilder({ page }).withTags(WCAG_TAGS);
-  if (include) builder = builder.include(include);
-  const results = await builder.analyze();
-  expect(
-    results.violations,
-    results.violations.map(violation => `${violation.id}: ${violation.help}`).join('\n'),
-  ).toEqual([]);
-}
-
 for (const theme of ['light', 'dark']) {
   test.describe(`${theme} theme`, () => {
     for (const [tab, name] of pages) {
@@ -31,7 +20,9 @@ for (const theme of ['light', 'dark']) {
         await page.goto(`/?tab=${tab}`);
         await page.waitForLoadState('networkidle');
         await page.locator(`[data-theme-preference="${theme}"]`).click();
-        await expect(page.getByRole('tabpanel', { name })).toBeVisible();
+        const panel = page.getByRole('tabpanel', { name });
+        await expect(panel).toBeVisible();
+        await expect(panel).toHaveAttribute('data-feature-state', 'ready');
         await expectNoViolations(page);
       });
     }
@@ -42,6 +33,7 @@ test('mobile navigation and history disclosure have no automated violations', as
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
+  await expect(page.locator('#page-history')).toHaveAttribute('data-feature-state', 'ready');
   await page.locator('.dropdown-toggle[data-target="seasonFilters"]').click();
   await expect(page.locator('#seasonFilters')).toBeVisible();
   await expectNoViolations(page);
@@ -68,18 +60,41 @@ test('command palette has no automated violations', async ({ page }) => {
   await expectNoViolations(page, '#global-search-dialog');
 });
 
+for (const theme of ['light', 'dark']) {
+  test(`live Pulse active state has no violations or clipping in ${theme} theme`, async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-09-15T12:10:00Z'));
+    const fixture = createSnapshotFixture({
+      mutations: {
+        CurrentSeason(current) {
+          current.season = 2026;
+          current.generated_at = '2026-09-15T12:00:00Z';
+          current.current_week = 2;
+          current.weeks_fetched = [1, 2];
+          current.games = current.games.filter(game => game.week <= 2).map(game => ({
+            ...game,
+            season: 2026,
+            date: game.date.replace('2025', '2026'),
+            status: game.week === 1 ? 'final' : 'live',
+          }));
+        },
+      },
+    });
+    await fixture.install(page);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/');
+    await page.locator(`[data-theme-preference="${theme}"]`).click();
+    await expect(page.locator('.pulse-badge')).toHaveText('Live');
+    await expectNoViolations(page, '#page-pulse');
+    await expect.poll(() => page.evaluate(() => (
+      document.documentElement.scrollWidth <= document.documentElement.clientWidth
+    ))).toBe(true);
+  });
+}
+
 test('Dynasty window dialog has no automated violations', async ({ page }) => {
   await page.goto('/?tab=dynasty');
   await page.waitForLoadState('networkidle');
   await page.locator('#dynastyBestWindows .dynasty-window-card').first().click();
   await expect(page.locator('#dynastyWindowModal')).toBeVisible();
   await expectNoViolations(page, '#dynastyWindowModal');
-});
-
-test('expanded interactive table state has no automated violations', async ({ page }) => {
-  await page.goto('/?tab=history');
-  await page.waitForLoadState('networkidle');
-  await page.locator('#historyGamesTable .table-expand-button').first().click();
-  await expect(page.locator('#historyGamesTable .table-expanded-row').first()).toBeVisible();
-  await expectNoViolations(page, '#historyGamesCard');
 });

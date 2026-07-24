@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'preact/hooks';
 import { DRAFT_METRICS, draftMetricValue, draftPositionLabel } from './draft-spot-model';
 import { draftSummaryContext, formatMetric, formatNumber, formatPercent } from './draft-spot-format';
 import type { DraftSpotState, DraftSpotViewModel, DraftSummary } from './draft-spot-types';
+import { renderDraftChartError } from './draft-chart-error';
 
 function chartRows(model: DraftSpotViewModel) {
   return model.pickSummary.map(summary => ({
@@ -14,25 +15,29 @@ function chartRows(model: DraftSpotViewModel) {
 function usePickChart(model: DraftSpotViewModel, host: { current: HTMLDivElement | null }) {
   useEffect(() => {
     let active = true;
-    void import('../../../js/charting/vendor/charting-vendor.js').then(({ Plot }) => {
+    void import('../../../js/charting/vendor/charting-vendor.js').then(({ plot, barY }) => {
       if (!active || !host.current) return;
       const rows = chartRows(model);
-      const svg = Plot.plot({
+      const svg = plot({
         height: 240,
         marginLeft: 48,
         x: { label: model.state.normalize === 'percentile' ? 'Normalized draft slot (12-team scale)' : 'Draft pick' },
         y: { label: DRAFT_METRICS[model.state.metric].label },
         marks: [
-          Plot.barY(rows, { x: 'pick', y: 'value', fill: 'var(--accent-primary)', title: 'title' }),
+          barY(rows, { x: 'pick', y: 'value', fill: 'var(--accent-primary)', title: 'title' }),
         ],
       });
       svg.setAttribute('aria-label', `${model.state.normalize === 'percentile' ? 'Normalized draft slot' : 'Draft pick'} comparison by ${DRAFT_METRICS[model.state.metric].label}`);
       svg.setAttribute('role', 'img');
       host.current.replaceChildren(svg);
+      host.current.dataset.chartState = 'ready';
+    }).catch(error => {
+      if (active && host.current) renderDraftChartError(host.current, error);
     });
     return () => {
       active = false;
       host.current?.replaceChildren();
+      if (host.current) delete host.current.dataset.chartState;
     };
   }, [model.state.metric, model.state.normalize, model.pickSummary]);
 }

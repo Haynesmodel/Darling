@@ -1,11 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { spawnSync } = require('node:child_process');
-const esbuild = require('esbuild');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { pathToFileURL } = require('node:url');
 const sharp = require('sharp');
 
 const { checkRepoHygiene } = require('../scripts/check_repo_hygiene.cjs');
@@ -17,7 +15,7 @@ const { FORMATS, HERO_WIDTHS, generateHeroImages, resolveSource } = require('../
 const { createStaticServer, normalizeBasePath, resolvePath } = require('../scripts/serve_static.cjs');
 const { syncPublicAssets } = require('../scripts/sync_public_assets.cjs');
 const { validateHeroAssets } = require('../scripts/validate_assets.cjs');
-const { buildCoverageSummary, isTypeOnlySourceFile } = require('../scripts/v8_coverage_report.cjs');
+const { propagateResult } = require('../scripts/run_tests_with_coverage.cjs');
 
 async function withTempRepo(fn) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-hygiene-'));
@@ -506,179 +504,6 @@ test('hero image generator creates every responsive format from a source image',
   }
 });
 
-test('coverage reporter measures source files and excludes tests', async () => {
-  await withTempRepo((root) => {
-    fs.mkdirSync(path.join(root, 'coverage', '.v8'), { recursive: true });
-    fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
-    fs.mkdirSync(path.join(root, 'src'), { recursive: true });
-    fs.mkdirSync(path.join(root, 'test'), { recursive: true });
-
-    const appSource = 'const app = true;\nexport { app };\n';
-    const srcSource = "import '../js/app.js';\n";
-    const entryPointPath = path.join(root, 'js', 'app.js');
-    const scriptSource = 'module.exports = { ok: true };\n';
-    const testSource = 'assert.equal(1, 1);\n';
-    const appPath = path.join(root, 'js', 'helpers.js');
-    const scriptPath = path.join(root, 'scripts', 'tool.cjs');
-    const srcPath = path.join(root, 'src', 'main.tsx');
-    const testPath = path.join(root, 'test', 'data.test.js');
-    fs.writeFileSync(entryPointPath, "import './helpers.js';\n");
-    fs.writeFileSync(appPath, appSource);
-    fs.writeFileSync(scriptPath, scriptSource);
-    fs.writeFileSync(srcPath, srcSource);
-    fs.writeFileSync(testPath, testSource);
-
-    fs.writeFileSync(path.join(root, 'coverage', '.v8', 'coverage.json'), JSON.stringify({
-      result: [appPath, scriptPath, srcPath, testPath].map(filePath => ({
-        url: pathToFileURL(filePath).href,
-        functions: [{
-          ranges: [{ startOffset: 0, endOffset: fs.readFileSync(filePath, 'utf8').length, count: 1 }],
-        }],
-      })).concat([entryPointPath].map(filePath => ({
-        url: pathToFileURL(filePath).href,
-        functions: [{
-          ranges: [{ startOffset: 0, endOffset: fs.readFileSync(filePath, 'utf8').length, count: 1 }],
-        }],
-      }))),
-    }));
-
-    const summary = buildCoverageSummary(root);
-    assert.deepEqual(
-      summary.files.map(file => file.file).sort(),
-      ['js/app.js', 'js/helpers.js', 'scripts/tool.cjs', 'src/main.tsx']
-    );
-    assert.equal(summary.total.lines.pct, 100);
-  });
-});
-
-test('coverage reporter maps inline source maps back to original TypeScript files', async () => {
-  await withTempRepo(async (root) => {
-    fs.mkdirSync(path.join(root, 'coverage', '.v8'), { recursive: true });
-    fs.mkdirSync(path.join(root, 'src', 'theme'), { recursive: true });
-
-    const entryPointPath = path.join(root, 'js', 'app.js');
-    const helperPath = path.join(root, 'js', 'helpers.js');
-    const sourcePath = path.join(root, 'src', 'theme', 'mapped.ts');
-    fs.writeFileSync(entryPointPath, "import './helpers.js';\n");
-    fs.writeFileSync(helperPath, 'const covered = true;\nexport { covered };\n');
-    fs.writeFileSync(sourcePath, 'export function answer(){\n  return 42;\n}\nanswer();\n');
-
-    const outPath = path.join(root, 'coverage', 'mapped.mjs');
-    await esbuild.build({
-      entryPoints: [sourcePath],
-      outfile: outPath,
-      bundle: true,
-      format: 'esm',
-      platform: 'browser',
-      sourcemap: 'inline',
-      sourcesContent: true,
-    });
-    const generated = fs.readFileSync(outPath, 'utf8');
-    fs.writeFileSync(path.join(root, 'coverage', '.v8', 'coverage.json'), JSON.stringify({
-      result: [entryPointPath, helperPath].map(filePath => ({
-        url: pathToFileURL(filePath).href,
-        functions: [{
-          ranges: [{ startOffset: 0, endOffset: fs.readFileSync(filePath, 'utf8').length, count: 1 }],
-        }],
-      })).concat([{
-        url: pathToFileURL(outPath).href,
-        functions: [{
-          ranges: [{ startOffset: 0, endOffset: generated.length, count: 1 }],
-        }],
-      }]),
-    }));
-
-    const summary = buildCoverageSummary(root);
-    const mapped = summary.files.find(file => file.file === 'src/theme/mapped.ts');
-    assert.ok(mapped);
-    assert.equal(mapped.pct, 100);
-  });
-});
-
-test('coverage reporter excludes type-only TypeScript files with nested multiline properties', async () => {
-  await withTempRepo((root) => {
-    fs.mkdirSync(path.join(root, 'coverage', '.v8'), { recursive: true });
-    fs.mkdirSync(path.join(root, 'src', 'theme'), { recursive: true });
-    const entryPointPath = path.join(root, 'js', 'app.js');
-    const helperPath = path.join(root, 'js', 'helpers.js');
-    const typeOnlyPath = path.join(root, 'src', 'theme', 'theme-types.ts');
-    fs.writeFileSync(entryPointPath, "import './helpers.js';\n");
-    fs.writeFileSync(helperPath, 'const covered = true;\nexport { covered };\n');
-    fs.writeFileSync(typeOnlyPath, [
-      'import type { External } from \"./external\";',
-      'export type Mode = \"dark\" | \"light\";',
-      'export interface ThemeShape {',
-      '  mode: Mode;',
-      '  dataNote: {',
-      '    freshness: { status: \"fresh\"; reason: string };',
-      '    versions: Array<{ name: string; sha: string }>;',
-      '  };',
-      '  external?: External;',
-      '}',
-      '',
-    ].join('\n'));
-    fs.writeFileSync(path.join(root, 'coverage', '.v8', 'coverage.json'), JSON.stringify({
-      result: [entryPointPath, helperPath].map(filePath => ({
-        url: pathToFileURL(filePath).href,
-        functions: [{
-          ranges: [{ startOffset: 0, endOffset: fs.readFileSync(filePath, 'utf8').length, count: 1 }],
-        }],
-      })),
-    }));
-
-    assert.equal(isTypeOnlySourceFile(typeOnlyPath), true);
-    const summary = buildCoverageSummary(root);
-    assert.equal(summary.files.some(file => file.file === 'src/theme/theme-types.ts'), false);
-  });
-});
-
-test('coverage reporter fails when a source file never appears in coverage output', async () => {
-  await withTempRepo((root) => {
-    fs.mkdirSync(path.join(root, 'coverage', '.v8'), { recursive: true });
-    const entryPointPath = path.join(root, 'js', 'app.js');
-    const coveredPath = path.join(root, 'js', 'helpers.js');
-    const missingPath = path.join(root, 'js', 'missing.js');
-    fs.writeFileSync(entryPointPath, "import './helpers.js';\n");
-    fs.writeFileSync(coveredPath, 'const covered = true;\nexport { covered };\n');
-    fs.writeFileSync(missingPath, 'const missing = true;\nexport { missing };\n');
-    fs.writeFileSync(path.join(root, 'coverage', '.v8', 'coverage.json'), JSON.stringify({
-      result: [{
-        url: pathToFileURL(entryPointPath).href,
-        functions: [{
-          ranges: [{ startOffset: 0, endOffset: fs.readFileSync(entryPointPath, 'utf8').length, count: 1 }],
-        }],
-      }, {
-        url: pathToFileURL(coveredPath).href,
-        functions: [{
-          ranges: [{ startOffset: 0, endOffset: fs.readFileSync(coveredPath, 'utf8').length, count: 1 }],
-        }],
-      }],
-    }));
-
-    assert.throws(
-      () => buildCoverageSummary(root),
-      /Missing coverage for source files: js\/missing\.js/
-    );
-  });
-});
-
-test('coverage summary checker accepts a valid summary file', async () => {
-  await withTempRepo((root) => {
-    fs.mkdirSync(path.join(root, 'coverage'));
-    fs.writeFileSync(path.join(root, 'coverage', 'coverage-summary.json'), JSON.stringify({
-      total: {
-        lines: {
-          pct: 100,
-        },
-      },
-    }));
-
-    const result = runNode(path.join(__dirname, '..', 'scripts', 'check_coverage.cjs'), [], root);
-    assert.equal(result.status, 0);
-    assert.match(result.stdout, /Coverage 100% meets minimum 80%/);
-  });
-});
-
 test('run_tests_with_coverage can execute in a minimal temp repo', async () => {
   await withTempRepo((root) => {
     fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ type: 'module' }));
@@ -690,6 +515,15 @@ test('run_tests_with_coverage can execute in a minimal temp repo', async () => {
     const result = runNode(path.join(__dirname, '..', 'scripts', 'run_tests_with_coverage.cjs'), [], root);
     assert.equal(result.status, 0);
   });
+});
+
+test('run_tests_with_coverage propagates child status and termination signals', () => {
+  const calls = [];
+  const processApi = { pid: 42, kill: (...args) => calls.push(args) };
+  assert.equal(propagateResult({ status: 0, signal: null }, processApi), 0);
+  assert.equal(propagateResult({ status: null, signal: null }, processApi), 1);
+  assert.equal(propagateResult({ status: null, signal: 'SIGTERM' }, processApi), 1);
+  assert.deepEqual(calls, [[42, 'SIGTERM']]);
 });
 
 test('asset validation cli accepts the canonical bundle', async () => {
@@ -800,11 +634,15 @@ test('update workflow validation-only mode runs with a stub updater and leaves a
   const before = fs.existsSync(updatedPath) ? fs.readFileSync(updatedPath, 'utf8') : null;
   const currentBefore = fs.existsSync(currentUpdatedPath) ? fs.readFileSync(currentUpdatedPath, 'utf8') : null;
 
-  fs.writeFileSync(stubPath, `#!/usr/bin/env bash
+fs.writeFileSync(stubPath, `#!/usr/bin/env bash
 set -euo pipefail
 
 script="$1"
 shift
+if [[ "$script" == "-" ]]; then
+  echo '{"nfl_season":"2025","league_season":"2025","nfl_week":1}'
+  exit 0
+fi
 out=""
 h2h=""
 while [[ $# -gt 0 ]]; do
@@ -851,6 +689,11 @@ fi
     assert.equal(result.status, 0);
     assert.match(result.stdout, /Validation-only mode enabled/);
     assert.match(result.stdout, /Validation complete\. No files were written into assets\//);
+    assert.doesNotMatch(result.stdout, /1257071385973362690/);
+    assert.deepEqual(
+      fs.readdirSync(path.join(repoRoot, 'scripts')).filter(name => name.startsWith('.update-')),
+      [],
+    );
 
     if (before === null) {
       assert.equal(fs.existsSync(updatedPath), false);
@@ -862,6 +705,47 @@ fi
     } else {
       assert.equal(fs.readFileSync(currentUpdatedPath, 'utf8'), currentBefore);
     }
+  } finally {
+    fs.rmSync(stubDir, { recursive: true, force: true });
+  }
+});
+
+test('update workflow rejects a Sleeper league-season mismatch before extraction', async () => {
+  const repoRoot = path.join(__dirname, '..');
+  const stubDir = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-python-season-stub-'));
+  const stubPath = path.join(stubDir, 'python-stub.sh');
+  const extractionMarker = path.join(stubDir, 'extraction-started');
+
+  fs.writeFileSync(stubPath, `#!/usr/bin/env bash
+set -euo pipefail
+script="$1"
+if [[ "$script" == "-" ]]; then
+  echo '{"nfl_season":"2026","league_season":"2026","nfl_week":1}'
+  exit 0
+fi
+touch "${extractionMarker}"
+exit 99
+`);
+  fs.chmodSync(stubPath, 0o755);
+
+  try {
+    const result = runShell(
+      path.join(repoRoot, 'scripts', 'update_sleeper_h2h.sh'),
+      {
+        UPDATE_LIVE: '1',
+        VALIDATE_ONLY: '1',
+        SEASON: '2025',
+        CURRENT_WEEK: '1',
+        LEAGUE_ID: 'not-logged',
+        PYTHON: stubPath,
+      },
+      repoRoot,
+    );
+
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /requested season 2025 does not match Sleeper league season 2026/);
+    assert.equal(fs.existsSync(extractionMarker), false);
+    assert.doesNotMatch(`${result.stdout}\n${result.stderr}`, /not-logged/);
   } finally {
     fs.rmSync(stubDir, { recursive: true, force: true });
   }

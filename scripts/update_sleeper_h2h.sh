@@ -36,8 +36,7 @@ fi
 STATE_SEASON=""
 STATE_LEAGUE_SEASON=""
 STATE_WEEK=""
-if [[ -z "${REQUESTED_SEASON}" || -z "${REQUESTED_CURRENT_WEEK}" ]]; then
-  STATE_JSON="$("${PY}" - "${LEAGUE_ID}" <<'PY'
+STATE_JSON="$("${PY}" - "${LEAGUE_ID}" <<'PY'
 import json
 import sys
 from urllib.request import Request, urlopen
@@ -60,12 +59,19 @@ print(json.dumps({
 }))
 PY
 )"
-  STATE_SEASON="$(node -e "const x=JSON.parse(process.argv[1]||'{}'); if (x.nfl_season) process.stdout.write(String(x.nfl_season));" "${STATE_JSON}")"
-  STATE_LEAGUE_SEASON="$(node -e "const x=JSON.parse(process.argv[1]||'{}'); if (x.league_season) process.stdout.write(String(x.league_season));" "${STATE_JSON}")"
-  STATE_WEEK="$(node -e "const x=JSON.parse(process.argv[1]||'{}'); if (x.nfl_week) process.stdout.write(String(x.nfl_week));" "${STATE_JSON}")"
-fi
+STATE_SEASON="$(node -e "const x=JSON.parse(process.argv[1]||'{}'); if (x.nfl_season) process.stdout.write(String(x.nfl_season));" "${STATE_JSON}")"
+STATE_LEAGUE_SEASON="$(node -e "const x=JSON.parse(process.argv[1]||'{}'); if (x.league_season) process.stdout.write(String(x.league_season));" "${STATE_JSON}")"
+STATE_WEEK="$(node -e "const x=JSON.parse(process.argv[1]||'{}'); if (x.nfl_week) process.stdout.write(String(x.nfl_week));" "${STATE_JSON}")"
 
 SEASON="${REQUESTED_SEASON:-${STATE_LEAGUE_SEASON:-${STATE_SEASON:-2025}}}"
+if [[ -z "${STATE_LEAGUE_SEASON}" ]]; then
+  echo "ERROR: Sleeper league metadata did not report a season; refusing extraction." >&2
+  exit 2
+fi
+if [[ "${STATE_LEAGUE_SEASON}" != "${SEASON}" ]]; then
+  echo "ERROR: requested season ${SEASON} does not match Sleeper league season ${STATE_LEAGUE_SEASON}; refusing extraction." >&2
+  exit 2
+fi
 if [[ -n "${REQUESTED_CURRENT_WEEK}" ]]; then
   CURRENT_WEEK="${REQUESTED_CURRENT_WEEK}"
 elif [[ -n "${STATE_WEEK}" && "${STATE_SEASON}" == "${SEASON}" ]]; then
@@ -76,7 +82,7 @@ fi
 MAP_FILE="${SCRIPT_DIR}/${SEASON}_team_mapping.json"
 
 echo "=== Sleeper -> H2H update ==="
-echo "League:       ${LEAGUE_ID}"
+echo "League:       configured"
 echo "Season:       ${SEASON}"
 echo "Current week: ${CURRENT_WEEK:-auto}"
 echo "Input:        ${IN_H2H}"
@@ -88,7 +94,7 @@ echo
 if [[ ! -f "${MAP_FILE}" ]]; then
   echo "ERROR: mapping file not found: ${MAP_FILE}" >&2
   echo "Create it by running:" >&2
-  echo "  ${PY} ${UPDATER} --league ${LEAGUE_ID} --list-teams" >&2
+  echo "  ${PY} ${UPDATER} --league <configured-league-id> --list-teams" >&2
   exit 2
 fi
 

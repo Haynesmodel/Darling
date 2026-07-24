@@ -402,4 +402,7 @@
   .current-needs-head{
     flex-direction:column;
   }
+  .current-matchup-grid{
+    grid-template-columns:minmax(0,1fr);
+  }
 }

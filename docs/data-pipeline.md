@@ -119,13 +119,46 @@ The twelve files under `assets/hero/` are runtime-required. Validation checks th
 
 ## Sleeper automation
 
-The weekly workflow writes candidate H2H and CurrentSeason files, promotes changed sources, produces the SeasonSummary draft, regenerates derived data and the manifest, validates the whole snapshot, and stages all coherent outputs together. Failures upload candidate files for diagnosis and do not commit partial data.
+The weekly workflow runs only from the trusted `main` definition, with the default token limited to Contents read and Issues write. It writes candidate H2H and CurrentSeason files, promotes them only inside the runner, regenerates the review draft, derived data, and manifest, and validates the coherent snapshot before requesting publication credentials.
+
+Validation-only runs use the shell script's temporary directory and never copy canonical assets, stage files, mint an App token, update a branch or pull request, or close the failure issue. Full no-change runs likewise stop before App authentication and remote mutation.
+
+For a changed candidate, publication is restricted to:
+
+- `assets/H2H.json`
+- `assets/CurrentSeason.json`
+- `assets/SeasonSummary.draft.json`
+- `assets/DerivedStats.json`
+- `assets/asset-manifest.json`
+
+The summary helper rejects removed or changed historical H2H games, additions outside the target season, and a CurrentSeason season or league mismatch. It produces a deterministic, Markdown-escaped review summary with game/status deltas, manifest hashes, source SHAs, completed checks, and the human review checklist.
+
+Only after those checks pass does the workflow mint a short-lived Darling GitHub App token scoped to the current repository with Contents and Pull requests write permissions. App preflight verifies that the installation token can see exactly Darling and that `main` remains the default branch. The token is supplied through `GH_TOKEN`; checkout credentials are not persisted and the token is not placed in Git configuration or a remote URL.
+
+Changed data is committed to `automation/sleeper-<season>` and pushed only with an exact observed-SHA force-with-lease after confirming bot ownership. The workflow creates or refreshes exactly one App-owned draft pull request targeting `main`, restores its title and labels, and returns it to draft after every refresh. It has no path to ready, approve, auto-merge, merge, or push directly to `main`.
+
+Human reviewers must inspect the generated checklist and full data diff, wait for the latest exact `ci / gate`, mark the latest candidate ready, record a human approval, and merge it manually. `assets/SeasonSummary.draft.json` is explicitly noncanonical and must never be copied automatically to `assets/SeasonSummary.json`.
+
+Failures identify the workflow phase, retain safe allowlisted candidate/review evidence for seven days, and create or update the exact `Weekly Sleeper update failed` issue. A later successful full publish or full no-change run adds a recovery link and closes that issue. Validation-only success does not close it because publication credentials and branch behavior were not exercised.
 
 Local validation-only example:
 
 ```sh
 UPDATE_LIVE=1 VALIDATE_ONLY=1 SEASON=2025 CURRENT_WEEK=1 scripts/update_sleeper_h2h.sh
 ```
+
+### Activating a new Sleeper season
+
+2026 remains intentionally unconfigured. Activate a new season in this order:
+
+1. Create the Sleeper league.
+2. Add `scripts/<season>_team_mapping.json` and the matching Week 1 anchor in `scripts/sleeper_week1_anchors.json` through a human pull request.
+3. Merge that configuration only after normal CI and mapping review.
+4. Update the `SLEEPER_LEAGUE_ID` repository secret to the activated league.
+5. Dispatch a validation-only run from `main` for the new season.
+6. Dispatch a full run and review the resulting bot draft pull request.
+
+The automation does not infer future leagues, follow `previous_league_id`, or accept a reported Sleeper league season that differs from the configured target.
 
 ## Deployment audit
 

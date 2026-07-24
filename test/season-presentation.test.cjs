@@ -79,6 +79,17 @@ test('resolves all six phases and regular-season boundary states', () => {
     assert.equal(domain.resolveSeasonPresentation({ currentSeason, seasonSummaries, leagueGames: [] }).phase, phase);
   }
   assert.equal(domain.resolveSeasonPresentation({ currentSeason: null, seasonSummaries: [], leagueGames: [{ season: 2024 }] }).phase, 'historical-fallback');
+  assert.deepEqual(
+    domain.resolveSeasonPresentation({ currentSeason: current([]), seasonSummaries: summary(), leagueGames: [] }),
+    {
+      phase: 'offseason',
+      season: 2026,
+      spotlightWeek: null,
+      isLive: false,
+      summaryComplete: true,
+      source: 'historical',
+    },
+  );
   assert.equal(domain.resolveSeasonPresentation({ selectedSeason: null, currentSeason: current([game({ status: 'live' })]), seasonSummaries: [], leagueGames: [] }).phase, 'regular-season');
 });
 

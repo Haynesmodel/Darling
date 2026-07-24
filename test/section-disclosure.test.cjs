@@ -79,6 +79,7 @@ test('signature defaults, user overrides, empty reconciliation, and reveal work 
   await page.evaluate(() => window.updateDisclosure('two', false));
   assert.deepEqual(await page.locator('#fixture-section-jump option').allTextContents(), ['Alpha']);
   assert.equal(await page.locator('#beta').isHidden(), true);
+  assert.equal(await page.evaluate(() => window.disclosure.reveal('beta-section')), false);
 
   await page.evaluate(() => window.updateDisclosure('two', true));
   assert.equal(await page.evaluate(() => window.disclosure.reveal('beta-section')), true);

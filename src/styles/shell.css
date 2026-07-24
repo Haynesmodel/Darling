@@ -187,7 +187,10 @@ header h2{margin:8px 0 0;font-weight:500;text-shadow:0 1px 6px rgba(0,0,0,.5)}
   border-radius:var(--radius-pill);
   color:var(--text);
   background:var(--surface-control);
-  font:600 14px/1.2 inherit;
+  font-family:inherit;
+  font-size:14px;
+  font-weight:600;
+  line-height:1.2;
   text-decoration:none;
   white-space:nowrap;
   cursor:pointer;
@@ -288,6 +291,7 @@ main{padding:16px}
   }
   .primary-navigation{gap:2px}
   .primary-nav-control{
+    gap:2px;
     padding-inline:4px;
     font-size:11px;
   }

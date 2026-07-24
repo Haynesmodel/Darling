@@ -174,6 +174,9 @@ test('a delayed feature remains busy and cannot overwrite a newer activation', a
   });
   await page.getByRole('link', { name: 'Current Season' }).click();
   await interceptedPromise;
+  await expect(featureDestination(page, 'current')).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('html')).toHaveAttribute('data-active-feature', 'current');
+  await expect(page.locator('html')).toHaveAttribute('data-hero-mode', 'compact');
   await expect(page.locator('#page-current')).toBeVisible();
   await expect(page.locator('#page-current')).toHaveAttribute('aria-busy', 'true');
   await expect(page.locator('#appStatus')).toContainText('Loading Current Season');
@@ -199,6 +202,7 @@ test('a failed feature import is contained in its section and other destinations
   await activateFeature(page, 'trophy');
   const panel = page.locator('#page-trophy');
   await expect(panel).toHaveAttribute('data-feature-state', 'error');
+  await expect(featureDestination(page, 'trophy')).toHaveAttribute('aria-current', 'page');
   await expect(panel.getByRole('alert')).toContainText('Trophy Case could not be loaded');
   await expect(panel.getByRole('button', { name: 'Retry' })).toBeVisible();
   await expect(page).toHaveURL(/tab=trophy/);

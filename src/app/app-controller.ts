@@ -22,6 +22,15 @@ export interface BootstrapOptions {
   doc?: Document;
 }
 
+export function createFallbackFreshness<T>(assessment: T) {
+  return {
+    publish() {},
+    current: () => null,
+    currentAssessment: () => assessment,
+    subscribe: () => () => {},
+  };
+}
+
 export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<() => Promise<void>> {
   const win = options.win || window;
   const doc = options.doc || document;
@@ -64,9 +73,7 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
       theme: createThemeContextService(win),
       status,
       tables: options.tableRuntime,
-      freshness: options.freshnessRuntime || {
-        publish() {}, current: () => null, currentAssessment: () => data.diagnostics.freshness, subscribe: () => () => {},
-      },
+      freshness: options.freshnessRuntime || createFallbackFreshness(data.diagnostics.freshness),
       diagnostics,
       document: doc,
       window: win,

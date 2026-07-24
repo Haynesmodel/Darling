@@ -62,21 +62,18 @@ if (browser.window) {
 }
 
 function mountThemeControls() {
-  const mount = browser.document?.getElementById('themeControls');
-  if (!mount) return;
+  const mount = browser.document!.getElementById('themeControls');
   render(<ThemeToggle runtime={themeRuntime} />, mount as Parameters<typeof render>[1]);
 }
 
 function mountGlobalSearch() {
-  const mount = browser.document?.getElementById('globalSearchRoot');
-  const portal = browser.document?.getElementById('globalSearchPortal');
-  if (!mount || !portal) return;
+  const mount = browser.document!.getElementById('globalSearchRoot');
+  const portal = browser.document!.getElementById('globalSearchPortal');
   render(<GlobalSearch runtime={searchRuntime} portal={portal as any} />, mount as Parameters<typeof render>[1]);
 }
 
 function mountDataFreshness() {
-  const mount = browser.document?.getElementById('dataFreshnessRoot');
-  if (!mount) return;
+  const mount = browser.document!.getElementById('dataFreshnessRoot');
   render(<DataFreshnessBadge runtime={freshnessRuntime} />, mount as Parameters<typeof render>[1]);
 }
 

@@ -48,8 +48,14 @@ const {
   nfmt,
   fmtTrimmed,
   escapeHtml,
+  setAppStatus,
+  clearAppStatus,
+  showPage,
   headerBannerHtml,
+  renderHeaderBanners,
+  updateTeamHeader,
   facetControlHtml,
+  buildFacetControl,
 } = render;
 
 test('shared helpers behave consistently', () => {
@@ -239,6 +245,110 @@ test('render helpers format text and build stable markup', () => {
   assert.match(facet, /class="round-cb"/);
   assert.match(facet, /data-value="A%26B"/);
   assert.match(facet, /Semi Final/);
+});
+
+test('render compatibility helpers synchronize semantic destinations, sections, status, headers, and facets', () => {
+  const classList = () => {
+    const values = new Set();
+    return {
+      toggle(name, enabled) {
+        if (enabled) values.add(name);
+        else values.delete(name);
+      },
+      contains: name => values.has(name),
+    };
+  };
+  const destinations = ['pulse', 'history'].map(featureId => ({
+    dataset: { featureId },
+    classList: classList(),
+    attributes: new Map(),
+    setAttribute(name, value) { this.attributes.set(name, value); },
+    removeAttribute(name) { this.attributes.delete(name); },
+  }));
+  const panels = ['pulse', 'history'].map(featureId => ({
+    id: `page-${featureId}`,
+    classList: classList(),
+    hidden: true,
+  }));
+  const status = {};
+  const banners = {};
+  const heading = {};
+  let focused = '';
+  const all = {
+    checked: true,
+    dataset: {},
+    matches: selector => selector === 'input.round-all',
+    focus: () => { focused = '__ALL__'; },
+  };
+  const options = ['A%26B', 'Semi%20Final'].map(value => ({
+    checked: false,
+    dataset: { value },
+    matches: selector => selector === 'input.round-cb',
+    focus: () => { focused = value; },
+  }));
+  const container = {
+    innerHTML: '',
+    contains: element => element === options[0],
+    querySelector(selector) {
+      if (selector === 'input.round-all') return all;
+      return options.find(option => option.dataset.value === options[0].dataset.value) || null;
+    },
+    querySelectorAll: selector => selector === 'input.round-cb' ? options : [],
+    onchange: null,
+  };
+  const doc = {
+    title: '',
+    activeElement: options[0],
+    getElementById(id) {
+      return {
+        appStatus: status,
+        headerBanners: banners,
+        roundFilters: container,
+      }[id] || null;
+    },
+    querySelector: selector => selector === 'header h2' ? heading : null,
+    querySelectorAll(selector) {
+      if (selector === '[data-feature-id]') return destinations;
+      if (selector === '.page') return panels;
+      return [];
+    },
+  };
+
+  setAppStatus('loading', 'Loading history', doc);
+  assert.equal(status.hidden, false);
+  assert.equal(status.className, 'status-banner status-loading');
+  assert.equal(status.textContent, 'Loading history');
+  clearAppStatus(doc);
+  assert.equal(status.hidden, true);
+
+  showPage('history', doc);
+  assert.equal(destinations[1].attributes.get('aria-current'), 'page');
+  assert.equal(destinations[0].attributes.has('aria-current'), false);
+  assert.equal(panels[1].hidden, false);
+  assert.equal(panels[0].hidden, true);
+
+  renderHeaderBanners('Joe', [{ owner: 'Joe', season: 2024, champion: true, wins: 10 }], doc);
+  assert.match(banners.innerHTML, /2024/);
+  updateTeamHeader('Joe', [{ owner: 'Joe', season: 2024, champion: true, wins: 10 }], doc);
+  assert.equal(heading.textContent, 'Joe');
+  assert.equal(doc.title, 'Joe — League History');
+
+  let changes = 0;
+  buildFacetControl('roundFilters', ['A&B', 'Semi Final'], {
+    doc,
+    prefix: 'round',
+    label: 'Rounds',
+    onChange: () => { changes += 1; },
+  });
+  assert.match(container.innerHTML, /Rounds/);
+  assert.equal(focused, 'A%26B');
+  options.forEach(option => { option.checked = true; });
+  container.onchange({ target: all });
+  assert.equal(options.every(option => option.checked === false), true);
+  options[1].checked = true;
+  container.onchange({ target: options[1] });
+  assert.equal(all.checked, false);
+  assert.equal(changes, 2);
 });
 
 test('renderers escape data-driven text before building html', () => {

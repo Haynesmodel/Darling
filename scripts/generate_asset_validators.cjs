@@ -13,7 +13,7 @@ function outputRootFromArgs(argv) {
 
 function generateAssetValidators({ sourceRoot = process.cwd(), outputRoot = sourceRoot } = {}) {
   const ajv = createAjv(sourceRoot);
-  const standaloneModule = standaloneCode(ajv, {
+  const ajvStandaloneModule = standaloneCode(ajv, {
     validateH2H: schemaId('h2h.schema.json'),
     validateSeasonSummary: schemaId('season-summary.schema.json'),
     validateRivalries: schemaId('rivalries.schema.json'),
@@ -22,6 +22,13 @@ function generateAssetValidators({ sourceRoot = process.cwd(), outputRoot = sour
     validateDerivedStats: schemaId('derived-stats.schema.json'),
     validateAssetManifest: schemaId('asset-manifest.schema.json'),
   });
+  const standaloneModule = ajvStandaloneModule.replaceAll(
+    'require("ajv-formats/dist/formats")',
+    'require("./scripts/data/standalone-formats.cjs")',
+  );
+  if (standaloneModule.includes('ajv-formats/dist/formats')) {
+    throw new Error('Generated validators still reference the full ajv-formats runtime');
+  }
   const moduleCode = esbuild.buildSync({
     stdin: {
       contents: standaloneModule,

@@ -73,7 +73,7 @@
   },
   "dependencies": {
     "@observablehq/plot": "^0.6.17",
-    "@tanstack/preact-table": "9.0.0-beta.38",
+    "@tanstack/preact-table": "9.0.0-beta.55",
     "preact": "^10.29.7"
   }
 }

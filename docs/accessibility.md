@@ -28,6 +28,14 @@ The Darling targets WCAG 2.2 Level AA as its engineering baseline. Automated che
 - Rebuilt opponent options restore focus by option value, falling back to All.
 - Below 700 pixels, the disclosure becomes a nonmodal fixed bottom sheet with a visible heading and Done button.
 
+### Analytical section disclosures
+
+- Current Season secondary content uses native `details`/`summary`; Enter and Space retain browser-native expanded/collapsed behavior.
+- The sticky, feature-labelled “Jump to section” select lists only nonempty sections. Selection opens the target, runs visible-only rendering, focuses its summary, and scrolls below the sticky navigation without changing URL history.
+- Existing `focus=standings` and `focus=playoff-picture` links open a containing disclosure before focusing the renderer target.
+- Closing through the shared controller while focus is inside moves focus to that section’s summary first. Toggle choices persist only for the matching phase/view signature during the current boot.
+- Closed chart sections do not render into zero-width containers. Opening or reopening uses the existing chart renderer without duplicating SVGs or listeners.
+
 ### Dialogs
 
 - The Dynasty window uses native `<dialog>` with explicit initial focus, focus containment, body scroll locking, Escape/backdrop close, and opener restoration.

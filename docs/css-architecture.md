@@ -19,6 +19,7 @@ The import order is deterministic, and every imported file is assigned to a laye
 - `shell.css`: full/compact hero modes, theme toolbar, skip link, primary navigation groups/menus, main, and page sections.
 - `primitives.css`: cards, banners, shared tables, outcome rows, stats, callouts, and section headings.
 - `controls.css`: form controls, buttons, filter disclosures, and the mobile filter sheet.
+- `section-disclosure.css`: shared sticky section jump navigation and native analytical `details`/`summary` presentation; feature-specific content remains in the owning feature stylesheet.
 - `charts.css`: chart hosts, errors, empty states, notes, and textual fallback presentation.
 - `motion.css`: crown, Saunders fog, Easter eggs, and reduced-motion overrides.
 - `utilities.css`: visually hidden, muted, and scroll-lock utilities.

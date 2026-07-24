@@ -20,7 +20,7 @@ for (const theme of ['light', 'dark']) {
         await page.goto(`/?tab=${tab}`);
         await page.waitForLoadState('networkidle');
         await page.locator(`[data-theme-preference="${theme}"]`).click();
-        const panel = page.getByRole('tabpanel', { name });
+        const panel = page.getByRole('region', { name, exact: true });
         await expect(panel).toBeVisible();
         await expect(panel).toHaveAttribute('data-feature-state', 'ready');
         await expectNoViolations(page);
@@ -38,6 +38,16 @@ test('mobile navigation and history disclosure have no automated violations', as
   await expect(page.locator('#seasonFilters')).toBeVisible();
   await expectNoViolations(page);
 });
+
+for (const group of ['Owners', 'Tools']) {
+  test(`${group} navigation disclosure has no automated violations`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/');
+    await page.getByText(group, { exact: true }).click();
+    await expect(page.locator(`.primary-nav-group[data-navigation-group="${group.toLowerCase()}"]`)).toHaveAttribute('open', '');
+    await expectNoViolations(page);
+  });
+}
 
 test('expanded data freshness disclosure has no automated violations or mobile hero overlap', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });

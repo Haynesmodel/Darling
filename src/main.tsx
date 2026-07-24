@@ -14,7 +14,7 @@ import { bootstrapDarlingApp } from './app/app-controller';
 import { bindDropdownChecklists } from './accessibility/dropdown-checklist';
 import { focusableElements } from './accessibility/focus';
 import { prefersReducedMotion, subscribeToReducedMotion } from './accessibility/motion';
-import { bindTablist, syncPageState, updateTabOverflow } from './accessibility/tablist';
+import { bindPrimaryNavigation, syncPageState } from './accessibility/primary-navigation';
 
 type DarlingDataLoader = typeof import('./data/load-league-assets').loadLeagueAssets;
 
@@ -28,7 +28,6 @@ interface BrowserWindow {
     prefersReducedMotion: typeof prefersReducedMotion;
     focusableElements: typeof focusableElements;
     syncPageState: typeof syncPageState;
-    updateTabOverflow: typeof updateTabOverflow;
   };
 }
 
@@ -43,42 +42,36 @@ const searchRuntime = createSearchRuntime();
 const tableRuntime = createTableRuntime();
 const freshnessRuntime = createDataFreshnessRuntime();
 const browser = globalThis as unknown as {
-  window?: BrowserWindow;
+  window: BrowserWindow;
   document?: BrowserDocument;
 };
 
-if (browser.window) {
-  browser.window.darlingTheme = themeRuntime;
-  browser.window.darlingSearch = searchRuntime;
-  browser.window.darlingTables = tableRuntime;
-  browser.window.darlingDataLoader = async options => {
-    const { loadLeagueAssets } = await import('./data/load-league-assets');
-    return loadLeagueAssets(options);
-  };
-  browser.window.darlingAccessibility = {
-    prefersReducedMotion,
-    focusableElements,
-    syncPageState,
-    updateTabOverflow,
-  };
-}
+browser.window.darlingTheme = themeRuntime;
+browser.window.darlingSearch = searchRuntime;
+browser.window.darlingTables = tableRuntime;
+browser.window.darlingDataLoader = async options => {
+  const { loadLeagueAssets } = await import('./data/load-league-assets');
+  return loadLeagueAssets(options);
+};
+browser.window.darlingAccessibility = {
+  prefersReducedMotion,
+  focusableElements,
+  syncPageState,
+};
 
 function mountThemeControls() {
-  const mount = browser.document?.getElementById('themeControls');
-  if (!mount) return;
+  const mount = browser.document!.getElementById('themeControls');
   render(<ThemeToggle runtime={themeRuntime} />, mount as Parameters<typeof render>[1]);
 }
 
 function mountGlobalSearch() {
-  const mount = browser.document?.getElementById('globalSearchRoot');
-  const portal = browser.document?.getElementById('globalSearchPortal');
-  if (!mount || !portal) return;
+  const mount = browser.document!.getElementById('globalSearchRoot');
+  const portal = browser.document!.getElementById('globalSearchPortal');
   render(<GlobalSearch runtime={searchRuntime} portal={portal as any} />, mount as Parameters<typeof render>[1]);
 }
 
 function mountDataFreshness() {
-  const mount = browser.document?.getElementById('dataFreshnessRoot');
-  if (!mount) return;
+  const mount = browser.document!.getElementById('dataFreshnessRoot');
   render(<DataFreshnessBadge runtime={freshnessRuntime} />, mount as Parameters<typeof render>[1]);
 }
 
@@ -86,7 +79,7 @@ function mountShell() {
   mountThemeControls();
   mountGlobalSearch();
   mountDataFreshness();
-  bindTablist(document);
+  bindPrimaryNavigation(document);
   bindDropdownChecklists(document);
   subscribeToReducedMotion((reduced) => {
     document.documentElement.dataset.reducedMotion = reduced ? 'reduce' : 'no-preference';

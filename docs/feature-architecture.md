@@ -1,6 +1,6 @@
 # Feature architecture
 
-Darling's shell loads league data once and activates each major tab through a literal dynamic import. The shell is intentionally feature-neutral: tab state, feature renderers, table row adapters, charts, and feature CSS belong behind the corresponding feature entry.
+Darling's shell loads league data once and activates each feature destination through a literal dynamic import. The shell is intentionally feature-neutral: navigation state, feature renderers, table row adapters, charts, and feature CSS belong behind the corresponding feature entry.
 
 ## Lifecycle
 
@@ -32,13 +32,15 @@ The context and search hydration are created once per application boot. Feature 
 
 The app controller increments an activation ID and aborts the previous signal for every bootstrap, tab, search, retry, or `popstate` activation. A superseded import may finish and remain cached, but it is checked before mount, activation, readiness, focus, and shell-visible state updates.
 
-The selected panel remains visible while loading with `aria-busy="true"`, `data-feature-state="loading"`, and the shared polite status region. A failed import creates a feature-scoped alert and Retry button without disabling loaded tabs.
+The requested section remains visible while loading with `aria-busy="true"`, `data-feature-state="loading"`, and the shared polite status region. A failed import creates a feature-scoped alert and Retry button without disabling loaded destinations.
 
 Support/test diagnostics are read-only at `window.darlingFeatureDiagnostics`; validated data diagnostics remain at `window.darlingDataDiagnostics`.
 
 ## Routing and state
 
-All activation paths use `src/app/router.ts` and the existing byte-compatible URL parser/builder. League Pulse owns the canonical bare path; explicit and implicit legacy state is inferred before the Pulse fallback. A tab click creates one provisional history entry immediately; successful activation replaces it with the feature's canonical state. Bootstrap and browser navigation apply routes without pushing recursively. Focus targets run only after the requested feature is ready.
+All activation paths use `src/app/router.ts` and the existing byte-compatible URL parser/builder. League Pulse owns the canonical bare path; explicit and implicit legacy state is inferred before the Pulse fallback. An eligible navigation-link click creates one provisional history entry immediately; successful activation replaces it with the feature's canonical state. Bootstrap and browser navigation apply routes without pushing recursively. Focus targets run only after the requested feature is ready.
+
+`src/app/feature-navigation.ts` is the typed source for feature labels, groups, destination element IDs, and hero modes. The shell publishes `data-active-feature` and `data-hero-mode` before awaiting a lazy entry. Pulse uses the full photographic hero; every analytical destination uses compact chrome. `src/accessibility/primary-navigation.ts` owns native grouped-menu behavior, current-link synchronization, and section visibility without importing feature code.
 
 Feature controllers serialize only their own fields. Table saved-view callbacks return to the owning controller; the table runtime never switches features or interprets feature URL state.
 
@@ -50,12 +52,12 @@ Chart features share exactly one lazy `chart-runtime` output containing Observab
 
 Adding a Plot API is an architecture change: update the generator allowlist, regenerate the committed vendor, update the exact-export contract, run the nine-surface chart matrix, rebuild with the Pages base path, and record the bundle delta. `npm run check:charts-generated` must pass without changing the worktree.
 
-## Adding a tab
+## Adding a feature destination
 
-1. Add the ID to `FEATURE_IDS`, the tab/panel markup, accessibility tab mapping, labels, and route parser/builder.
+1. Add the ID to `FEATURE_IDS`, typed navigation metadata, a canonical link, an independently labelled page section, and the route parser/builder.
 2. Add one literal loader to `feature-registry.ts` and one controller implementing the lifecycle.
 3. Keep feature state, listeners, renderers, table registration, chart adapters, and `.entry.css` inside that feature directory.
-4. Add unit tests for repeated activation and cleanup, Playwright direct-link/back-forward/loading/failure/race coverage, and manifest resource assertions.
+4. Add unit tests for metadata/repeated activation and cleanup, plus Playwright direct-link, modifier-link, back-forward, loading/failure/race, navigation-fit, and manifest resource assertions.
 5. Add the source key to `scripts/data/bundle-budget.json` and run `npm run check:feature-boundaries`.
 6. Run the Pages-path production build and verify the route closure and total budgets with `npm run check:bundle`.
 

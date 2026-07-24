@@ -80,12 +80,12 @@ Interactive tables:
 Feature architecture:
 - The shell loads one validated data snapshot and lazy-loads League History, Current Season, Head to Head, Trophy Case, Dynasty Rankings, Draft Spot, and Historical Matchup through cached lifecycle controllers.
 - Feature-owned renderers, table adapters, charts, and CSS stay behind each dynamic entry; Observable Plot is absent from the default History route.
-- See [`docs/feature-architecture.md`](./docs/feature-architecture.md) before adding a tab or changing routing, activation, loading/error behavior, feature diagnostics, or import ownership.
+- See [`docs/feature-architecture.md`](./docs/feature-architecture.md) before adding a feature destination or changing routing, activation, loading/error behavior, feature diagnostics, or import ownership.
 
 Accessibility and CSS:
-- Primary navigation follows the manual-activation ARIA tab pattern, filter disclosures retain native checkbox semantics, and application dialogs manage inertness, focus containment, scroll lock, and focus restoration.
+- Primary navigation uses five semantic link/disclosure groups with canonical destination URLs and `aria-current`; filter disclosures retain native checkbox semantics, and application dialogs manage inertness, focus containment, scroll lock, and focus restoration.
 - The application stylesheet entry is `src/styles/app.css`; shared and feature styles are assigned to explicit cascade layers.
-- See [`docs/accessibility.md`](./docs/accessibility.md) and [`docs/css-architecture.md`](./docs/css-architecture.md) before adding a tab, disclosure, modal, animation, shared style, or feature stylesheet.
+- See [`docs/accessibility.md`](./docs/accessibility.md) and [`docs/css-architecture.md`](./docs/css-architecture.md) before adding a feature destination, disclosure, modal, animation, shared style, or feature stylesheet.
 
 Current Season command-center assumptions:
 - Validated `assets/CurrentSeason.json` assets must include the complete `playoff_rules` object required by `schemas/current-season.schema.json`. Historical views instead infer regular-season length, playoff teams, byes, and Saunders slots from the selected season's stored schedule and brackets.

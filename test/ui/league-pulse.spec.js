@@ -1,5 +1,6 @@
 import { expect, test } from './coverage-fixture.js';
 import { createSnapshotFixture } from './snapshot-fixture.js';
+import { featureDestination } from './navigation-helpers.js';
 
 function scheduled2026(current) {
   current.season = 2026;
@@ -58,8 +59,8 @@ function finalizing2026(current) {
 test('bare route renders the canonical 2025 year in review', async ({ page }) => {
   await page.goto('/');
   await page.waitForLoadState('networkidle');
-  await expect(page.getByRole('tab', { name: 'League Pulse' })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('tabpanel', { name: 'League Pulse' })).toBeVisible();
+  await expect(featureDestination(page, 'pulse')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('region', { name: 'League Pulse', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: '2025 Year in Review' })).toBeVisible();
   await expect(page.locator('.pulse-hero')).toContainText('Zook claimed the championship');
   await expect(page.locator('.pulse-hero')).toContainText('Connor won the Saunders Bowl');
@@ -75,11 +76,11 @@ test('explicit Pulse canonicalizes and browser history restores filtered History
   await page.goto('/?tab=history&team=Joe&seasons=2024');
   await page.waitForLoadState('networkidle');
   const prior = page.url();
-  await page.getByRole('tab', { name: 'League Pulse' }).click();
+  await page.getByRole('link', { name: 'League Pulse' }).click();
   await expect(page).not.toHaveURL(/\?/);
   await page.goBack();
   await expect(page).toHaveURL(prior);
-  await expect(page.getByRole('tab', { name: 'League History' })).toHaveAttribute('aria-selected', 'true');
+  await expect(featureDestination(page, 'history')).toHaveAttribute('aria-current', 'page');
 });
 
 test('Pulse layout does not overflow a 320px viewport', async ({ page }) => {
@@ -193,7 +194,7 @@ for (const alias of ['league pulse', 'home', 'dashboard']) {
     await page.locator('.search-trigger').click();
     await page.getByRole('combobox', { name: /Search owners, seasons/ }).fill(alias);
     await page.getByRole('option', { name: /League Pulse/ }).first().click();
-    await expect(page.getByRole('tab', { name: 'League Pulse' })).toHaveAttribute('aria-selected', 'true');
+    await expect(featureDestination(page, 'pulse')).toHaveAttribute('aria-current', 'page');
     await expect(page).not.toHaveURL(/\?/);
   });
 }
@@ -204,10 +205,10 @@ test('rapid Pulse-to-feature navigation cannot publish stale Pulse state', async
     document.querySelector('#tabPulseBtn').click();
     document.querySelector('#tabDynastyBtn').click();
   });
-  await expect(page.getByRole('tabpanel', { name: 'Dynasty Rankings' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Dynasty Rankings', exact: true })).toBeVisible();
   await expect.poll(() => page.evaluate(() => ({
     tab: new URL(location.href).searchParams.get('tab'),
-    selected: document.querySelector('[role="tab"][aria-selected="true"]')?.id,
+    selected: document.querySelector('[data-feature-id][aria-current="page"]')?.id,
   }))).toEqual({
     tab: 'dynasty',
     selected: 'tabDynastyBtn',

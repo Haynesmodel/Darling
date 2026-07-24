@@ -1,4 +1,5 @@
 import { expect, test } from './coverage-fixture.js';
+import { activateFeature, featureDestination } from './navigation-helpers.js';
 
 test('data freshness disclosure uses native keyboard activation', async ({ page }) => {
   await page.goto('/');
@@ -12,48 +13,41 @@ test('data freshness disclosure uses native keyboard activation', async ({ page 
   await expect(details).not.toHaveAttribute('open', '');
 });
 
-test('primary tabs use manual activation with roving focus', async ({ page }) => {
+test('primary navigation uses native link and disclosure keyboard order', async ({ page }) => {
   await page.goto('/');
   await page.waitForLoadState('networkidle');
 
-  const pulse = page.getByRole('tab', { name: 'League Pulse' });
-  const history = page.getByRole('tab', { name: 'League History' });
-  const current = page.getByRole('tab', { name: 'Current Season' });
-  const gauntlet = page.getByRole('tab', { name: 'Historical Matchup' });
+  const pulse = featureDestination(page, 'pulse');
+  const current = featureDestination(page, 'current');
+  const owners = page.locator('.primary-nav-group[data-navigation-group="owners"] > summary');
+  const history = featureDestination(page, 'history');
+  const rivalry = featureDestination(page, 'rivalry');
+  const tools = page.locator('.primary-nav-group[data-navigation-group="tools"] > summary');
 
-  await expect(pulse).toHaveAttribute('aria-selected', 'true');
-  await expect(pulse).toHaveAttribute('tabindex', '0');
-  await expect(history).toHaveAttribute('tabindex', '-1');
-  await expect(current).toHaveAttribute('tabindex', '-1');
+  await expect(pulse).toHaveAttribute('aria-current', 'page');
   await page.locator('[data-theme-preference="dark"]').focus();
   await page.keyboard.press('Tab');
   await expect(pulse).toBeFocused();
-  await pulse.focus();
-  await page.keyboard.press('ArrowLeft');
-  await expect(gauntlet).toBeFocused();
-  await expect(gauntlet).toHaveAttribute('aria-selected', 'false');
-  await expect(page.getByRole('tabpanel', { name: 'League Pulse' })).toBeVisible();
-  await page.keyboard.press('ArrowRight');
-  await expect(pulse).toBeFocused();
-  await page.keyboard.press('ArrowRight');
-  await expect(history).toBeFocused();
-  await expect(history).toHaveAttribute('aria-selected', 'false');
-  await expect(page.getByRole('tabpanel', { name: 'League Pulse' })).toBeVisible();
-
+  await page.keyboard.press('Tab');
+  await expect(current).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(owners).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(history).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('tabpanel', { name: 'League History' })).toBeVisible();
-  await expect(page.getByRole('tabpanel', { name: 'League Pulse' })).toBeHidden();
+  await expect(page.locator('.primary-nav-group[data-navigation-group="owners"]')).toHaveAttribute('open', '');
+  await page.keyboard.press('Tab');
+  await expect(history).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(history).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('region', { name: 'League History', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'League Pulse', exact: true })).toBeHidden();
 
-  await page.keyboard.press('End');
-  await expect(gauntlet).toBeFocused();
-  await page.keyboard.press(' ');
-  await expect(gauntlet).toHaveAttribute('aria-selected', 'true');
-  await expect.poll(() => new URL(page.url()).searchParams.get('tab')).toBe('gauntlet');
-
-  await page.keyboard.press('Home');
-  await expect(pulse).toBeFocused();
-  await expect(pulse).toHaveAttribute('aria-selected', 'false');
+  await rivalry.focus();
+  await page.keyboard.press('Tab');
+  await expect(tools).toBeFocused();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Escape');
+  await expect(tools).toBeFocused();
+  await expect(page.locator('.primary-nav-group[data-navigation-group="tools"]')).not.toHaveAttribute('open', '');
 });
 
 test('Draft Spot pick board supports spatial arrows, Home, End, and selection', async ({ page }) => {
@@ -91,49 +85,29 @@ test('Draft Spot spatial navigation drops buttons removed by filters', async ({ 
   await expect(pickThree).toBeFocused();
 });
 
-test('browser navigation restores tab semantics and reveals the selected mobile tab', async ({ page }) => {
+test('browser navigation restores current destination and visible named section', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto('/');
   await page.waitForLoadState('networkidle');
-  await page.getByRole('tab', { name: 'Historical Matchup' }).click();
-  await page.getByRole('tab', { name: 'Trophy Case' }).click();
+  await activateFeature(page, 'gauntlet');
+  await activateFeature(page, 'trophy');
   await page.goBack();
 
-  const gauntlet = page.getByRole('tab', { name: 'Historical Matchup' });
-  await expect(gauntlet).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('tabpanel', { name: 'Historical Matchup' })).toBeVisible();
-  await expect.poll(() => gauntlet.evaluate((tab) => {
-    const strip = tab.parentElement;
-    const previous = document.querySelector('#tabScrollPrev');
-    const next = document.querySelector('#tabScrollNext');
-    const tabBox = tab.getBoundingClientRect();
-    const stripBox = strip.getBoundingClientRect();
-    const visibleEdge = (control, edge) => {
-      if (!control || control.hidden || getComputedStyle(control).display === 'none') return edge === 'start' ? stripBox.left : stripBox.right;
-      const box = control.getBoundingClientRect();
-      return edge === 'start' ? Math.max(stripBox.left, box.right) : Math.min(stripBox.right, box.left);
-    };
-    return tabBox.left >= visibleEdge(previous, 'start') - 1
-      && tabBox.right <= visibleEdge(next, 'end') + 1;
-  })).toBe(true);
+  const gauntlet = featureDestination(page, 'gauntlet');
+  await expect(gauntlet).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('region', { name: 'Historical Matchup', exact: true })).toBeVisible();
+  await expect(page.locator('.primary-nav-group[data-navigation-group="tools"]')).toHaveClass(/is-current-group/);
 });
 
-test('wrapped edge focus is revealed in the mobile tab strip without activating it', async ({ page }) => {
+test('native primary links do not emulate arrow-key focus movement', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto('/');
   await page.waitForLoadState('networkidle');
-  const pulse = page.getByRole('tab', { name: 'League Pulse' });
-  const gauntlet = page.getByRole('tab', { name: 'Historical Matchup' });
+  const pulse = featureDestination(page, 'pulse');
   await pulse.focus();
-  await page.keyboard.press('ArrowLeft');
-  await expect(gauntlet).toBeFocused();
-  await expect(pulse).toHaveAttribute('aria-selected', 'true');
-  await expect.poll(() => gauntlet.evaluate(tab => {
-    const strip = tab.parentElement;
-    const tabBox = tab.getBoundingClientRect();
-    const stripBox = strip.getBoundingClientRect();
-    return tabBox.left >= stripBox.left - 1 && tabBox.right <= stripBox.right + 1;
-  })).toBe(true);
+  await page.keyboard.press('ArrowRight');
+  await expect(pulse).toBeFocused();
+  await expect(pulse).toHaveAttribute('aria-current', 'page');
 });
 
 test('facet disclosure supports Arrow, Home, End, Space, Tab, and Escape', async ({ page }) => {
@@ -190,11 +164,11 @@ test('Dynasty dialog contains focus, locks the page, ignores search shortcuts, a
   await expect(opener).toBeFocused();
 });
 
-test('browser Back closes the Dynasty dialog before hiding its tabpanel', async ({ page }) => {
+test('browser Back closes the Dynasty dialog before hiding its feature section', async ({ page }) => {
   await page.goto('/');
   await page.waitForLoadState('networkidle');
-  const pulse = page.getByRole('tab', { name: 'League Pulse' });
-  await page.getByRole('tab', { name: 'Dynasty Rankings' }).click();
+  const pulse = featureDestination(page, 'pulse');
+  await activateFeature(page, 'dynasty');
   await page.locator('#dynastyBestWindows .dynasty-window-card').first().click();
 
   const dialog = page.locator('#dynastyWindowModal');
@@ -205,7 +179,7 @@ test('browser Back closes the Dynasty dialog before hiding its tabpanel', async 
   await expect(dialog).toBeHidden();
   await expect(dialog).toBeEmpty();
   await expect(page.locator('body')).not.toHaveClass(/no-scroll/);
-  await expect(page.getByRole('tabpanel', { name: 'League Pulse' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'League Pulse', exact: true })).toBeVisible();
   await expect(pulse).toBeFocused();
   await expect.poll(() => page.evaluate(() => ({
     tab: new URL(window.location.href).searchParams.get('tab'),
@@ -214,8 +188,8 @@ test('browser Back closes the Dynasty dialog before hiding its tabpanel', async 
     accentTheme: document.documentElement.dataset.accentTheme,
     ownerTheme: document.documentElement.dataset.ownerTheme || null,
     seasonMode: document.documentElement.dataset.seasonMode,
-    selectedTab: document.querySelector('[role="tab"][aria-selected="true"]')?.id,
-    visiblePanel: document.querySelector('[role="tabpanel"]:not([hidden])')?.id,
+    selectedTab: document.querySelector('[data-feature-id][aria-current="page"]')?.id,
+    visiblePanel: document.querySelector('.page:not([hidden])')?.id,
   }))).toEqual({
     tab: null,
     header: 'League Pulse',
@@ -268,7 +242,7 @@ test('the Dynasty heatmap is locally scrollable on mobile', async ({ page }) => 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?tab=dynasty');
   await page.waitForLoadState('networkidle');
-  const heatmap = page.getByRole('region', { name: 'Dynasty rankings by season' });
+  const heatmap = page.getByRole('region', { name: 'Dynasty rankings by season', exact: true });
   await expect(heatmap).toBeVisible();
   const metrics = await heatmap.evaluate((element) => ({
     clientWidth: element.clientWidth,

@@ -61,14 +61,13 @@ function showPage(id, doc) {
   const resolvedId = ['pulse', 'history', 'current', 'rivalry', 'trophy', 'dynasty', 'draft', 'gauntlet'].includes(id)
     ? id
     : 'pulse';
-  const activeTabId = `tab${resolvedId[0].toUpperCase()}${resolvedId.slice(1)}Btn`;
-  root.querySelectorAll('[role="tab"], .tab').forEach((tab) => {
-    const selected = tab.id === activeTabId;
-    tab.classList.toggle('active', selected);
-    tab.setAttribute('aria-selected', selected ? 'true' : 'false');
-    tab.tabIndex = selected ? 0 : -1;
+  root.querySelectorAll('[data-feature-id]').forEach((destination) => {
+    const selected = destination.dataset.featureId === resolvedId;
+    destination.classList.toggle('active', selected);
+    if (selected) destination.setAttribute('aria-current', 'page');
+    else destination.removeAttribute('aria-current');
   });
-  root.querySelectorAll('[role="tabpanel"], .page').forEach((panel) => {
+  root.querySelectorAll('.page').forEach((panel) => {
     const visible = panel.id === `page-${resolvedId}`;
     panel.classList.toggle('visible', visible);
     panel.hidden = !visible;

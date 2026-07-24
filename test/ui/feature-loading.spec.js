@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test } from './coverage-fixture.js';
+import { activateFeature, featureDestination } from './navigation-helpers.js';
 
 const preview = process.env.PLAYWRIGHT_SERVER === 'preview';
 const manifest = preview
@@ -146,9 +147,9 @@ test('a delayed Draft ready callback cannot add history after an immediate tab s
     };
   });
 
-  await page.getByRole('tab', { name: 'Draft Spot' }).click();
+  await activateFeature(page, 'draft');
   await expect(page.locator('#draftOwnerSelect')).toBeVisible();
-  await page.getByRole('tab', { name: 'Trophy Case' }).click();
+  await activateFeature(page, 'trophy');
   await waitForFeature(page, 'trophy');
   await page.evaluate(() => window.__releaseDraftReady());
   await page.waitForTimeout(100);
@@ -171,22 +172,25 @@ test('a delayed feature remains busy and cannot overwrite a newer activation', a
     await gate;
     await route.continue();
   });
-  await page.getByRole('tab', { name: 'Current Season' }).click();
+  await page.getByRole('link', { name: 'Current Season' }).click();
   await interceptedPromise;
+  await expect(featureDestination(page, 'current')).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('html')).toHaveAttribute('data-active-feature', 'current');
+  await expect(page.locator('html')).toHaveAttribute('data-hero-mode', 'compact');
   await expect(page.locator('#page-current')).toBeVisible();
   await expect(page.locator('#page-current')).toHaveAttribute('aria-busy', 'true');
   await expect(page.locator('#appStatus')).toContainText('Loading Current Season');
-  await page.getByRole('tab', { name: 'Trophy Case' }).click();
+  await activateFeature(page, 'trophy');
   await waitForFeature(page, 'trophy');
   release();
   await page.waitForTimeout(200);
-  await expect(page.getByRole('tab', { name: 'Trophy Case' })).toHaveAttribute('aria-selected', 'true');
+  await expect(featureDestination(page, 'trophy')).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('#page-trophy')).toBeVisible();
   await expect(page).toHaveURL(/tab=trophy/);
   await expect(page.locator('header h2')).toHaveText('Joe');
 });
 
-test('a failed feature import is contained in its panel and other tabs remain usable', async ({ page }) => {
+test('a failed feature import is contained in its section and other destinations remain usable', async ({ page }) => {
   let attempts = 0;
   await page.route(requestPattern('trophy'), async route => {
     attempts += 1;
@@ -195,16 +199,17 @@ test('a failed feature import is contained in its panel and other tabs remain us
   });
   await page.goto('/?tab=history');
   await waitForFeature(page, 'history');
-  await page.getByRole('tab', { name: 'Trophy Case' }).click();
+  await activateFeature(page, 'trophy');
   const panel = page.locator('#page-trophy');
   await expect(panel).toHaveAttribute('data-feature-state', 'error');
+  await expect(featureDestination(page, 'trophy')).toHaveAttribute('aria-current', 'page');
   await expect(panel.getByRole('alert')).toContainText('Trophy Case could not be loaded');
   await expect(panel.getByRole('button', { name: 'Retry' })).toBeVisible();
   await expect(page).toHaveURL(/tab=trophy/);
   await panel.getByRole('button', { name: 'Retry' }).click();
   await waitForFeature(page, 'trophy');
   expect(attempts).toBeGreaterThanOrEqual(2);
-  await page.getByRole('tab', { name: 'League History' }).click();
+  await activateFeature(page, 'history');
   await waitForFeature(page, 'history');
   await expect(page.locator('#historyGamesTable tbody tr')).not.toHaveCount(0);
 });

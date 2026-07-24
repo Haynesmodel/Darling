@@ -16,28 +16,32 @@ on:
     - cron: '0 13 * * 1'
 
 permissions:
-  contents: write
+  contents: read
   issues: write
 
 concurrency:
-  group: update-sleeper-${{ github.ref }}
+  group: update-sleeper-main
   cancel-in-progress: false
 
 jobs:
   update:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      CI: true
-      LEAGUE_ID: ${{ secrets.SLEEPER_LEAGUE_ID }}
+      CI: '1'
       REQUESTED_SEASON: ${{ github.event.inputs.season }}
       VALIDATE_ONLY_REQUESTED: ${{ github.event.inputs.validate_only }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      FAILED_PHASE: setup
 
     steps:
-      - name: Check out repository
+      - name: Check out trusted main branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: main
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -56,10 +60,18 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
+      - name: Record trusted main source
+        id: source
+        shell: bash
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Resolve target season
         id: resolve
+        env:
+          LEAGUE_ID: ${{ secrets.SLEEPER_LEAGUE_ID }}
         shell: bash
         run: |
+          echo "FAILED_PHASE=season resolution" >> "$GITHUB_ENV"
           if [[ -z "${LEAGUE_ID}" ]]; then
             echo "Missing required SLEEPER_LEAGUE_ID secret." >&2
             exit 1
@@ -72,35 +84,24 @@ jobs:
           const requested = String(process.env.REQUESTED_SEASON || '').trim();
           const anchors = JSON.parse(fs.readFileSync('scripts/sleeper_week1_anchors.json', 'utf8'));
           const mappingFiles = fs.readdirSync('scripts')
-            .map(name => {
+            .map((name) => {
               const match = /^(\d+)_team_mapping\.json$/.exec(name);
               return match ? Number(match[1]) : null;
             })
-            .filter(season => Number.isFinite(season));
+            .filter(Number.isFinite);
           const available = mappingFiles
             .filter(season => Object.prototype.hasOwnProperty.call(anchors, String(season)))
             .sort((a, b) => a - b);
 
-          if (!available.length) {
-            throw new Error('No seasons are configured with both a team mapping and a week 1 anchor.');
+          if (available.length === 0) {
+            throw new Error('No seasons are configured with both a team mapping and a Week 1 anchor.');
           }
-
-          let season = requested ? Number(requested) : available[available.length - 1];
-          if (!Number.isFinite(season)) {
-            throw new Error(`Invalid requested season: ${requested}`);
-          }
-          if (!available.includes(season)) {
-            throw new Error(`Season ${season} is not configured with both a mapping file and a week 1 anchor.`);
+          const season = requested ? Number(requested) : available.at(-1);
+          if (!Number.isInteger(season) || !available.includes(season)) {
+            throw new Error(`Season ${requested || String(season)} is not configured with both a mapping and a Week 1 anchor.`);
           }
 
           const mapFile = path.join('scripts', `${season}_team_mapping.json`);
-          if (!fs.existsSync(mapFile)) {
-            throw new Error(`Missing mapping file: ${mapFile}`);
-          }
-          if (!Object.prototype.hasOwnProperty.call(anchors, String(season))) {
-            throw new Error(`Missing week 1 anchor for season ${season}.`);
-          }
-
           fs.appendFileSync(process.env.GITHUB_OUTPUT, [
             `season=${season}`,
             `map_file=${mapFile}`,
@@ -109,87 +110,403 @@ jobs:
           ].join('\n'));
           NODE
 
-      - name: Run Sleeper update
+      - name: Preserve review baseline
+        if: steps.resolve.outputs.validate_only_flag == '0'
         shell: bash
         run: |
-          VALIDATE_ONLY_FLAG="${{ steps.resolve.outputs.validate_only_flag }}"
+          BASELINE_DIR="${RUNNER_TEMP}/sleeper-baseline"
+          mkdir -p "${BASELINE_DIR}"
+          cp assets/H2H.json "${BASELINE_DIR}/H2H.json"
+          cp assets/asset-manifest.json "${BASELINE_DIR}/asset-manifest.json"
+          if [[ -f assets/CurrentSeason.json ]]; then
+            cp assets/CurrentSeason.json "${BASELINE_DIR}/CurrentSeason.json"
+          fi
+          echo "BASELINE_DIR=${BASELINE_DIR}" >> "$GITHUB_ENV"
+
+      - name: Generate candidate data
+        env:
+          LEAGUE_ID: ${{ secrets.SLEEPER_LEAGUE_ID }}
+        shell: bash
+        run: |
+          echo "FAILED_PHASE=Sleeper generation" >> "$GITHUB_ENV"
           UPDATE_LIVE=1 \
-          VALIDATE_ONLY="${VALIDATE_ONLY_FLAG}" \
+          VALIDATE_ONLY="${{ steps.resolve.outputs.validate_only_flag }}" \
           SEASON="${{ steps.resolve.outputs.season }}" \
           LEAGUE_ID="${LEAGUE_ID}" \
           scripts/update_sleeper_h2h.sh
 
-      - name: Promote generated assets
+      - name: Report successful validation-only run
+        if: steps.resolve.outputs.validate_only_flag == '1'
         shell: bash
         run: |
-          if [[ "${{ steps.resolve.outputs.validate_only_flag }}" == "1" ]]; then
-            echo "Validation-only run complete; tracked assets were not modified."
-            exit 0
-          fi
+          {
+            echo '## Sleeper validation-only run'
+            echo
+            echo '- Season: ${{ steps.resolve.outputs.season }}'
+            echo "- Run: ${RUN_URL}"
+            echo '- Result: live candidate generation and validation passed'
+            echo '- Remote mutation: none'
+          } >> "$GITHUB_STEP_SUMMARY"
 
-          H2H_CHANGED=0
-          CURRENT_CHANGED=0
+      - name: Promote and regenerate candidate bundle
+        if: steps.resolve.outputs.validate_only_flag == '0'
+        id: regenerate
+        shell: bash
+        run: |
+          echo "FAILED_PHASE=local promotion/regeneration" >> "$GITHUB_ENV"
+          test -f assets/H2H.updated.json
+          test -f assets/CurrentSeason.updated.json
 
+          SOURCE_CHANGED=0
           if ! cmp -s assets/H2H.updated.json assets/H2H.json; then
             cp assets/H2H.updated.json assets/H2H.json
-            H2H_CHANGED=1
+            SOURCE_CHANGED=1
+          fi
+          if [[ ! -f assets/CurrentSeason.json ]] || ! cmp -s assets/CurrentSeason.updated.json assets/CurrentSeason.json; then
+            cp assets/CurrentSeason.updated.json assets/CurrentSeason.json
+            SOURCE_CHANGED=1
           fi
 
-          if [[ -f assets/CurrentSeason.updated.json ]]; then
-            if [[ ! -f assets/CurrentSeason.json ]] || ! cmp -s assets/CurrentSeason.updated.json assets/CurrentSeason.json; then
-              cp assets/CurrentSeason.updated.json assets/CurrentSeason.json
-              CURRENT_CHANGED=1
-            fi
-          fi
-
-          if [[ "${H2H_CHANGED}" == "0" && "${CURRENT_CHANGED}" == "0" ]]; then
-            echo "No Sleeper asset changes detected; nothing to commit."
-            exit 0
-          fi
-
-          if [[ -f scripts/generate_season_summary_draft.py ]]; then
+          if [[ "${SOURCE_CHANGED}" == "1" ]]; then
             python3 scripts/generate_season_summary_draft.py \
               --h2h assets/H2H.json \
               --existing assets/SeasonSummary.json \
               --out assets/SeasonSummary.draft.json \
               --season "${{ steps.resolve.outputs.season }}"
+            npm run generate:derived
+            npm run generate:manifest
           fi
+          echo "source_changed=${SOURCE_CHANGED}" >> "$GITHUB_OUTPUT"
 
-          npm run generate:derived
-          npm run generate:manifest
+      - name: Validate promoted snapshot
+        if: steps.resolve.outputs.validate_only_flag == '0'
+        shell: bash
+        run: |
+          echo "FAILED_PHASE=validation" >> "$GITHUB_ENV"
           npm run check:data-generated
           npm run test:assets
 
-          git config user.name 'github-actions[bot]'
-          git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add assets/H2H.json
-          if [[ -f assets/CurrentSeason.json ]]; then
-            git add assets/CurrentSeason.json
-          fi
-          if [[ -f assets/SeasonSummary.draft.json ]]; then
-            git add assets/SeasonSummary.draft.json
-          fi
-          git add assets/DerivedStats.json assets/asset-manifest.json
+      - name: Enforce change allowlist
+        if: steps.resolve.outputs.validate_only_flag == '0'
+        id: changes
+        shell: bash
+        run: |
+          echo "FAILED_PHASE=change safety" >> "$GITHUB_ENV"
+          ALLOWLIST=(
+            assets/H2H.json
+            assets/CurrentSeason.json
+            assets/SeasonSummary.draft.json
+            assets/DerivedStats.json
+            assets/asset-manifest.json
+          )
 
+          git add -A -- "${ALLOWLIST[@]}"
+
+          node <<'NODE'
+          const { execFileSync } = require('node:child_process');
+          const allowed = new Set([
+            'assets/H2H.json',
+            'assets/CurrentSeason.json',
+            'assets/SeasonSummary.draft.json',
+            'assets/DerivedStats.json',
+            'assets/asset-manifest.json',
+          ]);
+          const output = execFileSync(
+            'git',
+            ['status', '--porcelain=v1', '-z', '--untracked-files=all'],
+            { encoding: 'utf8' },
+          );
+          const entries = output.split('\0').filter(Boolean);
+          for (const entry of entries) {
+            const status = entry.slice(0, 2);
+            const path = entry.slice(3);
+            if (!allowed.has(path)) throw new Error(`Refusing unexpected changed path: ${path}`);
+            if (status[1] !== ' ') {
+              throw new Error(`Refusing an allowed path that is not fully staged: ${path}`);
+            }
+          }
+          NODE
+
+          git diff --cached --name-only --diff-filter=ACMRTUXBD > "${RUNNER_TEMP}/sleeper-changed-files.txt"
           if git diff --cached --quiet; then
-            echo "No tracked asset changes to commit."
-            exit 0
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            {
+              echo '## Sleeper update'
+              echo
+              echo '- Season: ${{ steps.resolve.outputs.season }}'
+              echo "- Run: ${RUN_URL}"
+              echo '- Result: no tracked candidate changes'
+              echo '- App token, branch, and pull request mutation: skipped'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-          git commit -m "Update Sleeper H2H for season ${{ steps.resolve.outputs.season }}"
-          git push origin "HEAD:${{ github.ref_name }}"
+      - name: Summarize and safety-check candidate
+        if: steps.resolve.outputs.validate_only_flag == '0' && steps.changes.outputs.changed == 'true'
+        env:
+          LEAGUE_ID: ${{ secrets.SLEEPER_LEAGUE_ID }}
+        shell: bash
+        run: |
+          echo "FAILED_PHASE=summary" >> "$GITHUB_ENV"
+          node scripts/summarize_sleeper_update.cjs \
+            --before-dir "${BASELINE_DIR}" \
+            --after-dir assets \
+            --season "${{ steps.resolve.outputs.season }}" \
+            --run-url "${RUN_URL}" \
+            --base-sha "${{ steps.source.outputs.sha }}" \
+            --candidate-sha "${{ steps.source.outputs.sha }}" \
+            --changed-files-file "${RUNNER_TEMP}/sleeper-changed-files.txt" \
+            --body-out "${RUNNER_TEMP}/sleeper-pr-body.md" \
+            --json-out "${RUNNER_TEMP}/sleeper-summary.json"
+          cat "${RUNNER_TEMP}/sleeper-pr-body.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Record App authentication phase
+        if: steps.resolve.outputs.validate_only_flag == '0' && steps.changes.outputs.changed == 'true'
+        run: echo "FAILED_PHASE=App authentication" >> "$GITHUB_ENV"
+
+      - name: Mint repository-scoped automation token
+        if: steps.resolve.outputs.validate_only_flag == '0' && steps.changes.outputs.changed == 'true'
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.DARLING_AUTOMATION_CLIENT_ID }}
+          private-key: ${{ secrets.DARLING_AUTOMATION_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Verify App repository scope
+        if: steps.resolve.outputs.validate_only_flag == '0' && steps.changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+        shell: bash
+        run: |
+          echo "FAILED_PHASE=App authentication" >> "$GITHUB_ENV"
+          if [[ -z "${APP_SLUG}" ]]; then
+            echo 'GitHub App token did not return an App slug.' >&2
+            exit 1
+          fi
+
+          gh api installation/repositories --paginate --slurp > "${RUNNER_TEMP}/app-repositories.json"
+          EXPECTED_REPOSITORY="${GITHUB_REPOSITORY}" node <<'NODE'
+          const fs = require('node:fs');
+          const pages = JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/app-repositories.json`, 'utf8'));
+          const repositories = pages.flatMap(page => page.repositories || []);
+          const names = [...new Set(repositories.map(repo => repo.full_name))];
+          if (names.length !== 1 || names[0] !== process.env.EXPECTED_REPOSITORY) {
+            throw new Error(`App token scope must contain exactly ${process.env.EXPECTED_REPOSITORY}; observed ${names.length} repositories.`);
+          }
+          NODE
+
+          DEFAULT_BRANCH="$(gh api "repos/${GITHUB_REPOSITORY}" --jq .default_branch)"
+          if [[ "${DEFAULT_BRANCH}" != "main" ]]; then
+            echo "Repository default branch is ${DEFAULT_BRANCH}, not main." >&2
+            exit 1
+          fi
+
+      - name: Publish bot-owned season branch
+        if: steps.resolve.outputs.validate_only_flag == '0' && steps.changes.outputs.changed == 'true'
+        id: publish
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          SEASON: ${{ steps.resolve.outputs.season }}
+        shell: bash
+        run: |
+          echo "FAILED_PHASE=branch publication" >> "$GITHUB_ENV"
+          BRANCH="automation/sleeper-${SEASON}"
+          REMOTE_REF="refs/heads/${BRANCH}"
+          BOT_LOGIN="${APP_SLUG}[bot]"
+          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+
+          EXPECTED_ORIGIN="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          ACTUAL_ORIGIN="$(git remote get-url origin)"
+          if [[ "${ACTUAL_ORIGIN%.git}" != "${EXPECTED_ORIGIN%.git}" ]]; then
+            echo "Refusing unexpected origin repository: ${ACTUAL_ORIGIN}" >&2
+            exit 1
+          fi
+
+          ASKPASS="${RUNNER_TEMP}/git-askpass.sh"
+          printf '%s\n' \
+            '#!/usr/bin/env bash' \
+            'case "$1" in' \
+            '  *Username*) printf "%s\n" "x-access-token" ;;' \
+            '  *Password*) printf "%s\n" "$GH_TOKEN" ;;' \
+            '  *) exit 1 ;;' \
+            'esac' > "${ASKPASS}"
+          chmod 700 "${ASKPASS}"
+
+          gh pr list \
+            --repo "${GITHUB_REPOSITORY}" \
+            --state open \
+            --head "${BRANCH}" \
+            --json number,author,baseRefName,headRefName,isCrossRepository,isDraft,url \
+            > "${RUNNER_TEMP}/sleeper-prs.json"
+          EXPECTED_AUTHOR="${BOT_LOGIN}" EXPECTED_BRANCH="${BRANCH}" node <<'NODE'
+          const fs = require('node:fs');
+          const prs = JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/sleeper-prs.json`, 'utf8'));
+          if (prs.length > 1) throw new Error(`Refusing ambiguous automation state: found ${prs.length} open pull requests.`);
+          if (prs.length === 1) {
+            const pr = prs[0];
+            if (pr.isCrossRepository || pr.headRefName !== process.env.EXPECTED_BRANCH) {
+              throw new Error(`Existing pull request #${pr.number} does not use the expected same-repository branch.`);
+            }
+            if (pr.baseRefName !== 'main') {
+              throw new Error(`Existing pull request #${pr.number} targets ${pr.baseRefName}, not main.`);
+            }
+            if (pr.author?.login !== process.env.EXPECTED_AUTHOR) {
+              throw new Error(`Existing pull request #${pr.number} is owned by ${pr.author?.login || 'unknown'}, not ${process.env.EXPECTED_AUTHOR}.`);
+            }
+          }
+          NODE
+
+          if REMOTE_SHA="$(GIT_ASKPASS="${ASKPASS}" GIT_TERMINAL_PROMPT=0 \
+            git ls-remote --exit-code --heads origin "${REMOTE_REF}" | awk '{print $1}')"; then
+            REMOTE_AUTHOR="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${REMOTE_SHA}" --jq '.author.login // empty')"
+            if [[ "${REMOTE_AUTHOR}" != "${BOT_LOGIN}" ]]; then
+              echo "Refusing to overwrite a branch whose latest commit is associated with ${REMOTE_AUTHOR:-no GitHub user}." >&2
+              exit 1
+            fi
+            LEASE="${REMOTE_REF}:${REMOTE_SHA}"
+          else
+            LEASE="${REMOTE_REF}:"
+          fi
+
+          BOT_ID="$(gh api "users/${BOT_LOGIN}" --jq .id)"
+          git config --local user.name "${BOT_LOGIN}"
+          git config --local user.email "${BOT_ID}+${BOT_LOGIN}@users.noreply.github.com"
+          git commit -m "Update Sleeper data for season ${SEASON}"
+
+          GIT_ASKPASS="${ASKPASS}" GIT_TERMINAL_PROMPT=0 \
+            git push --force-with-lease="${LEASE}" origin "HEAD:${REMOTE_REF}"
+
+      - name: Create or refresh draft pull request
+        if: steps.resolve.outputs.validate_only_flag == '0' && steps.changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          BRANCH: ${{ steps.publish.outputs.branch }}
+          SEASON: ${{ steps.resolve.outputs.season }}
+        shell: bash
+        run: |
+          echo "FAILED_PHASE=PR create/update" >> "$GITHUB_ENV"
+          TITLE="[automation] Update Sleeper data for season ${SEASON}"
+          BOT_LOGIN="${APP_SLUG}[bot]"
+          gh pr list \
+            --repo "${GITHUB_REPOSITORY}" \
+            --state open \
+            --head "${BRANCH}" \
+            --json number,author,baseRefName,headRefName,isCrossRepository,isDraft,url \
+            > "${RUNNER_TEMP}/sleeper-prs-after-push.json"
+
+          EXPECTED_AUTHOR="${BOT_LOGIN}" EXPECTED_BRANCH="${BRANCH}" node <<'NODE'
+          const fs = require('node:fs');
+          const prs = JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/sleeper-prs-after-push.json`, 'utf8'));
+          if (prs.length > 1) throw new Error(`Refusing ambiguous automation state: found ${prs.length} open pull requests.`);
+          if (prs.length === 1) {
+            const pr = prs[0];
+            if (pr.isCrossRepository || pr.headRefName !== process.env.EXPECTED_BRANCH || pr.baseRefName !== 'main') {
+              throw new Error(`Existing pull request #${pr.number} has an unexpected head or base.`);
+            }
+            if (pr.author?.login !== process.env.EXPECTED_AUTHOR) {
+              throw new Error(`Existing pull request #${pr.number} is not App-owned.`);
+            }
+          }
+          NODE
+
+          PR_COUNT="$(node -e "const p=require('${RUNNER_TEMP}/sleeper-prs-after-push.json'); process.stdout.write(String(p.length))")"
+          if [[ "${PR_COUNT}" == "0" ]]; then
+            PR_URL="$(gh pr create \
+              --repo "${GITHUB_REPOSITORY}" \
+              --draft \
+              --base main \
+              --head "${BRANCH}" \
+              --title "${TITLE}" \
+              --body-file "${RUNNER_TEMP}/sleeper-pr-body.md" \
+              --label data-pipeline \
+              --label automated)"
+          else
+            PR_NUMBER="$(node -e "const p=require('${RUNNER_TEMP}/sleeper-prs-after-push.json'); process.stdout.write(String(p[0].number))")"
+            IS_DRAFT="$(node -e "const p=require('${RUNNER_TEMP}/sleeper-prs-after-push.json'); process.stdout.write(String(p[0].isDraft))")"
+            gh pr edit "${PR_NUMBER}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --title "${TITLE}" \
+              --body-file "${RUNNER_TEMP}/sleeper-pr-body.md"
+            LABELS_REQUEST="${RUNNER_TEMP}/sleeper-pr-labels.json" node <<'NODE'
+            const fs = require('node:fs');
+            fs.writeFileSync(
+              process.env.LABELS_REQUEST,
+              `${JSON.stringify({ labels: ['data-pipeline', 'automated'] })}\n`,
+            );
+            NODE
+            gh api \
+              --method PATCH \
+              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}" \
+              --input "${RUNNER_TEMP}/sleeper-pr-labels.json" \
+              > "${RUNNER_TEMP}/sleeper-pr-labels-response.json"
+            node <<'NODE'
+            const fs = require('node:fs');
+            const response = JSON.parse(
+              fs.readFileSync(`${process.env.RUNNER_TEMP}/sleeper-pr-labels-response.json`, 'utf8'),
+            );
+            const observedLabels = (response.labels || []).map(label => label.name).sort();
+            const expectedLabels = ['automated', 'data-pipeline'];
+            if (JSON.stringify(observedLabels) !== JSON.stringify(expectedLabels)) {
+              throw new Error(`Pull request labels were not replaced exactly: ${observedLabels.join(', ')}`);
+            }
+            NODE
+            if [[ "${IS_DRAFT}" != "true" ]]; then
+              gh pr ready "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" --undo
+            fi
+            PR_URL="$(node -e "const p=require('${RUNNER_TEMP}/sleeper-prs-after-push.json'); process.stdout.write(p[0].url)")"
+          fi
+          echo "Draft automation pull request: ${PR_URL}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Close recovered failure issue
+        if: success() && steps.resolve.outputs.validate_only_flag == '0'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const title = 'Weekly Sleeper update failed';
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              ...context.repo,
+              state: 'open',
+              labels: 'data-pipeline,automated',
+              per_page: 100,
+            });
+            const matches = issues.filter(issue => !issue.pull_request && issue.title === title);
+            if (matches.length > 1) {
+              core.setFailed(`Refusing ambiguous recovery state: found ${matches.length} exact open failure issues.`);
+              return;
+            }
+            if (matches.length === 1) {
+              const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: matches[0].number,
+                body: `Recovered in ${runUrl}. This successful full run published a reviewed candidate or confirmed no tracked changes.`,
+              });
+              await github.rest.issues.update({
+                ...context.repo,
+                issue_number: matches[0].number,
+                state: 'closed',
+                state_reason: 'completed',
+              });
+            }
 
       - name: Upload candidate data on failure
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: sleeper-candidate-data-${{ steps.resolve.outputs.season }}
+          name: sleeper-candidate-data-${{ steps.resolve.outputs.season || 'unknown' }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             assets/H2H.updated.json
-            assets/CurrentSeason.updated.json
             assets/SeasonSummary.draft.json
             assets/DerivedStats.json
             assets/asset-manifest.json
+            ${{ runner.temp }}/sleeper-pr-body.md
+            ${{ runner.temp }}/sleeper-summary.json
           if-no-files-found: ignore
           retention-days: 7
 
@@ -207,45 +524,40 @@ jobs:
               'The weekly Sleeper update failed.',
               '',
               `- Run: ${runUrl}`,
-              `- Branch: ${context.ref}`,
               `- Season: ${process.env.TARGET_SEASON || 'unknown'}`,
-              `- Dry run: ${process.env.VALIDATE_ONLY_FLAG === '1' ? 'yes' : 'no'}`,
+              `- Validation-only: ${process.env.VALIDATE_ONLY_FLAG === '1' ? 'yes' : 'no'}`,
+              `- Failed phase: ${process.env.FAILED_PHASE || 'setup'}`,
               '',
-              'Likely causes:',
-              '- Missing or invalid SLEEPER_LEAGUE_ID secret.',
-              '- Missing season mapping file or week 1 anchor.',
-              '- Sleeper API returned unexpected matchup or bracket data.',
-              '- Asset validation or draft generation failed.',
+              'The allowlisted candidate artifact, when available, is retained for seven days.',
+              'No direct update to main was attempted.',
             ].join('\n');
 
             const ensureLabel = async (name, color, description) => {
               try {
-                await github.rest.issues.getLabel({
-                  ...context.repo,
-                  name,
-                });
-              } catch (err) {
-                if (err.status !== 404) throw err;
-                await github.rest.issues.createLabel({
-                  ...context.repo,
-                  name,
-                  color,
-                  description,
-                });
+                await github.rest.issues.getLabel({ ...context.repo, name });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+                await github.rest.issues.createLabel({ ...context.repo, name, color, description });
               }
             };
-
             await ensureLabel('data-pipeline', '0e8a16', 'Automated data pipeline workflow alerts');
             await ensureLabel('automated', '5319e7', 'Created or updated by automation');
 
-            const query = `repo:${context.repo.owner}/${context.repo.repo} is:issue is:open label:data-pipeline label:automated "${title}"`;
-            const search = await github.rest.search.issuesAndPullRequests({ q: query });
-            const issue = search.data.items.find(item => item.title === title);
-
-            if (issue) {
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              ...context.repo,
+              state: 'open',
+              labels: 'data-pipeline,automated',
+              per_page: 100,
+            });
+            const matches = issues.filter(issue => !issue.pull_request && issue.title === title);
+            if (matches.length > 1) {
+              core.setFailed(`Refusing ambiguous failure state: found ${matches.length} exact open failure issues.`);
+              return;
+            }
+            if (matches.length === 1) {
               await github.rest.issues.createComment({
                 ...context.repo,
-                issue_number: issue.number,
+                issue_number: matches[0].number,
                 body,
               });
             } else {

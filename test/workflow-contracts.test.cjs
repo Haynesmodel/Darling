@@ -10,6 +10,13 @@ const legacyDeployPath = path.join(workflowDirectory, 'deploy-pages.yml');
 const REQUIRED_ARTIFACT_NAME = 'darling-dist-${{ github.sha }}';
 const MAIN_PUSH_CONDITION = "github.event_name == 'push' && github.ref == 'refs/heads/main'";
 const ACTION_LINE = /^\s*uses:\s+([^\s#]+)(?:\s+#\s*(.+))?$/gm;
+const SLEEPER_ALLOWLIST = [
+  'assets/CurrentSeason.json',
+  'assets/DerivedStats.json',
+  'assets/H2H.json',
+  'assets/SeasonSummary.draft.json',
+  'assets/asset-manifest.json',
+];
 
 function extractJob(workflow, jobName) {
   const startPattern = new RegExp(`^  ${jobName}:\\s*$`, 'm');
@@ -72,9 +79,229 @@ function validatePinnedActions(workflows, errors) {
   }
 }
 
+function validateSleeperWorkflow(source, errors) {
+  const header = source.split(/^jobs:\s*$/m)[0] || '';
+  const update = extractJob(source, 'update');
+  const checkout = extractNamedStep(update, 'Check out trusted main branch');
+  const sourceStep = extractNamedStep(update, 'Record trusted main source');
+  const resolveSeason = extractNamedStep(update, 'Resolve target season');
+  const generateCandidate = extractNamedStep(update, 'Generate candidate data');
+  const summarizeCandidate = extractNamedStep(update, 'Summarize and safety-check candidate');
+  const appToken = extractNamedStep(update, 'Mint repository-scoped automation token');
+  const appScope = extractNamedStep(update, 'Verify App repository scope');
+  const publish = extractNamedStep(update, 'Publish bot-owned season branch');
+  const pullRequest = extractNamedStep(update, 'Create or refresh draft pull request');
+  const recovery = extractNamedStep(update, 'Close recovered failure issue');
+  const artifact = extractNamedStep(update, 'Upload candidate data on failure');
+
+  if (!/workflow_dispatch:[\s\S]*season:[\s\S]*validate_only:/.test(header)
+    || !/cron:\s*'0 13 \* \* 1'/.test(header)) {
+    errors.push('SLEEPER-FUNC-001: Sleeper dispatch inputs and Monday schedule must remain stable');
+  }
+  if (!/^permissions:\s*\n\s{2}contents:\s*read\s*\n\s{2}issues:\s*write\s*$/m.test(header)
+    || /^\s+contents:\s*write\s*$/m.test(source)) {
+    errors.push('SLEEPER-SEC-001: default permissions must be exactly contents read and issues write');
+  }
+  if (!/group:\s*update-sleeper-main/.test(header) || !/cancel-in-progress:\s*false/.test(header)) {
+    errors.push('SLEEPER-REL-001: Sleeper runs must use the static non-cancelling concurrency group');
+  }
+  if (!update || !/if:\s*github\.ref == 'refs\/heads\/main'/.test(update)) {
+    errors.push('SLEEPER-FUNC-002: update job must run only for refs/heads/main');
+  }
+  if (!checkout
+    || !/uses:\s*actions\/checkout@[0-9a-f]{40}\s+#\s*v\d+\.\d+\.\d+/.test(checkout)
+    || !/ref:\s*main/.test(checkout)
+    || !/fetch-depth:\s*0/.test(checkout)
+    || !/persist-credentials:\s*false/.test(checkout)) {
+    errors.push('SLEEPER-SEC-002: checkout must pin trusted main with full history and no persisted credentials');
+  }
+  if (!sourceStep.includes('sha=$(git rev-parse HEAD)')
+    || !update.includes('--base-sha "${{ steps.source.outputs.sha }}"')
+    || !update.includes('--candidate-sha "${{ steps.source.outputs.sha }}"')) {
+    errors.push('SLEEPER-OBS-001: summaries must use the exact checked-out main SHA');
+  }
+  const leagueSecret = 'LEAGUE_ID: ${{ secrets.SLEEPER_LEAGUE_ID }}';
+  const jobHeader = update.split(/^\s{4}steps:\s*$/m)[0] || '';
+  if (jobHeader.includes(leagueSecret)
+    || !resolveSeason.includes(leagueSecret)
+    || !generateCandidate.includes(leagueSecret)
+    || !summarizeCandidate.includes(leagueSecret)
+    || countMatches(update, /LEAGUE_ID:\s*\$\{\{\s*secrets\.SLEEPER_LEAGUE_ID\s*\}\}/g) !== 3) {
+    errors.push('SLEEPER-SEC-008: league ID secret must be scoped only to resolution, generation, and safety validation');
+  }
+
+  for (const stepName of [
+    'Mint repository-scoped automation token',
+    'Verify App repository scope',
+    'Publish bot-owned season branch',
+    'Create or refresh draft pull request',
+  ]) {
+    const step = extractNamedStep(update, stepName);
+    if (!step.includes("steps.resolve.outputs.validate_only_flag == '0'")
+      || !step.includes("steps.changes.outputs.changed == 'true'")) {
+      errors.push(`SLEEPER-FUNC-003: ${stepName} must be unreachable for validation-only and no-change runs`);
+    }
+  }
+
+  const expectedAppAction = 'actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0';
+  const expectedAppInputs = [
+    'client-id',
+    'permission-contents',
+    'permission-pull-requests',
+    'private-key',
+  ];
+  const observedAppInputs = [...appToken.matchAll(/^ {10}([a-z][a-z-]+):/gm)]
+    .map(match => match[1])
+    .sort();
+  if (!appToken.includes(expectedAppAction)
+    || !appToken.includes('client-id: ${{ vars.DARLING_AUTOMATION_CLIENT_ID }}')
+    || !appToken.includes('private-key: ${{ secrets.DARLING_AUTOMATION_PRIVATE_KEY }}')
+    || !/permission-contents:\s*write/.test(appToken)
+    || !/permission-pull-requests:\s*write/.test(appToken)) {
+    errors.push('SLEEPER-SEC-004: App token must use the pinned action, Client ID/private key, and narrow write permissions');
+  }
+  if (/\bapp-id:|\bowner:|\brepositories:|permission-(?:issues|actions|workflows|administration):|skip-token-revoke:/.test(appToken)) {
+    errors.push('SLEEPER-SEC-005: App token inputs must not widen scope or disable revocation');
+  }
+  if (JSON.stringify(observedAppInputs) !== JSON.stringify(expectedAppInputs)) {
+    errors.push('SLEEPER-SEC-005: App token inputs must be exactly Client ID, private key, Contents write, and Pull requests write');
+  }
+  const authenticationOrder = [
+    'npm run generate:derived',
+    'npm run generate:manifest',
+    'npm run check:data-generated',
+    'npm run test:assets',
+    '- name: Enforce change allowlist',
+    'node scripts/summarize_sleeper_update.cjs',
+    'actions/create-github-app-token@',
+  ].map(marker => update.indexOf(marker));
+  if (authenticationOrder.some(index => index === -1)
+    || authenticationOrder.some((index, position) => (
+      position > 0 && index <= authenticationOrder[position - 1]
+    ))) {
+    errors.push('SLEEPER-SEC-003: validation and summary safety must finish before App authentication');
+  }
+  if (!appScope.includes('gh api installation/repositories')
+    || !appScope.includes('names.length !== 1')
+    || !appScope.includes('names[0] !== process.env.EXPECTED_REPOSITORY')
+    || !appScope.includes('DEFAULT_BRANCH')
+    || !appScope.includes('APP_SLUG')) {
+    errors.push('SLEEPER-SEC-006: App preflight must verify exact repository scope, main, and a nonempty App slug');
+  }
+  if (/gh auth setup-git|https:\/\/[^/\s]+@github\.com/.test(update)) {
+    errors.push('SLEEPER-SEC-007: App credentials must not be persisted in Git configuration or remote URLs');
+  }
+
+  const allowlistMatch = update.match(/const allowed = new Set\(\[([\s\S]*?)\]\);/);
+  const observedAllowlist = allowlistMatch
+    ? [...allowlistMatch[1].matchAll(/'([^']+)'/g)].map(match => match[1]).sort()
+    : [];
+  if (JSON.stringify(observedAllowlist) !== JSON.stringify(SLEEPER_ALLOWLIST)) {
+    errors.push('SLEEPER-DATA-001: publication allowlist must contain exactly the five reviewed data files');
+  }
+  if (!update.includes("if (status[1] !== ' ')")
+    || !update.includes('Refusing an allowed path that is not fully staged')) {
+    errors.push('SLEEPER-DATA-001: every allowed changed path must be fully staged before publication');
+  }
+  for (const command of [
+    'npm run generate:derived',
+    'npm run generate:manifest',
+    'npm run check:data-generated',
+    'npm run test:assets',
+  ]) {
+    if (!update.includes(command)) {
+      errors.push(`SLEEPER-DATA-002: workflow must run ${command}`);
+    }
+  }
+  if (!update.includes('--base-sha "${{ steps.source.outputs.sha }}"')
+    || !update.includes('--candidate-sha "${{ steps.source.outputs.sha }}"')
+    || !update.includes('--changed-files-file')) {
+    errors.push('SLEEPER-OBS-002: candidate summary must include source SHAs and the sorted changed-file input');
+  }
+
+  if (!publish.includes('BRANCH="automation/sleeper-${SEASON}"')
+    || !publish.includes('prs.length > 1')
+    || !publish.includes("pr.baseRefName !== 'main'")
+    || !publish.includes('pr.author?.login !== process.env.EXPECTED_AUTHOR')) {
+    errors.push('SLEEPER-REL-002: branch publication must refuse ambiguous, wrong-base, or foreign PR state');
+  }
+  if (!publish.includes('REMOTE_AUTHOR')
+    || !publish.includes('EXPECTED_ORIGIN="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"')
+    || !publish.includes('ACTUAL_ORIGIN="$(git remote get-url origin)"')
+    || !publish.includes('"${ACTUAL_ORIGIN%.git}" != "${EXPECTED_ORIGIN%.git}"')
+    || !publish.includes('GIT_ASKPASS="${ASKPASS}" GIT_TERMINAL_PROMPT=0')
+    || publish.indexOf('GIT_ASKPASS="${ASKPASS}" GIT_TERMINAL_PROMPT=0')
+      > publish.indexOf('git ls-remote --exit-code --heads origin')
+    || !publish.includes('git ls-remote --exit-code --heads origin')
+    || !publish.includes('REMOTE_AUTHOR}" != "${BOT_LOGIN}')
+    || !publish.includes('LEASE="${REMOTE_REF}:${REMOTE_SHA}"')
+    || !publish.includes('LEASE="${REMOTE_REF}:"')
+    || !publish.includes('git push --force-with-lease="${LEASE}" origin "HEAD:${REMOTE_REF}"')
+    || /git push\s+--force(?:\s|$)/.test(publish)) {
+    errors.push('SLEEPER-REL-004: branch publication must target the verified repository, authenticate reads, verify bot ownership, and use an exact force-with-lease');
+  }
+  if (!publish.includes('Update Sleeper data for season ${SEASON}')
+    || !publish.includes('users/${BOT_LOGIN}')
+    || !publish.includes('git config --local user.name')) {
+    errors.push('SLEEPER-REL-006: bot commit identity and message must be derived from the App');
+  }
+  if (/git push[^\n]*(?:github\.ref_name|refs\/heads\/main|HEAD:main)/.test(update)) {
+    errors.push('SLEEPER-ARCH-001: Sleeper workflow must never push to main or the triggering ref');
+  }
+
+  if (!pullRequest.includes('--draft')
+    || !pullRequest.includes('--base main')
+    || !pullRequest.includes('--label data-pipeline')
+    || !pullRequest.includes('--label automated')
+    || !pullRequest.includes('gh pr ready "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" --undo')
+    || !pullRequest.includes('TITLE="[automation] Update Sleeper data for season ${SEASON}"')) {
+    errors.push('SLEEPER-FUNC-006: automation PRs must use the exact draft title, base, labels, and draft reset');
+  }
+  if (!pullRequest.includes("JSON.stringify({ labels: ['data-pipeline', 'automated'] })")
+    || !pullRequest.includes('--method PATCH')
+    || !pullRequest.includes('"repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}"')
+    || !pullRequest.includes('--input "${RUNNER_TEMP}/sleeper-pr-labels.json"')
+    || !pullRequest.includes("const expectedLabels = ['automated', 'data-pipeline'];")
+    || /--add-label/.test(pullRequest)) {
+    errors.push('SLEEPER-FUNC-006: refreshes must atomically replace all PR labels with the exact automation label set');
+  }
+  if (/gh pr merge|--auto-merge|gh pr review|gh pr ready(?![^\n]*--undo)/.test(update)) {
+    errors.push('SLEEPER-FUNC-008: workflow must not merge, approve, enable auto-merge, or mark a PR ready');
+  }
+
+  const phases = [
+    'setup',
+    'season resolution',
+    'Sleeper generation',
+    'local promotion/regeneration',
+    'validation',
+    'change safety',
+    'summary',
+    'App authentication',
+    'branch publication',
+    'PR create/update',
+  ];
+  if (phases.some(phase => !update.includes(phase))) {
+    errors.push('SLEEPER-REL-009: failure reporting must retain every required workflow phase');
+  }
+  if (!artifact.includes("steps.resolve.outputs.season || 'unknown'")
+    || !artifact.includes('${{ github.run_id }}-${{ github.run_attempt }}')
+    || !artifact.includes('retention-days: 7')
+    || artifact.includes('assets/CurrentSeason.updated.json')) {
+    errors.push('SLEEPER-REL-010: failure artifact must be unique, seven-day, and omit the credential-valued CurrentSeason candidate');
+  }
+  if (!recovery.includes("steps.resolve.outputs.validate_only_flag == '0'")
+    || !recovery.includes("title = 'Weekly Sleeper update failed'")
+    || !recovery.includes("state_reason: 'completed'")
+    || !recovery.includes('matches.length > 1')) {
+    errors.push('SLEEPER-REL-012: only successful full runs may close the exact unambiguous failure issue');
+  }
+}
+
 function validateWorkflowContracts({ workflows, legacyDeployExists }) {
   const errors = [];
   const ci = workflows['ci.yml'] || '';
+  const sleeper = workflows['update-sleeper.yml'] || '';
   const allWorkflowSource = Object.values(workflows).join('\n');
   const workflowHeader = ci.split(/^jobs:\s*$/m)[0] || '';
   const qualityBuild = extractJob(ci, 'quality_build');
@@ -87,6 +314,11 @@ function validateWorkflowContracts({ workflows, legacyDeployExists }) {
 
   if (legacyDeployExists) {
     errors.push('CI-003: legacy deploy-pages.yml must be removed');
+  }
+  if (!sleeper) {
+    errors.push('SLEEPER-ARCH-001: update-sleeper.yml is missing');
+  } else {
+    validateSleeperWorkflow(sleeper, errors);
   }
 
   const buildCommands = countMatches(allWorkflowSource, /\bnpm run build(?=\s|$)/g);
@@ -306,6 +538,16 @@ function mutateJob(fixture, jobName, mutate) {
   });
 }
 
+function mutateSleeper(fixture, mutate) {
+  return {
+    legacyDeployExists: fixture.legacyDeployExists,
+    workflows: {
+      ...fixture.workflows,
+      'update-sleeper.yml': mutate(fixture.workflows['update-sleeper.yml']),
+    },
+  };
+}
+
 test('repository workflows preserve the exact tested-artifact deployment contract', () => {
   const fixture = readRepositoryFixture();
   const packagePages = extractJob(fixture.workflows['ci.yml'], 'package_pages');
@@ -416,6 +658,263 @@ test('contract rejects an inverted stale-main comparison', () => {
     'if (currentMainSha === context.sha)',
   ));
   assert.match(validateWorkflowContracts(mutated).join('\n'), /stale-run check must compare and report both/);
+});
+
+test('Sleeper contract rejects default-token writes, untrusted refs, and unsafe concurrency', () => {
+  const fixture = readRepositoryFixture();
+  const cases = [
+    [
+      source => source.replace('permissions:\n  contents: read\n  issues: write', 'permissions:\n  contents: write\n  issues: write'),
+      /default permissions must be exactly contents read and issues write/,
+    ],
+    [
+      source => source.replace("    if: github.ref == 'refs/heads/main'\n", ''),
+      /update job must run only for refs\/heads\/main/,
+    ],
+    [
+      source => source.replace('          persist-credentials: false\n', ''),
+      /checkout must pin trusted main/,
+    ],
+    [
+      source => source.replace('sha=$(git rev-parse HEAD)', 'sha=${GITHUB_SHA}'),
+      /exact checked-out main SHA/,
+    ],
+    [
+      source => source.replace(
+        "      REQUESTED_SEASON: ${{ github.event.inputs.season }}",
+        "      LEAGUE_ID: ${{ secrets.SLEEPER_LEAGUE_ID }}\n      REQUESTED_SEASON: ${{ github.event.inputs.season }}",
+      ),
+      /league ID secret must be scoped only/,
+    ],
+    [
+      source => source.replace('group: update-sleeper-main', 'group: update-sleeper-${{ github.ref }}'),
+      /static non-cancelling concurrency group/,
+    ],
+  ];
+  for (const [mutate, expected] of cases) {
+    const mutated = mutateSleeper(fixture, mutate);
+    assert.match(validateWorkflowContracts(mutated).join('\n'), expected);
+  }
+});
+
+test('Sleeper contract rejects App token regressions and widened scope', () => {
+  const fixture = readRepositoryFixture();
+  const cases = [
+    [
+      source => source.replace(
+        'actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0',
+        'actions/create-github-app-token@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa # v3.2.0',
+      ),
+      /App token must use the pinned action/,
+    ],
+    [
+      source => source.replace('client-id: ${{ vars.DARLING_AUTOMATION_CLIENT_ID }}', 'app-id: ${{ vars.DARLING_AUTOMATION_APP_ID }}'),
+      /App token inputs must not widen scope|App token must use the pinned action/,
+    ],
+    [
+      source => source.replace('          permission-contents: write\n', '          owner: ${{ github.repository_owner }}\n          permission-contents: write\n'),
+      /App token inputs must not widen scope/,
+    ],
+    [
+      source => source.replace('          permission-pull-requests: write\n', '          permission-pull-requests: write\n          skip-token-revoke: true\n'),
+      /disable revocation/,
+    ],
+    [
+      source => source.replace('          permission-pull-requests: write\n', '          permission-pull-requests: write\n          permission-deployments: write\n'),
+      /App token inputs must be exactly/,
+    ],
+  ];
+  for (const [mutate, expected] of cases) {
+    const mutated = mutateSleeper(fixture, mutate);
+    assert.match(validateWorkflowContracts(mutated).join('\n'), expected);
+  }
+});
+
+test('Sleeper contract rejects token access from validation-only or no-change paths', () => {
+  const fixture = readRepositoryFixture();
+  const mutated = mutateSleeper(fixture, source => source.replace(
+    "      - name: Mint repository-scoped automation token\n        if: steps.resolve.outputs.validate_only_flag == '0' && steps.changes.outputs.changed == 'true'",
+    "      - name: Mint repository-scoped automation token\n        if: always()",
+  ));
+  assert.match(
+    validateWorkflowContracts(mutated).join('\n'),
+    /must be unreachable for validation-only and no-change runs/,
+  );
+});
+
+test('Sleeper contract rejects token creation before summary safety', () => {
+  const fixture = readRepositoryFixture();
+  const mutated = mutateSleeper(fixture, source => source.replace(
+    '          node scripts/summarize_sleeper_update.cjs \\\n',
+    '          node scripts/unsafe_summary.cjs \\\n',
+  ));
+  assert.match(
+    validateWorkflowContracts(mutated).join('\n'),
+    /validation and summary safety must finish before App authentication/,
+  );
+});
+
+test('Sleeper contract rejects validation moved after App authentication', () => {
+  const fixture = readRepositoryFixture();
+  const mutated = mutateSleeper(fixture, (source) => {
+    const update = extractJob(source, 'update');
+    const validation = extractNamedStep(update, 'Validate promoted snapshot');
+    assert.notEqual(validation, '');
+    return source
+      .replace(validation, '')
+      .replace('      - name: Verify App repository scope', `${validation}      - name: Verify App repository scope`);
+  });
+  assert.match(
+    validateWorkflowContracts(mutated).join('\n'),
+    /validation and summary safety must finish before App authentication/,
+  );
+});
+
+test('Sleeper contract rejects publication allowlist expansion', () => {
+  const fixture = readRepositoryFixture();
+  const mutated = mutateSleeper(fixture, source => source.replace(
+    "          const allowed = new Set([\n            'assets/H2H.json',",
+    "          const allowed = new Set([\n            'assets/SeasonSummary.json',\n            'assets/H2H.json',",
+  ));
+  assert.match(
+    validateWorkflowContracts(mutated).join('\n'),
+    /publication allowlist must contain exactly the five reviewed data files/,
+  );
+});
+
+test('Sleeper contract rejects removal of the fully-staged bundle guard', () => {
+  const fixture = readRepositoryFixture();
+  const mutated = mutateSleeper(fixture, source => source.replace(
+    "            if (status[1] !== ' ') {",
+    '            if (false) {',
+  ));
+  assert.match(
+    validateWorkflowContracts(mutated).join('\n'),
+    /every allowed changed path must be fully staged/,
+  );
+});
+
+test('Sleeper contract rejects direct pushes, plain force, and branch-name drift', () => {
+  const fixture = readRepositoryFixture();
+  const cases = [
+    [
+      source => source.replace(
+        'git push --force-with-lease="${LEASE}" origin "HEAD:${REMOTE_REF}"',
+        'git push origin HEAD:main',
+      ),
+      /never push to main|exact force-with-lease/,
+    ],
+    [
+      source => source.replace(
+        'git push --force-with-lease="${LEASE}" origin "HEAD:${REMOTE_REF}"',
+        'git push --force origin "HEAD:${REMOTE_REF}"',
+      ),
+      /exact force-with-lease/,
+    ],
+    [
+      source => source.replace(
+        'if [[ "${ACTUAL_ORIGIN%.git}" != "${EXPECTED_ORIGIN%.git}" ]]; then',
+        'if false; then',
+      ),
+      /target the verified repository/,
+    ],
+    [
+      source => source.replace(
+        'GIT_ASKPASS="${ASKPASS}" GIT_TERMINAL_PROMPT=0 \\\n            git ls-remote',
+        'git ls-remote',
+      ),
+      /authenticate reads/,
+    ],
+    [
+      source => source.replace('BRANCH="automation/sleeper-${SEASON}"', 'BRANCH="updates/sleeper-${SEASON}"'),
+      /branch publication must refuse ambiguous|bot ownership and use an exact force-with-lease/,
+    ],
+  ];
+  for (const [mutate, expected] of cases) {
+    const mutated = mutateSleeper(fixture, mutate);
+    assert.match(validateWorkflowContracts(mutated).join('\n'), expected);
+  }
+});
+
+test('Sleeper contract rejects removal of PR ambiguity and ownership checks', () => {
+  const fixture = readRepositoryFixture();
+  const cases = [
+    [
+      source => source.replace('if (prs.length > 1) throw new Error', 'if (false) throw new Error'),
+      /refuse ambiguous, wrong-base, or foreign PR state/,
+    ],
+    [
+      source => source.replace('pr.author?.login !== process.env.EXPECTED_AUTHOR', 'false'),
+      /refuse ambiguous, wrong-base, or foreign PR state/,
+    ],
+  ];
+  for (const [mutate, expected] of cases) {
+    const mutated = mutateSleeper(fixture, mutate);
+    assert.match(validateWorkflowContracts(mutated).join('\n'), expected);
+  }
+});
+
+test('Sleeper contract rejects non-draft, merge, approval, auto-merge, and ready paths', () => {
+  const fixture = readRepositoryFixture();
+  const cases = [
+    [
+      source => source.replace('              --draft \\\n', ''),
+      /automation PRs must use the exact draft title/,
+    ],
+    [
+      source => source.replace('gh pr ready "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" --undo', 'gh pr ready "${PR_NUMBER}"'),
+      /must not merge, approve, enable auto-merge, or mark a PR ready/,
+    ],
+    [
+      source => source.replace('          echo "Draft automation pull request', '          gh pr merge --auto-merge "${PR_NUMBER}"\n          echo "Draft automation pull request'),
+      /must not merge, approve, enable auto-merge, or mark a PR ready/,
+    ],
+  ];
+  for (const [mutate, expected] of cases) {
+    const mutated = mutateSleeper(fixture, mutate);
+    assert.match(validateWorkflowContracts(mutated).join('\n'), expected);
+  }
+});
+
+test('Sleeper contract rejects a refresh that retains an extra pre-existing label', () => {
+  const fixture = readRepositoryFixture();
+  const mutated = mutateSleeper(fixture, source => source
+    .replace(
+      '            gh api \\\n              --method PATCH \\\n              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}" \\\n              --input "${RUNNER_TEMP}/sleeper-pr-labels.json" \\\n              > "${RUNNER_TEMP}/sleeper-pr-labels-response.json"\n',
+      '            gh pr edit "${PR_NUMBER}" --add-label data-pipeline --add-label automated\n',
+    ));
+  assert.match(
+    validateWorkflowContracts(mutated).join('\n'),
+    /atomically replace all PR labels with the exact automation label set/,
+  );
+});
+
+test('Sleeper contract rejects failure-artifact and recovery regressions', () => {
+  const fixture = readRepositoryFixture();
+  const cases = [
+    [
+      source => source.replace('-${{ github.run_id }}-${{ github.run_attempt }}', ''),
+      /failure artifact must be unique/,
+    ],
+    [
+      source => source.replace(
+        "if: success() && steps.resolve.outputs.validate_only_flag == '0'",
+        'if: success()',
+      ),
+      /only successful full runs may close/,
+    ],
+    [
+      source => source.replace(
+        '            assets/H2H.updated.json\n',
+        '            assets/H2H.updated.json\n            assets/CurrentSeason.updated.json\n',
+      ),
+      /omit the credential-valued CurrentSeason candidate/,
+    ],
+  ];
+  for (const [mutate, expected] of cases) {
+    const mutated = mutateSleeper(fixture, mutate);
+    assert.match(validateWorkflowContracts(mutated).join('\n'), expected);
+  }
 });
 
 test('contract rejects restoration of the legacy Pages workflow', () => {

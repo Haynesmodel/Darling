@@ -634,11 +634,15 @@ test('update workflow validation-only mode runs with a stub updater and leaves a
   const before = fs.existsSync(updatedPath) ? fs.readFileSync(updatedPath, 'utf8') : null;
   const currentBefore = fs.existsSync(currentUpdatedPath) ? fs.readFileSync(currentUpdatedPath, 'utf8') : null;
 
-  fs.writeFileSync(stubPath, `#!/usr/bin/env bash
+fs.writeFileSync(stubPath, `#!/usr/bin/env bash
 set -euo pipefail
 
 script="$1"
 shift
+if [[ "$script" == "-" ]]; then
+  echo '{"nfl_season":"2025","league_season":"2025","nfl_week":1}'
+  exit 0
+fi
 out=""
 h2h=""
 while [[ $# -gt 0 ]]; do
@@ -685,6 +689,11 @@ fi
     assert.equal(result.status, 0);
     assert.match(result.stdout, /Validation-only mode enabled/);
     assert.match(result.stdout, /Validation complete\. No files were written into assets\//);
+    assert.doesNotMatch(result.stdout, /1257071385973362690/);
+    assert.deepEqual(
+      fs.readdirSync(path.join(repoRoot, 'scripts')).filter(name => name.startsWith('.update-')),
+      [],
+    );
 
     if (before === null) {
       assert.equal(fs.existsSync(updatedPath), false);
@@ -696,6 +705,47 @@ fi
     } else {
       assert.equal(fs.readFileSync(currentUpdatedPath, 'utf8'), currentBefore);
     }
+  } finally {
+    fs.rmSync(stubDir, { recursive: true, force: true });
+  }
+});
+
+test('update workflow rejects a Sleeper league-season mismatch before extraction', async () => {
+  const repoRoot = path.join(__dirname, '..');
+  const stubDir = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-python-season-stub-'));
+  const stubPath = path.join(stubDir, 'python-stub.sh');
+  const extractionMarker = path.join(stubDir, 'extraction-started');
+
+  fs.writeFileSync(stubPath, `#!/usr/bin/env bash
+set -euo pipefail
+script="$1"
+if [[ "$script" == "-" ]]; then
+  echo '{"nfl_season":"2026","league_season":"2026","nfl_week":1}'
+  exit 0
+fi
+touch "${extractionMarker}"
+exit 99
+`);
+  fs.chmodSync(stubPath, 0o755);
+
+  try {
+    const result = runShell(
+      path.join(repoRoot, 'scripts', 'update_sleeper_h2h.sh'),
+      {
+        UPDATE_LIVE: '1',
+        VALIDATE_ONLY: '1',
+        SEASON: '2025',
+        CURRENT_WEEK: '1',
+        LEAGUE_ID: 'not-logged',
+        PYTHON: stubPath,
+      },
+      repoRoot,
+    );
+
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /requested season 2025 does not match Sleeper league season 2026/);
+    assert.equal(fs.existsSync(extractionMarker), false);
+    assert.doesNotMatch(`${result.stdout}\n${result.stderr}`, /not-logged/);
   } finally {
     fs.rmSync(stubDir, { recursive: true, force: true });
   }

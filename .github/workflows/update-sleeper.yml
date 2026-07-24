@@ -320,6 +320,23 @@ jobs:
           BOT_LOGIN="${APP_SLUG}[bot]"
           echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
 
+          EXPECTED_ORIGIN="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          ACTUAL_ORIGIN="$(git remote get-url origin)"
+          if [[ "${ACTUAL_ORIGIN%.git}" != "${EXPECTED_ORIGIN%.git}" ]]; then
+            echo "Refusing unexpected origin repository: ${ACTUAL_ORIGIN}" >&2
+            exit 1
+          fi
+
+          ASKPASS="${RUNNER_TEMP}/git-askpass.sh"
+          printf '%s\n' \
+            '#!/usr/bin/env bash' \
+            'case "$1" in' \
+            '  *Username*) printf "%s\n" "x-access-token" ;;' \
+            '  *Password*) printf "%s\n" "$GH_TOKEN" ;;' \
+            '  *) exit 1 ;;' \
+            'esac' > "${ASKPASS}"
+          chmod 700 "${ASKPASS}"
+
           gh pr list \
             --repo "${GITHUB_REPOSITORY}" \
             --state open \
@@ -344,7 +361,8 @@ jobs:
           }
           NODE
 
-          if REMOTE_SHA="$(git ls-remote --exit-code --heads origin "${REMOTE_REF}" | awk '{print $1}')"; then
+          if REMOTE_SHA="$(GIT_ASKPASS="${ASKPASS}" GIT_TERMINAL_PROMPT=0 \
+            git ls-remote --exit-code --heads origin "${REMOTE_REF}" | awk '{print $1}')"; then
             REMOTE_AUTHOR="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${REMOTE_SHA}" --jq '.author.login // empty')"
             if [[ "${REMOTE_AUTHOR}" != "${BOT_LOGIN}" ]]; then
               echo "Refusing to overwrite a branch whose latest commit is associated with ${REMOTE_AUTHOR:-no GitHub user}." >&2
@@ -360,15 +378,6 @@ jobs:
           git config --local user.email "${BOT_ID}+${BOT_LOGIN}@users.noreply.github.com"
           git commit -m "Update Sleeper data for season ${SEASON}"
 
-          ASKPASS="${RUNNER_TEMP}/git-askpass.sh"
-          printf '%s\n' \
-            '#!/usr/bin/env bash' \
-            'case "$1" in' \
-            '  *Username*) printf "%s\n" "x-access-token" ;;' \
-            '  *Password*) printf "%s\n" "$GH_TOKEN" ;;' \
-            '  *) exit 1 ;;' \
-            'esac' > "${ASKPASS}"
-          chmod 700 "${ASKPASS}"
           GIT_ASKPASS="${ASKPASS}" GIT_TERMINAL_PROMPT=0 \
             git push --force-with-lease="${LEASE}" origin "HEAD:${REMOTE_REF}"
 

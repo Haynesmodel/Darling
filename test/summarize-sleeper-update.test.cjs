@@ -322,3 +322,26 @@ test('CLI duplicate output arguments remove every discovered stale target', () =
     assert.equal(fs.existsSync(value.options['json-out']), false);
   });
 });
+
+test('CLI stale-output discovery never treats another flag as a path', () => {
+  withFixture({}, (value) => {
+    const flagShapedPath = path.join(value.root, '--json-out');
+    fs.writeFileSync(flagShapedPath, 'must survive');
+    try {
+      const result = spawnSync(process.execPath, [
+        script,
+        '--body-out',
+        '--json-out',
+        value.options['json-out'],
+      ], {
+        cwd: value.root,
+        encoding: 'utf8',
+        env: { ...process.env, LEAGUE_ID: 'league-123' },
+      });
+      assert.notEqual(result.status, 0);
+      assert.equal(fs.readFileSync(flagShapedPath, 'utf8'), 'must survive');
+    } finally {
+      fs.rmSync(flagShapedPath, { force: true });
+    }
+  });
+});

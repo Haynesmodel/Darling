@@ -203,12 +203,19 @@ function validateSleeperWorkflow(source, errors) {
     errors.push('SLEEPER-REL-002: branch publication must refuse ambiguous, wrong-base, or foreign PR state');
   }
   if (!publish.includes('REMOTE_AUTHOR')
+    || !publish.includes('EXPECTED_ORIGIN="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"')
+    || !publish.includes('ACTUAL_ORIGIN="$(git remote get-url origin)"')
+    || !publish.includes('"${ACTUAL_ORIGIN%.git}" != "${EXPECTED_ORIGIN%.git}"')
+    || !publish.includes('GIT_ASKPASS="${ASKPASS}" GIT_TERMINAL_PROMPT=0')
+    || publish.indexOf('GIT_ASKPASS="${ASKPASS}" GIT_TERMINAL_PROMPT=0')
+      > publish.indexOf('git ls-remote --exit-code --heads origin')
+    || !publish.includes('git ls-remote --exit-code --heads origin')
     || !publish.includes('REMOTE_AUTHOR}" != "${BOT_LOGIN}')
     || !publish.includes('LEASE="${REMOTE_REF}:${REMOTE_SHA}"')
     || !publish.includes('LEASE="${REMOTE_REF}:"')
     || !publish.includes('git push --force-with-lease="${LEASE}" origin "HEAD:${REMOTE_REF}"')
     || /git push\s+--force(?:\s|$)/.test(publish)) {
-    errors.push('SLEEPER-REL-004: branch publication must verify bot ownership and use an exact force-with-lease');
+    errors.push('SLEEPER-REL-004: branch publication must target the verified repository, authenticate reads, verify bot ownership, and use an exact force-with-lease');
   }
   if (!publish.includes('Update Sleeper data for season ${SEASON}')
     || !publish.includes('users/${BOT_LOGIN}')
@@ -752,6 +759,20 @@ test('Sleeper contract rejects direct pushes, plain force, and branch-name drift
         'git push --force origin "HEAD:${REMOTE_REF}"',
       ),
       /exact force-with-lease/,
+    ],
+    [
+      source => source.replace(
+        'if [[ "${ACTUAL_ORIGIN%.git}" != "${EXPECTED_ORIGIN%.git}" ]]; then',
+        'if false; then',
+      ),
+      /target the verified repository/,
+    ],
+    [
+      source => source.replace(
+        'GIT_ASKPASS="${ASKPASS}" GIT_TERMINAL_PROMPT=0 \\\n            git ls-remote',
+        'git ls-remote',
+      ),
+      /authenticate reads/,
     ],
     [
       source => source.replace('BRANCH="automation/sleeper-${SEASON}"', 'BRANCH="updates/sleeper-${SEASON}"'),

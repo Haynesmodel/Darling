@@ -388,7 +388,8 @@ function removeOutputs(options) {
 
 function removeDiscoveredOutputs(argv) {
   for (let index = 0; index < argv.length - 1; index += 1) {
-    if (argv[index] === '--body-out' || argv[index] === '--json-out') {
+    if ((argv[index] === '--body-out' || argv[index] === '--json-out')
+      && !argv[index + 1].startsWith('--')) {
       fs.rmSync(path.resolve(argv[index + 1]), { force: true });
     }
   }

@@ -72,3 +72,17 @@ test('current-season state normalizes invalid projection modes', () => {
   });
   assert.equal(state.selectedProjectionMode, 'ifScoresHold');
 });
+
+test('current-season view normalization accepts recap and uses the lifecycle fallback', () => {
+  const base = {
+    currentSeason: {
+      season: 2026,
+      current_week: 1,
+      games: [{ season: 2026, week: 1, teamA: 'Joe', teamB: 'Shap', type: 'Regular' }],
+    },
+    defaultView: 'recap',
+  };
+  assert.equal(resolveCurrentSeasonState({ ...base, selectedView: 'recap' }).selectedView, 'recap');
+  assert.equal(resolveCurrentSeasonState({ ...base, selectedView: 'not-a-view' }).selectedView, 'recap');
+  assert.equal(resolveCurrentSeasonState({ ...base, selectedView: 'command' }).selectedView, 'command');
+});

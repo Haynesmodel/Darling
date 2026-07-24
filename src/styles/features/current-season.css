@@ -24,6 +24,72 @@
   grid-template-columns:repeat(3, minmax(0,1fr));
   gap:8px;
 }
+.current-recap-hero p{
+  margin:8px 0 0;
+  line-height:1.5;
+}
+.current-phase-badge{
+  display:inline-flex;
+  padding:5px 9px;
+  border:1px solid var(--status-info-border);
+  border-radius:var(--radius-pill);
+  background:var(--status-info-bg);
+  color:var(--status-info-text);
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+}
+.current-recap-honors{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+.current-recap-honors article,
+.current-recap-schedule article{
+  display:grid;
+  gap:4px;
+  padding:12px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:var(--surface-panel-alt);
+}
+.current-recap-honors .label{
+  color:var(--muted);
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+}
+.current-recap-honors strong{
+  color:var(--header);
+  font-size:18px;
+}
+.current-recap-pending{
+  padding:12px;
+  border:1px solid var(--status-warn-border);
+  border-radius:10px;
+  background:var(--status-warn-bg);
+  color:var(--status-warn-text);
+}
+.current-recap-pending p{
+  margin:6px 0 0;
+}
+.current-recap-block{
+  margin-top:18px;
+}
+.current-recap-block h3{
+  margin:0 0 10px;
+}
+.current-recap-schedule{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:8px;
+}
+.current-recap-schedule span{
+  color:var(--muted);
+  font-size:12px;
+}
 .current-section-heading{
   margin:0 0 8px;
 }
@@ -384,6 +450,9 @@
 }
 
 @media (max-width:700px){
+  .current-recap-honors{
+    grid-template-columns:1fr;
+  }
   .current-hero-inner,
   .current-hero-stats,
   .current-scoreline,

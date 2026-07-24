@@ -90,11 +90,23 @@ function methodologyNoteHtml(command) {
 
 function selectedViewAllows(view, section) {
   const mode = view.commandCenter?.selectedView || 'command';
-  if (mode === 'command') return true;
+  const phase = view.presentation?.phase || 'regular-season';
+  if (mode === 'recap') return section === 'recap';
+  if (section === 'recap') return false;
+  if (mode === 'command') {
+    if (phase === 'regular-season') return true;
+    if (phase === 'postseason') return ['matchups', 'playoff', 'standings'].includes(section);
+    if (phase === 'preseason') return section === 'matchups';
+    return ['matchups', 'standings', 'snapshots'].includes(section);
+  }
   if (mode === 'matchups') return section === 'matchups';
-  if (mode === 'standings') return ['playoff', 'movement', 'projection', 'standings'].includes(section);
+  if (mode === 'standings') {
+    return phase === 'regular-season'
+      ? ['playoff', 'movement', 'projection', 'standings'].includes(section)
+      : ['playoff', 'standings'].includes(section);
+  }
   if (mode === 'owners') return ['needs', 'snapshots'].includes(section);
-  return true;
+  return false;
 }
 
 function setSectionHtml(el, html) {
@@ -288,14 +300,42 @@ function currentSeasonHeroHtml(view) {
   const selectedNeed = command?.selectedOwner
     ? command.ownerNeeds.find(row => row.owner === command.selectedOwner)
     : null;
+  const phase = view.presentation?.phase || 'regular-season';
+  const recap = view.recap;
+  if (command?.selectedView === 'recap') {
+    const phaseCopy = {
+      preseason: 'The schedule is available; competition has not started.',
+      finalizing: 'Final games are available; authoritative honors are pending.',
+      offseason: 'The finalized season, trophy winners, and final table.',
+      'historical-fallback': 'A historical snapshot without live-data claims.',
+      'regular-season': 'A snapshot of the active season.',
+      postseason: 'The postseason trophy paths.',
+    };
+    return `
+      <div class="current-hero-inner current-recap-hero">
+        <div>
+          <div class="card-kicker">Current Season &middot; ${escapeHtml(phase.replace('-', ' '))}</div>
+          <h3>${escapeHtml(view.season || 'Season')} ${phase === 'offseason' ? 'Year in Review' : phase === 'preseason' ? 'Preview' : 'Recap'}</h3>
+          <p>${escapeHtml(phaseCopy[phase] || phaseCopy['historical-fallback'])}</p>
+          <p class="muted">${view.presentation?.source === 'historical' ? 'Source: validated history' : `Source: validated CurrentSeason${generatedAt ? ` · Updated ${escapeHtml(generatedAt)}` : ''}`}</p>
+        </div>
+        <div class="current-hero-stats">
+          <div class="stat"><div class="label">Champion</div><div class="value">${escapeHtml(recap?.champion || 'Pending')}</div></div>
+          <div class="stat"><div class="label">Saunders</div><div class="value">${escapeHtml(recap?.saunders || 'Pending')}</div></div>
+          <div class="stat"><div class="label">Final Table</div><div class="value">${escapeHtml(recap?.finalStandings?.length || 0)}</div><div class="sub">owners</div></div>
+        </div>
+      </div>
+    `;
+  }
+  const historicalAnalysis = phase !== 'regular-season';
   return `
     <div class="current-hero-inner">
       <div>
         <div class="card-kicker">Current Season</div>
         <h3>${escapeHtml(view.season || 'Season')}</h3>
-        <p class="muted">${escapeHtml(weekLabel)} command center from ${escapeHtml(command?.summary?.completedGameCount ?? view.summary.completedGameCount)} completed regular-season games.</p>
-        ${view.source === 'sleeper' ? `<p class="muted">Source: Sleeper${generatedAt ? ` &middot; Last updated ${escapeHtml(generatedAt)}` : ''}</p>` : '<p class="muted">Source: historical JSON fallback</p>'}
-        ${command ? `<p class="muted">Model: ${escapeHtml(command.modelLabel)} &middot; ${escapeHtml(command.rules.playoff_slots)} playoff spots, ${escapeHtml(command.rules.bye_slots)} byes</p>` : ''}
+        <p class="muted">${escapeHtml(weekLabel)} ${historicalAnalysis ? 'historical/final analysis' : 'command center'} from ${escapeHtml(command?.summary?.completedGameCount ?? view.summary.completedGameCount)} completed regular-season games.</p>
+        ${view.presentation?.source === 'historical' ? '<p class="muted">Source: validated historical snapshot</p>' : `<p class="muted">Source: ${phase === 'regular-season' ? 'Sleeper snapshot' : 'validated CurrentSeason snapshot'}${generatedAt ? ` &middot; Last updated ${escapeHtml(generatedAt)}` : ''}</p>`}
+        ${command && phase === 'regular-season' ? `<p class="muted">Model: ${escapeHtml(command.modelLabel)} &middot; ${escapeHtml(command.rules.playoff_slots)} playoff spots, ${escapeHtml(command.rules.bye_slots)} byes</p>` : ''}
         ${selectedNeed ? `<p class="current-owner-focus-note"><strong>${escapeHtml(selectedNeed.owner)}:</strong> ${escapeHtml(selectedNeed.mainNeed)}</p>` : ''}
       </div>
       <div class="current-hero-stats">
@@ -319,13 +359,79 @@ function currentSeasonHeroHtml(view) {
   `;
 }
 
+function currentRecapHtml(view) {
+  if (!selectedViewAllows(view, 'recap')) return '';
+  const phase = view.presentation?.phase || 'historical-fallback';
+  const recap = view.recap;
+  const context = phase === 'preseason' ? view.contextRecap : recap;
+  const rows = recap?.finalStandings || [];
+  const scheduled = (view.matchups || []).filter(row => !row.completed);
+  const pointsLeader = rows.reduce((best, row) => !best || row.pointsFor > best.pointsFor ? row : best, null);
+
+  const honors = recap?.complete ? `
+    <div class="current-recap-honors">
+      <article><div class="label">Champion</div><strong>${escapeHtml(recap.champion)}</strong></article>
+      <article><div class="label">Runner-up</div><strong>${escapeHtml(recap.runnerUp || 'Not available')}</strong></article>
+      <article><div class="label">Saunders Bowl</div><strong>${escapeHtml(recap.saunders)}</strong></article>
+    </div>
+  ` : phase === 'preseason' && context?.complete ? `
+    <div class="current-recap-honors">
+      <article><div class="label">Defending champion</div><strong>${escapeHtml(context.champion)}</strong></article>
+      <article><div class="label">Latest Saunders winner</div><strong>${escapeHtml(context.saunders)}</strong></article>
+    </div>
+  ` : `
+    <div class="current-recap-pending">
+      <strong>Authoritative honors pending</strong>
+      <p>Champion and Saunders claims wait for one validated winner of each honor.</p>
+    </div>
+  `;
+
+  const schedule = phase === 'preseason' ? `
+    <div class="current-recap-block">
+      <h3>Available Schedule</h3>
+      ${scheduled.length ? `<div class="current-recap-schedule">${scheduled.map(row => `
+        <article>
+          <strong>${escapeHtml(row.teamA)} vs ${escapeHtml(row.teamB)}</strong>
+          <span>${escapeHtml(row.date)} &middot; ${escapeHtml(rowWeekLabel(row))}</span>
+        </article>
+      `).join('')}</div>` : '<p class="muted">No scheduled matchups are available yet.</p>'}
+    </div>
+  ` : '';
+
+  const standings = rows.length ? `
+    <div class="current-recap-block">
+      <h3>Final Standings</h3>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th scope="col">Finish</th><th scope="col">Owner</th><th scope="col">Record</th><th scope="col">Points</th></tr></thead>
+          <tbody>${rows.map(row => `<tr><td>${escapeHtml(row.finish)}</td><th scope="row">${escapeHtml(row.owner)}</th><td>${escapeHtml(row.record)}</td><td>${nfmt(row.pointsFor, 2)}</td></tr>`).join('')}</tbody>
+        </table>
+      </div>
+    </div>
+  ` : '';
+
+  return `
+    <div class="section-heading current-section-heading">
+      <h3>${phase === 'preseason' ? 'Season Preview' : phase === 'finalizing' ? 'Recap Pending' : 'Year in Review'}</h3>
+      <span class="current-phase-badge">${escapeHtml(phase.replace('-', ' '))}</span>
+    </div>
+    ${honors}
+    ${recap?.championshipResult ? `<p><strong>Championship:</strong> ${escapeHtml(recap.championshipResult)}</p>` : ''}
+    ${pointsLeader ? `<p><strong>Points leader:</strong> ${escapeHtml(pointsLeader.owner)} · ${nfmt(pointsLeader.pointsFor, 2)}</p>` : ''}
+    ${schedule}
+    ${standings}
+  `;
+}
+
 function currentMatchupCardHtml(row, view = {}) {
   const allTime = row.allTimeContext?.allTime;
   const current = row.currentSeasonContext?.selected;
   const last = row.lastMeeting;
   const winner = matchupWinner(row);
   const status = String(row.status || '').trim();
-  const impact = view.commandCenter?.matchupImpacts?.get(matchupKey(row));
+  const impact = (view.presentation?.phase || 'regular-season') === 'regular-season'
+    ? view.commandCenter?.matchupImpacts?.get(matchupKey(row))
+    : null;
   return `
     <article class="current-matchup-card">
       <div class="current-matchup-top">
@@ -385,6 +491,24 @@ function currentMatchupsHtml(view) {
     return '<div class="card"><h3>This Week</h3><p class="muted">No current-season matchups found for this week.</p></div>';
   }
   const weekLabel = viewWeekLabel(view);
+  if (view.presentation?.phase === 'postseason') {
+    const championship = view.matchups.filter(row => String(row.type) !== 'Saunders');
+    const saunders = view.matchups.filter(row => String(row.type) === 'Saunders');
+    const group = (heading, rows) => rows.length ? `
+      <div class="current-postseason-group">
+        <h3>${escapeHtml(heading)}</h3>
+        <div class="current-matchup-grid">${rows.map(row => currentMatchupCardHtml(row, view)).join('')}</div>
+      </div>
+    ` : '';
+    return `
+      <div class="section-heading current-section-heading">
+        <h3>${escapeHtml(weekLabel)} Trophy Paths</h3>
+        <div class="muted">${escapeHtml(view.matchups.length)} active or final games</div>
+      </div>
+      ${group('Championship Path', championship)}
+      ${group('Saunders Path', saunders)}
+    `;
+  }
   return `
     <div class="section-heading current-section-heading">
       <h3>${escapeHtml(weekLabel)} Matchups</h3>
@@ -455,7 +579,10 @@ function currentPlayoffPictureHtml(view) {
   if (!selectedViewAllows(view, 'playoff')) return '';
   const command = view.commandCenter;
   const rows = command?.playoffPicture || [];
-  if (!rows.length) return '<h3>Playoff Picture</h3><p class="muted">No playoff picture available.</p>';
+  if (!rows.length) return view.presentation?.phase === 'postseason'
+    ? ''
+    : '<h3>Playoff Picture</h3><p class="muted">No playoff picture available.</p>';
+  const estimatesMeaningful = (view.presentation?.phase || 'regular-season') === 'regular-season';
   const saundersLine = command.summary?.saundersLineSeed || null;
   return `
     <div class="section-heading current-section-heading">
@@ -476,8 +603,8 @@ function currentPlayoffPictureHtml(view) {
           <div class="current-seed-meta">
             <span class="${statusClass(row.status)}">${escapeHtml(row.status.label)}</span>
             <span>${escapeHtml(gapText(row.playoffGap))}</span>
-            <span>Projected ${escapeHtml(row.projectedSeed)} (${escapeHtml(signedSeedChange(row.seedChange))})</span>
-            ${row.odds ? `
+            ${estimatesMeaningful ? `<span>Projected ${escapeHtml(row.projectedSeed)} (${escapeHtml(signedSeedChange(row.seedChange))})</span>` : '<span>Deterministic final status</span>'}
+            ${estimatesMeaningful && row.odds ? `
               <span class="current-odds-chip">Playoffs ${escapeHtml(fmtOdds(row.odds.playoffOdds))}</span>
               <span class="current-odds-chip">Bye ${escapeHtml(fmtOdds(row.odds.byeOdds))}</span>
               <span class="current-odds-chip current-odds-chip-saunders">Saunders ${escapeHtml(fmtOdds(row.odds.saundersOdds))}</span>
@@ -490,13 +617,13 @@ function currentPlayoffPictureHtml(view) {
         </div>
       `).join('')}
     </div>
-    ${command.odds?.status === 'ready' ? `
+    ${estimatesMeaningful && command.odds?.status === 'ready' ? `
       <div class="current-odds-methodology">
         <strong>${escapeHtml(command.odds.modelLabel)}</strong>
         <span>${escapeHtml(command.odds.simulations.toLocaleString())} simulations · ${escapeHtml(command.odds.liveMode)} · model ${escapeHtml(command.odds.modelVersion)}</span>
         <span>${escapeHtml(command.odds.methodology)}</span>
       </div>
-    ` : command.odds?.status === 'error' ? `
+    ` : estimatesMeaningful && command.odds?.status === 'error' ? `
       <div class="current-odds-methodology current-odds-error">
         Probability model unavailable. Deterministic standings remain authoritative.
       </div>
@@ -547,13 +674,16 @@ function currentWeekNeedsHtml(view) {
 function currentLiveMovementHtml(view) {
   if (!selectedViewAllows(view, 'movement')) return '';
   const command = view.commandCenter;
+  const isLive = view.presentation ? Boolean(view.presentation.isLive) : true;
+  if (!isLive && !Number(command?.summary?.completedGameCount)) return '';
   const rows = (command?.liveMovement || []).slice(0, 6);
-  if (!rows.length) return '<h3>Live Movement</h3><p class="muted">No movement available.</p>';
+  const heading = isLive ? 'Live Movement' : 'Standings Movement';
+  if (!rows.length) return `<h3>${heading}</h3><p class="muted">No movement available.</p>`;
   const projectionLabel = command.selectedProjectionMode === 'current' ? 'Completed games only' : 'If scores hold';
   const oddsMovement = (command.odds?.movement || []).slice().sort((a, b) => Math.abs(b.playoffChange) - Math.abs(a.playoffChange));
   return `
     <div class="section-heading current-section-heading">
-      <h3>Live Movement</h3>
+      <h3>${heading}</h3>
       <div class="muted">Baseline: previous completed week &middot; ${escapeHtml(projectionLabel)}</div>
     </div>
     <div class="current-command-chart chart-shell">
@@ -609,6 +739,12 @@ function renderCurrentSeasonHero(view, opts = {}) {
   if (el) el.innerHTML = currentSeasonHeroHtml(view);
 }
 
+function renderCurrentRecap(view, opts = {}) {
+  const root = docOrDefault(opts.doc);
+  const el = root?.getElementById('currentRecap');
+  setSectionHtml(el, currentRecapHtml(view));
+}
+
 function renderCurrentMatchups(view, opts = {}) {
   const root = docOrDefault(opts.doc);
   const el = root?.getElementById('currentMatchups');
@@ -639,12 +775,17 @@ function renderCurrentCommandCenter(view, opts = {}) {
     const el = root?.getElementById(id);
     setSectionHtml(el, htmlFn(view));
   }
+  renderCurrentCommandCharts(view, { doc: root });
+}
+
+function renderCurrentCommandCharts(view, opts = {}) {
+  const root = docOrDefault(opts.doc);
   const movementHost = typeof root?.getElementById === 'function' ? root.getElementById('currentSeedMovementPlot') : null;
   const oddsMovementHost = typeof root?.getElementById === 'function' ? root.getElementById('currentOddsMovementPlot') : null;
   const projectionHost = typeof root?.getElementById === 'function' ? root.getElementById('currentProjectedStandingsPlot') : null;
-  renderCurrentSeedMovementPlot(movementHost, view);
-  renderCurrentOddsMovementPlot(oddsMovementHost, view);
-  renderCurrentProjectedStandingsPlot(projectionHost, view);
+  if (!movementHost?.closest('details') || movementHost.closest('details').open) renderCurrentSeedMovementPlot(movementHost, view);
+  if (!oddsMovementHost?.closest('details') || oddsMovementHost.closest('details').open) renderCurrentOddsMovementPlot(oddsMovementHost, view);
+  if (!projectionHost?.closest('details') || projectionHost.closest('details').open) renderCurrentProjectedStandingsPlot(projectionHost, view);
 }
 
 export {
@@ -654,13 +795,16 @@ export {
   currentMatchupsHtml,
   currentPlayoffPictureHtml,
   currentProjectedStandingsHtml,
+  currentRecapHtml,
   currentSeasonHeroHtml,
   currentStandingsHtml,
   currentTeamSnapshotsHtml,
   currentWeekNeedsHtml,
   formattedGeneratedAt,
   renderCurrentCommandCenter,
+  renderCurrentCommandCharts,
   renderCurrentMatchups,
+  renderCurrentRecap,
   renderCurrentSeasonHero,
   renderCurrentStandings,
   renderCurrentTeamSnapshots,

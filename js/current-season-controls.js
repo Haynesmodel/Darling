@@ -56,14 +56,15 @@ function renderOwnerOptions(values, selectedValue) {
   ].join('');
 }
 
-function renderViewOptions(selectedValue) {
+function renderViewOptions(selectedValue, defaultView = 'command') {
   const labels = {
     command: 'Command Center',
+    recap: 'Season Recap',
     matchups: 'Matchups',
     standings: 'Standings',
     owners: 'Owners',
   };
-  const selectedView = normalizeCurrentView(selectedValue);
+  const selectedView = normalizeCurrentView(selectedValue, defaultView);
   return CURRENT_VIEW_MODES.map(value => {
     const selected = value === selectedView ? ' selected' : '';
     return `<option value="${escapeHtml(value)}"${selected}>${escapeHtml(labels[value] || value)}</option>`;
@@ -90,6 +91,7 @@ function resolveCurrentSeasonState({
   selectedWeek = null,
   selectedOwner = '',
   selectedView = 'command',
+  defaultView = 'command',
   selectedProjectionMode = 'ifScoresHold',
 } = {}) {
   const seasons = availableSeasons(leagueGames, seasonSummaries, currentSeason);
@@ -100,7 +102,7 @@ function resolveCurrentSeasonState({
   const week = weeks.includes(Number(selectedWeek)) ? Number(selectedWeek) : fallbackWeek;
   const owners = availableOwners(leagueGames, seasonSummaries, currentSeason, season);
   const owner = owners.includes(selectedOwner) ? selectedOwner : '';
-  const view = normalizeCurrentView(selectedView);
+  const view = normalizeCurrentView(selectedView, defaultView);
   const projectionMode = normalizeProjectionMode(selectedProjectionMode);
   return { selectedSeason: season, selectedWeek: week, selectedOwner: owner, selectedView: view, selectedProjectionMode: projectionMode, seasons, weeks, owners };
 }
@@ -114,12 +116,13 @@ function buildCurrentSeasonControls({
   selectedWeek = null,
   selectedOwner = '',
   selectedView = 'command',
+  defaultView = 'command',
   selectedProjectionMode = 'ifScoresHold',
   onChange,
 } = {}) {
   const root = docOrDefault(doc);
   if (!root) {
-    return resolveCurrentSeasonState({ leagueGames, seasonSummaries, currentSeason, selectedSeason, selectedWeek, selectedOwner, selectedView, selectedProjectionMode });
+    return resolveCurrentSeasonState({ leagueGames, seasonSummaries, currentSeason, selectedSeason, selectedWeek, selectedOwner, selectedView, defaultView, selectedProjectionMode });
   }
 
   const seasonSelect = root.getElementById('currentSeasonSelect');
@@ -127,7 +130,7 @@ function buildCurrentSeasonControls({
   const ownerSelect = root.getElementById('currentOwnerSelect');
   const viewSelect = root.getElementById('currentViewSelect');
   const projectionSelect = root.getElementById('currentProjectionSelect');
-  const state = resolveCurrentSeasonState({ leagueGames, seasonSummaries, currentSeason, selectedSeason, selectedWeek, selectedOwner, selectedView, selectedProjectionMode });
+  const state = resolveCurrentSeasonState({ leagueGames, seasonSummaries, currentSeason, selectedSeason, selectedWeek, selectedOwner, selectedView, defaultView, selectedProjectionMode });
 
   const syncSecondaryOptions = (season, preferredWeek = null, preferredOwner = '') => {
     const weeks = currentSeasonWeeks(leagueGames, season, currentSeason);
@@ -154,7 +157,7 @@ function buildCurrentSeasonControls({
   }
   syncSecondaryOptions(state.selectedSeason, state.selectedWeek, state.selectedOwner);
   if (viewSelect) {
-    viewSelect.innerHTML = renderViewOptions(state.selectedView);
+    viewSelect.innerHTML = renderViewOptions(state.selectedView, defaultView);
     viewSelect.value = state.selectedView;
   }
   if (projectionSelect) {
@@ -167,7 +170,7 @@ function buildCurrentSeasonControls({
     const synced = syncSecondaryOptions(nextSeason, weekSelect?.value || state.selectedWeek, ownerSelect?.value || state.selectedOwner);
     const nextWeek = Number(weekSelect?.value || synced.week);
     const nextOwner = synced.owners.includes(ownerSelect?.value) ? ownerSelect.value : '';
-    const nextView = normalizeCurrentView(viewSelect?.value || state.selectedView);
+    const nextView = normalizeCurrentView(viewSelect?.value || state.selectedView, defaultView);
     const nextProjectionMode = normalizeProjectionMode(projectionSelect?.value || state.selectedProjectionMode);
     if (typeof onChange === 'function') {
       onChange({

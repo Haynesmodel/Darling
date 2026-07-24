@@ -82,6 +82,28 @@ test('url helpers parse and rebuild current season state', () => {
   assert.equal(next, '/index.html?tab=current&currentSeason=2025&currentWeek=6&currentOwner=Joe&currentView=owners&currentProjection=current');
 });
 
+test('current recap and lifecycle-derived defaults round-trip without losing explicit command', () => {
+  assert.equal(parseUrlState('?tab=current&currentView=recap').currentView, 'recap');
+  assert.equal(buildUrlFromState({
+    tab: 'current',
+    selectedCurrentView: 'recap',
+    defaultCurrentView: 'command',
+    pathname: '/index.html',
+  }), '/index.html?tab=current&currentView=recap');
+  assert.equal(buildUrlFromState({
+    tab: 'current',
+    selectedCurrentView: 'command',
+    defaultCurrentView: 'recap',
+    pathname: '/index.html',
+  }), '/index.html?tab=current&currentView=command');
+  assert.equal(buildUrlFromState({
+    tab: 'current',
+    selectedCurrentView: 'recap',
+    defaultCurrentView: 'recap',
+    pathname: '/index.html',
+  }), '/index.html?tab=current');
+});
+
 test('url helpers parse and rebuild trophy state', () => {
   const parsed = parseUrlState('?tab=trophy&trophyOwner=Joe');
   assert.equal(parsed.tab, 'trophy');

@@ -54,7 +54,7 @@
   "devDependencies": {
     "@axe-core/playwright": "4.12.1",
     "@playwright/test": "^1.61.1",
-    "@preact/preset-vite": "^2.10.5",
+    "@preact/preset-vite": "^2.10.6",
     "@types/node": "^24.13.3",
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
@@ -66,10 +66,10 @@
     "istanbul-reports": "3.2.0",
     "json-schema-to-typescript": "15.0.4",
     "sharp": "^0.35.3",
-    "stylelint": "17.14.0",
+    "stylelint": "17.14.1",
     "stylelint-config-standard": "40.0.0",
     "typescript": "^7.0.2",
-    "vite": "^8.1.4"
+    "vite": "^8.1.5"
   },
   "dependencies": {
     "@observablehq/plot": "^0.6.17",

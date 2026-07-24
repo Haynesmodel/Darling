@@ -312,6 +312,7 @@ jobs:
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: dist/
+          include-hidden-files: true
       - name: Summarize Pages packaging
         env:
           ARTIFACT_DIGEST: ${{ needs.quality_build.outputs.dist_digest }}
@@ -341,7 +342,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Confirm run is the current main tip
+      - name: Confirm run is the current main tip before deploy
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |

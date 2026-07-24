@@ -22,6 +22,18 @@ function extractJob(workflow, jobName) {
   return workflow.slice(start, nextJob ? start + match[0].length + nextJob.index : workflow.length);
 }
 
+function extractNamedStep(job, stepName) {
+  const escapedName = stepName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const startPattern = new RegExp(`^      - name: ${escapedName}\\s*$`, 'm');
+  const match = startPattern.exec(job);
+  if (!match) return '';
+
+  const start = match.index;
+  const rest = job.slice(start + match[0].length);
+  const nextStep = /^      - (?:name:|uses:|run:)/m.exec(rest);
+  return job.slice(start, nextStep ? start + match[0].length + nextStep.index : job.length);
+}
+
 function countMatches(source, pattern) {
   return [...source.matchAll(pattern)].length;
 }
@@ -71,6 +83,7 @@ function validateWorkflowContracts({ workflows, legacyDeployExists }) {
   const gate = extractJob(ci, 'gate');
   const packagePages = extractJob(ci, 'package_pages');
   const deployPages = extractJob(ci, 'deploy_pages');
+  const uploadPagesStep = extractNamedStep(packagePages, 'Upload Pages artifact');
 
   if (legacyDeployExists) {
     errors.push('CI-003: legacy deploy-pages.yml must be removed');
@@ -146,14 +159,17 @@ function validateWorkflowContracts({ workflows, legacyDeployExists }) {
     if (JSON.stringify(jobPermissions(packagePages)) !== JSON.stringify(['contents: read'])) {
       errors.push('SEC-001: package_pages permissions must be exactly contents: read');
     }
-    if (!packagePages.includes('uses: actions/upload-pages-artifact@')) {
+    if (!uploadPagesStep.includes('uses: actions/upload-pages-artifact@')) {
       errors.push('ARCH-002: package_pages must upload dist with upload-pages-artifact');
     }
-    if (!/uses:\s*actions\/upload-pages-artifact@[0-9a-f]{40}\s+#\s*v?\d+\.\d+\.\d+/.test(packagePages)) {
+    if (!/uses:\s*actions\/upload-pages-artifact@[0-9a-f]{40}\s+#\s*v?\d+\.\d+\.\d+/.test(uploadPagesStep)) {
       errors.push('CI-005: package_pages must pin upload-pages-artifact with a readable version');
     }
-    if (!/path:\s*dist\//.test(packagePages)) {
+    if (!/path:\s*dist\//.test(uploadPagesStep)) {
       errors.push('ARCH-002: package_pages must upload dist/');
+    }
+    if (!/include-hidden-files:\s*true/.test(uploadPagesStep)) {
+      errors.push('ARCH-002: package_pages must preserve hidden files in the Pages artifact');
     }
     if (!packagePages.includes('dist/index.html')
       || !packagePages.includes('dist/assets/asset-manifest.json')
@@ -291,7 +307,12 @@ function mutateJob(fixture, jobName, mutate) {
 }
 
 test('repository workflows preserve the exact tested-artifact deployment contract', () => {
-  assertContracts(readRepositoryFixture());
+  const fixture = readRepositoryFixture();
+  const packagePages = extractJob(fixture.workflows['ci.yml'], 'package_pages');
+  const uploadPagesStep = extractNamedStep(packagePages, 'Upload Pages artifact');
+
+  assert.match(uploadPagesStep, /include-hidden-files:\s*true/);
+  assertContracts(fixture);
 });
 
 test('contract rejects a removed package gate dependency', () => {
@@ -316,6 +337,14 @@ test('contract rejects missing package digest enforcement', () => {
     block.replace('          digest-mismatch: error\n', '')
   ));
   assert.match(validateWorkflowContracts(mutated).join('\n'), /package_pages must fail on digest mismatch/);
+});
+
+test('contract rejects excluding the hidden Vite manifest from the Pages artifact', () => {
+  const fixture = readRepositoryFixture();
+  const mutated = mutateJob(fixture, 'package_pages', block => (
+    block.replace('          include-hidden-files: true\n', '')
+  ));
+  assert.match(validateWorkflowContracts(mutated).join('\n'), /package_pages must preserve hidden files/);
 });
 
 test('contract rejects a different download action revision for Pages packaging', () => {
@@ -400,5 +429,6 @@ test('contract rejects restoration of the legacy Pages workflow', () => {
 
 module.exports = {
   extractJob,
+  extractNamedStep,
   validateWorkflowContracts,
 };

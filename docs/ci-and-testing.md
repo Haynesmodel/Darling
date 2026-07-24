@@ -63,14 +63,16 @@ After that job, three independent lanes run in parallel:
 
 On pushes to `main`, two post-gate jobs continue the same artifact's provenance chain:
 
-- `package_pages` needs both `quality_build` and `ci / gate`, downloads `darling-dist-<commit SHA>` with digest-mismatch enforcement, rejects an empty `index.html`, asset manifest, or hidden Vite manifest, and passes the unchanged `dist/` directory to `actions/upload-pages-artifact`.
-- `deploy_pages` needs only `package_pages`, confirms through the GitHub API that the workflow SHA is still the current `main` tip, and deploys the Pages transport artifact to the `github-pages` environment.
+- `package_pages` needs both `quality_build` and `ci / gate`, downloads `darling-dist-<commit SHA>` with digest-mismatch enforcement, rejects an empty `index.html`, asset manifest, or hidden Vite manifest, and passes the unchanged `dist/` directory—including hidden files—to `actions/upload-pages-artifact`.
+- `deploy_pages` needs only `package_pages`, checks through the GitHub API immediately before the deploy action that the workflow SHA is still the current `main` tip, and deploys the Pages transport artifact to the `github-pages` environment.
 
 Pull requests run the complete quality gate but skip both Pages jobs. The workflow defaults to `contents: read`; only `deploy_pages` receives job-scoped `pages: write` and `id-token: write`. Workflow-level cancellation stops superseded CI runs, a production concurrency group serializes deploy calls, and the immediately preceding current-main check provides a second stale-run defense.
 
+The stale-run defense is best effort, not an atomic compare-and-deploy guarantee. A newer `main` commit can land after the API check and before GitHub accepts the deployment request. Cancellation and production serialization narrow that race, and a run that is already stale at the check fails before calling `deploy-pages`, but GitHub's Pages action does not expose an expected-main-SHA precondition.
+
 The SHA-named generic CI artifact and the GitHub Pages artifact have different roles. The generic artifact is the one-day, digest-verified build consumed by browser tests and packaging. `actions/upload-pages-artifact` only converts that downloaded directory into GitHub Pages' transport format; no post-test checkout, install, build, minification, or file rewrite is allowed.
 
-The exact-artifact delivery path was integrated in [pull request #42](https://github.com/Haynesmodel/Darling/pull/42). Its contract is enforced by [`test/workflow-contracts.test.cjs`](../test/workflow-contracts.test.cjs), including mutation tests for gate dependencies, build duplication, digest enforcement, permissions, main-only conditions, deploy-action cardinality, the stable gate name, and restoration of the legacy workflow.
+The exact-artifact delivery path was integrated in [pull request #42](https://github.com/Haynesmodel/Darling/pull/42). Its contract is enforced by [`test/workflow-contracts.test.cjs`](../test/workflow-contracts.test.cjs), including mutation tests for gate dependencies, build duplication, digest enforcement, hidden-file preservation, permissions, main-only conditions, deploy-action cardinality, the stable gate name, and restoration of the legacy workflow.
 
 ## Pages failure triage and rollback
 
@@ -83,7 +85,7 @@ The prior successful Pages deployment remains live when a new run fails before r
 - If Pages packaging or deployment fails because of a transient GitHub incident, rerun only the current tip while its one-day generic artifact is retained.
 - If the application or pipeline must roll back, revert the offending source or pipeline pull request through the normal protected-branch workflow. The revert creates a new current-main SHA, rebuilds and retests it, and deploys that newly verified artifact.
 
-An old non-tip workflow is not eligible for deployment, even if its artifact still exists. Historical manual promotion is outside this pipeline's contract.
+An old non-tip workflow detected by the pre-deploy check is not eligible for deployment, even if its artifact still exists. Because that check and the Pages deployment request are separate API operations, a newer `main` commit can still land in the narrow interval between them. Historical manual promotion is outside this pipeline's contract.
 
 Before merging a Pages workflow change, verify that repository Pages publishing uses GitHub Actions, the `github-pages` environment exists and permits `main`, and no legacy workflow run is still in flight. After merge, verify the environment record, source SHA, artifact digest, deployed URL, production `/Darling/` route, representative interaction, asset requests, and console.
 

@@ -144,6 +144,15 @@ function validateSleeperWorkflow(source, errors) {
   }
 
   const expectedAppAction = 'actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0';
+  const expectedAppInputs = [
+    'client-id',
+    'permission-contents',
+    'permission-pull-requests',
+    'private-key',
+  ];
+  const observedAppInputs = [...appToken.matchAll(/^ {10}([a-z][a-z-]+):/gm)]
+    .map(match => match[1])
+    .sort();
   if (!appToken.includes(expectedAppAction)
     || !appToken.includes('client-id: ${{ vars.DARLING_AUTOMATION_CLIENT_ID }}')
     || !appToken.includes('private-key: ${{ secrets.DARLING_AUTOMATION_PRIVATE_KEY }}')
@@ -154,8 +163,22 @@ function validateSleeperWorkflow(source, errors) {
   if (/\bapp-id:|\bowner:|\brepositories:|permission-(?:issues|actions|workflows|administration):|skip-token-revoke:/.test(appToken)) {
     errors.push('SLEEPER-SEC-005: App token inputs must not widen scope or disable revocation');
   }
-  if (update.indexOf('node scripts/summarize_sleeper_update.cjs') === -1
-    || update.indexOf('node scripts/summarize_sleeper_update.cjs') > update.indexOf('actions/create-github-app-token@')) {
+  if (JSON.stringify(observedAppInputs) !== JSON.stringify(expectedAppInputs)) {
+    errors.push('SLEEPER-SEC-005: App token inputs must be exactly Client ID, private key, Contents write, and Pull requests write');
+  }
+  const authenticationOrder = [
+    'npm run generate:derived',
+    'npm run generate:manifest',
+    'npm run check:data-generated',
+    'npm run test:assets',
+    '- name: Enforce change allowlist',
+    'node scripts/summarize_sleeper_update.cjs',
+    'actions/create-github-app-token@',
+  ].map(marker => update.indexOf(marker));
+  if (authenticationOrder.some(index => index === -1)
+    || authenticationOrder.some((index, position) => (
+      position > 0 && index <= authenticationOrder[position - 1]
+    ))) {
     errors.push('SLEEPER-SEC-003: validation and summary safety must finish before App authentication');
   }
   if (!appScope.includes('gh api installation/repositories')
@@ -688,6 +711,10 @@ test('Sleeper contract rejects App token regressions and widened scope', () => {
       source => source.replace('          permission-pull-requests: write\n', '          permission-pull-requests: write\n          skip-token-revoke: true\n'),
       /disable revocation/,
     ],
+    [
+      source => source.replace('          permission-pull-requests: write\n', '          permission-pull-requests: write\n          permission-deployments: write\n'),
+      /App token inputs must be exactly/,
+    ],
   ];
   for (const [mutate, expected] of cases) {
     const mutated = mutateSleeper(fixture, mutate);
@@ -713,6 +740,22 @@ test('Sleeper contract rejects token creation before summary safety', () => {
     '          node scripts/summarize_sleeper_update.cjs \\\n',
     '          node scripts/unsafe_summary.cjs \\\n',
   ));
+  assert.match(
+    validateWorkflowContracts(mutated).join('\n'),
+    /validation and summary safety must finish before App authentication/,
+  );
+});
+
+test('Sleeper contract rejects validation moved after App authentication', () => {
+  const fixture = readRepositoryFixture();
+  const mutated = mutateSleeper(fixture, (source) => {
+    const update = extractJob(source, 'update');
+    const validation = extractNamedStep(update, 'Validate promoted snapshot');
+    assert.notEqual(validation, '');
+    return source
+      .replace(validation, '')
+      .replace('      - name: Verify App repository scope', `${validation}      - name: Verify App repository scope`);
+  });
   assert.match(
     validateWorkflowContracts(mutated).join('\n'),
     /validation and summary safety must finish before App authentication/,

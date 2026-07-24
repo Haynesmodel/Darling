@@ -4,6 +4,12 @@ import { buildLiveMovement, buildProjectedStandings, resolveCurrentSeasonRules }
 import { buildUrlFromState } from '../../../js/state-helpers.js';
 import type { CurrentSeasonData, CurrentSeasonGame, H2HGame, RivalryDefinition, SeasonSummaryRow } from '../../data/generated/asset-types';
 import { assessDataFreshness } from '../../data/data-freshness';
+import { resolveSeasonPresentation } from '../../data/season-presentation';
+import {
+  latestCompleteSeason,
+  resolveSeasonRecap,
+  seasonSummaryRows,
+} from '../../data/season-recap';
 import type {
   LeaguePulseViewModel,
   PulseCurseModel,
@@ -40,68 +46,13 @@ function canonicalPair(a: string, b: string): string {
   return [a, b].sort((left, right) => left.localeCompare(right)).join('|');
 }
 
-function completedSummaryRows(rows: SeasonSummaryRow[], season: number): { rows: SeasonSummaryRow[]; complete: boolean } {
-  const matching = rows.filter(row => Number(row.season) === season);
-  return {
-    rows: matching,
-    complete: matching.filter(row => row.champion).length === 1 && matching.filter(row => row.saunders).length === 1,
-  };
-}
-
-function latestCompleteSeason(rows: SeasonSummaryRow[]): number | null {
-  const seasons = [...new Set(rows.map(row => Number(row.season)).filter(Number.isFinite))].sort((a, b) => b - a);
-  return seasons.find(season => completedSummaryRows(rows, season).complete) ?? null;
-}
-
-function spotlightWeek(currentSeason: CurrentSeasonData): number | null {
-  const games = currentSeason.games || [];
-  const weeks = [...new Set(games.map(game => numeric(game.week)).filter(Number.isFinite))].sort((a, b) => a - b);
-  if (!weeks.length) return null;
-  const live = games.filter(game => game.status === 'live').map(game => game.week);
-  if (live.length) return Math.max(...live);
-  if (numeric(currentSeason.current_week) !== null && weeks.includes(Number(currentSeason.current_week))) return Number(currentSeason.current_week);
-  const finals = games.filter(game => game.status === 'final').map(game => game.week);
-  const latestFinal = finals.length ? Math.max(...finals) : null;
-  const future = games.filter(game => game.status === 'scheduled' && (latestFinal === null || game.week > latestFinal)).map(game => game.week);
-  if (future.length) return Math.min(...future);
-  if (finals.length) return Math.max(...finals);
-  return Math.min(...weeks);
-}
-
 export function resolvePulseSeasonState(input: {
   currentSeason: CurrentSeasonData | null;
   seasonSummaries: SeasonSummaryRow[];
   leagueGames: H2HGame[];
 }): PulseSeasonState {
-  const { currentSeason, seasonSummaries, leagueGames } = input;
-  if (!currentSeason) {
-    const completeSeason = latestCompleteSeason(seasonSummaries);
-    const historicalSeason = leagueGames.length ? Math.max(...leagueGames.map(game => Number(game.season)).filter(Number.isFinite)) : null;
-    return { phase: completeSeason !== null ? 'offseason' : 'historical-fallback', season: completeSeason ?? historicalSeason, spotlightWeek: null, isLive: false, summaryComplete: completeSeason !== null };
-  }
-  const games = currentSeason.games || [];
-  const season = Number(currentSeason.season);
-  const week = spotlightWeek(currentSeason);
-  const hasLive = games.some(game => game.status === 'live');
-  const hasFinal = games.some(game => game.status === 'final');
-  const hasScheduled = games.some(game => game.status === 'scheduled');
-  const summary = completedSummaryRows(seasonSummaries, season);
-  if (!games.length) {
-    const fallback = latestCompleteSeason(seasonSummaries);
-    return { phase: fallback !== null ? 'offseason' : 'historical-fallback', season: fallback ?? season, spotlightWeek: null, isLive: false, summaryComplete: fallback !== null };
-  }
-  if (hasScheduled && !hasFinal && !hasLive) return { phase: 'preseason', season, spotlightWeek: week, isLive: false, summaryComplete: summary.complete };
-  if (hasScheduled || hasLive) {
-    const spotlightGames = games.filter(game => game.week === week);
-    const maxRegular = numeric(currentSeason.playoff_rules?.regular_season_max_week ?? currentSeason.regular_season_max_week);
-    const postseason = (week !== null && maxRegular !== null && week > maxRegular)
-      || spotlightGames.some(game => game.type !== 'Regular' || String(game.round || '').trim());
-    return { phase: postseason ? 'postseason' : 'regular-season', season, spotlightWeek: week, isLive: hasLive, summaryComplete: summary.complete };
-  }
-  if (games.every(game => game.status === 'final')) {
-    return { phase: summary.complete ? 'offseason' : 'finalizing', season, spotlightWeek: week, isLive: false, summaryComplete: summary.complete };
-  }
-  return { phase: 'historical-fallback', season, spotlightWeek: week, isLive: hasLive, summaryComplete: summary.complete };
+  const { source: _source, ...state } = resolveSeasonPresentation(input);
+  return state;
 }
 
 function pathUrl(pathname: string, options: Record<string, unknown>): string {
@@ -301,11 +252,13 @@ function yearInReview(data: PulseModelData, state: PulseSeasonState, pathname: s
     ? latestCompleteSeason(data.seasonSummaries.filter(row => Number(row.season) < state.season))
     : state.season;
   if (reviewSeason === null) return null;
-  const rows = completedSummaryRows(data.seasonSummaries, reviewSeason).rows.slice().sort((a, b) => a.finish - b.finish || a.owner.localeCompare(b.owner));
-  const champion = rows.find(row => row.champion);
-  const saunders = rows.find(row => row.saunders);
-  if (!champion || !saunders) return null;
-  const runnerUp = rows.find(row => row.finish === 2) || null;
+  const recap = resolveSeasonRecap({
+    season: reviewSeason,
+    seasonSummaries: data.seasonSummaries,
+    leagueGames: data.leagueGames,
+  });
+  if (!recap?.complete || !recap.champion || !recap.saunders) return null;
+  const rows = seasonSummaryRows(data.seasonSummaries, reviewSeason);
   const games = data.leagueGames.filter(game => Number(game.season) === reviewSeason);
   const sideRows = games.flatMap(game => [{ owner: game.teamA, opponent: game.teamB, score: game.scoreA, opponentScore: game.scoreB, game }, { owner: game.teamB, opponent: game.teamA, score: game.scoreB, opponentScore: game.scoreA, game }]);
   const points = rows.slice().sort((a, b) => b.points_for - a.points_for || a.owner.localeCompare(b.owner))[0];
@@ -320,13 +273,13 @@ function yearInReview(data: PulseModelData, state: PulseSeasonState, pathname: s
   if (high) superlatives.push({ label: 'Highest weekly score', value: high.owner, detail: `${formatScore(high.score)} vs ${high.opponent}`, href: historyLink(data, pathname, { selectedTeam: high.owner, selectedSeasons: new Set([reviewSeason]), selectedGameSort: 'scoreDesc', selectedGameLimit: 1, selectedFocus: 'games' }) });
   if (close) superlatives.push({ label: 'Closest game', value: `${close.teamA} vs ${close.teamB}`, detail: `${formatScore(close.scoreA)}–${formatScore(close.scoreB)}`, href: seasonHref });
   if (streak?.best) superlatives.push({ label: 'Longest win streak', value: streak.owner, detail: `${streak.best} games`, href: seasonHref });
-  const championship = games
-    .filter(game => String(game.round || '').toLowerCase().includes('championship'))
-    .sort((a, b) => String(b.date).localeCompare(String(a.date)))[0] || null;
   return {
-    season: reviewSeason, champion: champion.owner, runnerUp: runnerUp?.owner || null, saunders: saunders.owner,
-    championshipResult: championship ? `${championship.teamA} ${formatScore(championship.scoreA)}–${formatScore(championship.scoreB)} ${championship.teamB}` : null,
-    finalStandings: rows.map(row => ({ finish: row.finish, owner: row.owner, record: `${row.wins}-${row.losses}${row.ties ? `-${row.ties}` : ''}`, pointsFor: row.points_for })),
+    season: reviewSeason,
+    champion: recap.champion,
+    runnerUp: recap.runnerUp,
+    saunders: recap.saunders,
+    championshipResult: recap.championshipResult,
+    finalStandings: recap.finalStandings,
     superlatives,
   };
 }

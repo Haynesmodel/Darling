@@ -5,6 +5,7 @@
 @import "./shell.css" layer(shell);
 @import "./primitives.css" layer(primitives);
 @import "./controls.css" layer(components);
+@import "./section-disclosure.css" layer(components);
 @import "../components/search/search.css" layer(components);
 @import "../components/data-freshness/data-freshness.css" layer(components);
 @import "./utilities.css" layer(utilities);

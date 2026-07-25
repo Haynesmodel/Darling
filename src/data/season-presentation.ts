@@ -84,6 +84,9 @@ export function resolveSeasonPresentation(input: {
 
   const games = Array.isArray(currentSeason.games) ? currentSeason.games : [];
   if (!games.length) {
+    if (selected === currentSeasonNumber) {
+      return historicalState(currentSeasonNumber, seasonSummaries);
+    }
     const completeSeason = latestCompleteSeason(seasonSummaries);
     if (completeSeason !== null) return historicalState(completeSeason, seasonSummaries, 'offseason');
     return historicalState(latestHistoricalSeason(leagueGames, seasonSummaries), seasonSummaries);

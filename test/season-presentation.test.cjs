@@ -110,6 +110,30 @@ test('selected older season is historical while a newer current asset exists', (
   });
 });
 
+test('empty current data falls back consistently unless its season is explicitly selected', () => {
+  const input = {
+    currentSeason: current([]),
+    seasonSummaries: summary(2025),
+    leagueGames: [{ season: 2025 }],
+  };
+  assert.deepEqual(domain.resolveSeasonPresentation(input), {
+    phase: 'offseason',
+    season: 2025,
+    spotlightWeek: null,
+    isLive: false,
+    summaryComplete: true,
+    source: 'historical',
+  });
+  assert.deepEqual(domain.resolveSeasonPresentation({ ...input, selectedSeason: 2026 }), {
+    phase: 'historical-fallback',
+    season: 2026,
+    spotlightWeek: null,
+    isLive: false,
+    summaryComplete: false,
+    source: 'historical',
+  });
+});
+
 test('summary completeness fails closed and recap withholds disputed honors', () => {
   for (const issue of ['missing-champion', 'duplicate-champion', 'missing-saunders', 'duplicate-saunders']) {
     assert.equal(domain.isSeasonSummaryComplete(summary(2026, issue), 2026), false, issue);

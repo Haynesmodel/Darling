@@ -25,6 +25,33 @@ test('canonical finalized Current opens a compact authoritative recap without od
   await expect(page.locator('#current-section-jump')).toHaveValue('current-recap');
 });
 
+test('empty upcoming Current data keeps the picker, recap, and title on one season', async ({ page }) => {
+  const fixture = createSnapshotFixture({
+    mutations: {
+      CurrentSeason: current => {
+        current.season = 2026;
+        current.current_week = 1;
+        current.weeks_fetched = [];
+        current.games = [];
+      },
+    },
+  });
+  await fixture.install(page);
+
+  await page.goto('/?tab=current');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('#currentSeasonSelect')).toHaveValue('2025');
+  await expect(page.locator('#currentHero h3')).toHaveText('2025 Recap');
+  await expect(page.locator('#currentRecap')).toContainText('Zook');
+
+  await page.goto('/?tab=current&currentSeason=2026');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('#currentSeasonSelect')).toHaveValue('2026');
+  await expect(page.locator('#currentHero h3')).toHaveText('2026 Recap');
+  await expect(page.locator('#currentRecap')).toContainText('Authoritative honors pending');
+  await expect(page.locator('#currentRecap')).not.toContainText('Zook');
+});
+
 test('explicit finalized command and recap views survive reload', async ({ page }) => {
   await page.goto('/?tab=current&currentView=command');
   await page.waitForLoadState('networkidle');

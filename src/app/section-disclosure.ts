@@ -121,8 +121,12 @@ export function createSectionDisclosure(input: {
         definition.details.dataset.sectionId = definition.id;
         summary.id ||= `${definition.id}-summary`;
         const stored = state.get(definition.id);
-        const open = stored ?? Boolean(definition.defaultOpen);
-        if (!state.has(definition.id)) state.set(definition.id, open);
+        const requestedOpen = stored ?? Boolean(definition.defaultOpen);
+        const preservesFocusedSection = available
+          && definition.details.open
+          && definition.details.contains(input.doc.activeElement);
+        const open = preservesFocusedSection || requestedOpen;
+        if (!state.has(definition.id) || preservesFocusedSection) state.set(definition.id, open);
         const openChanged = definition.details.open !== (available && open);
         definition.details.open = available && open;
 

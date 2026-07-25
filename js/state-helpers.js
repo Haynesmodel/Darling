@@ -208,6 +208,7 @@ function buildUrlFromState(opts = {}) {
   const selectedCurrentWeek = Object.prototype.hasOwnProperty.call(opts, 'selectedCurrentWeek') ? opts.selectedCurrentWeek : null;
   const selectedCurrentOwner = Object.prototype.hasOwnProperty.call(opts, 'selectedCurrentOwner') ? opts.selectedCurrentOwner : null;
   const selectedCurrentView = Object.prototype.hasOwnProperty.call(opts, 'selectedCurrentView') ? opts.selectedCurrentView : null;
+  const defaultCurrentView = Object.prototype.hasOwnProperty.call(opts, 'defaultCurrentView') ? opts.defaultCurrentView : 'command';
   const selectedCurrentProjection = Object.prototype.hasOwnProperty.call(opts, 'selectedCurrentProjection') ? opts.selectedCurrentProjection : null;
   const selectedDynastyMode = Object.prototype.hasOwnProperty.call(opts, 'selectedDynastyMode') ? opts.selectedDynastyMode : null;
   const selectedDynastyOwner = Object.prototype.hasOwnProperty.call(opts, 'selectedDynastyOwner') ? opts.selectedDynastyOwner : null;
@@ -258,7 +259,7 @@ function buildUrlFromState(opts = {}) {
     if (isFiniteInput(selectedCurrentSeason)) params.set('currentSeason', `${selectedCurrentSeason}`);
     if (isFiniteInput(selectedCurrentWeek)) params.set('currentWeek', `${selectedCurrentWeek}`);
     if (selectedCurrentOwner) params.set('currentOwner', selectedCurrentOwner);
-    if (selectedCurrentView && selectedCurrentView !== 'command') params.set('currentView', selectedCurrentView);
+    if (selectedCurrentView && selectedCurrentView !== defaultCurrentView) params.set('currentView', selectedCurrentView);
     if (selectedCurrentProjection && selectedCurrentProjection !== 'ifScoresHold') params.set('currentProjection', selectedCurrentProjection);
   }
   if (tab === 'trophy') {

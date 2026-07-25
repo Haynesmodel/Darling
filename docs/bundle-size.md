@@ -29,9 +29,25 @@ The July 24, 2026 semantic-navigation and compact-chrome change was measured fro
 
 The grouped navigation replaces the roving-tab and overflow-arrow implementation without adding a dependency or raising a ceiling. All eight dynamic feature entries remain present, Pulse and History remain Plot-free, and the entry retains 1,855 gzip bytes of headroom.
 
+## Current lifecycle and disclosure delta
+
+The July 24, 2026 phase-aware Current Season change was measured from merged semantic-navigation main `91f2ca5` with Node 24.14.0, Vite 8.1.4, and `VITE_BASE_PATH=/Darling/`.
+
+| Metric | `91f2ca5` | Lifecycle/disclosure | Delta | Enforced ceiling |
+| --- | ---: | ---: | ---: | ---: |
+| Entry raw | 178,018 | 178,168 | +150 | 190,000 |
+| Entry gzip | 54,145 | 54,184 | +39 | 56,000 |
+| Aggregate JavaScript gzip | 275,095 | 276,969 | +1,874 | 280,000 |
+| Chart-runtime raw | 294,294 | 294,294 | 0 | 305,000 |
+| Chart-runtime gzip | 97,674 | 97,674 | 0 | 100,000 |
+| Current Season static gzip | 198,607 | 201,013 | +2,406 | 205,000 |
+| Current Season eligible settled gzip | 201,943 | 204,349 | +2,406 | 205,000 |
+
+No ceiling or runtime dependency changed. The generated browser validator now embeds only the RFC 3339 `date` and `date-time` implementations referenced by Darling's schemas instead of transporting the rest of the unused `ajv-formats` catalog. Node-side schema tooling retains the full package, and parity tests compare the specialized browser functions with AJV's reference validators. The canonical finalized route is the smaller static closure at runtime because recap does not start odds work; the settled figure remains the enforced worst-case closure for an eligible live regular-season command view.
+
 ## Route closures
 
-Static closures count the production entry, selected feature, verified data loader, validators, and recursive static imports exactly once. Settled closures additionally count only dynamic work started by that selected feature during normal activation: Current Season odds and Draft Spot charts. The checker deliberately does not follow every dynamic feature import from `index.html`.
+Static closures count the production entry, selected feature, verified data loader, validators, and recursive static imports exactly once. Settled closures additionally count eligible selected dynamics: Current Season odds for an active regular-season command/standings view and Draft Spot charts. The checker deliberately does not follow every dynamic feature import from `index.html`.
 
 | Route | Before static | Before settled | After static | After settled | Settled ceiling |
 | --- | ---: | ---: | ---: | ---: | ---: |

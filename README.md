@@ -84,13 +84,17 @@ Feature architecture:
 
 Accessibility and CSS:
 - Primary navigation uses five semantic link/disclosure groups with canonical destination URLs and `aria-current`; filter disclosures retain native checkbox semantics, and application dialogs manage inertness, focus containment, scroll lock, and focus restoration.
+- Analytical sections use native `details`/`summary` plus a feature-labelled “Jump to section” control. Open state is in-memory only, focus links reveal their target, and disclosure state never changes the product URL.
 - The application stylesheet entry is `src/styles/app.css`; shared and feature styles are assigned to explicit cascade layers.
 - See [`docs/accessibility.md`](./docs/accessibility.md) and [`docs/css-architecture.md`](./docs/css-architecture.md) before adding a feature destination, disclosure, modal, animation, shared style, or feature stylesheet.
 
-Current Season command-center assumptions:
+Current Season lifecycle assumptions:
+- The shared season presentation resolver distinguishes preseason, regular season, postseason, finalizing, offseason, and historical fallback. With no explicit `currentView`, regular season/postseason select `command`; every other phase selects `recap`.
+- Finalized 2025 opens the validated year-in-review with Zook as champion, Singer as runner-up, Connor as Saunders winner, and the final standings. Incomplete summaries withhold both trophy claims.
+- Explicit `currentView=command|recap|matchups|standings|owners` links remain reload-stable. Secondary Current sections are native disclosures and can be opened from the section jump control or existing focus links.
 - Validated `assets/CurrentSeason.json` assets must include the complete `playoff_rules` object required by `schemas/current-season.schema.json`. Historical views instead infer regular-season length, playoff teams, byes, and Saunders slots from the selected season's stored schedule and brackets.
 - Mathematical clinched/eliminated status and deterministic projected standings remain authoritative.
-- A lazily loaded, seeded 10,000-run team-score Monte Carlo model adds playoff, bye, seed, and Saunders probabilities, prior-week movement, and selected-owner win/loss scenarios.
+- During eligible regular-season command/standings views, a lazily loaded, seeded 10,000-run team-score Monte Carlo model adds playoff, bye, seed, and Saunders probabilities, prior-week movement, and selected-owner win/loss scenarios. Preseason, postseason, finalizing, offseason, recap, matchups-only, owners-only, and historical fallback do not request it.
 - Estimates blend completed current-season scoring with recency-weighted owner history and a league prior. They are team-score simulations, not Sleeper player projections. See [`docs/current-season-odds.md`](./docs/current-season-odds.md).
 
 Draft Spot Explorer:

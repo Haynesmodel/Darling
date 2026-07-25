@@ -9,6 +9,7 @@ import {
   currentMatchupsHtml,
   currentPlayoffPictureHtml,
   currentProjectedStandingsHtml,
+  currentRecapHtml,
   currentSeasonHeroHtml,
   currentStandingsHtml,
   currentTeamSnapshotsHtml,
@@ -226,4 +227,34 @@ test('current-season probability estimates attach without replacing deterministi
   assert.equal(view.commandCenter.playoffPicture[0].status, statusBefore);
   assert.match(currentPlayoffPictureHtml(view), /Playoffs 100%/);
   assert.match(currentPlayoffPictureHtml(view), /Seed odds/);
+});
+
+test('recap view renders canonical honors and withholds projections', () => {
+  const view = buildCurrentSeasonViewModel({
+    leagueGames: games,
+    season: 2025,
+    week: 2,
+    selectedView: 'recap',
+  });
+  view.presentation = { phase: 'offseason', source: 'historical', summaryComplete: true };
+  view.recap = {
+    season: 2025,
+    complete: true,
+    champion: 'Zook',
+    runnerUp: 'Singer',
+    saunders: 'Connor',
+    championshipResult: 'Zook 150–100 Singer',
+    finalStandings: [
+      { finish: 1, owner: 'Zook', record: '10-4', pointsFor: 1500 },
+      { finish: 2, owner: 'Singer', record: '9-5', pointsFor: 1450 },
+    ],
+  };
+  const html = currentRecapHtml(view);
+  assert.match(html, /Zook/);
+  assert.match(html, /Singer/);
+  assert.match(html, /Connor/);
+  assert.match(html, /Final Standings/);
+  assert.doesNotMatch(html, /If scores hold|probability methodology/i);
+  assert.equal(currentProjectedStandingsHtml(view), '');
+  assert.equal(currentLiveMovementHtml(view), '');
 });

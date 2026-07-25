@@ -1,4 +1,13 @@
 import { expect, test } from './coverage-fixture.js';
+import { createSnapshotFixture } from './snapshot-fixture.js';
+import { regularSeason2026 } from './season-phase-fixtures.js';
+
+async function installLiveCurrent(page) {
+  const fixture = createSnapshotFixture({
+    mutations: { CurrentSeason: current => regularSeason2026(current, true) },
+  });
+  await fixture.install(page);
+}
 
 async function assertChart(page, hostSelector, namePattern) {
   const host = page.locator(hostSelector);
@@ -27,6 +36,7 @@ test.afterEach(async ({ page }) => {
 });
 
 test('Current Season seed movement chart renders and redraws once', async ({ page }) => {
+  await installLiveCurrent(page);
   await page.goto('/?tab=current&currentOwner=Joe');
   await assertChart(page, '#currentSeedMovementPlot', /Live seed movement by owner/);
   await page.locator('#currentProjectionSelect').selectOption('current');
@@ -35,6 +45,7 @@ test('Current Season seed movement chart renders and redraws once', async ({ pag
 });
 
 test('Current Season playoff-odds movement chart completes asynchronously', async ({ page }) => {
+  await installLiveCurrent(page);
   await page.goto('/?tab=current&currentOwner=Joe');
   await assertChart(page, '#currentOddsMovementPlot', /Playoff odds movement by owner/);
   await expect(page.locator('.current-odds-methodology')).toBeVisible();
@@ -42,7 +53,9 @@ test('Current Season playoff-odds movement chart completes asynchronously', asyn
 });
 
 test('Current Season projected standings chart retains owner and seed titles', async ({ page }) => {
+  await installLiveCurrent(page);
   await page.goto('/?tab=current&currentOwner=Joe');
+  await page.locator('#current-section-jump').selectOption('current-projected-standings');
   await assertChart(page, '#currentProjectedStandingsPlot', /Projected standings seed by owner/);
   expect(await page.locator('#currentProjectedStandingsPlot svg title').count()).toBeGreaterThan(0);
   await expectNoPageOverflow(page);

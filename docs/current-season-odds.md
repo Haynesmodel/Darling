@@ -1,6 +1,21 @@
 # Current Season probability model
 
-The Current Season command center keeps deterministic standings, clinched/eliminated status, and configured tiebreakers authoritative. Probabilities are a separate estimate layer.
+The Current Season command center keeps deterministic standings, clinched/eliminated status, and configured tiebreakers authoritative. Probabilities are a separate estimate layer and are not part of the default finalized-season recap.
+
+## Lifecycle gate
+
+`src/data/season-presentation.ts` owns the six presentation phases and the single odds eligibility decision. The probability module is requested only for a regular-season `command` or `standings` view.
+
+| Phase/view | Probability work |
+| --- | --- |
+| Regular-season command or standings | Eligible; load on demand |
+| Preseason recap | Not requested |
+| Postseason command | Not requested; trophy paths use deterministic game state |
+| Finalizing or offseason recap | Not requested |
+| Historical fallback | Not requested |
+| Matchups, owners, or recap view in any phase | Not requested |
+
+An explicit command view for a finalized season exposes historical/final analysis, but its projection mode is completed-only and it does not calculate future odds.
 
 ## Model contract
 
@@ -35,4 +50,4 @@ When live scores are not declared reliable, simulations use pregame team strengt
 - Completed-season results collapse to exact 0%/100% probabilities.
 - Clinched and eliminated mathematical states override estimates in the presentation layer.
 
-The engine loads only when Current Season is rendered, preserving the critical entry bundle budget.
+The engine loads only when an eligible active Current Season view is rendered. Finalized 2025 therefore reaches ready state without requesting the odds module or probability methodology.

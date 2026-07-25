@@ -366,7 +366,7 @@ test('changing the team updates the rendered rows and url state', async ({ page 
 });
 
 test('current season tab renders matchups and links to head to head context', async ({ page }) => {
-  await page.goto('/?tab=current');
+  await page.goto('/?tab=current&currentView=command');
   await page.waitForLoadState('networkidle');
 
   await expect(page.locator('#tabCurrentBtn')).toHaveClass(/active/);
@@ -374,14 +374,10 @@ test('current season tab renders matchups and links to head to head context', as
   await expect(page.locator('#currentWeekSelect')).toBeVisible();
   await expect(page.locator('#currentViewSelect')).toBeVisible();
   await expect(page.locator('#currentOwnerSelect')).toBeVisible();
-  await expect(page.locator('#currentProjectionSelect')).toBeVisible();
+  await expect(page.locator('#currentProjectionSelect')).toBeHidden();
   await expect(page.locator('#currentProjectionSelect')).toHaveValue('ifScoresHold');
   await expect(page.locator('#currentHero')).toContainText('Current Season');
-  await expect(page.locator('#currentPlayoffPicture')).toContainText('Playoff Picture');
-  await expect(page.locator('#currentPlayoffPicture')).toContainText('Saunders danger');
-  await expect(page.locator('#currentWeekNeeds')).toContainText('This Week Needs');
-  await expect(page.locator('#currentProjectedStandings')).toContainText('Projected Standings');
-  await expect(page.locator('#currentProjectedStandings')).toContainText('Method:');
+  await expect(page.locator('#currentHero')).toContainText('historical/final analysis');
   await expect(page.locator('html')).toHaveAttribute('data-season-mode', 'saunders');
 
   const matchupCount = await page.locator('.current-matchup-card').count();
@@ -405,15 +401,6 @@ test('current season tab renders matchups and links to head to head context', as
   await expect(page.locator('html')).toHaveAttribute('data-owner-theme', 'Joe');
   await expect(page.locator('#currentWeekNeeds .current-owner-focus')).toContainText('Joe');
 
-  await page.goto('/?tab=current&currentProjection=current');
-  await page.waitForLoadState('networkidle');
-  await expect(page.locator('#currentProjectionSelect')).toHaveValue('current');
-  await expect(page.locator('#currentProjectedStandings')).toContainText('Completed games only');
-  await expect(page.locator('#currentLiveMovement')).toContainText('Completed games only');
-
-  await page.locator('#currentProjectionSelect').selectOption('ifScoresHold');
-  await expect(page.locator('#currentProjectionSelect')).toHaveValue('ifScoresHold');
-  await expect(page).not.toHaveURL(/currentProjection=current/);
 });
 
 test('current season view modes hide filtered section containers', async ({ page }) => {
@@ -428,8 +415,10 @@ test('current season view modes hide filtered section containers', async ({ page
   await page.goto('/?tab=current&currentView=standings');
   await page.waitForLoadState('networkidle');
   await expect(page.locator('#currentPlayoffPicture')).toBeVisible();
-  await expect(page.locator('#currentLiveMovement')).toBeVisible();
-  await expect(page.locator('#currentProjectedStandings')).toBeVisible();
+  await expect(page.locator('#currentLiveMovement')).toBeHidden();
+  await expect(page.locator('#currentProjectedStandings')).toBeHidden();
+  await expect(page.locator('#currentStandings')).toBeHidden();
+  await page.locator('#currentStandingsDisclosure > summary').click();
   await expect(page.locator('#currentStandings')).toBeVisible();
   await expect(page.locator('#currentMatchups')).toBeHidden();
   await expect(page.locator('#currentTeamSnapshots')).toBeHidden();
@@ -438,6 +427,8 @@ test('current season view modes hide filtered section containers', async ({ page
   await page.goto('/?tab=current&currentView=owners&currentOwner=Joe');
   await page.waitForLoadState('networkidle');
   await expect(page.locator('#currentWeekNeeds')).toBeVisible();
+  await expect(page.locator('#currentTeamSnapshots')).toBeHidden();
+  await page.locator('#currentTeamSnapshotsDisclosure > summary').click();
   await expect(page.locator('#currentTeamSnapshots')).toBeVisible();
   await expect(page.locator('#currentPlayoffPicture')).toBeHidden();
   await expect(page.locator('#currentProjectedStandings')).toBeHidden();
@@ -448,7 +439,7 @@ test('current season view modes hide filtered section containers', async ({ page
 test('browser navigation restores omitted Current Season defaults', async ({ page }) => {
   await page.goto('/?tab=current');
   await page.waitForLoadState('networkidle');
-  await expect(page.locator('#currentViewSelect')).toHaveValue('command');
+  await expect(page.locator('#currentViewSelect')).toHaveValue('recap');
   await expect(page.locator('#currentOwnerSelect')).toHaveValue('');
   await expect(page.locator('#currentProjectionSelect')).toHaveValue('ifScoresHold');
 
@@ -457,7 +448,7 @@ test('browser navigation restores omitted Current Season defaults', async ({ pag
 
   await page.goBack();
   await expect.poll(() => new URL(page.url()).searchParams.get('currentView')).toBeNull();
-  await expect(page.locator('#currentViewSelect')).toHaveValue('command');
+  await expect(page.locator('#currentViewSelect')).toHaveValue('recap');
   await expect(page.locator('#currentOwnerSelect')).toHaveValue('');
   await expect(page.locator('#currentProjectionSelect')).toHaveValue('ifScoresHold');
 
@@ -466,7 +457,7 @@ test('browser navigation restores omitted Current Season defaults', async ({ pag
 });
 
 test('historical Current Season standings match the selected week snapshot', async ({ page }) => {
-  await page.goto('/?tab=current&currentSeason=2024&currentWeek=7');
+  await page.goto('/?tab=current&currentSeason=2024&currentWeek=7&currentView=standings');
   await page.waitForLoadState('networkidle');
 
   await expect(page.locator('#currentSeasonSelect')).toHaveValue('2024');
@@ -1130,10 +1121,10 @@ test('interactive tables mount across rivalry, current season, and trophy pages'
   await rivalryGames.locator('.table-expand-button').first().click();
   await expect(rivalryGames.locator('.table-expanded-row')).toContainText('Running series record');
 
-  await page.goto('/?tab=current&currentOwner=Joe');
+  await page.goto('/?tab=current&currentOwner=Joe&currentView=standings');
   await page.waitForLoadState('networkidle');
   await expect(page.locator('[data-table-id="current-standings"] tbody tr')).not.toHaveCount(0);
-  await expect(page.locator('[data-table-id="current-projected"] tbody tr')).not.toHaveCount(0);
+  await expect(page.locator('[data-table-id="current-projected"] tbody tr')).toHaveCount(0);
   await expect(page.locator('[data-table-id="current-standings"] .current-owner-focus-row')).toHaveCount(1);
 
   await page.goto('/?tab=trophy&trophyOwner=Joe');
@@ -1209,7 +1200,7 @@ test('history game-query deep links survive direct loads and reloads', async ({ 
   await expect(page.locator('[data-table-id="history-games"] .table-pagination')).toHaveCount(0);
 });
 
-test('dynamic structured results remain in recents after reopen and reload', async ({ page }) => {
+test('structured game results remain in recents after reopen and reload', async ({ page }) => {
   await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
   await page.evaluate(() => window.darlingSearch.clearRecent());
@@ -1230,8 +1221,11 @@ test('dynamic structured results remain in recents after reopen and reload', asy
   await trigger.click();
   dialog = page.getByRole('dialog', { name: 'Search The Darling' });
   await expect(dialog.getByRole('option').first()).toContainText('140+ point games');
+});
 
-  await page.keyboard.press('Escape');
+test('dynamic season and rivalry results remain in recents after reload', async ({ page }) => {
+  await page.goto('/?tab=history');
+  await page.waitForLoadState('networkidle');
   const dynamicIds = await page.evaluate(() => {
     window.darlingSearch.clearRecent();
     const results = ['2024 regular season', 'Zubs vs Joe'].map(query => window.darlingSearch.search(query)[0]);
@@ -1668,11 +1662,10 @@ test('optional Draft Spot fetch failure leaves the rest of the app usable', asyn
   await expect(page.locator('#historyGamesTable')).toBeVisible();
 });
 
-test('Current Season displays deterministic playoff odds without replacing status labels', async ({ page }) => {
-  await page.goto('/?tab=current&currentOwner=Joe');
+test('finalized Current Season does not calculate future playoff odds', async ({ page }) => {
+  await page.goto('/?tab=current&currentOwner=Joe&currentView=command');
   await page.waitForLoadState('networkidle');
-  await expect(page.locator('.current-odds-methodology')).toBeVisible();
-  await expect(page.locator('.current-odds-chip').first()).toContainText(/Playoffs \d+%|Playoffs <1%|Playoffs >99%/);
-  await expect(page.locator('.current-status-badge').first()).toBeVisible();
-  await expect(page.locator('#currentOddsMovementPlot svg')).toBeVisible();
+  await expect(page.locator('.current-odds-methodology')).toHaveCount(0);
+  await expect(page.locator('.current-odds-chip')).toHaveCount(0);
+  await expect(page.locator('#currentOddsMovementPlot')).toHaveCount(0);
 });

@@ -131,3 +131,192 @@ test('modifier activation remains a normal link and leaves the current SPA uncha
   await expect(page).not.toHaveURL(/tab=draft/);
   await popup.close();
 });
+
+const analyticalRoutes = [
+  { id: 'history', url: '/?tab=history&team=Joe', jump: '#history-section-jump', height: 5000 },
+  { id: 'rivalry', url: '/?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel', jump: '#rivalry-section-jump', height: 5200 },
+  { id: 'trophy', url: '/?tab=trophy&trophyOwner=Joe', jump: '#trophy-section-jump', height: 4200 },
+  { id: 'dynasty', url: '/?tab=dynasty&dynastyMode=calculator&dynastyOwner=Joe', jump: '#dynasty-section-jump', height: 6200 },
+  { id: 'draft', url: '/?tab=draft&draftMode=pick&draftPick=10', jump: '#draft-section-jump', height: 6200 },
+  { id: 'gauntlet', url: '/?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019', jump: '#gauntlet-section-jump', height: 5000 },
+];
+
+test('analytical routes publish their mode-specific primary sections and defer supporting charts', async ({ page }) => {
+  const cases = [
+    {
+      url: analyticalRoutes[0].url,
+      open: ['historyOverviewDisclosure', 'historyFunFactsDisclosure'],
+      closed: 'historyGamesDisclosure',
+      options: ['Owner Overview', 'Fun Facts', 'Curse Tracker', 'Opponent Breakdown', 'Season Recap', 'Week-by-Week', 'All Games'],
+    },
+    {
+      url: analyticalRoutes[1].url,
+      open: ['rivalryLeadDisclosure', 'rivalryHighlightsDisclosure'],
+      closed: 'rivalryTrendDisclosure',
+      options: ['Series Lead', 'Highlights', 'Tale of the Tape', 'Lead Trend', 'Timeline', 'Season Breakdown', 'Game Log'],
+      emptyChart: '#rivalryLeadPlot svg',
+    },
+    {
+      url: analyticalRoutes[2].url,
+      open: ['trophyHardwareDisclosure'],
+      closed: 'trophyCareerDisclosure',
+      options: ['Hardware Shelf', 'League Rank', 'Career Shape', 'Highlights and Low Points', 'Season Ledger'],
+      emptyChart: '#trophyCareerPlot svg',
+    },
+    {
+      url: analyticalRoutes[3].url,
+      open: ['dynastyScoreDisclosure'],
+      closed: 'dynastyTrendDisclosure',
+      options: ['Score Breakdown', 'Period Comparison', 'Best Dynasty Windows', 'Dynasty Trend', 'Era Heatmap', 'Slumps'],
+      emptyChart: '#dynastyTrendPlot svg',
+    },
+    {
+      url: analyticalRoutes[4].url,
+      open: ['draftPickDisclosure', 'draftSelectionDisclosure'],
+      closed: 'draftZoneDisclosure',
+      options: ['Pick Board', 'Zone Comparison', 'Owner Recommendations', 'Owner Timeline', 'Selection Detail', 'Draft Spot Data'],
+      emptyChart: '.draft-zone-chart svg',
+    },
+    {
+      url: analyticalRoutes[5].url,
+      open: ['gauntletMatchupDisclosure', 'gauntletCopyDisclosure'],
+      closed: 'gauntletHistogramDisclosure',
+      options: ['Matchup', 'Score Distribution', 'Key Stats', 'Head to Head Context', 'Narrative and Copy'],
+      emptyChart: '#gauntletHistogramPlot svg',
+    },
+  ];
+
+  for (const entry of cases) {
+    await page.goto(entry.url);
+    await expect(page.locator('.page:not([hidden])')).toHaveAttribute('data-feature-state', 'ready');
+    for (const id of entry.open) await expect(page.locator(`#${id}`)).toHaveAttribute('open', '');
+    await expect(page.locator(`#${entry.closed}`)).not.toHaveAttribute('open', '');
+    await expect(page.locator('.page:not([hidden]) .feature-section-nav option')).toHaveText(entry.options);
+    if (entry.emptyChart) await expect(page.locator(entry.emptyChart)).toHaveCount(0);
+  }
+});
+
+test('section jumps reveal and focus without mutating product URLs', async ({ page }) => {
+  const targets = [
+    [analyticalRoutes[1], 'rivalry-trend', '#rivalryTrendDisclosure', '#rivalryLeadPlot svg'],
+    [analyticalRoutes[2], 'trophy-career', '#trophyCareerDisclosure', '#trophyCareerPlot svg'],
+    [analyticalRoutes[3], 'dynasty-trend', '#dynastyTrendDisclosure', '#dynastyTrendPlot svg'],
+    [analyticalRoutes[4], 'draft-zones', '#draftZoneDisclosure', '.draft-zone-chart svg'],
+    [analyticalRoutes[5], 'gauntlet-distribution', '#gauntletHistogramDisclosure', '#gauntletHistogramPlot svg'],
+  ];
+  for (const [route, section, detailsSelector, chartSelector] of targets) {
+    await page.goto(route.url);
+    await expect(page.locator(`#page-${route.id}`)).toHaveAttribute('data-feature-state', 'ready');
+    const before = page.url();
+    await page.locator(route.jump).selectOption(section);
+    await expect(page.locator(detailsSelector)).toHaveAttribute('open', '');
+    await expect(page.locator(`${detailsSelector} > summary`)).toBeFocused();
+    await expect(page.locator(chartSelector)).toHaveCount(1);
+    expect(page.url()).toBe(before);
+  }
+});
+
+test('disclosure memory is scoped by owner signature and restored on return', async ({ page }) => {
+  await page.goto('/?tab=trophy&trophyOwner=Joe');
+  await page.locator('#trophy-section-jump').selectOption('trophy-moments');
+  await expect(page.locator('#trophyMomentsDisclosure')).toHaveAttribute('open', '');
+
+  await page.locator('#trophyOwnerSelect').selectOption('Joel');
+  await expect(page.locator('#trophyMomentsDisclosure')).not.toHaveAttribute('open', '');
+  await expect(page.locator('#trophyHardwareDisclosure')).toHaveAttribute('open', '');
+
+  await page.locator('#trophyOwnerSelect').selectOption('Joe');
+  await expect(page.locator('#trophyMomentsDisclosure')).toHaveAttribute('open', '');
+});
+
+test('table state survives disclosure close and reopen', async ({ page }) => {
+  await page.goto('/?tab=trophy&trophyOwner=Joe');
+  await page.locator('#trophy-section-jump').selectOption('trophy-ledger');
+  const table = page.locator('[data-table-id="trophy-seasons"]');
+  const finish = table.getByRole('button', { name: 'Sort Finish; currently unsorted' });
+  await finish.click();
+  await expect(table.locator('th').filter({ hasText: 'Finish' })).toHaveAttribute('aria-sort', 'ascending');
+
+  await page.locator('#trophyLedgerDisclosure > summary').click();
+  await expect(page.locator('#trophyLedgerDisclosure')).not.toHaveAttribute('open', '');
+  await page.locator('#trophyLedgerDisclosure > summary').click();
+  await expect(table.locator('th').filter({ hasText: 'Finish' })).toHaveAttribute('aria-sort', 'ascending');
+  await expect(page.locator('#trophyOwnerSelect')).toHaveValue('Joe');
+});
+
+test('History focus links reveal their existing targets and unavailable sections leave the jump menu', async ({ page }) => {
+  await page.goto('/?tab=history&team=Joe&focus=games');
+  await expect(page.locator('#historyGamesDisclosure')).toHaveAttribute('open', '');
+  await expect(page.locator('#historyGamesCard')).toBeFocused();
+
+  await page.goto('/?tab=history&team=Joe&focus=curses');
+  await expect(page.locator('#historyCurseDisclosure')).toHaveAttribute('open', '');
+  await expect(page.locator('#curseTracker')).toBeFocused();
+
+  await page.locator('#teamSelect').selectOption('__ALL__');
+  await expect(page.locator('#historySeasonsDisclosure')).toBeHidden();
+  await expect(page.locator('#historyWeeksDisclosure')).toBeHidden();
+  expect(await page.locator('#history-section-jump option').allTextContents()).not.toEqual(
+    expect.arrayContaining(['Season Recap', 'Week-by-Week']),
+  );
+});
+
+for (const width of [320, 390, 768, 1280, 1440]) {
+  test(`analytical disclosure layouts fit ${width}px in light and dark themes`, async ({ page }) => {
+    await page.setViewportSize({ width, height: width < 700 ? 844 : 900 });
+    for (const route of analyticalRoutes) {
+      await page.goto(route.url);
+      await expect(page.locator(`#page-${route.id}`)).toHaveAttribute('data-feature-state', 'ready');
+      for (const theme of ['light', 'dark']) {
+        await page.locator(`[data-theme-preference="${theme}"]`).click();
+        expect(
+          await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
+          `${route.id} ${theme} overflow at ${width}px`,
+        ).toBe(true);
+      }
+      if (width === 390) {
+        expect(await page.evaluate(() => document.documentElement.scrollHeight), `${route.id} compact height`).toBeLessThanOrEqual(route.height);
+      }
+    }
+  });
+}
+
+test('opening every analytical section preserves rendered data and URLs', async ({ page }) => {
+  test.setTimeout(60_000);
+  const readParity = () => page.evaluate(() => ({
+    url: location.href,
+    historyGames: document.querySelectorAll('[data-table-id="history-games"] tbody > tr:not(.table-expanded-row)').length,
+    rivalryGames: document.querySelectorAll('[data-table-id="rivalry-games"] tbody > tr:not(.table-expanded-row)').length,
+    trophySeasons: document.querySelectorAll('[data-table-id="trophy-seasons"] tbody > tr:not(.table-expanded-row)').length,
+    dynastyWindows: document.querySelectorAll('#dynastyBestWindows .dynasty-window-card').length,
+    draftRows: document.querySelectorAll('[data-table-id="draft-rows"] tbody > tr:not(.table-expanded-row)').length,
+    gauntletCopy: document.querySelector('#gauntletCopyText')?.value || '',
+  }));
+
+  for (const route of analyticalRoutes) {
+    await page.goto(route.url);
+    await expect(page.locator(`#page-${route.id}`)).toHaveAttribute('data-feature-state', 'ready');
+    const beforeUrl = page.url();
+    const closed = page.locator(`#page-${route.id} details.feature-disclosure:not([hidden]):not([open])`);
+    for (let index = 0; index < 10 && await closed.count(); index += 1) {
+      await closed.first().locator(':scope > summary').click();
+    }
+    await expect(closed).toHaveCount(0);
+    await page.waitForTimeout(50);
+    const expanded = await readParity();
+    const opened = page.locator(`#page-${route.id} details.feature-disclosure:not([hidden])[open]`);
+    for (let index = 0; index < 10 && await opened.count(); index += 1) {
+      await opened.first().locator(':scope > summary').click();
+    }
+    for (let index = 0; index < 10 && await closed.count(); index += 1) {
+      await closed.first().locator(':scope > summary').click();
+    }
+    await expect(closed).toHaveCount(0);
+    await page.waitForTimeout(50);
+    expect(await readParity()).toEqual(expanded);
+    expect(page.url()).toBe(beforeUrl);
+    for (const host of await page.locator(`#page-${route.id} .chart-host`).all()) {
+      expect(await host.locator('svg').count()).toBeLessThanOrEqual(1);
+    }
+  }
+});

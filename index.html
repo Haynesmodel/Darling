@@ -143,47 +143,57 @@
         </div>
       </div>
 
-      <div class="card" id="teamOverview">
-        <div id="teamOverviewGrid" class="overview-grid"></div>
-      </div>
-      <div id="seasonCallout"></div>
-
-      <div class="card">
-        <h3>Fun Facts</h3>
-        <div id="funFacts" class="stats-grid fun-grid"></div>
-        <div id="funLists" class="fun-lists"></div>
-      </div>
-
-      <div class="card" id="curseTracker">
-        <div class="section-heading">
-          <h3>Curse Tracker</h3>
-          <div id="curseSummary" class="muted"></div>
-        </div>
-        <div id="curseControls" class="controls filters"></div>
-        <div id="curseGrid" class="curse-grid"></div>
-      </div>
-
-      <div class="card">
-        <h3 id="oppTableTitle">Opponent Breakdown</h3>
-        <div id="rivalGroupCallouts" class="callouts"></div>
-        <div id="oppTableRoot"></div>
-      </div>
-
-      <div class="card">
-        <h3>Season Recap</h3>
-        <div id="seasonRecapTableRoot"></div>
-      </div>
-
-      <div class="card">
-        <h3>Week-by-Week</h3>
-        <div id="weekTableRoot"></div>
-      </div>
-
-      <div class="card" id="historyGamesCard">
-        <h3>All Games</h3>
-        <p id="historyGamesQuerySummary" class="muted history-games-query-summary" aria-live="polite"></p>
-        <div id="historyGamesTableRoot"></div>
-      </div>
+      <div id="historySectionNav"></div>
+      <details id="historyOverviewDisclosure" class="card feature-disclosure">
+        <summary>Owner Overview</summary>
+        <section id="teamOverview" class="feature-section-content">
+          <div id="teamOverviewGrid" class="overview-grid"></div>
+          <div id="seasonCallout"></div>
+        </section>
+      </details>
+      <details id="historyFunFactsDisclosure" class="card feature-disclosure">
+        <summary>Fun Facts</summary>
+        <section class="feature-section-content">
+          <div id="funFacts" class="stats-grid fun-grid"></div>
+          <div id="funLists" class="fun-lists"></div>
+        </section>
+      </details>
+      <details id="historyCurseDisclosure" class="card feature-disclosure">
+        <summary>Curse Tracker</summary>
+        <section id="curseTracker" class="feature-section-content">
+          <div class="section-heading">
+            <div id="curseSummary" class="muted"></div>
+          </div>
+          <div id="curseControls" class="controls filters"></div>
+          <div id="curseGrid" class="curse-grid"></div>
+        </section>
+      </details>
+      <details id="historyOpponentsDisclosure" class="card feature-disclosure">
+        <summary id="oppTableTitle">Opponent Breakdown</summary>
+        <section class="feature-section-content">
+          <div id="rivalGroupCallouts" class="callouts"></div>
+          <div id="oppTableRoot"></div>
+        </section>
+      </details>
+      <details id="historySeasonsDisclosure" class="card feature-disclosure">
+        <summary>Season Recap</summary>
+        <section class="feature-section-content">
+          <div id="seasonRecapTableRoot"></div>
+        </section>
+      </details>
+      <details id="historyWeeksDisclosure" class="card feature-disclosure">
+        <summary>Week-by-Week</summary>
+        <section class="feature-section-content">
+          <div id="weekTableRoot"></div>
+        </section>
+      </details>
+      <details id="historyGamesDisclosure" class="card feature-disclosure">
+        <summary>All Games</summary>
+        <section id="historyGamesCard" class="feature-section-content">
+          <p id="historyGamesQuerySummary" class="muted history-games-query-summary" aria-live="polite"></p>
+          <div id="historyGamesTableRoot"></div>
+        </section>
+      </details>
     </section>
 
     <section id="page-current" class="page" aria-labelledby="page-current-title" hidden>
@@ -263,40 +273,35 @@
 
       <div class="card" id="rivalryHeadline"></div>
 
-      <div class="card">
-        <h3>Series Lead</h3>
-        <div id="rivalryLeadMeter"></div>
-      </div>
-
-      <div class="card">
-        <h3>Highlights</h3>
-        <div id="rivalryHighlightBoard" class="rivalry-highlight-board"></div>
-      </div>
-
-      <div class="card">
-        <h3>Head to Head</h3>
-        <div id="rivalryTapeGrid" class="stats-grid rivalry-tape"></div>
-      </div>
-
-      <div class="card">
-        <h3>Lead Trend</h3>
-        <div id="rivalryLeadTrend"></div>
-      </div>
-
-      <div class="card">
-        <h3>Timeline</h3>
-        <div id="rivalryTimeline" class="rivalry-timeline"></div>
-      </div>
-
-      <div class="card">
-        <h3>Season Breakdown</h3>
-        <div id="rivalrySeasonTableRoot"></div>
-      </div>
-
-      <div class="card">
-        <h3>Game Log</h3>
-        <div id="rivalryGameTableRoot"></div>
-      </div>
+      <div id="rivalrySectionNav"></div>
+      <details id="rivalryLeadDisclosure" class="card feature-disclosure">
+        <summary>Series Lead</summary>
+        <section class="feature-section-content"><div id="rivalryLeadMeter"></div></section>
+      </details>
+      <details id="rivalryHighlightsDisclosure" class="card feature-disclosure">
+        <summary>Highlights</summary>
+        <section class="feature-section-content"><div id="rivalryHighlightBoard" class="rivalry-highlight-board"></div></section>
+      </details>
+      <details id="rivalryTapeDisclosure" class="card feature-disclosure">
+        <summary>Tale of the Tape</summary>
+        <section class="feature-section-content"><div id="rivalryTapeGrid" class="stats-grid rivalry-tape"></div></section>
+      </details>
+      <details id="rivalryTrendDisclosure" class="card feature-disclosure">
+        <summary>Lead Trend</summary>
+        <section class="feature-section-content"><div id="rivalryLeadTrend"></div></section>
+      </details>
+      <details id="rivalryTimelineDisclosure" class="card feature-disclosure">
+        <summary>Timeline</summary>
+        <section class="feature-section-content"><div id="rivalryTimeline" class="rivalry-timeline"></div></section>
+      </details>
+      <details id="rivalrySeasonsDisclosure" class="card feature-disclosure">
+        <summary>Season Breakdown</summary>
+        <section class="feature-section-content"><div id="rivalrySeasonTableRoot"></div></section>
+      </details>
+      <details id="rivalryGamesDisclosure" class="card feature-disclosure">
+        <summary>Game Log</summary>
+        <section class="feature-section-content"><div id="rivalryGameTableRoot"></div></section>
+      </details>
     </section>
 
     <section id="page-trophy" class="page" aria-labelledby="page-trophy-title" hidden>
@@ -307,36 +312,36 @@
 
       <section id="trophyHero" class="trophy-hero"></section>
 
-      <section class="card">
-        <h3>Hardware Shelf</h3>
-        <div id="trophyHardwareShelf" class="trophy-shelf"></div>
-      </section>
-
-      <section class="card">
-        <h3>League Rank</h3>
-        <div id="trophyRankStrip" class="trophy-rank-strip"></div>
-      </section>
-
-      <section class="card">
-        <h3>Career Shape</h3>
-        <div id="trophyCareerShape" class="trophy-career-shape"></div>
-      </section>
-
-      <section class="trophy-split">
-        <div class="card">
-          <h3>Highlights</h3>
-          <div id="trophyAchievementList"></div>
-        </div>
-        <div class="card">
-          <h3>Low Points</h3>
-          <div id="trophyScarList"></div>
-        </div>
-      </section>
-
-      <section class="card">
-        <h3>Season Ledger</h3>
-        <div id="trophySeasonTableRoot" class="trophy-ledger"></div>
-      </section>
+      <div id="trophySectionNav"></div>
+      <details id="trophyHardwareDisclosure" class="card feature-disclosure">
+        <summary>Hardware Shelf</summary>
+        <section class="feature-section-content"><div id="trophyHardwareShelf" class="trophy-shelf"></div></section>
+      </details>
+      <details id="trophyRankDisclosure" class="card feature-disclosure">
+        <summary>League Rank</summary>
+        <section class="feature-section-content"><div id="trophyRankStrip" class="trophy-rank-strip"></div></section>
+      </details>
+      <details id="trophyCareerDisclosure" class="card feature-disclosure">
+        <summary>Career Shape</summary>
+        <section class="feature-section-content"><div id="trophyCareerShape" class="trophy-career-shape"></div></section>
+      </details>
+      <details id="trophyMomentsDisclosure" class="card feature-disclosure">
+        <summary>Highlights and Low Points</summary>
+        <section class="feature-section-content trophy-split">
+          <div>
+            <h3>Highlights</h3>
+            <div id="trophyAchievementList"></div>
+          </div>
+          <div>
+            <h3>Low Points</h3>
+            <div id="trophyScarList"></div>
+          </div>
+        </section>
+      </details>
+      <details id="trophyLedgerDisclosure" class="card feature-disclosure">
+        <summary>Season Ledger</summary>
+        <section class="feature-section-content"><div id="trophySeasonTableRoot" class="trophy-ledger"></div></section>
+      </details>
     </section>
 
     <section id="page-dynasty" class="page" aria-labelledby="page-dynasty-title" hidden>
@@ -370,34 +375,33 @@
 
       <div class="card" id="dynastyCalculatorHero"></div>
 
-      <div class="card">
-        <h3>Score Breakdown</h3>
-        <div id="dynastyScoreBreakdown"></div>
-      </div>
-
-      <div class="card">
-        <h3>Period Comparison</h3>
-        <div id="dynastyPeriodLeaderboard"></div>
-      </div>
-
-      <div class="card">
-        <h3>Best Dynasty Windows</h3>
-        <div id="dynastyBestWindows"></div>
-      </div>
-
-      <div class="card">
-        <div id="dynastyTrendChart"></div>
-      </div>
-
-      <div class="card">
-        <h3>Era Heatmap</h3>
-        <div id="dynastyHeatmap" role="region" aria-label="Dynasty rankings by season" tabindex="0"></div>
-      </div>
-
-      <div class="card">
-        <h3>Slumps</h3>
-        <div id="dynastySlumps"></div>
-      </div>
+      <div id="dynastySectionNav"></div>
+      <details id="dynastyScoreDisclosure" class="card feature-disclosure">
+        <summary>Score Breakdown</summary>
+        <section class="feature-section-content"><div id="dynastyScoreBreakdown"></div></section>
+      </details>
+      <details id="dynastyPeriodDisclosure" class="card feature-disclosure">
+        <summary>Period Comparison</summary>
+        <section class="feature-section-content"><div id="dynastyPeriodLeaderboard"></div></section>
+      </details>
+      <details id="dynastyWindowsDisclosure" class="card feature-disclosure">
+        <summary>Best Dynasty Windows</summary>
+        <section class="feature-section-content"><div id="dynastyBestWindows"></div></section>
+      </details>
+      <details id="dynastyTrendDisclosure" class="card feature-disclosure">
+        <summary>Dynasty Trend</summary>
+        <section class="feature-section-content"><div id="dynastyTrendChart"></div></section>
+      </details>
+      <details id="dynastyHeatmapDisclosure" class="card feature-disclosure">
+        <summary>Era Heatmap</summary>
+        <section class="feature-section-content">
+          <div id="dynastyHeatmap" role="region" aria-label="Dynasty rankings by season" tabindex="0"></div>
+        </section>
+      </details>
+      <details id="dynastySlumpsDisclosure" class="card feature-disclosure">
+        <summary>Slumps</summary>
+        <section class="feature-section-content"><div id="dynastySlumps"></div></section>
+      </details>
 
       <dialog id="dynastyWindowModal" class="dynasty-modal" aria-labelledby="dynastyWindowModalTitle"></dialog>
     </section>
@@ -417,35 +421,36 @@
         <div id="gauntletControls"></div>
       </div>
 
-      <div class="card gauntlet-card">
-        <h3>Matchup</h3>
-        <div id="gauntletMatchup"></div>
-        <div id="gauntletProbability"></div>
-      </div>
-
-      <div class="card gauntlet-card">
-        <h3>Score Distribution</h3>
-        <div id="gauntletHistogram"></div>
-      </div>
-
-      <div class="card gauntlet-card">
-        <h3>Key Stats</h3>
-        <div id="gauntletStats"></div>
-      </div>
-
-      <div class="card gauntlet-card">
-        <h3>Head to Head Context</h3>
-        <div id="gauntletContext"></div>
-      </div>
-
-      <div class="card gauntlet-card">
-        <h3>Narrative and Copy</h3>
-        <p id="gauntletNarrative" class="gauntlet-narrative"></p>
-        <div class="gauntlet-copy-row">
-          <button type="button" id="gauntletCopyBtn" class="btn primary">Copy Result</button>
-        </div>
-        <textarea id="gauntletCopyText" class="gauntlet-copy-text" rows="8" readonly aria-label="Copyable gauntlet result"></textarea>
-      </div>
+      <div id="gauntletSectionNav"></div>
+      <details id="gauntletMatchupDisclosure" class="card gauntlet-card feature-disclosure">
+        <summary>Matchup</summary>
+        <section class="feature-section-content">
+          <div id="gauntletMatchup"></div>
+          <div id="gauntletProbability"></div>
+        </section>
+      </details>
+      <details id="gauntletHistogramDisclosure" class="card gauntlet-card feature-disclosure">
+        <summary>Score Distribution</summary>
+        <section class="feature-section-content"><div id="gauntletHistogram"></div></section>
+      </details>
+      <details id="gauntletStatsDisclosure" class="card gauntlet-card feature-disclosure">
+        <summary>Key Stats</summary>
+        <section class="feature-section-content"><div id="gauntletStats"></div></section>
+      </details>
+      <details id="gauntletContextDisclosure" class="card gauntlet-card feature-disclosure">
+        <summary>Head to Head Context</summary>
+        <section class="feature-section-content"><div id="gauntletContext"></div></section>
+      </details>
+      <details id="gauntletCopyDisclosure" class="card gauntlet-card feature-disclosure">
+        <summary>Narrative and Copy</summary>
+        <section class="feature-section-content">
+          <p id="gauntletNarrative" class="gauntlet-narrative"></p>
+          <div class="gauntlet-copy-row">
+            <button type="button" id="gauntletCopyBtn" class="btn primary">Copy Result</button>
+          </div>
+          <textarea id="gauntletCopyText" class="gauntlet-copy-text" rows="8" readonly aria-label="Copyable gauntlet result"></textarea>
+        </section>
+      </details>
     </section>
   </main>
 

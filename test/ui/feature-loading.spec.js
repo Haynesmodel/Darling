@@ -85,6 +85,8 @@ test('Draft contains a failed chart-runtime request without disabling its contro
   await page.goto('/?tab=draft');
   await waitForFeature(page, 'draft');
   await expect(page.locator('.draft-pick-chart')).toHaveAttribute('data-chart-state', 'error');
+  await expect(page.locator('.draft-zone-chart')).not.toHaveAttribute('data-chart-state');
+  await page.locator('#draft-section-jump').selectOption('draft-zones');
   await expect(page.locator('.draft-zone-chart')).toHaveAttribute('data-chart-state', 'error');
   await expect(page.locator('.draft-pick-chart .chart-error')).toHaveAttribute('role', 'status');
   await expect(page.locator('.draft-zone-chart .chart-error')).toHaveAttribute('role', 'status');
@@ -104,6 +106,7 @@ test('Draft charts recover on a normal reload after a runtime failure', async ({
   await page.reload();
   await waitForFeature(page, 'draft');
   await expect(page.locator('.draft-pick-chart svg[role="img"]')).toBeVisible();
+  await page.locator('#draft-section-jump').selectOption('draft-zones');
   await expect(page.locator('.draft-zone-chart svg[role="img"]')).toBeVisible();
 });
 

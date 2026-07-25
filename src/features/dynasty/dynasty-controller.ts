@@ -17,6 +17,7 @@ import {
 import type { AppContext } from '../../app/app-types';
 import type { DarlingFeatureController, FeatureActivation, FeatureId } from '../../app/feature-contract';
 import { ALL_TEAMS } from '../../app/feature-utils';
+import { createSectionDisclosure, type SectionDisclosureController } from '../../app/section-disclosure';
 
 export function createFeatureController(): DarlingFeatureController {
   let context: AppContext;
@@ -25,6 +26,7 @@ export function createFeatureController(): DarlingFeatureController {
   let modalOpener: HTMLElement | null = null;
   let modalOpenerKey: string | null = null;
   let suppressClose = false;
+  let disclosure: SectionDisclosureController | null = null;
 
   const restoreFocus = () => {
     if (!modalOpener && !modalOpenerKey) return;
@@ -83,11 +85,29 @@ export function createFeatureController(): DarlingFeatureController {
     renderDynastyScoreBreakdown(score, { doc: context.document });
     renderDynastyPeriodLeaderboard(view.comparisonRows, { doc: context.document, mode: view.controls.mode, windowSizeLabel: view.bestWindows.windowSizeLabel });
     renderDynastyBestWindows(view.bestWindows, { doc: context.document });
-    renderDynastyTrendChart(view.trendChart, { doc: context.document, hiddenOwners: state.chartHiddenOwners || [] });
+    renderDynastyTrendChart(view.trendChart, { doc: context.document, hiddenOwners: state.chartHiddenOwners || [], renderChart: false });
     if (selectedWindowKind === 'saunders') renderDynastySlumpModal(selectedWindow, { doc: context.document, allGames: context.data.leagueGames });
     else renderDynastyWindowModal(selectedWindow, { doc: context.document, allGames: context.data.leagueGames });
     renderDynastyHeatmap(view.heatmap, { doc: context.document });
     renderDynastySlumps(view.slumps, { doc: context.document });
+    const individual = view.controls.mode === 'calculator';
+    const comparison = ['selected-range', 'all-time', 'rolling-3', 'rolling-5'].includes(view.controls.mode);
+    const sections = [
+      ['dynasty-score', 'Score Breakdown', 'dynastyScoreDisclosure', individual, undefined],
+      ['dynasty-period', 'Period Comparison', 'dynastyPeriodDisclosure', comparison, undefined],
+      ['dynasty-windows', 'Best Dynasty Windows', 'dynastyWindowsDisclosure', false, undefined],
+      ['dynasty-trend', 'Dynasty Trend', 'dynastyTrendDisclosure', false, () => renderDynastyTrendChart(view.trendChart, { doc: context.document, hiddenOwners: state.chartHiddenOwners || [] })],
+      ['dynasty-heatmap', 'Era Heatmap', 'dynastyHeatmapDisclosure', false, undefined],
+      ['dynasty-slumps', 'Slumps', 'dynastySlumpsDisclosure', false, undefined],
+    ] as const;
+    disclosure?.update({
+      signature: `${view.controls.mode}|${view.controls.owner}|${view.controls.startSeason}|${view.controls.endSeason}|${view.controls.minSeasons}|${view.controls.includeSaundersPenalty}`,
+      sections: sections.flatMap(([id, label, detailsId, defaultOpen, onVisible]) => {
+        const details = context.document.getElementById(detailsId) as HTMLDetailsElement | null;
+        const content = details?.querySelector<HTMLElement>('.feature-section-content');
+        return details ? [{ id, label, details, available: Boolean(content?.textContent?.trim()), defaultOpen, onVisible }] : [];
+      }),
+    });
     context.router.update({
       tab: 'dynasty',
       selectedDynastyMode: view.controls.mode,
@@ -103,6 +123,15 @@ export function createFeatureController(): DarlingFeatureController {
     id: 'dynasty',
     mount(nextContext) {
       context = nextContext;
+      const disclosureMount = context.document.getElementById('dynastySectionNav');
+      if (disclosureMount) {
+        disclosure = createSectionDisclosure({
+          doc: context.document,
+          mount: disclosureMount,
+          featureId: 'dynasty',
+          featureLabel: 'Dynasty Rankings',
+        });
+      }
       const trend = context.document.getElementById('dynastyTrendChart');
       trend?.addEventListener('click', event => {
         if (!active) return;
@@ -180,6 +209,10 @@ export function createFeatureController(): DarlingFeatureController {
     deactivate(_next: FeatureId) {
       active = false;
       closeForNavigation();
+    },
+    dispose() {
+      disclosure?.dispose();
+      disclosure = null;
     },
   };
 }

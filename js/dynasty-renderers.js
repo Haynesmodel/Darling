@@ -1490,6 +1490,7 @@ function renderDynastyTrendChart(chart, opts = {}) {
   const el = docOrDefault(opts.doc)?.getElementById('dynastyTrendChart');
   if (!el) return;
   el.innerHTML = dynastyTrendChartHtml(chart, opts);
+  if (opts.renderChart === false) return;
   const root = docOrDefault(opts.doc);
   const host = typeof root?.getElementById === 'function' ? root.getElementById('dynastyTrendPlot') : null;
   renderDynastyTrendPlot(host, chart, opts);

@@ -12,8 +12,13 @@ function chartRows(model: DraftSpotViewModel) {
   }));
 }
 
-function usePickChart(model: DraftSpotViewModel, host: { current: HTMLDivElement | null }) {
+function usePickChart(model: DraftSpotViewModel, host: { current: HTMLDivElement | null }, enabled: boolean) {
   useEffect(() => {
+    if (!enabled) {
+      host.current?.replaceChildren();
+      if (host.current) delete host.current.dataset.chartState;
+      return;
+    }
     let active = true;
     void import('../../../js/charting/vendor/charting-vendor.js').then(({ plot, barY }) => {
       if (!active || !host.current) return;
@@ -39,7 +44,7 @@ function usePickChart(model: DraftSpotViewModel, host: { current: HTMLDivElement
       host.current?.replaceChildren();
       if (host.current) delete host.current.dataset.chartState;
     };
-  }, [model.state.metric, model.state.normalize, model.pickSummary]);
+  }, [enabled, model.state.metric, model.state.normalize, model.pickSummary]);
 }
 
 function nearestSpatialButton(
@@ -66,12 +71,13 @@ function nearestSpatialButton(
 interface Props {
   model: DraftSpotViewModel;
   onChange: (state: Partial<DraftSpotState>) => void;
+  chartActive: boolean;
 }
 
-export default function DraftPickBoard({ model, onChange }: Props) {
+export default function DraftPickBoard({ model, onChange, chartActive }: Props) {
   const chartHost = useRef<HTMLDivElement>(null);
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  usePickChart(model, chartHost);
+  usePickChart(model, chartHost, chartActive);
   const summaryByPick = new Map(model.pickSummary.map(summary => [summary.draft_pick, summary]));
   const maxPick = Math.max(12, ...model.picks);
   const availableButtons = () => buttonRefs.current.filter(

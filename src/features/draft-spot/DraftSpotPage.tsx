@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { buildDraftSpotModel } from './draft-spot-model';
 import { draftStateForUrl } from './draft-spot-state';
+import { createSectionDisclosure, type SectionDisclosureController } from '../../app/section-disclosure';
 import type {
   DraftSpotMountOptions,
   DraftSpotState,
@@ -32,7 +33,24 @@ export default function DraftSpotPage({
 }: Props) {
   const initial = useMemo(() => buildDraftSpotModel(asset, requestedState), [asset, requestedState]);
   const [state, setState] = useState(initial.state);
+  const [visibleCharts, setVisibleCharts] = useState<Set<string>>(() => new Set());
   const model = useMemo(() => buildDraftSpotModel(asset, state, state), [asset, state]);
+  const disclosure = useRef<SectionDisclosureController | null>(null);
+  const disclosureNav = useRef<HTMLDivElement>(null);
+  const pickDisclosure = useRef<HTMLDetailsElement>(null);
+  const zoneDisclosure = useRef<HTMLDetailsElement>(null);
+  const recommendationsDisclosure = useRef<HTMLDetailsElement>(null);
+  const timelineDisclosure = useRef<HTMLDetailsElement>(null);
+  const selectionDisclosure = useRef<HTMLDetailsElement>(null);
+  const ledgerDisclosure = useRef<HTMLDetailsElement>(null);
+  const disclosureSignature = [
+    model.state.mode,
+    model.state.owner,
+    model.state.startSeason,
+    model.state.endSeason,
+    model.state.selectedPick || '',
+    model.state.selectedZone || '',
+  ].join('|');
 
   const update = (requested: Partial<DraftSpotState>) => {
     const next = buildDraftSpotModel(asset, requested, state).state;
@@ -43,6 +61,54 @@ export default function DraftSpotPage({
   useEffect(() => {
     onReady?.(model.state);
   }, []);
+
+  useEffect(() => {
+    if (!disclosureNav.current) return;
+    disclosure.current = createSectionDisclosure({
+      doc: document,
+      mount: disclosureNav.current,
+      featureId: 'draft',
+      featureLabel: 'Draft Spot',
+    });
+    return () => {
+      disclosure.current?.dispose();
+      disclosure.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const defaults = new Set<string>();
+    if (model.state.mode === 'league') defaults.add('draft-picks');
+    if (model.state.mode === 'owner') defaults.add('draft-owner-recommendations');
+    if (model.state.mode === 'pick') {
+      defaults.add('draft-picks');
+      defaults.add('draft-selection');
+    }
+    if (model.state.mode === 'zone') {
+      defaults.add('draft-zones');
+      defaults.add('draft-selection');
+    }
+    setVisibleCharts(new Set());
+    const revealChart = (id: string) => {
+      setVisibleCharts(current => current.has(id) ? current : new Set([...current, id]));
+    };
+    const definitions = [
+      { id: 'draft-picks', label: 'Pick Board', details: pickDisclosure.current, available: model.pickSummary.length > 0, onVisible: () => revealChart('draft-picks') },
+      { id: 'draft-zones', label: 'Zone Comparison', details: zoneDisclosure.current, available: model.zoneSummary.length > 0, onVisible: () => revealChart('draft-zones') },
+      { id: 'draft-owner-recommendations', label: 'Owner Recommendations', details: recommendationsDisclosure.current, available: model.ownerRecommendations.length > 0 || Boolean(model.ownerProfile) },
+      { id: 'draft-owner-timeline', label: 'Owner Timeline', details: timelineDisclosure.current, available: model.baseRows.length > 0 },
+      { id: 'draft-selection', label: 'Selection Detail', details: selectionDisclosure.current, available: Boolean(model.selectedPickSummary || model.selectedZoneSummary) },
+      { id: 'draft-ledger', label: 'Draft Spot Data', details: ledgerDisclosure.current, available: model.rows.length > 0 },
+    ];
+    disclosure.current?.update({
+      signature: disclosureSignature,
+      sections: definitions.flatMap(definition => definition.details ? [{
+        ...definition,
+        details: definition.details,
+        defaultOpen: defaults.has(definition.id),
+      }] : []),
+    });
+  }, [disclosureSignature, model.pickSummary.length, model.zoneSummary.length, model.ownerRecommendations.length, model.baseRows.length, model.rows.length, model.selectedPickSummary, model.selectedZoneSummary, model.ownerProfile]);
 
   useEffect(() => {
     window.darlingTables?.render('draft-rows', {
@@ -76,33 +142,52 @@ export default function DraftSpotPage({
         <h2 id="draftSpotTitle" class="visually-hidden">Draft Spot Explorer</h2>
         <DraftSpotHero model={model} />
       </section>
-      <section class="card" aria-label="Draft pick comparison">
-        <DraftPickBoard model={model} onChange={update} />
-      </section>
-      <section class="card" aria-labelledby="draftZoneHeading">
-        <h3 id="draftZoneHeading">Zone Comparison</h3>
-        <DraftZoneComparison model={model} onChange={update} />
-      </section>
-      <section class="card" aria-labelledby="draftOwnerRecommendationHeading">
-        <h3 id="draftOwnerRecommendationHeading">Owner Recommendations</h3>
-        <p class="muted">Recommendations use only the selected season range, describe observed results, and always disclose sample confidence.</p>
-        <DraftOwnerRecommendations model={model} />
-      </section>
-      <section class="card" aria-labelledby="draftOwnerTimelineHeading">
-        <h3 id="draftOwnerTimelineHeading">Owner Timeline</h3>
-        <DraftOwnerTimeline model={model} onChange={update} />
-      </section>
-      <section class="card" aria-labelledby="draftSelectionHeading">
-        <h3 id="draftSelectionHeading">Selection Detail</h3>
-        <DraftSelectionDetail model={model} />
-      </section>
-      <section class="card" aria-labelledby="draftLedgerHeading">
-        <div class="section-heading">
-          <h3 id="draftLedgerHeading">Draft Spot Data</h3>
-          <div class="muted">Data {dataVersion.replace(/^sha256:/, '').slice(0, 12)} · generated {asset.generated_at.slice(0, 10)}</div>
-        </div>
-        <div id="draftRowsTableRoot" />
-      </section>
+      <div ref={disclosureNav} />
+      <details ref={pickDisclosure} id="draftPickDisclosure" class="card feature-disclosure">
+        <summary>Pick Board</summary>
+        <section class="feature-section-content" aria-label="Draft pick comparison">
+          <DraftPickBoard model={model} onChange={update} chartActive={visibleCharts.has('draft-picks')} />
+        </section>
+      </details>
+      <details ref={zoneDisclosure} id="draftZoneDisclosure" class="card feature-disclosure">
+        <summary>Zone Comparison</summary>
+        <section class="feature-section-content" aria-labelledby="draftZoneHeading">
+          <h3 id="draftZoneHeading" class="visually-hidden">Zone Comparison</h3>
+          <DraftZoneComparison model={model} onChange={update} chartActive={visibleCharts.has('draft-zones')} />
+        </section>
+      </details>
+      <details ref={recommendationsDisclosure} id="draftOwnerRecommendationsDisclosure" class="card feature-disclosure">
+        <summary>Owner Recommendations</summary>
+        <section class="feature-section-content" aria-labelledby="draftOwnerRecommendationHeading">
+          <h3 id="draftOwnerRecommendationHeading" class="visually-hidden">Owner Recommendations</h3>
+          <p class="muted">Recommendations use only the selected season range, describe observed results, and always disclose sample confidence.</p>
+          <DraftOwnerRecommendations model={model} />
+        </section>
+      </details>
+      <details ref={timelineDisclosure} id="draftOwnerTimelineDisclosure" class="card feature-disclosure">
+        <summary>Owner Timeline</summary>
+        <section class="feature-section-content" aria-labelledby="draftOwnerTimelineHeading">
+          <h3 id="draftOwnerTimelineHeading" class="visually-hidden">Owner Timeline</h3>
+          <DraftOwnerTimeline model={model} onChange={update} />
+        </section>
+      </details>
+      <details ref={selectionDisclosure} id="draftSelectionDisclosure" class="card feature-disclosure">
+        <summary>Selection Detail</summary>
+        <section class="feature-section-content" aria-labelledby="draftSelectionHeading">
+          <h3 id="draftSelectionHeading" class="visually-hidden">Selection Detail</h3>
+          <DraftSelectionDetail model={model} />
+        </section>
+      </details>
+      <details ref={ledgerDisclosure} id="draftLedgerDisclosure" class="card feature-disclosure">
+        <summary>Draft Spot Data</summary>
+        <section class="feature-section-content" aria-labelledby="draftLedgerHeading">
+          <div class="section-heading">
+            <h3 id="draftLedgerHeading" class="visually-hidden">Draft Spot Data</h3>
+            <div class="muted">Data {dataVersion.replace(/^sha256:/, '').slice(0, 12)} · generated {asset.generated_at.slice(0, 10)}</div>
+          </div>
+          <div id="draftRowsTableRoot" />
+        </section>
+      </details>
     </>
   );
 }

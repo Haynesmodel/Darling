@@ -56,6 +56,16 @@ The Darling targets WCAG 2.2 Level AA as its engineering baseline. Automated che
 - Enter/Space use native button activation.
 - Empty picks are noninteractive, low samples include text/border treatment, and champion/Saunders states never rely on color alone.
 
+### Analytical section disclosures
+
+- League History, Current Season, Head to Head, Trophy Case, Dynasty Rankings, Draft Spot, and Historical Matchup use native `details`/`summary`.
+- Each page exposes a labelled “Jump to section” select in document order. Unavailable sections and their options disappear together.
+- Choosing a section opens it, moves focus to its summary, and scrolls it below sticky chrome without changing the URL.
+- History `focus=games` and `focus=curses` links open the containing disclosure before moving focus to the existing target.
+- Closing a section that contains focus returns focus to its summary. Dynasty modal focus restoration remains tied to an opener in an open section.
+- Supporting charts mount only after their section is visible and nonzero-width. Text, tables, copy output, and keyboard grids retain their existing semantics when a section is closed.
+- Open choices are remembered per mode/owner/scope signature for the current session; no disclosure preference is encoded in shared links.
+
 ### Data freshness disclosure
 
 - The shell uses native `details`/`summary`, so the status is keyboard-operable without a custom disclosure state machine.
@@ -71,8 +81,12 @@ Run:
 - `npm run test:a11y` for axe WCAG A/AA scans of all eight pages in light and dark themes plus overlay and expanded-table states.
 - `npm run test:keyboard` for navigation links/disclosures, filters, dialogs, skip-link, reduced-motion, and responsive interaction checks.
 - `npm run test:ui` for the complete browser suite.
+- `test/ui/navigation-progressive-disclosure.spec.js` for compact defaults, signature memory, deep-link reveals, responsive route heights, visible-only charts, and open-everything parity.
 
 The axe suite has no global rule exclusions or element exclusions.
+
+The current automated evidence and explicitly pending manual gates are recorded in
+[`accessibility-release-verification-2026-07-25.md`](./accessibility-release-verification-2026-07-25.md).
 
 ## Adding accessible UI
 

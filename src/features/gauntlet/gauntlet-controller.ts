@@ -6,11 +6,13 @@ import { gauntletModelLabel, gauntletNarrativeText, renderGauntlet } from '../..
 import { simulateMatchup } from '../../../js/gauntlet-simulator.js';
 import type { AppContext } from '../../app/app-types';
 import type { DarlingFeatureController, FeatureActivation } from '../../app/feature-contract';
+import { createSectionDisclosure, type SectionDisclosureController } from '../../app/section-disclosure';
 
 export function createFeatureController(): DarlingFeatureController {
   let context: AppContext;
   let state: any = null;
   let active = false;
+  let disclosure: SectionDisclosureController | null = null;
 
   const copyText = (a: any, b: any, result: any, h2h: any) => {
     if (!a || !b || !result) return '';
@@ -38,12 +40,41 @@ export function createFeatureController(): DarlingFeatureController {
     context.header.feature('Historical Matchup', null, title);
     context.theme.rivalry(a?.owner, b?.owner, state.selectedIncludePostseason ? 'postseason' : 'regular');
     if (!a || !b) {
-      renderGauntlet({ teamSeasonA: a, teamSeasonB: b, result: null, context: null, narrative: 'No matchup selected.', copyText: '' }, { doc: context.document });
+      renderGauntlet({ teamSeasonA: a, teamSeasonB: b, result: null, context: null, narrative: 'No matchup selected.', copyText: '' }, { doc: context.document, renderHistogramChart: false });
+      disclosure?.update({
+        signature: 'empty',
+        sections: [
+          ['gauntlet-matchup', 'Matchup', 'gauntletMatchupDisclosure'],
+          ['gauntlet-distribution', 'Score Distribution', 'gauntletHistogramDisclosure'],
+          ['gauntlet-stats', 'Key Stats', 'gauntletStatsDisclosure'],
+          ['gauntlet-context', 'Head to Head Context', 'gauntletContextDisclosure'],
+          ['gauntlet-copy', 'Narrative and Copy', 'gauntletCopyDisclosure'],
+        ].flatMap(([id, label, detailsId]) => {
+          const details = context.document.getElementById(detailsId) as HTMLDetailsElement | null;
+          return details ? [{ id, label, details, available: false }] : [];
+        }),
+      });
       return;
     }
     const result = simulateMatchup(a, b, { model: state.selectedModel, simulations: state.selectedSimulations, seed: state.seed, includePostseason: state.selectedIncludePostseason });
     const h2h = headToHeadContext(a.owner, b.owner, context.data.leagueGames, [a.season, b.season]);
-    renderGauntlet({ teamSeasonA: a, teamSeasonB: b, result, context: h2h, narrative: gauntletNarrativeText(result, a, b, h2h), copyText: copyText(a, b, result, h2h) }, { doc: context.document });
+    const rendered = { teamSeasonA: a, teamSeasonB: b, result, context: h2h, narrative: gauntletNarrativeText(result, a, b, h2h), copyText: copyText(a, b, result, h2h) };
+    renderGauntlet(rendered, { doc: context.document, renderHistogramChart: false });
+    const sections = [
+      ['gauntlet-matchup', 'Matchup', 'gauntletMatchupDisclosure', true, undefined],
+      ['gauntlet-distribution', 'Score Distribution', 'gauntletHistogramDisclosure', false, () => renderGauntlet(rendered, { doc: context.document, sections: ['histogram'] })],
+      ['gauntlet-stats', 'Key Stats', 'gauntletStatsDisclosure', false, undefined],
+      ['gauntlet-context', 'Head to Head Context', 'gauntletContextDisclosure', false, undefined],
+      ['gauntlet-copy', 'Narrative and Copy', 'gauntletCopyDisclosure', true, undefined],
+    ] as const;
+    disclosure?.update({
+      signature: `${teamSeasonId(a.owner, a.season)}|${teamSeasonId(b.owner, b.season)}|${state.selectedModel}|${state.selectedIncludePostseason}`,
+      sections: sections.flatMap(([id, label, detailsId, defaultOpen, onVisible]) => {
+        const details = context.document.getElementById(detailsId) as HTMLDetailsElement | null;
+        const content = details?.querySelector<HTMLElement>('.feature-section-content');
+        return details ? [{ id, label, details, available: Boolean(content?.textContent?.trim()), defaultOpen, onVisible }] : [];
+      }),
+    });
     context.router.update({
       tab: 'gauntlet',
       selectedGauntletA: teamSeasonId(a.owner, a.season),
@@ -67,6 +98,15 @@ export function createFeatureController(): DarlingFeatureController {
     id: 'gauntlet',
     mount(nextContext) {
       context = nextContext;
+      const mount = context.document.getElementById('gauntletSectionNav');
+      if (mount) {
+        disclosure = createSectionDisclosure({
+          doc: context.document,
+          mount,
+          featureId: 'gauntlet',
+          featureLabel: 'Historical Matchup',
+        });
+      }
       const copy = context.document.getElementById('gauntletCopyBtn');
       copy?.addEventListener('click', async () => {
         const field = context.document.getElementById('gauntletCopyText') as HTMLTextAreaElement | null;
@@ -96,5 +136,9 @@ export function createFeatureController(): DarlingFeatureController {
       draw();
     },
     deactivate() { active = false; },
+    dispose() {
+      disclosure?.dispose();
+      disclosure = null;
+    },
   };
 }

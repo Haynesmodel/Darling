@@ -1295,6 +1295,7 @@ function renderTrophyCareerShape(view, opts = {}) {
   const el = typeof root.querySelector === 'function' ? root.querySelector('#trophyCareerShape') : null;
   if (!el) return;
   el.innerHTML = trophyCareerShapeHtml(view);
+  if (opts.renderChart === false) return;
   const host = typeof root.getElementById === 'function' ? root.getElementById('trophyCareerPlot') : null;
   renderTrophyCareerPlot(host, view);
 }

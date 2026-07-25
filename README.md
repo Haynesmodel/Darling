@@ -84,7 +84,7 @@ Feature architecture:
 
 Accessibility and CSS:
 - Primary navigation uses five semantic link/disclosure groups with canonical destination URLs and `aria-current`; filter disclosures retain native checkbox semantics, and application dialogs manage inertness, focus containment, scroll lock, and focus restoration.
-- Analytical sections use native `details`/`summary` plus a feature-labelled “Jump to section” control. Open state is in-memory only, focus links reveal their target, and disclosure state never changes the product URL.
+- All seven analytical destinations use native `details`/`summary` plus a feature-labelled “Jump to section” control. Mode, owner, range, and matchup signatures choose compact primary defaults; user choices are remembered per signature in memory only. Existing History focus links reveal their target, and disclosure state never changes the product URL.
 - The application stylesheet entry is `src/styles/app.css`; shared and feature styles are assigned to explicit cascade layers.
 - See [`docs/accessibility.md`](./docs/accessibility.md) and [`docs/css-architecture.md`](./docs/css-architecture.md) before adding a feature destination, disclosure, modal, animation, shared style, or feature stylesheet.
 
@@ -100,6 +100,7 @@ Current Season lifecycle assumptions:
 Draft Spot Explorer:
 - `?tab=draft` opens a lazily loaded Preact page for league, owner, pick, and zone exploration.
 - URL fields are `draftMode`, `draftOwner`, `draftStart`, `draftEnd`, `draftMetric`, `draftMinSample`, `draftNormalize`, `draftPick`, and `draftZone`.
+- League, owner, pick, and zone modes open the relevant board, profile, or selection detail by default. Supporting charts and the data ledger remain available through the section jump without adding disclosure fields to the URL.
 - Recommendations use only the selected season range, use observed historical language, and display sample confidence. Normalized mode maps each draft percentile to the nearest slot on a 12-team scale, so pick summaries, zones, rankings, charts, and selections compare equivalent positions across 10- and 12-team seasons.
 
 Shareable Dynasty URLs:

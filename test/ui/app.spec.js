@@ -1,6 +1,32 @@
 import { expect, test } from './coverage-fixture.js';
 import { activateFeature } from './navigation-helpers.js';
 
+test.beforeEach(async ({ page }) => {
+  // The legacy end-to-end suite is the open-everything parity pass: disclosure
+  // behavior itself is covered in navigation-progressive-disclosure.spec.js.
+  await page.addInitScript(() => {
+    const featureRoots = ['history', 'rivalry', 'trophy', 'dynasty', 'draft', 'gauntlet']
+      .map(id => `#page-${id}`)
+      .join(',');
+    const expand = () => {
+      for (const root of document.querySelectorAll(featureRoots)) {
+        for (const details of root.querySelectorAll('details.feature-disclosure:not([hidden]):not([open])')) {
+          details.open = true;
+        }
+      }
+    };
+    window.addEventListener('DOMContentLoaded', () => {
+      expand();
+      new MutationObserver(expand).observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['open', 'hidden'],
+        childList: true,
+        subtree: true,
+      });
+    }, { once: true });
+  });
+});
+
 test('theme context helpers cover owner, rivalry, postseason, and league fallbacks', async ({ page }) => {
   await page.goto('/');
   if (process.env.PLAYWRIGHT_SERVER === 'preview') {

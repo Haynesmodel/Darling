@@ -37,6 +37,7 @@ import { setGroupBackdrop, triggerGroupEgg } from '../../../js/easter-eggs.js';
 import type { AppContext, AppRoute } from '../../app/app-types';
 import type { DarlingFeatureController, FeatureActivation } from '../../app/feature-contract';
 import { ALL_TEAMS, DEFAULT_TEAM, seasonModeFromLabels } from '../../app/feature-utils';
+import { createSectionDisclosure, type SectionDisclosureController } from '../../app/section-disclosure';
 import { registerHistoryTables } from './history-tables';
 
 const BLOWOUT_MARGIN = 29;
@@ -63,6 +64,7 @@ export function createFeatureController(): DarlingFeatureController {
   const renderCache = new Map<string, string>();
   const metrics = { filterRuns: 0 };
   let lastEffectKey: string | null = null;
+  let disclosure: SectionDisclosureController | null = null;
 
   const champNote = (owner: string, season: number) => NOTES[owner]?.champs?.[season] || null;
   const saundersNote = (owner: string, season: number) => NOTES[owner]?.saunders?.[season] || null;
@@ -261,6 +263,22 @@ export function createFeatureController(): DarlingFeatureController {
       context.tables.render('history-games', { rows: buildHistoryGameRows(games, { selectedTeam, allTeams: ALL_TEAMS }), context: { owner: selectedTeam === ALL_TEAMS ? null : selectedTeam }, initialState: { columnVisibility: { team: selectedTeam === ALL_TEAMS }, columnPinning: { left: [selectedTeam === ALL_TEAMS ? 'team' : 'date'], right: [] } }, urlState: tableUrlState(), onUrlStateChange: next => { updateUrl({ selectedGameResult: next.gameResult, selectedGameMinScore: next.gameMinScore, selectedGameMaxScore: next.gameMaxScore, selectedGameSort: next.gameSort, selectedGameLimit: next.gameLimit }); updateGameSummary(games, next); }, onContextChange: tableContextChange, instanceKey: `${selectedTeam}|${keys.gamesTable}|${JSON.stringify(gameQuery)}` });
       updateGameSummary(games, gameQuery);
     });
+    const sectionDefinitions = [
+      ['history-overview', 'Owner Overview', 'historyOverviewDisclosure', true, true],
+      ['history-fun-facts', 'Fun Facts', 'historyFunFactsDisclosure', true, true],
+      ['history-curses', 'Curse Tracker', 'historyCurseDisclosure', true, false],
+      ['history-opponents', context.document.getElementById('oppTableTitle')?.textContent || 'Opponent Breakdown', 'historyOpponentsDisclosure', games.length > 0, false],
+      ['history-seasons', 'Season Recap', 'historySeasonsDisclosure', selectedTeam !== ALL_TEAMS, false],
+      ['history-weeks', 'Week-by-Week', 'historyWeeksDisclosure', selectedTeam !== ALL_TEAMS && games.length > 0, false],
+      ['history-games', 'All Games', 'historyGamesDisclosure', games.length > 0, false],
+    ] as const;
+    disclosure?.update({
+      signature: facetStateKey(facetState()),
+      sections: sectionDefinitions.flatMap(([id, label, detailsId, available, defaultOpen]) => {
+        const details = context.document.getElementById(detailsId) as HTMLDetailsElement | null;
+        return details ? [{ id, label, details, available, defaultOpen }] : [];
+      }),
+    });
   };
 
   const updateGameSummary = (games: any[], query: any) => {
@@ -286,6 +304,15 @@ export function createFeatureController(): DarlingFeatureController {
       context.window.__darlingRenderMetrics = metrics;
       context.document.getElementById('clearFilters')?.addEventListener('click', reset);
       context.document.getElementById('exportCsv')?.addEventListener('click', exportCsv);
+      const mount = context.document.getElementById('historySectionNav');
+      if (mount) {
+        disclosure = createSectionDisclosure({
+          doc: context.document,
+          mount,
+          featureId: 'history',
+          featureLabel: 'League History',
+        });
+      }
     },
     activate(input: FeatureActivation) {
       active = !input.signal.aborted;
@@ -301,6 +328,10 @@ export function createFeatureController(): DarlingFeatureController {
       active = false;
       const crown = context.document.getElementById('fxCrown'); if (crown) { crown.style.display = 'none'; crown.replaceChildren(); }
       const fog = context.document.getElementById('fxSaunders'); if (fog) fog.style.display = 'none';
+    },
+    dispose() {
+      disclosure?.dispose();
+      disclosure = null;
     },
   };
 }

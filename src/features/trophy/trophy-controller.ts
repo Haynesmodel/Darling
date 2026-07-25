@@ -12,6 +12,7 @@ import {
 import type { AppContext } from '../../app/app-types';
 import type { DarlingFeatureController, FeatureActivation } from '../../app/feature-contract';
 import { ALL_TEAMS, DEFAULT_TEAM } from '../../app/feature-utils';
+import { createSectionDisclosure, type SectionDisclosureController } from '../../app/section-disclosure';
 import { registerTrophyTables } from './trophy-tables';
 
 const NOTES: Record<string, { champs?: Record<number, string>; saunders?: Record<number, string> }> = {
@@ -23,6 +24,7 @@ export function createFeatureController(): DarlingFeatureController {
   let context: AppContext;
   let selectedOwner = DEFAULT_TEAM;
   let active = false;
+  let disclosure: SectionDisclosureController | null = null;
 
   const render = () => {
     if (!active || !selectedOwner) return;
@@ -40,7 +42,7 @@ export function createFeatureController(): DarlingFeatureController {
     renderTrophyHero(view, { doc: context.document });
     renderTrophyHardwareShelf(view, { doc: context.document });
     renderTrophyRankStrip(view, { doc: context.document });
-    renderTrophyCareerShape(view, { doc: context.document });
+    renderTrophyCareerShape(view, { doc: context.document, renderChart: false });
     renderTrophyAchievementList(view, { doc: context.document });
     renderTrophyScarList(view, { doc: context.document });
     context.tables.render('trophy-seasons', {
@@ -54,6 +56,21 @@ export function createFeatureController(): DarlingFeatureController {
       },
       instanceKey: view.owner,
     });
+    const sections = [
+      ['trophy-hardware', 'Hardware Shelf', 'trophyHardwareDisclosure', true, undefined],
+      ['trophy-rank', 'League Rank', 'trophyRankDisclosure', false, undefined],
+      ['trophy-career', 'Career Shape', 'trophyCareerDisclosure', false, () => renderTrophyCareerShape(view, { doc: context.document })],
+      ['trophy-moments', 'Highlights and Low Points', 'trophyMomentsDisclosure', false, undefined],
+      ['trophy-ledger', 'Season Ledger', 'trophyLedgerDisclosure', false, undefined],
+    ] as const;
+    disclosure?.update({
+      signature: view.owner,
+      sections: sections.flatMap(([id, label, detailsId, defaultOpen, onVisible]) => {
+        const details = context.document.getElementById(detailsId) as HTMLDetailsElement | null;
+        const content = details?.querySelector<HTMLElement>('.feature-section-content');
+        return details ? [{ id, label, details, available: Boolean(content?.textContent?.trim()), defaultOpen, onVisible }] : [];
+      }),
+    });
     context.router.update({ tab: 'trophy', selectedTrophyOwner: selectedOwner });
   };
 
@@ -62,6 +79,15 @@ export function createFeatureController(): DarlingFeatureController {
     mount(nextContext) {
       context = nextContext;
       registerTrophyTables(context.tables);
+      const mount = context.document.getElementById('trophySectionNav');
+      if (mount) {
+        disclosure = createSectionDisclosure({
+          doc: context.document,
+          mount,
+          featureId: 'trophy',
+          featureLabel: 'Trophy Case',
+        });
+      }
     },
     activate(input: FeatureActivation) {
       active = !input.signal.aborted;
@@ -81,5 +107,9 @@ export function createFeatureController(): DarlingFeatureController {
       render();
     },
     deactivate() { active = false; },
+    dispose() {
+      disclosure?.dispose();
+      disclosure = null;
+    },
   };
 }

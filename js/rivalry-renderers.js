@@ -811,6 +811,7 @@ function renderRivalryLeadTrend(view, opts = {}) {
   const el = doc.getElementById('rivalryLeadTrend');
   if (!el) return;
   el.innerHTML = rivalryLeadTrendHtml(view);
+  if (opts.renderChart === false) return;
   const host = typeof doc.getElementById === 'function' ? doc.getElementById('rivalryLeadPlot') : null;
   renderRivalryLeadPlot(host, view, { points: buildLeadTrendPoints(view) });
 }

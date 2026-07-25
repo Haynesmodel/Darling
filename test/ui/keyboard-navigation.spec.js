@@ -76,6 +76,7 @@ test('Draft Spot spatial navigation drops buttons removed by filters', async ({ 
   await expect(page.locator('.draft-pick-card[data-draft-pick="2"]')).toBeVisible();
 
   await page.locator('#draftOwnerSelect').selectOption('Joe');
+  await page.locator('#draft-section-jump').selectOption('draft-picks');
   const visiblePicks = page.locator('.draft-pick-card:not(.empty)');
   await expect(visiblePicks).toHaveCount(5);
   const pickOne = page.locator('.draft-pick-card[data-draft-pick="1"]');
@@ -143,6 +144,7 @@ test('facet disclosure supports Arrow, Home, End, Space, Tab, and Escape', async
 test('Dynasty dialog contains focus, locks the page, ignores search shortcuts, and restores its opener', async ({ page }) => {
   await page.goto('/?tab=dynasty');
   await page.waitForLoadState('networkidle');
+  await page.locator('#dynasty-section-jump').selectOption('dynasty-windows');
   const opener = page.locator('#dynastyBestWindows .dynasty-window-card').first();
   await opener.focus();
   await opener.click();
@@ -169,6 +171,7 @@ test('browser Back closes the Dynasty dialog before hiding its feature section',
   await page.waitForLoadState('networkidle');
   const pulse = featureDestination(page, 'pulse');
   await activateFeature(page, 'dynasty');
+  await page.locator('#dynasty-section-jump').selectOption('dynasty-windows');
   await page.locator('#dynastyBestWindows .dynasty-window-card').first().click();
 
   const dialog = page.locator('#dynastyWindowModal');
@@ -242,6 +245,7 @@ test('the Dynasty heatmap is locally scrollable on mobile', async ({ page }) => 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?tab=dynasty');
   await page.waitForLoadState('networkidle');
+  await page.locator('#dynasty-section-jump').selectOption('dynasty-heatmap');
   const heatmap = page.getByRole('region', { name: 'Dynasty rankings by season', exact: true });
   await expect(heatmap).toBeVisible();
   const metrics = await heatmap.evaluate((element) => ({
@@ -308,6 +312,7 @@ for (const viewport of [
     await page.waitForLoadState('networkidle');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await expect(page.locator('.search-trigger')).toBeVisible();
+    await page.locator('#dynasty-section-jump').selectOption('dynasty-windows');
     await page.locator('#dynastyBestWindows .dynasty-window-card').first().click();
     const box = await page.locator('#dynastyWindowModal').boundingBox();
     expect(box.width).toBeLessThanOrEqual(viewport.width);

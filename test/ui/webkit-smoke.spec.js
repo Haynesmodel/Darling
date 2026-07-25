@@ -101,6 +101,7 @@ test('WEBKIT-04 contains focus and restores state for the Dynasty dialog', async
   await page.goto('/');
   const opener = page.locator('#dynastyBestWindows .dynasty-window-card').first();
   await activateFeature(page, 'dynasty');
+  await page.locator('#dynasty-section-jump').selectOption('dynasty-windows');
   await opener.focus();
   await opener.click();
   const dialog = page.getByRole('dialog');

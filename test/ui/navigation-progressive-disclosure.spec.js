@@ -207,6 +207,9 @@ test('section jumps reveal and focus without mutating product URLs', async ({ pa
   for (const [route, section, detailsSelector, chartSelector] of targets) {
     await page.goto(route.url);
     await expect(page.locator(`#page-${route.id}`)).toHaveAttribute('data-feature-state', 'ready');
+    if (route.id === 'draft') {
+      await expect.poll(() => new URL(page.url()).searchParams.get('draftStart')).not.toBeNull();
+    }
     const before = page.url();
     await page.locator(route.jump).selectOption(section);
     await expect(page.locator(detailsSelector)).toHaveAttribute('open', '');
@@ -296,6 +299,9 @@ test('opening every analytical section preserves rendered data and URLs', async 
   for (const route of analyticalRoutes) {
     await page.goto(route.url);
     await expect(page.locator(`#page-${route.id}`)).toHaveAttribute('data-feature-state', 'ready');
+    if (route.id === 'draft') {
+      await expect.poll(() => new URL(page.url()).searchParams.get('draftStart')).not.toBeNull();
+    }
     const beforeUrl = page.url();
     const closed = page.locator(`#page-${route.id} details.feature-disclosure:not([hidden]):not([open])`);
     for (let index = 0; index < 10 && await closed.count(); index += 1) {

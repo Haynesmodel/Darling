@@ -70,6 +70,7 @@ test('an optional integrity mismatch is visible as a partial snapshot', async ({
     return route.fulfill({ status: 200, contentType: 'application/json', body: '{"tampered":true}' });
   });
   await page.goto('/?tab=history');
+  await page.locator('#history-section-jump').selectOption('history-games');
   await expect(page.locator('#historyGamesTable')).toBeVisible();
   await expect(page.locator('.data-freshness summary')).toContainText('Snapshot partially available');
   expect(attempts).toBe(2);
@@ -133,6 +134,7 @@ test('Draft Spot uses its own version and evicts a failed verification promise',
   await expect(page.locator('#draftSpotRoot')).toContainText('Draft Spot is unavailable');
   expect(attempts).toBe(2);
   await activateFeature(page, 'history');
+  await page.locator('#history-section-jump').selectOption('history-games');
   await expect(page.locator('#historyGamesTable')).toBeVisible();
   await activateFeature(page, 'draft');
   await expect(page.locator('.draft-hero')).toBeVisible();

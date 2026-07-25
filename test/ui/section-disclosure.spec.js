@@ -45,8 +45,9 @@ async function fixture(page) {
       featureId: 'fixture',
       featureLabel: 'Fixture',
     });
-    window.updateDisclosure = (signature = 'one', betaAvailable = true) => window.disclosure.update({
+    window.updateDisclosure = (signature = 'one', betaAvailable = true, preserveFocusedSection = false) => window.disclosure.update({
       signature,
+      preserveFocusedSection,
       sections: [
         { id: 'alpha-section', label: 'Alpha', details: document.querySelector('#alpha'), defaultOpen: true, onVisible: () => { window.visibleCalls.alpha += 1; } },
         { id: 'beta-section', label: 'Beta', details: document.querySelector('#beta'), available: betaAvailable, defaultOpen: false, onVisible: () => { window.visibleCalls.beta += 1; } },
@@ -112,7 +113,7 @@ test('a delayed signature update does not close the section a user just focused'
   await expect(page.locator('#beta')).toHaveAttribute('open', '');
   await expect(page.locator('#beta summary')).toBeFocused();
 
-  await page.evaluate(() => window.updateDisclosure('focused-context'));
+  await page.evaluate(() => window.updateDisclosure('focused-context', true, true));
   await expect(page.locator('#beta')).toHaveAttribute('open', '');
   await expect(page.locator('#beta summary')).toBeFocused();
 

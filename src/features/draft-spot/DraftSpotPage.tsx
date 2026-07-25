@@ -102,6 +102,7 @@ export default function DraftSpotPage({
     ];
     disclosure.current?.update({
       signature: disclosureSignature,
+      preserveFocusedSection: true,
       sections: definitions.flatMap(definition => definition.details ? [{
         ...definition,
         details: definition.details,

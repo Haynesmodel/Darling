@@ -8,7 +8,7 @@ export interface DisclosureSection {
 }
 
 export interface SectionDisclosureController {
-  update(input: { signature: string; sections: DisclosureSection[] }): void;
+  update(input: { signature: string; sections: DisclosureSection[]; preserveFocusedSection?: boolean }): void;
   reveal(sectionId: string): boolean;
   setOpen(sectionId: string, open: boolean): boolean;
   dispose(): void;
@@ -122,7 +122,8 @@ export function createSectionDisclosure(input: {
         summary.id ||= `${definition.id}-summary`;
         const stored = state.get(definition.id);
         const requestedOpen = stored ?? Boolean(definition.defaultOpen);
-        const preservesFocusedSection = available
+        const preservesFocusedSection = next.preserveFocusedSection === true
+          && available
           && definition.details.open
           && definition.details.contains(input.doc.activeElement);
         const open = preservesFocusedSection || requestedOpen;

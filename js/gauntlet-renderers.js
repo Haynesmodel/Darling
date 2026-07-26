@@ -198,7 +198,12 @@ function gauntletNarrativeText(result, teamSeasonA, teamSeasonB, context) {
   return `${favored.owner} ${favored.season} has the edge over ${underdog.owner} ${underdog.season} in ${favPct} of ${result.simulations.toLocaleString()} ${modelLabel} simulations, averaging ${avgA}-${avgB} with a ${margin} margin.${meetingPart}${selectedPart}${combinedPart}`;
 }
 
-function renderGauntlet(view, { doc } = {}) {
+/**
+ * @param {any} view
+ * @param {{ doc?: Document, renderHistogramChart?: boolean, sections?: string[] | null }} [opts]
+ */
+function renderGauntlet(view, opts = {}) {
+  const { doc, renderHistogramChart = true, sections = null } = opts;
   const root = doc || (typeof document !== 'undefined' ? document : null);
   if (!root) return;
 
@@ -210,7 +215,8 @@ function renderGauntlet(view, { doc } = {}) {
   const narrative = root.getElementById('gauntletNarrative');
   const copy = root.getElementById('gauntletCopyText');
 
-  if (matchup) {
+  const includes = section => !sections || sections.includes(section);
+  if (matchup && includes('matchup')) {
     matchup.innerHTML = `
       <div class="gauntlet-matchup-grid">
         ${gauntletTeamSeasonCardHtml(view.teamSeasonA)}
@@ -220,16 +226,16 @@ function renderGauntlet(view, { doc } = {}) {
     `;
   }
 
-  if (probability) probability.innerHTML = gauntletProbabilityHtml(view.result, view.teamSeasonA, view.teamSeasonB);
-  if (histogram) {
+  if (probability && includes('matchup')) probability.innerHTML = gauntletProbabilityHtml(view.result, view.teamSeasonA, view.teamSeasonB);
+  if (histogram && includes('histogram')) {
     histogram.innerHTML = gauntletHistogramSvg(view.result, view.teamSeasonA, view.teamSeasonB);
     const host = typeof root.getElementById === 'function' ? root.getElementById('gauntletHistogramPlot') : null;
-    renderGauntletHistogramPlot(host, view.result, view.teamSeasonA, view.teamSeasonB);
+    if (renderHistogramChart) renderGauntletHistogramPlot(host, view.result, view.teamSeasonA, view.teamSeasonB);
   }
-  if (stats) stats.innerHTML = gauntletStatsTableHtml(view.result, view.teamSeasonA, view.teamSeasonB);
-  if (context) context.innerHTML = gauntletHeadToHeadHtml(view.context);
-  if (narrative) narrative.textContent = view.narrative || '';
-  if (copy) copy.value = view.copyText || '';
+  if (stats && includes('stats')) stats.innerHTML = gauntletStatsTableHtml(view.result, view.teamSeasonA, view.teamSeasonB);
+  if (context && includes('context')) context.innerHTML = gauntletHeadToHeadHtml(view.context);
+  if (narrative && includes('copy')) narrative.textContent = view.narrative || '';
+  if (copy && includes('copy')) copy.value = view.copyText || '';
 }
 
 export {

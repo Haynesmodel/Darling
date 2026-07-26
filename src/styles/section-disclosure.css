@@ -32,6 +32,10 @@
   overflow:clip;
 }
 
+.feature-disclosure[open]{
+  overflow:visible;
+}
+
 .feature-disclosure > summary{
   display:flex;
   align-items:center;

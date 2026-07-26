@@ -104,6 +104,7 @@ for (const theme of ['light', 'dark']) {
 test('Dynasty window dialog has no automated violations', async ({ page }) => {
   await page.goto('/?tab=dynasty');
   await page.waitForLoadState('networkidle');
+  await page.locator('#dynasty-section-jump').selectOption('dynasty-windows');
   await page.locator('#dynastyBestWindows .dynasty-window-card').first().click();
   await expect(page.locator('#dynastyWindowModal')).toBeVisible();
   await expectNoViolations(page, '#dynastyWindowModal');

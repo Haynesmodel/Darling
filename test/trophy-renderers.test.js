@@ -12,6 +12,13 @@ import {
   trophyRankStripHtml,
   trophyScarListHtml,
   trophySeasonLedgerHtml,
+  renderTrophyAchievementList,
+  renderTrophyCareerShape,
+  renderTrophyHardwareShelf,
+  renderTrophyHero,
+  renderTrophyRankStrip,
+  renderTrophyScarList,
+  renderTrophySeasonLedger,
 } from '../js/trophy-renderers.js';
 
 function makeProfile(owner, overrides = {}) {
@@ -343,4 +350,34 @@ test('trophy renderers escape owner names and support empty states', () => {
     ],
   });
   assert.match(escapedLedger, /Champion &amp; Friends/);
+});
+
+test('trophy section renderers populate their owned targets without requiring a chart', () => {
+  const view = buildTrophyCaseViewModel('Joe', {
+    seasonSummaries: [],
+    leagueGames: [],
+  });
+  const targets = new Map([
+    ['#trophyHero', { innerHTML: '' }],
+    ['#trophyHardwareShelf', { innerHTML: '' }],
+    ['#trophyRankStrip', { innerHTML: '' }],
+    ['#trophyCareerShape', { innerHTML: '' }],
+    ['#trophyAchievementList', { innerHTML: '' }],
+    ['#trophyScarList', { innerHTML: '' }],
+    ['#trophySeasonTable tbody', { innerHTML: '' }],
+  ]);
+  const doc = {
+    querySelector: selector => targets.get(selector) || null,
+    getElementById: () => null,
+  };
+
+  renderTrophyHero(view, { doc });
+  renderTrophyHardwareShelf(view, { doc });
+  renderTrophyRankStrip(view, { doc });
+  renderTrophyCareerShape(view, { doc, renderChart: false });
+  renderTrophyAchievementList(view, { doc });
+  renderTrophyScarList(view, { doc });
+  renderTrophySeasonLedger(view, { doc });
+
+  for (const target of targets.values()) assert.notEqual(target.innerHTML, '');
 });

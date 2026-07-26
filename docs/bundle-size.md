@@ -45,6 +45,31 @@ The July 24, 2026 phase-aware Current Season change was measured from merged sem
 
 No ceiling or runtime dependency changed. The generated browser validator now embeds only the RFC 3339 `date` and `date-time` implementations referenced by Darling's schemas instead of transporting the rest of the unused `ajv-formats` catalog. Node-side schema tooling retains the full package, and parity tests compare the specialized browser functions with AJV's reference validators. The canonical finalized route is the smaller static closure at runtime because recap does not start odds work; the settled figure remains the enforced worst-case closure for an eligible live regular-season command view.
 
+## Analytical disclosure completion delta
+
+The July 25, 2026 final disclosure phase was measured from merged PR B main `cfcd6c3` with Node 24.14.0, npm 11, Vite 8.1.4, and `VITE_BASE_PATH=/Darling/`.
+
+| Metric | `cfcd6c3` | Final disclosure | Delta | Enforced ceiling |
+| --- | ---: | ---: | ---: | ---: |
+| Entry raw | 178,168 | 178,202 | +34 | 190,000 |
+| Entry gzip | 54,175 | 54,192 | +17 | 56,000 |
+| Aggregate JavaScript gzip | 276,981 | 279,567 | +2,586 | 280,000 |
+| Chart-runtime raw | 294,294 | 294,294 | 0 | 305,000 |
+| Chart-runtime gzip | 97,674 | 97,674 | 0 | 100,000 |
+
+| Route | `cfcd6c3` settled gzip | Final settled gzip | Delta | Settled ceiling |
+| --- | ---: | ---: | ---: | ---: |
+| League Pulse | 103,916 | 103,937 | +21 | 115,000 |
+| History | 106,156 | 107,515 | +1,359 | 115,000 |
+| Current Season | 204,352 | 204,563 | +211 | 205,000 |
+| Head to Head | 189,634 | 191,015 | +1,381 | 205,000 |
+| Trophy Case | 189,504 | 190,864 | +1,360 | 205,000 |
+| Dynasty Rankings | 190,636 | 192,073 | +1,437 | 205,000 |
+| Draft Spot | 189,823 | 191,526 | +1,703 | 205,000 |
+| Historical Matchup | 183,439 | 184,918 | +1,479 | 205,000 |
+
+The shared disclosure controller is emitted once as a 1,039-byte gzip chunk and reused by every analytical route. No ceiling, dependency, feature boundary, lazy entry, chart-runtime copy, or URL state field changed. Supporting charts defer DOM mounting while closed; that runtime behavior does not alter the static route closure calculation.
+
 ## Route closures
 
 Static closures count the production entry, selected feature, verified data loader, validators, and recursive static imports exactly once. Settled closures additionally count eligible selected dynamics: Current Season odds for an active regular-season command/standings view and Draft Spot charts. The checker deliberately does not follow every dynamic feature import from `index.html`.

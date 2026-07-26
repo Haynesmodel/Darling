@@ -1,6 +1,32 @@
 import { expect, test } from './coverage-fixture.js';
 import { activateFeature } from './navigation-helpers.js';
 
+test.beforeEach(async ({ page }) => {
+  // The legacy end-to-end suite is the open-everything parity pass: disclosure
+  // behavior itself is covered in navigation-progressive-disclosure.spec.js.
+  await page.addInitScript(() => {
+    const featureRoots = ['history', 'rivalry', 'trophy', 'dynasty', 'draft', 'gauntlet']
+      .map(id => `#page-${id}`)
+      .join(',');
+    const expand = () => {
+      for (const root of document.querySelectorAll(featureRoots)) {
+        for (const details of root.querySelectorAll('details.feature-disclosure:not([hidden]):not([open])')) {
+          details.open = true;
+        }
+      }
+    };
+    window.addEventListener('DOMContentLoaded', () => {
+      expand();
+      new MutationObserver(expand).observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['open', 'hidden'],
+        childList: true,
+        subtree: true,
+      });
+    }, { once: true });
+  });
+});
+
 test('theme context helpers cover owner, rivalry, postseason, and league fallbacks', async ({ page }) => {
   await page.goto('/');
   if (process.env.PLAYWRIGHT_SERVER === 'preview') {
@@ -1108,6 +1134,28 @@ test('saved rivalry and trophy views restore initialized control contexts', asyn
   await expect(page.locator('#trophyOwnerSelect')).toHaveValue('Joe');
   await expect(page).toHaveURL(/trophyOwner=Joe/);
   await expect(page.locator('[data-table-id="trophy-seasons"] th').filter({ hasText: 'Finish' })).toHaveAttribute('aria-sort', 'ascending');
+});
+
+test('saved draft views restore initialized owner and season contexts', async ({ page }) => {
+  await page.addInitScript(() => localStorage.removeItem('darling.tableViews.v1'));
+  await page.goto('/?tab=draft&draftMode=owner&draftOwner=Joe&draftStart=2021&draftEnd=2025');
+  await page.waitForLoadState('networkidle');
+  await page.locator('#draft-section-jump').selectOption('draft-ledger');
+  const draft = page.locator('[data-table-id="draft-rows"]');
+  await draft.locator('.table-view-menu > summary').click();
+  await draft.getByPlaceholder('View name').fill('Joe draft ledger');
+  await draft.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.locator('#draftOwnerSelect').selectOption('Joel');
+  await expect(page).toHaveURL(/draftOwner=Joel/);
+
+  await page.locator('#draft-section-jump').selectOption('draft-ledger');
+  const switchedDraft = page.locator('[data-table-id="draft-rows"]');
+  await switchedDraft.locator('.table-view-menu > summary').click();
+  await switchedDraft.getByRole('button', { name: 'Joe draft ledger', exact: true }).click();
+  await expect(page.locator('#draftOwnerSelect')).toHaveValue('Joe');
+  await expect(page.locator('#draftStartSeason')).toHaveValue('2021');
+  await expect(page.locator('#draftEndSeason')).toHaveValue('2025');
+  await expect(page).toHaveURL(/draftOwner=Joe/);
 });
 
 test('interactive tables mount across rivalry, current season, and trophy pages', async ({ page }) => {

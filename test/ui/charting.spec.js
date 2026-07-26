@@ -63,22 +63,30 @@ test('Current Season projected standings chart retains owner and seed titles', a
 
 test('Rivalry cumulative lead chart redraws for a new opponent', async ({ page }) => {
   await page.goto('/?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel');
+  await expect(page.locator('#rivalryLeadPlot svg')).toHaveCount(0);
+  await page.locator('#rivalry-section-jump').selectOption('rivalry-trend');
   await assertChart(page, '#rivalryLeadPlot', /Series lead over time relative to \.500/);
   await page.locator('#rivalryTeamB').selectOption('Shap');
+  await page.locator('#rivalry-section-jump').selectOption('rivalry-trend');
   await assertChart(page, '#rivalryLeadPlot', /Series lead over time relative to \.500/);
   await expectNoPageOverflow(page);
 });
 
 test('Trophy career chart redraws for a new owner', async ({ page }) => {
   await page.goto('/?tab=trophy&trophyOwner=Joe');
+  await expect(page.locator('#trophyCareerPlot svg')).toHaveCount(0);
+  await page.locator('#trophy-section-jump').selectOption('trophy-career');
   await assertChart(page, '#trophyCareerPlot', /Season finish trend/);
   await page.locator('#trophyOwnerSelect').selectOption('Joel');
+  await page.locator('#trophy-section-jump').selectOption('trophy-career');
   await assertChart(page, '#trophyCareerPlot', /Season finish trend/);
   await expectNoPageOverflow(page);
 });
 
 test('Dynasty trend chart toggle changes marks without duplicating SVG', async ({ page }) => {
   await page.goto('/?tab=dynasty&dynastyMode=calculator&dynastyOwner=Joe&dynastyStart=2021&dynastyEnd=2025');
+  await expect(page.locator('#dynastyTrendPlot svg')).toHaveCount(0);
+  await page.locator('#dynasty-section-jump').selectOption('dynasty-trend');
   await assertChart(page, '#dynastyTrendPlot', /All-time dynasty score through the years/);
   const toggle = page.locator('[data-dynasty-trend-toggle="1"]').first();
   await toggle.click();
@@ -89,8 +97,11 @@ test('Dynasty trend chart toggle changes marks without duplicating SVG', async (
 
 test('Gauntlet histogram rerun replaces its SVG', async ({ page }) => {
   await page.goto('/?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019&gn=1000');
+  await expect(page.locator('#gauntletHistogramPlot svg')).toHaveCount(0);
+  await page.locator('#gauntlet-section-jump').selectOption('gauntlet-distribution');
   await assertChart(page, '#gauntletHistogramPlot', /Overlaid score distribution histogram/);
   await page.locator('#gauntletRerollBtn').click();
+  await expect(page.locator('#gauntletHistogramDisclosure')).toHaveAttribute('open', '');
   await assertChart(page, '#gauntletHistogramPlot', /Overlaid score distribution histogram/);
   await expectNoPageOverflow(page);
 });
@@ -106,6 +117,8 @@ test('Draft pick chart loads dynamically and redraws for metric and normalizatio
 
 test('Draft zone chart loads dynamically and redraws for metric changes', async ({ page }) => {
   await page.goto('/?tab=draft');
+  await expect(page.locator('.draft-zone-chart svg')).toHaveCount(0);
+  await page.locator('#draft-section-jump').selectOption('draft-zones');
   await assertChart(page, '.draft-zone-chart', /Draft zone comparison by/);
   await page.locator('#draftMetricSelect').selectOption('championships');
   await assertChart(page, '.draft-zone-chart', /Draft zone comparison by Championship Count/);

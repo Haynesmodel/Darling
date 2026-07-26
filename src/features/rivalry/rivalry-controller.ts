@@ -13,6 +13,7 @@ import {
 import type { AppContext } from '../../app/app-types';
 import type { DarlingFeatureController, FeatureActivation } from '../../app/feature-contract';
 import { ALL_TEAMS, DEFAULT_TEAM } from '../../app/feature-utils';
+import { createSectionDisclosure, type SectionDisclosureController } from '../../app/section-disclosure';
 import { registerRivalryTables } from './rivalry-tables';
 
 function scope(value: unknown): string {
@@ -26,6 +27,7 @@ export function createFeatureController(): DarlingFeatureController {
   let selectedScope = 'allTime';
   let active = false;
   let initialized = false;
+  let disclosure: SectionDisclosureController | null = null;
 
   const render = () => {
     if (!active || !teamA || !teamB) return;
@@ -37,7 +39,7 @@ export function createFeatureController(): DarlingFeatureController {
     renderRivalryLeadMeter(view, { doc: context.document });
     renderRivalryHighlightBoard(view, { doc: context.document });
     renderRivalryTape(view, { doc: context.document });
-    renderRivalryLeadTrend(view, { doc: context.document });
+    renderRivalryLeadTrend(view, { doc: context.document, renderChart: false });
     renderRivalryTimeline(view, { doc: context.document });
     const onContextChange = (tableContext: Record<string, unknown>) => {
       teamA = String(tableContext.rivalryA || teamA);
@@ -50,6 +52,23 @@ export function createFeatureController(): DarlingFeatureController {
     };
     context.tables.render('rivalry-seasons', { rows: view.seasonRows, context: { rivalryA: view.teamA, rivalryB: view.teamB }, onContextChange, instanceKey: `${view.teamA}|${view.teamB}|${view.scope}` });
     context.tables.render('rivalry-games', { rows: view.gameRows, context: { rivalryA: view.teamA, rivalryB: view.teamB }, onContextChange, instanceKey: `${view.teamA}|${view.teamB}|${view.scope}` });
+    const available = view.gameRows.length > 0;
+    const sections = [
+      ['rivalry-lead', 'Series Lead', 'rivalryLeadDisclosure', true, undefined],
+      ['rivalry-highlights', 'Highlights', 'rivalryHighlightsDisclosure', true, undefined],
+      ['rivalry-tape', 'Tale of the Tape', 'rivalryTapeDisclosure', false, undefined],
+      ['rivalry-trend', 'Lead Trend', 'rivalryTrendDisclosure', false, () => renderRivalryLeadTrend(view, { doc: context.document })],
+      ['rivalry-timeline', 'Timeline', 'rivalryTimelineDisclosure', false, undefined],
+      ['rivalry-seasons', 'Season Breakdown', 'rivalrySeasonsDisclosure', false, undefined],
+      ['rivalry-games', 'Game Log', 'rivalryGamesDisclosure', false, undefined],
+    ] as const;
+    disclosure?.update({
+      signature: `${view.teamA}|${view.teamB}|${view.scope}`,
+      sections: sections.flatMap(([id, label, detailsId, defaultOpen, onVisible]) => {
+        const details = context.document.getElementById(detailsId) as HTMLDetailsElement | null;
+        return details ? [{ id, label, details, available, defaultOpen, onVisible }] : [];
+      }),
+    });
     context.router.update({ tab: 'rivalry', selectedRivalryTeamA: teamA, selectedRivalryTeamB: teamB, selectedRivalryScope: selectedScope });
   };
 
@@ -58,6 +77,15 @@ export function createFeatureController(): DarlingFeatureController {
     mount(nextContext) {
       context = nextContext;
       registerRivalryTables(context.tables);
+      const mount = context.document.getElementById('rivalrySectionNav');
+      if (mount) {
+        disclosure = createSectionDisclosure({
+          doc: context.document,
+          mount,
+          featureId: 'rivalry',
+          featureLabel: 'Head to Head',
+        });
+      }
       const scopeSelect = context.document.getElementById('rivalryScopeSelect') as HTMLSelectElement | null;
       scopeSelect?.addEventListener('change', () => {
         if (!active) return;
@@ -97,5 +125,9 @@ export function createFeatureController(): DarlingFeatureController {
       render();
     },
     deactivate() { active = false; },
+    dispose() {
+      disclosure?.dispose();
+      disclosure = null;
+    },
   };
 }

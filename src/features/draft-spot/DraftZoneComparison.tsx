@@ -7,12 +7,19 @@ import { renderDraftChartError } from './draft-chart-error';
 export default function DraftZoneComparison({
   model,
   onChange,
+  chartActive,
 }: {
   model: DraftSpotViewModel;
   onChange: (state: Partial<DraftSpotState>) => void;
+  chartActive: boolean;
 }) {
   const chartHost = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    if (!chartActive) {
+      chartHost.current?.replaceChildren();
+      if (chartHost.current) delete chartHost.current.dataset.chartState;
+      return;
+    }
     let active = true;
     void import('../../../js/charting/vendor/charting-vendor.js').then(({ plot, barY }) => {
       if (!active || !chartHost.current) return;
@@ -40,7 +47,7 @@ export default function DraftZoneComparison({
       chartHost.current?.replaceChildren();
       if (chartHost.current) delete chartHost.current.dataset.chartState;
     };
-  }, [model.state.metric, model.zoneSummary]);
+  }, [chartActive, model.state.metric, model.zoneSummary]);
   const byZone = new Map(model.zoneSummary.map(summary => [summary.zone_key, summary]));
   return (
     <>

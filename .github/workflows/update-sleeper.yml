@@ -204,7 +204,7 @@ jobs:
             assets/asset-manifest.json
           )
 
-          git add -A -- "${ALLOWLIST[@]}"
+          bash scripts/stage_optional_git_paths.sh "${ALLOWLIST[@]}"
 
           node <<'NODE'
           const { execFileSync } = require('node:child_process');

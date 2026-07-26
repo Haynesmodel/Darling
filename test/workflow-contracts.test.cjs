@@ -87,6 +87,7 @@ function validateSleeperWorkflow(source, errors) {
   const resolveSeason = extractNamedStep(update, 'Resolve target season');
   const generateCandidate = extractNamedStep(update, 'Generate candidate data');
   const regenerate = extractNamedStep(update, 'Promote and regenerate candidate bundle');
+  const allowlist = extractNamedStep(update, 'Enforce change allowlist');
   const summarizeCandidate = extractNamedStep(update, 'Summarize and safety-check candidate');
   const appToken = extractNamedStep(update, 'Mint repository-scoped automation token');
   const appScope = extractNamedStep(update, 'Verify App repository scope');
@@ -203,6 +204,10 @@ function validateSleeperWorkflow(source, errors) {
   if (!update.includes("if (status[1] !== ' ')")
     || !update.includes('Refusing an allowed path that is not fully staged')) {
     errors.push('SLEEPER-DATA-001: every allowed changed path must be fully staged before publication');
+  }
+  if (!allowlist.includes('bash scripts/stage_optional_git_paths.sh "${ALLOWLIST[@]}"')
+    || allowlist.includes('git add -A -- "${ALLOWLIST[@]}"')) {
+    errors.push('SLEEPER-DATA-001: allowlist staging must tolerate absent optional files and preserve tracked deletions');
   }
   for (const command of [
     'npm run generate:derived',
@@ -801,6 +806,18 @@ test('Sleeper contract rejects removal of the fully-staged bundle guard', () => 
   assert.match(
     validateWorkflowContracts(mutated).join('\n'),
     /every allowed changed path must be fully staged/,
+  );
+});
+
+test('Sleeper contract rejects staging all optional allowlist paths in one git add', () => {
+  const fixture = readRepositoryFixture();
+  const mutated = mutateSleeper(fixture, source => source.replace(
+    'bash scripts/stage_optional_git_paths.sh "${ALLOWLIST[@]}"',
+    'git add -A -- "${ALLOWLIST[@]}"',
+  ));
+  assert.match(
+    validateWorkflowContracts(mutated).join('\n'),
+    /allowlist staging must tolerate absent optional files and preserve tracked deletions/,
   );
 });
 

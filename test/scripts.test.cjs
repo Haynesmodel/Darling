@@ -56,6 +56,13 @@ function runShell(script, env, cwd) {
   });
 }
 
+function runGit(args, cwd) {
+  return spawnSync('git', args, {
+    cwd,
+    encoding: 'utf8',
+  });
+}
+
 function writeCssHygieneFixture(root) {
   const styles = path.join(root, 'src', 'styles');
   fs.mkdirSync(styles, { recursive: true });
@@ -103,6 +110,71 @@ test('JSON comparison ignores formatting but detects data changes and invalid in
     const usage = runNode(script, [], root);
     assert.equal(usage.status, 2);
     assert.match(usage.stderr, /Usage: node scripts\/compare_json\.cjs/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('optional Git path staging tolerates absent files and stages tracked deletions', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-optional-staging-'));
+  const assets = path.join(root, 'assets');
+  const currentSeason = path.join(assets, 'CurrentSeason.json');
+  const draft = path.join(assets, 'SeasonSummary.draft.json');
+  const script = path.join(__dirname, '..', 'scripts', 'stage_optional_git_paths.sh');
+  const git = args => {
+    const result = runGit(args, root);
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout;
+  };
+  const commit = message => git([
+    '-c', 'user.name=Darling Tests',
+    '-c', 'user.email=darling-tests@example.invalid',
+    'commit', '-m', message,
+  ]);
+
+  try {
+    fs.mkdirSync(assets);
+    git(['init']);
+    fs.writeFileSync(currentSeason, '{"season":2025}\n');
+    git(['add', 'assets/CurrentSeason.json']);
+    commit('initial fixture');
+
+    fs.writeFileSync(currentSeason, '{"season":2026}\n');
+    const absent = spawnSync('bash', [
+      script,
+      'assets/CurrentSeason.json',
+      'assets/SeasonSummary.draft.json',
+    ], {
+      cwd: root,
+      encoding: 'utf8',
+    });
+    assert.equal(absent.status, 0, absent.stderr);
+    assert.equal(git(['diff', '--cached', '--name-status']), 'M\tassets/CurrentSeason.json\n');
+    commit('stage without optional draft');
+
+    fs.writeFileSync(draft, '{"season":2026}\n');
+    git(['add', 'assets/SeasonSummary.draft.json']);
+    commit('track optional draft');
+
+    fs.writeFileSync(currentSeason, '{"season":2026,"status":"preseason"}\n');
+    fs.rmSync(draft);
+    const deletion = spawnSync('bash', [
+      script,
+      'assets/CurrentSeason.json',
+      'assets/SeasonSummary.draft.json',
+    ], {
+      cwd: root,
+      encoding: 'utf8',
+    });
+    assert.equal(deletion.status, 0, deletion.stderr);
+    assert.equal(
+      git(['diff', '--cached', '--name-status']),
+      'M\tassets/CurrentSeason.json\nD\tassets/SeasonSummary.draft.json\n',
+    );
+
+    const usage = spawnSync('bash', [script], { cwd: root, encoding: 'utf8' });
+    assert.equal(usage.status, 2);
+    assert.match(usage.stderr, /Usage: scripts\/stage_optional_git_paths\.sh/);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

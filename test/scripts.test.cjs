@@ -10,6 +10,7 @@ const { checkRepoHygiene } = require('../scripts/check_repo_hygiene.cjs');
 const { checkCssHygiene, runCli: runCssHygieneCli } = require('../scripts/check_css_hygiene.cjs');
 const { auditBuiltAssets } = require('../scripts/audit_built_assets.cjs');
 const { canonicalJson, sha256Json } = require('../scripts/data/canonical-json.cjs');
+const { jsonFilesEqual } = require('../scripts/compare_json.cjs');
 const { measureBundle } = require('../scripts/check_bundle_size.cjs');
 const { FORMATS, HERO_WIDTHS, generateHeroImages, resolveSource } = require('../scripts/generate_hero_images.cjs');
 const { createStaticServer, normalizeBasePath, resolvePath } = require('../scripts/serve_static.cjs');
@@ -77,6 +78,35 @@ function writeCssHygieneFixture(root) {
   fs.writeFileSync(path.join(styles, 'tokens.css'), ':root{--fixture-text:CanvasText}\n');
   fs.writeFileSync(path.join(styles, 'components.css'), '.fixture{color:var(--fixture-text)}\n');
 }
+
+test('JSON comparison ignores formatting but detects data changes and invalid input', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-json-compare-'));
+  const left = path.join(root, 'left.json');
+  const right = path.join(root, 'right.json');
+  const script = path.join(__dirname, '..', 'scripts', 'compare_json.cjs');
+  try {
+    fs.writeFileSync(left, '{"b":2,"a":[1,2]}');
+    fs.writeFileSync(right, '{\n  "a": [1, 2],\n  "b": 2\n}\n');
+    assert.equal(jsonFilesEqual(left, right), true);
+    assert.equal(runNode(script, [left, right], root).status, 0);
+
+    fs.writeFileSync(right, '{"a":[2,1],"b":2}\n');
+    assert.equal(jsonFilesEqual(left, right), false);
+    assert.equal(runNode(script, [left, right], root).status, 1);
+
+    fs.writeFileSync(right, '{not-json}\n');
+    assert.throws(() => jsonFilesEqual(left, right), /invalid UTF-8 JSON/);
+    const invalid = runNode(script, [left, right], root);
+    assert.equal(invalid.status, 2);
+    assert.match(invalid.stderr, /invalid UTF-8 JSON/);
+
+    const usage = runNode(script, [], root);
+    assert.equal(usage.status, 2);
+    assert.match(usage.stderr, /Usage: node scripts\/compare_json\.cjs/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test('repo hygiene accepts the expected ESM app shape', async () => {
   await withTempRepo((root) => {

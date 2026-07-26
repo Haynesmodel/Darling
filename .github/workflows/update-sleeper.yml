@@ -158,22 +158,26 @@ jobs:
           test -f assets/CurrentSeason.updated.json
 
           SOURCE_CHANGED=0
-          if ! cmp -s assets/H2H.updated.json assets/H2H.json; then
+          H2H_CHANGED=0
+          if ! node scripts/compare_json.cjs assets/H2H.updated.json assets/H2H.json; then
             cp assets/H2H.updated.json assets/H2H.json
             SOURCE_CHANGED=1
+            H2H_CHANGED=1
           fi
-          if [[ ! -f assets/CurrentSeason.json ]] || ! cmp -s assets/CurrentSeason.updated.json assets/CurrentSeason.json; then
+          if [[ ! -f assets/CurrentSeason.json ]] || ! node scripts/compare_json.cjs assets/CurrentSeason.updated.json assets/CurrentSeason.json; then
             cp assets/CurrentSeason.updated.json assets/CurrentSeason.json
             SOURCE_CHANGED=1
           fi
 
-          if [[ "${SOURCE_CHANGED}" == "1" ]]; then
+          if [[ "${H2H_CHANGED}" == "1" ]]; then
             python3 scripts/generate_season_summary_draft.py \
               --h2h assets/H2H.json \
               --existing assets/SeasonSummary.json \
               --out assets/SeasonSummary.draft.json \
               --season "${{ steps.resolve.outputs.season }}"
             npm run generate:derived
+          fi
+          if [[ "${SOURCE_CHANGED}" == "1" ]]; then
             npm run generate:manifest
           fi
           echo "source_changed=${SOURCE_CHANGED}" >> "$GITHUB_OUTPUT"

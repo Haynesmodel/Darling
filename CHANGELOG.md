@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Configured the activated 2026 Sleeper league roster mapping and Week 1 Sunday anchor for the reviewed season-update workflow.
 - Restored Draft Spot as a typed, validated, lazily loaded Preact feature with shareable pick/zone/owner URLs, charts, search, themes, keyboard navigation, and an interactive receipts table.
 - Added deterministic playoff, bye, seed, and Saunders probabilities to Current Season with movement and selected-owner scenarios.
 - Fixed primary-tab arrow wrapping and stabilized built-output Playwright runs at one worker with explicit preview-server diagnostics.

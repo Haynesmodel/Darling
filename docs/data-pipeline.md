@@ -149,14 +149,22 @@ UPDATE_LIVE=1 VALIDATE_ONLY=1 SEASON=2025 CURRENT_WEEK=1 scripts/update_sleeper_
 
 ### Activating a new Sleeper season
 
-2026 remains intentionally unconfigured. Activate a new season in this order:
+The repository configuration for 2026 includes the reviewed roster mapping and
+the September 13 Week 1 Sunday anchor. Complete the 2026 rollover in this order:
 
-1. Create the Sleeper league.
-2. Add `scripts/<season>_team_mapping.json` and the matching Week 1 anchor in `scripts/sleeper_week1_anchors.json` through a human pull request.
-3. Merge that configuration only after normal CI and mapping review.
-4. Update the `SLEEPER_LEAGUE_ID` repository secret to the activated league.
-5. Dispatch a validation-only run from `main` for the new season.
-6. Dispatch a full run and review the resulting bot draft pull request.
+1. Merge the human pull request containing `scripts/2026_team_mapping.json` and
+   the 2026 entry in `scripts/sleeper_week1_anchors.json` after normal CI and
+   mapping review.
+2. Update the `SLEEPER_LEAGUE_ID` repository secret to the activated 2026
+   league.
+3. Dispatch a validation-only run from `main` with season `2026`.
+4. Dispatch a full run for season `2026` and review the resulting bot draft
+   pull request.
+
+For later seasons, create the Sleeper league, then add
+`scripts/<season>_team_mapping.json` and its Week 1 Sunday anchor together
+through the same human-reviewed configuration pull request before changing the
+repository secret.
 
 The automation does not infer future leagues, follow `previous_league_id`, or accept a reported Sleeper league season that differs from the configured target.
 

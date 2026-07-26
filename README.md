@@ -128,6 +128,11 @@ Season update flow:
 - Full no-change runs create no token, branch update, or pull request update. Failures retain safe candidate evidence for seven days and update the exact `Weekly Sleeper update failed` issue; the next successful full run closes that issue with a recovery link.
 - `assets/SeasonSummary.draft.json` remains a review aid. Complete its manual fields in a separate human-authored change before promoting anything to canonical `assets/SeasonSummary.json`.
 
-To activate 2026, first create the Sleeper league, then add the 2026 team mapping and Week 1 anchor together in a human pull request. After that change merges, update `SLEEPER_LEAGUE_ID`, run a validation-only main dispatch for 2026, and only then run a full reviewed update. Do not add placeholder configuration or follow Sleeper's previous-league chain automatically.
+The 2026 Sleeper league is configured by `scripts/2026_team_mapping.json` and the
+September 13 Week 1 anchor. After this human-reviewed configuration merges,
+update `SLEEPER_LEAGUE_ID` to the activated 2026 league, run a validation-only
+main dispatch with season `2026`, and only then run a full reviewed update. The
+automation does not infer a future league or follow Sleeper's
+`previous_league_id` chain.
 
 Season notes and cleanup history live in [CHANGELOG.md](./CHANGELOG.md).

@@ -86,6 +86,8 @@ function validateSleeperWorkflow(source, errors) {
   const sourceStep = extractNamedStep(update, 'Record trusted main source');
   const resolveSeason = extractNamedStep(update, 'Resolve target season');
   const generateCandidate = extractNamedStep(update, 'Generate candidate data');
+  const regenerate = extractNamedStep(update, 'Promote and regenerate candidate bundle');
+  const allowlist = extractNamedStep(update, 'Enforce change allowlist');
   const summarizeCandidate = extractNamedStep(update, 'Summarize and safety-check candidate');
   const appToken = extractNamedStep(update, 'Mint repository-scoped automation token');
   const appScope = extractNamedStep(update, 'Verify App repository scope');
@@ -203,6 +205,10 @@ function validateSleeperWorkflow(source, errors) {
     || !update.includes('Refusing an allowed path that is not fully staged')) {
     errors.push('SLEEPER-DATA-001: every allowed changed path must be fully staged before publication');
   }
+  if (!allowlist.includes('bash scripts/stage_optional_git_paths.sh "${ALLOWLIST[@]}"')
+    || allowlist.includes('git add -A -- "${ALLOWLIST[@]}"')) {
+    errors.push('SLEEPER-DATA-001: allowlist staging must tolerate absent optional files and preserve tracked deletions');
+  }
   for (const command of [
     'npm run generate:derived',
     'npm run generate:manifest',
@@ -212,6 +218,15 @@ function validateSleeperWorkflow(source, errors) {
     if (!update.includes(command)) {
       errors.push(`SLEEPER-DATA-002: workflow must run ${command}`);
     }
+  }
+  if (!regenerate.includes('H2H_CHANGED=0')
+    || countMatches(regenerate, /H2H_CHANGED=1/g) !== 1
+    || countMatches(regenerate, /node scripts\/compare_json\.cjs/g) !== 2
+    || !/if ! node scripts\/compare_json\.cjs assets\/H2H\.updated\.json assets\/H2H\.json; then[\s\S]*?H2H_CHANGED=1[\s\S]*?fi/.test(regenerate)
+    || !/if \[\[ ! -f assets\/CurrentSeason\.json \]\] \|\| ! node scripts\/compare_json\.cjs assets\/CurrentSeason\.updated\.json assets\/CurrentSeason\.json; then/.test(regenerate)
+    || !/if \[\[ "\$\{H2H_CHANGED\}" == "1" \]\]; then[\s\S]*?generate_season_summary_draft\.py[\s\S]*?npm run generate:derived[\s\S]*?fi/.test(regenerate)
+    || !/if \[\[ "\$\{SOURCE_CHANGED\}" == "1" \]\]; then[\s\S]*?npm run generate:manifest[\s\S]*?fi/.test(regenerate)) {
+    errors.push('SLEEPER-DATA-003: semantic H2H-only outputs must not block CurrentSeason-only preseason promotion');
   }
   if (!update.includes('--base-sha "${{ steps.source.outputs.sha }}"')
     || !update.includes('--candidate-sha "${{ steps.source.outputs.sha }}"')
@@ -792,6 +807,47 @@ test('Sleeper contract rejects removal of the fully-staged bundle guard', () => 
     validateWorkflowContracts(mutated).join('\n'),
     /every allowed changed path must be fully staged/,
   );
+});
+
+test('Sleeper contract rejects staging all optional allowlist paths in one git add', () => {
+  const fixture = readRepositoryFixture();
+  const mutated = mutateSleeper(fixture, source => source.replace(
+    'bash scripts/stage_optional_git_paths.sh "${ALLOWLIST[@]}"',
+    'git add -A -- "${ALLOWLIST[@]}"',
+  ));
+  assert.match(
+    validateWorkflowContracts(mutated).join('\n'),
+    /allowlist staging must tolerate absent optional files and preserve tracked deletions/,
+  );
+});
+
+test('Sleeper contract rejects preseason promotion coupled to H2H-only outputs', () => {
+  const fixture = readRepositoryFixture();
+  const cases = [
+    source => source.replace(
+      'if ! node scripts/compare_json.cjs assets/H2H.updated.json assets/H2H.json; then',
+      'if ! cmp -s assets/H2H.updated.json assets/H2H.json; then',
+    ),
+    source => source.replace(
+      'if [[ "${H2H_CHANGED}" == "1" ]]; then',
+      'if [[ "${SOURCE_CHANGED}" == "1" ]]; then',
+    ),
+    source => source.replace(
+      '            H2H_CHANGED=1\n',
+      '',
+    ),
+    source => source.replace(
+      '          if [[ "${SOURCE_CHANGED}" == "1" ]]; then\n            npm run generate:manifest',
+      '          if [[ "${H2H_CHANGED}" == "1" ]]; then\n            npm run generate:manifest',
+    ),
+  ];
+  for (const mutate of cases) {
+    const mutated = mutateSleeper(fixture, mutate);
+    assert.match(
+      validateWorkflowContracts(mutated).join('\n'),
+      /H2H-only outputs must not block CurrentSeason-only preseason promotion/,
+    );
+  }
 });
 
 test('Sleeper contract rejects direct pushes, plain force, and branch-name drift', () => {

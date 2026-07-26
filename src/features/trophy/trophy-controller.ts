@@ -15,11 +15,6 @@ import { ALL_TEAMS, DEFAULT_TEAM } from '../../app/feature-utils';
 import { createSectionDisclosure, type SectionDisclosureController } from '../../app/section-disclosure';
 import { registerTrophyTables } from './trophy-tables';
 
-const NOTES: Record<string, { champs?: Record<number, string>; saunders?: Record<number, string> }> = {
-  Cole: { champs: { 2012: 'Back-to-back complete.' } },
-  Hayden: { saunders: { 2022: 'The Toilet Bowl Special.' } },
-};
-
 export function createFeatureController(): DarlingFeatureController {
   let context: AppContext;
   let selectedOwner = DEFAULT_TEAM;
@@ -36,8 +31,6 @@ export function createFeatureController(): DarlingFeatureController {
       weeklyAwards: context.data.derivedStats?.weekly_awards || context.selectors.weeklyAwards(),
       seasonAggregates: context.selectors.seasonAggregates(),
       ownerCareers: context.data.derivedStats?.owner_careers || null,
-      champNoteFn: (owner: string, season: number) => NOTES[owner]?.champs?.[season] || null,
-      saundersNoteFn: (owner: string, season: number) => NOTES[owner]?.saunders?.[season] || null,
     });
     renderTrophyHero(view, { doc: context.document });
     renderTrophyHardwareShelf(view, { doc: context.document });

@@ -125,6 +125,7 @@ test('WEBKIT-04 contains focus and restores state for the Dynasty dialog', async
 
 test('WEBKIT-05 keeps an interactive History header sticky', async ({ page }) => {
   await page.goto('/?tab=history&team=Joe');
+  await page.locator('#history-section-jump').selectOption('history-games');
   const shell = page.locator('[data-table-id="history-games"]');
   const scroller = shell.locator('.interactive-table-scroll');
   const header = scroller.locator('thead th').first();

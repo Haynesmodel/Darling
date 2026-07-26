@@ -1136,6 +1136,28 @@ test('saved rivalry and trophy views restore initialized control contexts', asyn
   await expect(page.locator('[data-table-id="trophy-seasons"] th').filter({ hasText: 'Finish' })).toHaveAttribute('aria-sort', 'ascending');
 });
 
+test('saved draft views restore initialized owner and season contexts', async ({ page }) => {
+  await page.addInitScript(() => localStorage.removeItem('darling.tableViews.v1'));
+  await page.goto('/?tab=draft&draftMode=owner&draftOwner=Joe&draftStart=2021&draftEnd=2025');
+  await page.waitForLoadState('networkidle');
+  await page.locator('#draft-section-jump').selectOption('draft-ledger');
+  const draft = page.locator('[data-table-id="draft-rows"]');
+  await draft.locator('.table-view-menu > summary').click();
+  await draft.getByPlaceholder('View name').fill('Joe draft ledger');
+  await draft.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.locator('#draftOwnerSelect').selectOption('Joel');
+  await expect(page).toHaveURL(/draftOwner=Joel/);
+
+  await page.locator('#draft-section-jump').selectOption('draft-ledger');
+  const switchedDraft = page.locator('[data-table-id="draft-rows"]');
+  await switchedDraft.locator('.table-view-menu > summary').click();
+  await switchedDraft.getByRole('button', { name: 'Joe draft ledger', exact: true }).click();
+  await expect(page.locator('#draftOwnerSelect')).toHaveValue('Joe');
+  await expect(page.locator('#draftStartSeason')).toHaveValue('2021');
+  await expect(page.locator('#draftEndSeason')).toHaveValue('2025');
+  await expect(page).toHaveURL(/draftOwner=Joe/);
+});
+
 test('interactive tables mount across rivalry, current season, and trophy pages', async ({ page }) => {
   await page.goto('/?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel');
   await page.waitForLoadState('networkidle');

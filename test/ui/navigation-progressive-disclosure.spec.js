@@ -264,6 +264,43 @@ test('History focus links reveal their existing targets and unavailable sections
   );
 });
 
+test('Rivalry tolerates missing optional sections and inactive control events', async ({ page }) => {
+  await page.goto('/?tab=pulse&rivalryScope=invalid');
+  await page.locator('#rivalryTrendDisclosure').evaluate(element => element.remove());
+  await activateFeature(page, 'rivalry');
+  await expect(page.locator('#page-rivalry')).toHaveAttribute('data-feature-state', 'ready');
+  await page.locator('#rivalryScopeSelect').selectOption('historic');
+  await activateFeature(page, 'pulse');
+  await page.locator('#rivalryScopeSelect').dispatchEvent('change');
+});
+
+test('Trophy tolerates a missing disclosure mount and inactive owner events', async ({ page }) => {
+  await page.goto('/?tab=pulse&team=Joel');
+  await page.locator('#trophySectionNav').evaluate(element => element.remove());
+  await activateFeature(page, 'trophy');
+  await expect(page.locator('#page-trophy')).toHaveAttribute('data-feature-state', 'ready');
+  await page.locator('#trophyOwnerSelect').selectOption('Joe');
+  await activateFeature(page, 'pulse');
+  await page.locator('#trophyOwnerSelect').dispatchEvent('change');
+});
+
+test('Trophy tolerates missing optional disclosure sections', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#trophyCareerDisclosure').evaluate(element => element.remove());
+  await page.locator('#trophyRankDisclosure .feature-section-content').evaluate(element => element.remove());
+  await activateFeature(page, 'trophy');
+  await expect(page.locator('#page-trophy')).toHaveAttribute('data-feature-state', 'ready');
+});
+
+test('Gauntlet tolerates missing optional disclosure controls and sections', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#gauntletCopyBtn').evaluate(element => element.remove());
+  await page.locator('#gauntletHistogramDisclosure').evaluate(element => element.remove());
+  await page.locator('#gauntletStatsDisclosure .feature-section-content').evaluate(element => element.remove());
+  await activateFeature(page, 'gauntlet');
+  await expect(page.locator('#page-gauntlet')).toHaveAttribute('data-feature-state', 'ready');
+});
+
 for (const width of [320, 390, 768, 1280, 1440]) {
   test(`analytical disclosure layouts fit ${width}px in light and dark themes`, async ({ page }) => {
     await page.setViewportSize({ width, height: width < 700 ? 844 : 900 });

@@ -233,4 +233,8 @@ test('Gauntlet copy selects its fallback text when Clipboard API is unavailable'
     end: element.selectionEnd,
     length: element.value.length,
   }))).toEqual({ start: 0, end: length, length });
+
+  await field.evaluate(element => { element.value = ''; });
+  await page.locator('#gauntletCopyBtn').click();
+  await expect(field).toHaveValue('');
 });

@@ -35,3 +35,12 @@ test('fallback freshness runtime preserves assessment and supports the complete 
   assert.equal(typeof unsubscribe, 'function');
   assert.equal(unsubscribe(), undefined);
 });
+
+test('canonical owner union includes historical and current-only owners once in locale order', () => {
+  const owners = controller.canonicalOwners({
+    seasonSummaries: [{ owner: ' Zubs ' }, { owner: 'Joel' }],
+    leagueGames: [{ teamA: 'Joe', teamB: 'Joel' }, { teamA: '', teamB: 'Joe' }],
+    currentSeason: { teams: [{ owner: 'Expansion' }, { owner: 'Joel' }] },
+  });
+  assert.deepEqual(owners, ['Expansion', 'Joe', 'Joel', 'Zubs']);
+});

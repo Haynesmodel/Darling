@@ -58,6 +58,22 @@ test('url helpers parse and rebuild rivalry state', () => {
   assert.equal(next, '/index.html?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel&rivalryScope=currentSeason');
 });
 
+test('url helpers parse and rebuild an encoded Owner Hub state', () => {
+  const canonical = 'A&B + C/Δ';
+  const built = buildUrlFromState({
+    pathname: '/Darling/',
+    tab: 'owner',
+    selectedOwner: canonical,
+  });
+  assert.equal(built, '/Darling/?tab=owner&owner=A%26B+%2B+C%2F%CE%94');
+  const parsed = parseUrlState(built.slice(built.indexOf('?')));
+  assert.equal(parsed.owner, canonical);
+  assert.equal(parsed.hasOwner, true);
+  assert.equal(parsed.hasAny, true);
+  assert.equal(buildUrlFromState({ pathname: '/Darling/', tab: 'owner' }), '/Darling/?tab=owner');
+  assert.equal(buildUrlFromState({ pathname: '/Darling/', tab: 'trophy', selectedOwner: canonical }), '/Darling/?tab=trophy');
+});
+
 test('url helpers parse and rebuild current season state', () => {
   const parsed = parseUrlState('?tab=current&currentSeason=2025&currentWeek=6&currentOwner=Joe&currentView=owners&currentProjection=current');
   assert.equal(parsed.tab, 'current');

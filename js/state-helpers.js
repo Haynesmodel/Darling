@@ -62,6 +62,7 @@ function parseUrlState(search) {
   const rounds = parseList('rounds');
   const team = params.get('team') || null;
   const tab = params.get('tab') || null;
+  const owner = params.get('owner') || null;
   const rivalryTeamA = params.get('rivalryTeamA') || null;
   const rivalryTeamB = params.get('rivalryTeamB') || null;
   const rivalryScope = params.get('rivalryScope') || null;
@@ -115,7 +116,8 @@ function parseUrlState(search) {
   const hasGauntlet = !!(tab === 'gauntlet' || gauntletA || gauntletB || gauntletModel || parsedGauntletIncludePostseason !== null || parsedGauntletSimulations !== null || gauntletSeed);
   const hasDraft = !!(tab === 'draft' || draftOwner || draftMode || parsedDraftStart !== null || parsedDraftEnd !== null || draftMetric || parsedDraftPick !== null || draftZone || parsedDraftMinSample !== null || draftNormalize);
   const hasGameQuery = !!(gameResult || gameMinScore !== null || gameMaxScore !== null || gameSort || gameLimit !== null);
-  const hasAny = !!(team || trophyOwner || hasCurrent || hasDynasty || hasGauntlet || hasDraft || hasGameQuery || focus || (seasons && seasons.length) || (weeks && weeks.length) || (opps && opps.length) || (types && types.length) || (rounds && rounds.length));
+  const hasOwner = tab === 'owner' || !!owner;
+  const hasAny = !!(team || owner || trophyOwner || hasCurrent || hasDynasty || hasGauntlet || hasDraft || hasGameQuery || focus || (seasons && seasons.length) || (weeks && weeks.length) || (opps && opps.length) || (types && types.length) || (rounds && rounds.length));
   return {
     team,
     seasons: seasons ? new Set(seasons) : null,
@@ -124,6 +126,7 @@ function parseUrlState(search) {
     types: types ? new Set(types) : null,
     rounds: rounds ? new Set(rounds) : null,
     tab,
+    owner,
     rivalryTeamA,
     rivalryTeamB,
     rivalryScope,
@@ -162,6 +165,7 @@ function parseUrlState(search) {
     focus,
     hasGameQuery,
     hasRivalry: tab === 'rivalry' || !!rivalryTeamA || !!rivalryTeamB,
+    hasOwner,
     hasCurrent,
     hasDraft,
     hasGauntlet,
@@ -201,6 +205,7 @@ function buildUrlFromState(opts = {}) {
   const allTeams = opts.allTeams || '__ALL__';
   const selectedTeam = Object.prototype.hasOwnProperty.call(opts, 'selectedTeam') ? opts.selectedTeam : allTeams;
   const tab = Object.prototype.hasOwnProperty.call(opts, 'tab') ? opts.tab : null;
+  const selectedOwner = Object.prototype.hasOwnProperty.call(opts, 'selectedOwner') ? opts.selectedOwner : null;
   const selectedRivalryTeamA = Object.prototype.hasOwnProperty.call(opts, 'selectedRivalryTeamA') ? opts.selectedRivalryTeamA : null;
   const selectedRivalryTeamB = Object.prototype.hasOwnProperty.call(opts, 'selectedRivalryTeamB') ? opts.selectedRivalryTeamB : null;
   const selectedRivalryScope = Object.prototype.hasOwnProperty.call(opts, 'selectedRivalryScope') ? opts.selectedRivalryScope : null;
@@ -249,6 +254,7 @@ function buildUrlFromState(opts = {}) {
   const params = new URLSearchParams();
   if (tab === 'pulse') return pathname;
   if (tab) params.set('tab', tab);
+  if (tab === 'owner' && selectedOwner) params.set('owner', selectedOwner);
   if (tab !== 'trophy' && tab !== 'dynasty' && tab !== 'gauntlet' && tab !== 'draft' && selectedTeam && selectedTeam !== allTeams) params.set('team', selectedTeam);
   if (tab === 'rivalry') {
     if (selectedRivalryTeamA) params.set('rivalryTeamA', selectedRivalryTeamA);

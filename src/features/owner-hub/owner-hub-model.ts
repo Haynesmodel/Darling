@@ -20,7 +20,7 @@ type TeamSnapshotBuilder = (options: {
   leagueGames: H2HGame[];
   seasonSummaries: SeasonSummaryRow[];
   currentSeason: LeagueDataSnapshot['currentSeason'];
-}) => { standing?: { games: number; record: string; rank: number } };
+}) => { standing?: { games: number; wins: number; losses: number; ties: number; rank: number } };
 
 function url(pathname: string, state: Record<string, unknown>): string {
   return buildUrlFromState({ pathname, ...state });
@@ -112,7 +112,9 @@ export function buildOwnerHubModel(
     const scoreState = currentSide && currentGame.status !== 'scheduled'
       ? `${currentSide.pf.toFixed(2)}–${currentSide.pa.toFixed(2)} · ${currentGame.status === 'live' ? 'Live' : 'Final'}`
       : currentGame.status === 'scheduled' ? 'Scheduled · score pending' : null;
-    const standingState = standing?.games ? `${standing.record} · seed ${standing.rank}` : null;
+    const standingState = standing?.games
+      ? `${standing.wins}-${standing.losses}-${standing.ties} · seed ${standing.rank}`
+      : null;
     const score = [scoreState, standingState].filter(Boolean).join(' · ') || null;
     rightNow = {
       heading: seasonState.phase === 'preseason' ? 'First matchup' : `Week ${currentGame.week}`,

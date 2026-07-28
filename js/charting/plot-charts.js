@@ -43,35 +43,16 @@ function titleChannel(mark) {
 }
 
 function markOptions(mark) {
-  const options = {
-    x: mark.x,
-    y: mark.y,
-    z: mark.z,
-    r: mark.r,
-    text: mark.text,
-    dx: typeof mark.dx === 'function' ? undefined : mark.dx,
-    dy: mark.dy,
-    fill: mark.fill,
-    fillOpacity: mark.fillOpacity,
-    stroke: mark.stroke,
-    strokeWidth: mark.strokeWidth,
-    strokeDasharray: mark.strokeDasharray,
-    title: titleChannel(mark),
-    className: mark.className,
-  };
+  const { type, data, ...options } = mark;
+  if (typeof options.dx === 'function') delete options.dx;
+  options.title = titleChannel(mark);
   return Object.fromEntries(Object.entries(options).filter(([, value]) => value !== undefined));
 }
 
+const markFactories = { areaY, barX, dot, lineY, ruleX, ruleY, text };
+
 function plotMark(mark) {
-  const options = markOptions(mark);
-  if (mark.type === 'areaY') return areaY(mark.data, options);
-  if (mark.type === 'barX') return barX(mark.data, options);
-  if (mark.type === 'dot') return dot(mark.data, options);
-  if (mark.type === 'lineY') return lineY(mark.data, options);
-  if (mark.type === 'ruleX') return ruleX(mark.data, options);
-  if (mark.type === 'ruleY') return ruleY(mark.data, options);
-  if (mark.type === 'text') return text(mark.data, options);
-  return null;
+  return markFactories[mark.type]?.(mark.data, markOptions(mark)) || null;
 }
 
 function toPlotOptions(spec) {

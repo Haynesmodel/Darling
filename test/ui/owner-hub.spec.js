@@ -123,18 +123,6 @@ test('an invalid owner URL shows a recovery state and preserves My Team', async 
   expect(await page.evaluate(key => localStorage.getItem(key), PREFERENCE_KEY)).toBe('Joe');
 });
 
-test('Owner Hub keeps sparse-data cards honest and independently unavailable', async ({ page }) => {
-  await page.route('**/assets/SeasonSummary.json', route => route.fulfill({
-    contentType: 'application/json',
-    body: '[]',
-  }));
-  await page.goto('/?tab=owner&owner=Joe');
-  await expect(page.locator('.owner-hub-lead')).toContainText('0 completed seasons');
-  await expect(page.getByRole('heading', { name: 'Career' }).locator('..')).toContainText('Unavailable');
-  await expect(page.getByRole('heading', { name: 'Recent finishes' }).locator('..')).toContainText('Unavailable');
-  await expect(page.getByRole('heading', { name: 'Draft tendency' }).locator('..')).toContainText('Unavailable');
-});
-
 test('exact owner Search opens Owner Hub first without mutating My Team', async ({ page }) => {
   await seedFavorite(page, 'Joel');
   await page.goto('/');

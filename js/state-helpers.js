@@ -280,15 +280,13 @@ function buildUrlFromState(opts = {}) {
     if (isFiniteInput(selectedDynastyStartSeason)) params.set('dynastyStart', `${selectedDynastyStartSeason}`);
     if (isFiniteInput(selectedDynastyEndSeason)) params.set('dynastyEnd', `${selectedDynastyEndSeason}`);
     if (isFiniteInput(selectedDynastyMinSeasons)) params.set('dynastyMinSeasons', `${selectedDynastyMinSeasons}`);
-    if (selectedDynastySaunders === true) params.set('dynastySaunders', '1');
-    if (selectedDynastySaunders === false) params.set('dynastySaunders', '0');
+    if (selectedDynastySaunders !== null) params.set('dynastySaunders', selectedDynastySaunders ? '1' : '0');
   }
   if (tab === 'gauntlet') {
     if (selectedGauntletA) params.set('ga', selectedGauntletA);
     if (selectedGauntletB) params.set('gb', selectedGauntletB);
     if (selectedGauntletModel) params.set('gm', selectedGauntletModel);
-    if (selectedGauntletIncludePostseason === true) params.set('gp', '1');
-    if (selectedGauntletIncludePostseason === false) params.set('gp', '0');
+    if (selectedGauntletIncludePostseason !== null) params.set('gp', selectedGauntletIncludePostseason ? '1' : '0');
     if (isFiniteInput(selectedGauntletSimulations)) params.set('gn', `${selectedGauntletSimulations}`);
     if (selectedGauntletSeed) params.set('gs', selectedGauntletSeed);
   }

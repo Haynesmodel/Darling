@@ -624,7 +624,7 @@ test('history filters do not leak into dynasty controls', async ({ page }) => {
   await expect(page.locator('#tabDynastyBtn')).toHaveClass(/active/);
   await expect(page.locator('#dynastyModeSelect')).toHaveValue('all-time');
   await expect(page.locator('#dynastyOwnerSelect')).toHaveValue('__ALL__');
-  await expect(page.locator('#dynastyAllTimeLeaderboard')).toBeVisible();
+  await expect(page.locator('#dynastyPeriodLeaderboard')).toBeVisible();
 });
 
 test('browser back restores the previous history state after a tab change', async ({ page }) => {

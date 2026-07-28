@@ -127,8 +127,8 @@ export function OwnerHubPage(props: OwnerHubPageProps) {
   return <div class="owner-hub">
     <section class="card owner-hub-setup" aria-labelledby="ownerHubSetupTitle">
       <p class="owner-hub-eyebrow">{selectedOwner ? 'Owner Hub' : 'Set up My Team'}</p>
-      <h3 id="ownerHubSetupTitle">{selectedOwner || 'Choose your league owner'}</h3>
-      {!selectedOwner && <p>Choose an owner to preview, then save My Team.</p>}
+      <h3 id="ownerHubSetupTitle">{selectedOwner || 'Choose your owner'}</h3>
+      {!selectedOwner && <p>Preview an owner, then save My Team.</p>}
       {props.invalidOwner && <p class="status-banner status-error" role="alert">
         Owner not found: {props.invalidOwner}.
       </p>}

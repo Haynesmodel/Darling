@@ -43,7 +43,7 @@ export function createFeatureController(): DarlingFeatureController {
         const result = context.ownerPreference.set(selectedOwner);
         message = result.persisted
           ? `${selectedOwner} is now My Team.`
-          : 'Saved for this visit; storage is unavailable.';
+          : 'Saved for this visit; browser storage is unavailable.';
         renderCurrent();
       },
       onClear() {
@@ -59,7 +59,7 @@ export function createFeatureController(): DarlingFeatureController {
     mount(nextContext) {
       context = nextContext;
       root = context.document.getElementById('ownerHubRoot');
-      if (!root) throw new Error('Owner Hub mount #ownerHubRoot is missing');
+      if (!root) throw new Error('Owner Hub root missing');
       unsubscribe = context.ownerPreference.subscribe(() => renderCurrent());
     },
     activate(input: FeatureActivation) {

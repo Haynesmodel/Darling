@@ -219,7 +219,6 @@ function createPropertyCompactionPlugin() {
             module: true,
             passes: 8,
             pure_getters: 'strict',
-            sequences: 1000,
             toplevel: true,
             unsafe: true,
             unsafe_arrows: true,

@@ -18,6 +18,11 @@ export function createFeatureController(): DarlingFeatureController {
   const isValid = (owner: string | null): owner is string => !!owner && context.ownerPreference.validOwners().includes(owner);
   const renderCurrent = () => {
     if (!root || !activeSignal || activeSignal.aborted) return;
+    const title = selectedOwner ? `${selectedOwner} Owner Hub` : 'My Team';
+    const heading = context.document.getElementById('page-owner-title');
+    if (heading) heading.textContent = title;
+    context.header.feature(title, selectedOwner);
+    if (selectedOwner) context.theme.owner(selectedOwner); else context.theme.league();
     render(h(OwnerHubPage, {
       validOwners: context.ownerPreference.validOwners(),
       selectedOwner,
@@ -36,8 +41,6 @@ export function createFeatureController(): DarlingFeatureController {
         invalidOwner = null;
         message = '';
         context.router.update({ tab: 'owner', selectedOwner: owner });
-        context.header.feature(`${owner} Owner Hub`, owner);
-        context.theme.owner(owner);
         renderCurrent();
       },
       onSave() {
@@ -87,11 +90,6 @@ export function createFeatureController(): DarlingFeatureController {
       }
       message = '';
       if (input.signal.aborted || activeSignal !== input.signal) return;
-      const title = selectedOwner ? `${selectedOwner} Owner Hub` : 'My Team';
-      const heading = context.document.getElementById('page-owner-title');
-      if (heading) heading.textContent = title;
-      context.header.feature(title, selectedOwner);
-      if (selectedOwner) context.theme.owner(selectedOwner); else context.theme.league();
       renderCurrent();
       if (input.signal.aborted || activeSignal !== input.signal) return;
       context.router.update({ tab: 'owner', selectedOwner: selectedOwner && routeOwner ? selectedOwner : null });

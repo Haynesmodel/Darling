@@ -53,6 +53,8 @@ test('a bare Hub follows cross-tab preference changes and makes clear state expl
     dispatchEvent(new StorageEvent('storage', { key, newValue: 'Joel' }));
   }, PREFERENCE_KEY);
   await expect(page.locator('.owner-hub-owner-control select')).toHaveValue('Joel');
+  await expect(page.locator('#page-owner-title')).toHaveText('Joel Owner Hub');
+  await expect(page.locator('html')).toHaveAttribute('data-accent-theme', 'owner');
 
   await page.getByRole('button', { name: 'Clear My Team' }).click();
   await expect(page).toHaveURL(/[?&]owner=Joel(?:&|$)/);

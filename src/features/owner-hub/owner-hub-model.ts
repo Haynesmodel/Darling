@@ -60,15 +60,12 @@ function direction(rows: SeasonSummaryRow[]) {
 }
 
 function buildActions(pathname: string, owner: string, opponent: string | null) {
-  const actions = [
-    ['History', { tab: 'history', selectedTeam: owner }],
-    ['Current', { tab: 'current', selectedCurrentOwner: owner }],
-    ['Trophy', { tab: 'trophy', selectedTrophyOwner: owner }],
-    ['Dynasty', { tab: 'dynasty', selectedDynastyMode: 'calculator', selectedDynastyOwner: owner }],
-    ['Draft', { tab: 'draft', selectedDraftMode: 'owner', selectedDraftOwner: owner }],
-  ] as const;
   return [
-    ...actions.map(([label, state]) => ({ label, href: url(pathname, state) })),
+    { label: 'History', href: url(pathname, { tab: 'history', selectedTeam: owner }) },
+    { label: 'Current', href: url(pathname, { tab: 'current', selectedCurrentOwner: owner }) },
+    { label: 'Trophy', href: url(pathname, { tab: 'trophy', selectedTrophyOwner: owner }) },
+    { label: 'Dynasty', href: url(pathname, { tab: 'dynasty', selectedDynastyMode: 'calculator', selectedDynastyOwner: owner }) },
+    { label: 'Draft', href: url(pathname, { tab: 'draft', selectedDraftMode: 'owner', selectedDraftOwner: owner }) },
     ...(opponent ? [{
       label: `Rivalry vs ${opponent}`,
       href: url(pathname, { tab: 'rivalry', selectedRivalryTeamA: owner, selectedRivalryTeamB: opponent }),

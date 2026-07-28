@@ -22,9 +22,8 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   return <div><dt>{label}</dt><dd>{value}</dd></div>;
 }
 
-function Card(props: { eyebrow: string; title: string; children: ComponentChildren }) {
+function Card(props: { title: string; children: ComponentChildren }) {
   return <section class="card">
-    <p class="owner-hub-eyebrow">{props.eyebrow}</p>
     <h3>{props.title}</h3>
     {props.children}
   </section>;
@@ -33,7 +32,7 @@ function Card(props: { eyebrow: string; title: string; children: ComponentChildr
 function HubContent({ model }: { model: OwnerHubModel }) {
   return <>
     <div class="owner-hub-lead">
-      <Card eyebrow="Profile" title={model.identity.owner}>
+      <Card title={model.identity.owner}>
         {model.identity.displayName && <p>{model.identity.displayName}</p>}
         {model.identity.teamName && <p>{model.identity.teamName}</p>}
         <p>{model.identity.completedSeasons} completed seasons · {model.identity.phase.replaceAll('-', ' ')}</p>
@@ -41,7 +40,7 @@ function HubContent({ model }: { model: OwnerHubModel }) {
     </div>
 
     <div class="owner-hub-grid">
-      <Card eyebrow="Right now" title={model.rightNow?.heading || 'Current'}>
+      <Card title={model.rightNow?.heading || 'Right now'}>
         {model.rightNow ? <>
           <p>{model.rightNow.summary}</p>
           {model.rightNow.detail && <strong>{model.rightNow.detail}</strong>}
@@ -49,7 +48,7 @@ function HubContent({ model }: { model: OwnerHubModel }) {
         </> : <Empty />}
       </Card>
 
-      <Card eyebrow="Legacy" title="Career">
+      <Card title="Career">
         {model.legacy ? <dl class="owner-hub-stats">
           <Stat label="Season" value={model.legacy.record} />
           <Stat label="Win %" value={model.legacy.winPct === null ? 'Not available' : `${(model.legacy.winPct * 100).toFixed(1)}%`} />
@@ -61,7 +60,7 @@ function HubContent({ model }: { model: OwnerHubModel }) {
         </dl> : <Empty />}
       </Card>
 
-      <Card eyebrow="Recent form" title="Last five">
+      <Card title="Last five">
         {model.recentForm ? <>
           <p><strong>Streak: {model.recentForm.streak}</strong></p>
           <ol class="owner-hub-form">
@@ -74,14 +73,14 @@ function HubContent({ model }: { model: OwnerHubModel }) {
         </> : <Empty />}
       </Card>
 
-      <Card eyebrow="Dynasty" title="Recent finishes">
+      <Card title="Recent finishes">
         <strong class="owner-hub-direction">{model.dynastyDirection.direction}</strong>
         {model.dynastyDirection.finishes.length
           ? <p>{model.dynastyDirection.finishes.map(row => `${row.season}: No. ${row.finish}`).join(' · ')}</p>
           : <Empty />}
       </Card>
 
-      <Card eyebrow="Draft" title="Tendency">
+      <Card title="Draft tendency">
         {model.draftIdentity ? <>
           <dl class="owner-hub-stats">
             <Stat label="Samples" value={model.draftIdentity.samples} />
@@ -93,7 +92,7 @@ function HubContent({ model }: { model: OwnerHubModel }) {
         </> : <Empty />}
       </Card>
 
-      <Card eyebrow="Rivalries" title="Familiar foes">
+      <Card title="Familiar foes">
         {model.rivalries ? <>
           {model.rivalries.configured.map(rivalry => <p key={rivalry.name}><strong>{rivalry.name}</strong> · {rivalry.opponents.join(', ')}</p>)}
           {model.rivalries.mostPlayed && <p>
@@ -103,7 +102,7 @@ function HubContent({ model }: { model: OwnerHubModel }) {
         </> : <Empty />}
       </Card>
 
-      <Card eyebrow="Curses" title="Curses">
+      <Card title="Curses">
         {model.curses ? <>
           <p>{model.curses.counts.active} active · {model.curses.counts.cold} cold · {model.curses.counts.broken} broken</p>
           {model.curses.top && <p><strong>{model.curses.top.title}</strong> · {model.curses.top.status}</p>}

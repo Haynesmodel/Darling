@@ -91,7 +91,7 @@ export function buildOwnerHubModel(
     .filter(game => seasonState.spotlightWeek === null || game.week === seasonState.spotlightWeek)
     .sort((a, b) => a.week - b.week || a.matchup_id - b.matchup_id)[0] || null;
   const currentSide = currentGame ? sidesForTeam(currentGame, owner) : null;
-  const currentSnapshot = data.currentSeason ? buildTeamCurrentSeasonSnapshot({
+  const currentSnapshot = data.currentSeason ? (buildTeamCurrentSeasonSnapshot as any)({
     owner,
     leagueGames: data.leagueGames,
     seasonSummaries: data.seasonSummaries,
@@ -137,7 +137,7 @@ export function buildOwnerHubModel(
       const side = sidesForTeam(game, owner)!;
       return {
         opponent: side.opp,
-        result: side.result,
+        result: side.result as 'W' | 'L' | 'T',
         score: `${side.pf.toFixed(2)}–${side.pa.toFixed(2)}`,
         type: game.type,
         when: game.date || `${game.season} week ${game.week}`,

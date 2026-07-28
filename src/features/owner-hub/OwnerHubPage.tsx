@@ -125,7 +125,6 @@ export function OwnerHubPage(props: OwnerHubPageProps) {
   const isFavorite = !!selectedOwner && selectedOwner === preference.owner;
   return <div class="owner-hub">
     <section class="card owner-hub-setup" aria-labelledby="ownerHubSetupTitle">
-      <p class="owner-hub-eyebrow">{selectedOwner ? 'Owner Hub' : 'Set up My Team'}</p>
       <h3 id="ownerHubSetupTitle">{selectedOwner || 'Choose an owner'}</h3>
       {!selectedOwner && <p>Preview, then save My Team.</p>}
       {props.invalidOwner && <p class="status-banner status-error" role="alert">

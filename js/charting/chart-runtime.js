@@ -14,10 +14,11 @@ function mountChart(host, chartNode, opts = {}) {
   if (opts.className && chartNode.classList) chartNode.classList.add(opts.className);
   if (opts.ariaLabel && chartNode.setAttribute) chartNode.setAttribute('aria-label', opts.ariaLabel);
   if (chartNode.setAttribute) chartNode.setAttribute('role', 'img');
-  chartNode.querySelectorAll?.('[aria-label]').forEach((element) => {
-    if (element !== chartNode) element.removeAttribute('aria-label');
-  });
   host.append(chartNode);
+  chartNode.querySelectorAll?.('[aria-label],[aria-hidden="1"]').forEach((element) => {
+    if (element !== chartNode) element.removeAttribute('aria-label');
+    if (element.getAttribute('aria-hidden') === '1') element.setAttribute('aria-hidden', 'true');
+  });
   host.dataset.chartState = 'ready';
   return chartNode;
 }

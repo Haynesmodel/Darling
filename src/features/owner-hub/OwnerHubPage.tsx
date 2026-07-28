@@ -51,17 +51,17 @@ function HubContent({ model }: { model: OwnerHubModel }) {
 
       <Card eyebrow="Legacy" title="Career">
         {model.legacy ? <dl class="owner-hub-stats">
-          <Stat label="Regular season" value={model.legacy.record} />
+          <Stat label="Season" value={model.legacy.record} />
           <Stat label="Win %" value={model.legacy.winPct === null ? 'Not available' : `${(model.legacy.winPct * 100).toFixed(1)}%`} />
-          <Stat label="Championships" value={model.legacy.championships} />
+          <Stat label="Titles" value={model.legacy.championships} />
           <Stat label="Saunders" value={model.legacy.saundersTitles} />
           <Stat label="Playoffs" value={model.legacy.playoffRecord} />
-          <Stat label="Best finish" value={model.legacy.bestFinish === null ? 'Not available' : `No. ${model.legacy.bestFinish}`} />
+          <Stat label="Best" value={model.legacy.bestFinish === null ? 'Not available' : `No. ${model.legacy.bestFinish}`} />
           <Stat label="Avg. finish" value={model.legacy.averageFinish === null ? 'Not available' : model.legacy.averageFinish.toFixed(1)} />
         </dl> : <Empty />}
       </Card>
 
-      <Card eyebrow="Recent form" title="Last five games">
+      <Card eyebrow="Recent form" title="Last five">
         {model.recentForm ? <>
           <p><strong>Streak: {model.recentForm.streak}</strong></p>
           <ol class="owner-hub-form">
@@ -74,19 +74,19 @@ function HubContent({ model }: { model: OwnerHubModel }) {
         </> : <Empty />}
       </Card>
 
-      <Card eyebrow="Dynasty direction" title="Finish trend">
+      <Card eyebrow="Dynasty" title="Recent finishes">
         <strong class="owner-hub-direction">{model.dynastyDirection.direction}</strong>
         {model.dynastyDirection.finishes.length
           ? <p>{model.dynastyDirection.finishes.map(row => `${row.season}: No. ${row.finish}`).join(' · ')}</p>
           : <Empty />}
       </Card>
 
-      <Card eyebrow="Draft" title="Draft tendency">
+      <Card eyebrow="Draft" title="Tendency">
         {model.draftIdentity ? <>
           <dl class="owner-hub-stats">
             <Stat label="Samples" value={model.draftIdentity.samples} />
             <Stat label="Average pick" value={model.draftIdentity.averagePick.toFixed(1)} />
-            <Stat label="Earliest / latest" value={`${model.draftIdentity.earliestPick} / ${model.draftIdentity.latestPick}`} />
+            <Stat label="Range" value={`${model.draftIdentity.earliestPick} / ${model.draftIdentity.latestPick}`} />
             <Stat label={`Latest (${model.draftIdentity.mostRecent.season})`} value={model.draftIdentity.mostRecent.pick} />
           </dl>
           <a href={model.draftIdentity.href}>Details</a>

@@ -28,7 +28,6 @@ function dynastyTrendPlotOptions(rows = [], chart = {}, opts = {}) {
     rows,
     x: { label: 'Season', type: 'point', domain: chart.seasonList || undefined },
     y: { label: 'Cumulative score', domain: [chart.minScore ?? undefined, chart.maxScore ?? undefined] },
-    color,
     marks: [
       { type: 'ruleY', data: [0], stroke: CHART_COLORS.grid },
       { type: 'lineY', data: rows, x: 'season', y: 'cumulativeScore', z: 'owner', stroke: color, className: 'dynasty-trend-series' },
@@ -49,10 +48,8 @@ function gauntletHistogramPlotOptions(payload = {}, opts = {}) {
     ...basePlotOptions({ ...opts, height: opts.height || 260 }),
     ariaLabel: 'Overlaid score distribution histogram',
     rows,
-    means,
     x: { label: 'Score', domain: payload.domain || undefined },
     y: { label: 'Simulations', domain: [0, Math.max(payload.maxCount || 1, 1)] },
-    color,
     marks: [
       { type: 'areaY', data: rows, x: 'center', y: 'count', z: 'label', fill: color, fillOpacity: 0.16 },
       { type: 'lineY', data: rows, x: 'center', y: 'count', z: 'label', stroke: color, className: 'gauntlet-histogram-series' },
@@ -76,7 +73,6 @@ function trophyCareerPlotOptions(rows = [], opts = {}) {
     rows,
     x: { label: 'Season', type: 'point', domain: rows.map(row => row.season) },
     y: { label: 'Finish', domain: [maxFinish, 1], ticks: [1, 2, 4, 6, maxFinish] },
-    color: tierColor,
     marks: [
       { type: 'ruleY', data: [6], stroke: CHART_COLORS.blue, strokeDasharray: '5 5', className: 'trophy-career-playoff-line' },
       { type: 'lineY', data: rows, x: 'season', y: 'finish', stroke: CHART_COLORS.blue, className: 'trophy-career-line' },
@@ -95,10 +91,6 @@ function rivalryLeadPlotOptions(rows = [], view = {}, opts = {}) {
     rows,
     x: { label: 'Game', domain: [1, Math.max(rows.length, 1)], ticks: rows.filter(row => row.index === 1 || row.index % 5 === 0).map(row => row.index) },
     y: { label: 'Series lead', domain: [-maxAbsLead, maxAbsLead], ticks: [-maxAbsLead, 0, maxAbsLead] },
-    color: resultColor,
-    teamA: view.teamA,
-    teamB: view.teamB,
-    maxAbsLead,
     marks: [
       { type: 'ruleY', data: [0], stroke: CHART_COLORS.slate, strokeDasharray: '4 4', className: 'rivalry-trend-zero' },
       { type: 'lineY', data: rows, x: 'index', y: 'lead', stroke: CHART_COLORS.blue, className: 'rivalry-trend-path' },
@@ -117,7 +109,6 @@ function currentSeedMovementPlotOptions(rows = [], opts = {}) {
     rows,
     x: { label: 'Seed change' },
     y: { label: null, domain: rows.map(row => row.owner) },
-    color,
     marks: [
       { type: 'ruleX', data: [0], stroke: CHART_COLORS.slate },
       { type: 'barX', data: rows, x: 'seedChange', y: 'owner', fill: color, title: 'title', className: 'current-seed-movement-bar' },
@@ -135,7 +126,6 @@ function currentProjectedSeedPlotOptions(rows = [], opts = {}) {
     rows,
     x: { label: 'Projected seed', domain: [Math.max(...rows.map(row => row.projectedRank), 1), 1], ticks: rows.map(row => row.projectedRank).filter(Number.isFinite) },
     y: { label: null, domain: rows.map(row => row.owner) },
-    color,
     marks: [
       { type: 'dot', data: rows, x: 'projectedRank', y: 'owner', r: 7, fill: color, title: 'title', className: 'current-projected-seed-dot' },
       { type: 'text', data: rows, x: 'projectedRank', y: 'owner', text: 'projectedRecord', dx: 14, className: 'current-projected-seed-label' },
@@ -151,7 +141,6 @@ function currentOddsMovementPlotOptions(rows = [], opts = {}) {
     rows,
     x: { label: 'Percentage-point change' },
     y: { label: null, domain: rows.map(row => row.owner) },
-    color,
     marks: [
       { type: 'ruleX', data: [0], stroke: CHART_COLORS.slate },
       { type: 'barX', data: rows, x: 'playoffChange', y: 'owner', fill: color, title: 'title', className: 'current-odds-movement-bar' },

@@ -59,11 +59,6 @@ function toPlotOptions(spec) {
   const {
     ariaLabel,
     rows,
-    means,
-    color,
-    teamA,
-    teamB,
-    maxAbsLead,
     ...options
   } = spec;
   return {

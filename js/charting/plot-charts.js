@@ -56,17 +56,18 @@ function plotMark(mark) {
 }
 
 function toPlotOptions(spec) {
+  const {
+    ariaLabel,
+    rows,
+    means,
+    color,
+    teamA,
+    teamB,
+    maxAbsLead,
+    ...options
+  } = spec;
   return {
-    width: spec.width,
-    height: spec.height,
-    marginLeft: spec.marginLeft,
-    marginRight: spec.marginRight,
-    marginTop: spec.marginTop,
-    marginBottom: spec.marginBottom,
-    style: spec.style,
-    grid: spec.grid,
-    x: spec.x,
-    y: spec.y,
+    ...options,
     marks: (spec.marks || []).map(plotMark).filter(Boolean),
   };
 }

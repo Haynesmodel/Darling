@@ -134,13 +134,23 @@ function QuickLinks({ model }: { model: LeaguePulseViewModel }) {
   </section>;
 }
 
+function MyTeam({ model }: { model: LeaguePulseViewModel }) {
+  const team = model.myTeam;
+  if (!team) return null;
+  return <section class="card pulse-my-team">
+    <p class="pulse-eyebrow">My Team</p><h3>{team.owner}</h3>
+    <p>{team.summary}</p><strong>{team.detail}</strong>
+    <a href={team.href}>Open Owner Hub</a>
+  </section>;
+}
+
 export function LeaguePulsePage({ model }: { model: LeaguePulseViewModel }) {
   const partial = model.dataNote.freshness.partial ? ' · Some current-season details unavailable' : '';
   return <div class="league-pulse">
     <PulseHero model={model} />
     <div class="pulse-primary-grid"><Matchups model={model} /><Standings model={model} /></div>
     <YearInReview model={model} />
-    <div class="pulse-story-grid"><Featured model={model} /><Record model={model} /><Curse model={model} /></div>
+    <div class="pulse-story-grid"><MyTeam model={model} /><Featured model={model} /><Record model={model} /><Curse model={model} /></div>
     <QuickLinks model={model} />
     <p class="pulse-data-note">{model.dataNote.freshness.label} · Snapshot {shortDataVersion(model.dataNote.dataVersion)} · {model.dataNote.coreVerified ? 'Core verified' : 'Verification unavailable'}{partial}</p>
   </div>;

@@ -11,13 +11,14 @@ import {
 } from '../../../js/trophy-renderers.js';
 import type { AppContext } from '../../app/app-types';
 import type { DarlingFeatureController, FeatureActivation } from '../../app/feature-contract';
-import { ALL_TEAMS, DEFAULT_TEAM } from '../../app/feature-utils';
+import { ALL_TEAMS } from '../../app/feature-utils';
 import { createSectionDisclosure, type SectionDisclosureController } from '../../app/section-disclosure';
 import { registerTrophyTables } from './trophy-tables';
 
 export function createFeatureController(): DarlingFeatureController {
   let context: AppContext;
-  let selectedOwner = DEFAULT_TEAM;
+  let selectedOwner = '';
+  let initialized = false;
   let active = false;
   let disclosure: SectionDisclosureController | null = null;
 
@@ -84,11 +85,12 @@ export function createFeatureController(): DarlingFeatureController {
     },
     activate(input: FeatureActivation) {
       active = !input.signal.aborted;
+      const retained = input.reason === 'tab' && initialized ? selectedOwner : null;
       const controls = buildTrophyControls({
         doc: context.document,
         leagueGames: context.data.leagueGames,
         seasonSummaries: context.data.seasonSummaries,
-        selectedOwner: input.route.trophyOwner || input.route.team || selectedOwner,
+        selectedOwner: input.route.trophyOwner || input.route.team || retained || context.ownerPreference.getSnapshot().owner,
         allTeams: ALL_TEAMS,
         onChange: (next: { selectedOwner: string }) => {
           if (!active) return;
@@ -97,6 +99,7 @@ export function createFeatureController(): DarlingFeatureController {
         },
       });
       selectedOwner = controls.selectedOwner;
+      initialized = true;
       render();
     },
     deactivate() { active = false; },

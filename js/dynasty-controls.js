@@ -79,7 +79,7 @@ function normalizeDynastyRange({
 function resolveDynastyInitialState({
   seasonSummaries = [],
   urlState = {},
-  mode = 'calculator',
+  mode = 'all-time',
   owner = null,
   startSeason = null,
   endSeason = null,
@@ -88,8 +88,8 @@ function resolveDynastyInitialState({
 } = {}) {
   const seasons = availableDynastySeasons(seasonSummaries);
   const owners = availableDynastyOwners(seasonSummaries);
-  const defaultOwner = owners.includes('Joe') ? 'Joe' : (owners[0] || '__ALL__');
-  const defaultMode = 'calculator';
+  const defaultOwner = owners[0] || '__ALL__';
+  const defaultMode = 'all-time';
   const parsedMode = urlState.dynastyMode || mode || defaultMode;
   const parsedOwner = urlState.dynastyOwner || owner;
   const fallbackOwner = parsedMode === 'calculator' ? defaultOwner : '__ALL__';
@@ -137,7 +137,7 @@ function renderOwnerOptions(select, owners, selectedOwner, mode, allTeams = '__A
   ];
   const normalizedOwner = options.some(([value]) => value === selectedOwner)
     ? selectedOwner
-    : (includeAllOwners ? allTeams : (owners.includes('Joe') ? 'Joe' : owners[0] || allTeams));
+    : (includeAllOwners ? allTeams : owners[0] || allTeams);
   select.innerHTML = options
     .map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`)
     .join('');
@@ -255,7 +255,7 @@ function buildDynastyControls({
     });
 
     if (nextMode === 'calculator' && nextOwner === allTeams) {
-      const fallback = owners.includes('Joe') ? 'Joe' : (owners[0] || allTeams);
+      const fallback = owners[0] || allTeams;
       ownerSelect.value = fallback;
     }
     ownerSelect.disabled = modeState.ownerLocked;

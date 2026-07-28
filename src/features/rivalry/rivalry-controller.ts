@@ -12,7 +12,7 @@ import {
 } from '../../../js/rivalry-renderers.js';
 import type { AppContext } from '../../app/app-types';
 import type { DarlingFeatureController, FeatureActivation } from '../../app/feature-contract';
-import { ALL_TEAMS, DEFAULT_TEAM } from '../../app/feature-utils';
+import { ALL_TEAMS } from '../../app/feature-utils';
 import { createSectionDisclosure, type SectionDisclosureController } from '../../app/section-disclosure';
 import { registerRivalryTables } from './rivalry-tables';
 
@@ -22,7 +22,7 @@ function scope(value: unknown): string {
 
 export function createFeatureController(): DarlingFeatureController {
   let context: AppContext;
-  let teamA = DEFAULT_TEAM;
+  let teamA = '';
   let teamB: string | null = null;
   let selectedScope = 'allTime';
   let active = false;
@@ -98,7 +98,11 @@ export function createFeatureController(): DarlingFeatureController {
       const preserveState = input.reason === 'tab' && initialized;
       if (!preserveState) {
         const historyTeam = input.route.team && input.route.team !== ALL_TEAMS ? input.route.team : null;
-        teamA = input.route.rivalryTeamA || historyTeam || DEFAULT_TEAM;
+        teamA = input.route.rivalryTeamA
+          || historyTeam
+          || context.ownerPreference.getSnapshot().owner
+          || context.ownerPreference.validOwners()[0]
+          || '';
         teamB = input.route.rivalryTeamB || null;
         selectedScope = scope(input.route.rivalryScope || 'allTime');
       }

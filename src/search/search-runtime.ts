@@ -46,7 +46,7 @@ export function createSearchRuntime(): DarlingSearchRuntime {
       if (!data) return [];
       if (!query.trim()) {
         const recent = recentDocuments();
-        const defaults = ['feature:current:all', 'feature:history:all', 'feature:trophy:all']
+        const defaults = ['feature:current:all', 'feature:owner:all', 'feature:history:all', 'feature:trophy:all']
           .map(id => index.documents.find(document => document.id === id))
           .filter(Boolean) as SearchDocument[];
         return [...recent, ...defaults.filter(document => !recent.some(item => item.id === document.id))]

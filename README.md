@@ -31,7 +31,7 @@ Test locally:
 - `npm run test:scripts` runs the script helper tests, including the Python update helpers.
 - `npm run test:ui` runs the named Chromium suite and focused WebKit smoke project against the Vite dev server.
 - `npm run test:ui:chromium` runs only the full Chromium project.
-- `npm run test:ui:webkit` runs only the six WebKit compatibility smoke contracts.
+- `npm run test:ui:webkit` runs only the focused WebKit compatibility smoke contracts.
 - `npm run test:a11y` runs axe WCAG A/AA scans across pages and interaction states.
 - `npm run test:keyboard` runs tab, disclosure, dialog, skip-link, motion, and responsive keyboard checks.
 - `npm run test:ui:preview:chromium` runs the Chromium project against a previously built `dist/` bundle under `/Darling/`.
@@ -66,7 +66,7 @@ Theme and hero assets:
 
 Global search and command palette:
 - Open Search from the sticky navigation, with `Command+K` / `Control+K`, or with `/` while focus is outside an editable field.
-- Structured phrases include owner seasons (`Joe 2021`), rivalries (`Zubs vs Joel`), Draft Spot destinations (`pick 10`, `late draft picks`, `Joe draft history`), season types (`2024 playoffs`), thresholds (`150 point games`), records (`biggest loss`), feature destinations, and color-scheme commands.
+- Exact owner names and current-team aliases open that owner's Hub first. Other structured phrases include owner seasons (`Joe 2021`), rivalries (`Zubs vs Joel`), Draft Spot destinations (`pick 10`, `late draft picks`, `Joe draft history`), season types (`2024 playoffs`), thresholds (`150 point games`), records (`biggest loss`), feature destinations, and color-scheme commands.
 - Search is local-only. It hydrates from the existing league JSON assets, stores only up to eight executed result IDs in `localStorage["darling.search.recent"]`, and navigates through canonical URL state.
 - History record URLs support `gameResult`, `gameMinScore`, `gameMaxScore`, `gameSort`, `gameLimit`, and `focus`. Invalid values are ignored and limits are capped at 100.
 - See [`docs/SEARCH_COMMAND_PALETTE.md`](./docs/SEARCH_COMMAND_PALETTE.md) before adding aliases, intent families, or commands.
@@ -78,13 +78,18 @@ Interactive tables:
 - See [`docs/INTERACTIVE_TABLES.md`](./docs/INTERACTIVE_TABLES.md) before adding a table ID, column, adapter, quick filter, or saved-state field.
 
 Feature architecture:
-- The shell loads one validated data snapshot and lazy-loads League History, Current Season, Head to Head, Trophy Case, Dynasty Rankings, Draft Spot, and Historical Matchup through cached lifecycle controllers.
+- The shell loads one validated data snapshot and lazy-loads Owner Hub, League History, Current Season, Head to Head, Trophy Case, Dynasty Rankings, Draft Spot, and Historical Matchup through cached lifecycle controllers.
 - Feature-owned renderers, table adapters, charts, and CSS stay behind each dynamic entry; Observable Plot is absent from the default History route.
 - See [`docs/feature-architecture.md`](./docs/feature-architecture.md) before adding a feature destination or changing routing, activation, loading/error behavior, feature diagnostics, or import ownership.
 
+My Team and Owner Hub:
+- `?tab=owner&owner=Joe` is a shareable owner profile. An explicit owner in a shared URL always overrides browser preference.
+- My Team is optional and browser-local in `localStorage["darling.favoriteOwner.v1"]`; a denied write falls back to the active session and is announced in the Hub.
+- Fresh owner-aware pages use My Team when no owner is explicit. League-wide History and all-time Dynasty remain neutral when no preference exists.
+
 Accessibility and CSS:
 - Primary navigation uses five semantic link/disclosure groups with canonical destination URLs and `aria-current`; filter disclosures retain native checkbox semantics, and application dialogs manage inertness, focus containment, scroll lock, and focus restoration.
-- All seven analytical destinations use native `details`/`summary` plus a feature-labelled “Jump to section” control. Mode, owner, range, and matchup signatures choose compact primary defaults; user choices are remembered per signature in memory only. Existing History focus links reveal their target, and disclosure state never changes the product URL.
+- The seven deep analytical destinations use native `details`/`summary` plus a feature-labelled “Jump to section” control; Owner Hub instead uses a compact chart-free card grid. Mode, owner, range, and matchup signatures choose compact primary defaults; user choices are remembered per signature in memory only. Existing History focus links reveal their target, and disclosure state never changes the product URL.
 - The application stylesheet entry is `src/styles/app.css`; shared and feature styles are assigned to explicit cascade layers.
 - See [`docs/accessibility.md`](./docs/accessibility.md) and [`docs/css-architecture.md`](./docs/css-architecture.md) before adding a feature destination, disclosure, modal, animation, shared style, or feature stylesheet.
 

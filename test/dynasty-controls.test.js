@@ -53,7 +53,7 @@ test('availableDynastySeasons and normalizeDynastyRange preserve requested bound
   assert.equal(range.requestedEndSeason, 2030);
 });
 
-test('resolveDynastyInitialState defaults to Joe and latest seasons', () => {
+test('resolveDynastyInitialState defaults to the all-time leaderboard and latest seasons', () => {
   const state = resolveDynastyInitialState({
     seasonSummaries: [
       { season: 2021, owner: 'Joe' },
@@ -64,8 +64,8 @@ test('resolveDynastyInitialState defaults to Joe and latest seasons', () => {
     ],
   });
 
-  assert.equal(state.mode, 'calculator');
-  assert.equal(state.owner, 'Joe');
+  assert.equal(state.mode, 'all-time');
+  assert.equal(state.owner, '__ALL__');
   assert.equal(state.startSeason, 2023);
   assert.equal(state.endSeason, 2025);
   assert.equal(state.minSeasons, 2);
@@ -101,6 +101,7 @@ test('buildDynastyControls populates controls and emits normalized changes', () 
       { season: 2023, owner: 'Joe' },
       { season: 2023, owner: 'Shap' },
     ],
+    selectedState: { mode: 'calculator', owner: 'Joe' },
     onChange: (next) => changes.push(next),
   });
 

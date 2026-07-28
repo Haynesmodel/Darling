@@ -13,6 +13,7 @@ export function buildSearchIndex(data: SearchHydrationData): BuiltSearchIndex {
   const owners = [...new Set([
     ...data.seasonSummaries.map(row => row.owner),
     ...data.leagueGames.flatMap(game => [game.teamA, game.teamB]),
+    ...(data.currentSeason?.teams?.map(team => team.owner) || []),
   ])].filter(Boolean).sort((a, b) => a.localeCompare(b));
   const seasons = [...new Set(data.seasonSummaries.map(row => Number(row.season)))].sort((a, b) => b - a);
   const ownerAliases = new Map<string, string[]>();
@@ -27,7 +28,7 @@ export function buildSearchIndex(data: SearchHydrationData): BuiltSearchIndex {
 
   const documents: SearchDocument[] = [];
   const add = (document: SearchDocument | null) => { if (document) documents.push(document); };
-  ['pulse', 'history', 'current', 'playoff-picture', 'trophy', 'dynasty', 'draft', 'gauntlet'].forEach(feature => {
+  ['pulse', 'owner', 'history', 'current', 'playoff-picture', 'trophy', 'dynasty', 'draft', 'gauntlet'].forEach(feature => {
     add(buildIntentDocument({ kind: 'feature', feature: feature as never }, data));
   });
   ['theme-system', 'theme-light', 'theme-dark', 'export-history'].forEach(command => {
@@ -38,6 +39,7 @@ export function buildSearchIndex(data: SearchHydrationData): BuiltSearchIndex {
     add(buildIntentDocument({ kind: 'game-extreme', metric: metric as never }, data));
   });
   owners.forEach(owner => {
+    add(buildIntentDocument({ kind: 'feature', feature: 'owner', owner }, data));
     add(buildIntentDocument({ kind: 'owner-season', owner }, data));
     add(buildIntentDocument({ kind: 'feature', feature: 'trophy', owner }, data));
     add(buildIntentDocument({ kind: 'feature', feature: 'dynasty', owner }, data));

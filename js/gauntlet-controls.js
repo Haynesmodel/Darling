@@ -35,10 +35,10 @@ function normalizeSelection(teamSeasons, owner, season, fallbackOwner) {
 }
 
 function defaultState(teamSeasons) {
-  const joeBest = bestTeamSeason(teamSeasons, 'Joe') || bestTeamSeason(teamSeasons);
-  const nonJoeBest = bestTeamSeason(teamSeasons.filter(teamSeason => teamSeason.owner !== 'Joe'));
-  const sideA = joeBest || null;
-  const sideB = nonJoeBest || bestTeamSeason(teamSeasons.filter(teamSeason => !sideA || teamSeason.id !== sideA.id)) || sideA;
+  const sideA = bestTeamSeason(teamSeasons) || null;
+  const sideB = bestTeamSeason(teamSeasons.filter(teamSeason => !sideA || teamSeason.owner !== sideA.owner))
+    || bestTeamSeason(teamSeasons.filter(teamSeason => !sideA || teamSeason.id !== sideA.id))
+    || sideA;
 
   return {
     selectedOwnerA: sideA?.owner ?? null,

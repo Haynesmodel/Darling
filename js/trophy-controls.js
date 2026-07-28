@@ -9,13 +9,10 @@ function resolveInitialOwner(owners, selectedOwner) {
   if (Array.isArray(owners) && owners.includes(selectedOwner)) {
     return selectedOwner;
   }
-  if (Array.isArray(owners) && owners.includes('Joe')) {
-    return 'Joe';
-  }
   if (Array.isArray(owners) && owners.length) {
     return owners[0];
   }
-  return selectedOwner || 'Joe';
+  return selectedOwner || '';
 }
 
 function buildTrophyControls({

@@ -158,10 +158,11 @@ test('a long-open Pulse and global badge reassess together without network polli
   expect(dataRequests).toBe(bootRequests);
 });
 
-test('freshness disclosure remains available after visiting all eight destinations', async ({ page }) => {
+test('freshness disclosure remains available after visiting all nine destinations', async ({ page }) => {
   await page.goto('/');
   const destinations = [
     ['pulse', 'League Pulse'],
+    ['owner', 'My Team'],
     ['history', 'League History'],
     ['current', 'Current Season'],
     ['rivalry', 'Head to Head'],

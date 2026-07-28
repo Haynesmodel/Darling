@@ -1513,7 +1513,7 @@ function buildDynastyViewModel({
   seasonSummaries = [],
   seasonAggregates = null,
   mode = 'calculator',
-  owner = 'Joe',
+  owner = null,
   startSeason = null,
   endSeason = null,
   requestedStartSeason = startSeason,

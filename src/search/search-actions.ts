@@ -232,8 +232,10 @@ export function buildIntentDocument(intent: SearchIntent, data: SearchHydrationD
     };
   }
   if (intent.kind === 'feature') {
+    const ownerTeam = intent.owner ? data.currentSeason?.teams?.find(team => team.owner === intent.owner) : null;
     const definitions = {
       pulse: ['League Pulse', 'What matters in the league right now', 'pulse'],
+      owner: [intent.owner ? `${intent.owner} Owner Hub` : 'My Team', intent.owner ? 'Owner summary and personalized league launchpad' : 'Choose your owner for personalized league defaults', 'owner'],
       history: ['League History', 'Browse every season and matchup', 'history'],
       current: ['Current Season', 'Open the current-season command center', 'current'],
       'playoff-picture': ['Playoff picture', 'Current Season / Playoff picture', 'current'],
@@ -245,6 +247,7 @@ export function buildIntentDocument(intent: SearchIntent, data: SearchHydrationD
     const [title, subtitle, tab] = definitions[intent.feature];
     const url = buildUrlFromState({
       tab,
+      selectedOwner: intent.feature === 'owner' ? intent.owner : null,
       selectedTrophyOwner: intent.feature === 'trophy' ? intent.owner : null,
       selectedDynastyOwner: intent.feature === 'dynasty' ? intent.owner : null,
       selectedFocus: intent.feature === 'playoff-picture' ? 'playoff-picture' : null,
@@ -252,11 +255,18 @@ export function buildIntentDocument(intent: SearchIntent, data: SearchHydrationD
     });
     return {
       id: `feature:${intent.feature}:${intent.owner || 'all'}`,
-      category: 'navigate',
+      category: intent.feature === 'owner' && intent.owner ? 'owner' : 'navigate',
       title,
       subtitle,
-      keywords: [title, subtitle, intent.owner || ''],
-      priority: 70,
+      keywords: [
+        title,
+        subtitle,
+        intent.owner || '',
+        ...(intent.feature === 'owner' && intent.owner
+          ? [ownerTeam?.display_name || '', ownerTeam?.sleeper_team_name || '']
+          : []),
+      ],
+      priority: intent.feature === 'owner' ? 150 : 70,
       action: { kind: 'navigate', url, focus: intent.feature === 'playoff-picture' ? 'playoff-picture' : undefined },
     };
   }

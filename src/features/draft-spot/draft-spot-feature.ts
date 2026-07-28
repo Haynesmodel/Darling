@@ -41,9 +41,12 @@ export function createFeatureController(): DarlingFeatureController {
       activeSignal = activationSignal;
       const updateForActivation = (next: any) => update(next, activationSignal);
       if (input.reason !== 'tab' || !selected) {
+        const explicit = Object.entries(input.route)
+          .some(([key, value]) => key.startsWith('draft') && value !== null && value !== undefined);
+        const favorite = !explicit ? context.ownerPreference.getSnapshot().owner : null;
         selected = {
-          owner: input.route.draftOwner,
-          mode: input.route.draftMode,
+          owner: input.route.draftOwner || favorite,
+          mode: input.route.draftMode || (favorite ? 'owner' : null),
           startSeason: input.route.draftStart,
           endSeason: input.route.draftEnd,
           metric: input.route.draftMetric,

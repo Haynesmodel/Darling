@@ -86,10 +86,12 @@ export function buildOwnerHubModel(
   });
   const currentTeam = data.currentSeason?.teams.find(team => team.owner === owner) || null;
   const availability: OwnerHubModel['availability'] = {};
-  const currentGame = data.currentSeason?.games
+  const currentGame = ['preseason', 'regular-season', 'postseason'].includes(seasonState.phase)
+    ? data.currentSeason?.games
     .filter(game => game.teamA === owner || game.teamB === owner)
     .filter(game => seasonState.spotlightWeek === null || game.week === seasonState.spotlightWeek)
-    .sort((a, b) => a.week - b.week || a.matchup_id - b.matchup_id)[0] || null;
+    .sort((a, b) => a.week - b.week || a.matchup_id - b.matchup_id)[0] || null
+    : null;
   const currentSide = currentGame ? sidesForTeam(currentGame, owner) : null;
   const currentSnapshot = data.currentSeason ? (buildTeamCurrentSeasonSnapshot as any)({
     owner,

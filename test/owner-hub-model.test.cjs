@@ -99,6 +99,26 @@ test('scheduled current matchup has no false 0-0 result and aliases stay owner-s
   assert.doesNotMatch(model.rightNow.detail, /0.*0/);
 });
 
+test('offseason data uses the latest completed season instead of a stale week card', () => {
+  const currentSeason = {
+    season: 2025,
+    current_week: 17,
+    regular_season_max_week: 14,
+    playoff_rules: { regular_season_max_week: 14 },
+    teams: [
+      { owner: 'A&B + C/Δ', display_name: 'Display', sleeper_team_name: '' },
+      { owner: 'Beta', display_name: 'Beta', sleeper_team_name: '' },
+    ],
+    games: [game(2025, 17, 'A&B + C/Δ', 'Beta', 101, 99, { status: 'final', matchup_id: 1, type: 'Playoff' })],
+  };
+  const model = ownerHub.buildOwnerHubModel(data({ currentSeason }), {
+    owner: 'A&B + C/Δ',
+    pathname: '/Darling/',
+  });
+  assert.equal(model.rightNow.heading, '2025 season');
+  assert.match(model.rightNow.summary, /Finished No\. 2/);
+});
+
 test('current-only and history-only inputs degrade cards independently', () => {
   const currentSeason = {
     season: 2026,

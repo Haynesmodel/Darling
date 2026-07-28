@@ -6,11 +6,11 @@ The July 28, 2026 Transactions change was measured from clean base `2b8ead1b1292
 
 | Metric | Base | Transactions | Delta | Enforced ceiling |
 | --- | ---: | ---: | ---: | ---: |
-| Entry gzip | 55,028 | 55,972 | +944 | 56,000 |
-| Aggregate JavaScript gzip | 279,770 | 295,327 | +15,557 | 300,000 |
-| Transactions feature chunk gzip | — | 13,861 | — | 18,000 |
-| Transactions settled route gzip | — | 94,791 | — | 120,000 |
-| Current Season settled gzip | ≤205,000 | 203,264 | — | 205,000 |
+| Entry gzip | 55,028 | 55,969 | +941 | 56,000 |
+| Aggregate JavaScript gzip | 279,770 | 295,799 | +16,029 | 300,000 |
+| Transactions feature chunk gzip | — | 14,326 | — | 18,000 |
+| Transactions settled route gzip | — | 95,253 | — | 120,000 |
+| Current Season settled gzip | ≤205,000 | 203,263 | — | 205,000 |
 | Chart-runtime gzip | 96,430 | 95,567 | -863 | 100,000 |
 
 The aggregate target is 298,000 gzip with a 300,000 hard ceiling. Transaction schema code is generated into `transaction-history-validator.ts` and reachable only from the Transactions entry; keeping it out of the shared core validator protects every existing route closure. Transactions has no chart or interactive-table runtime dependency, and cold non-transaction routes do not fetch its JSON asset.

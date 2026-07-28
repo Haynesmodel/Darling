@@ -176,11 +176,13 @@ function validateSemanticBundle(bundle, opts = {}) {
     const players = transactionHistory.players || [];
     const seasons = transactionHistory.seasons || [];
     const playerIds = new Set();
+    const playersById = new Map();
     players.forEach((player, index) => {
       if (playerIds.has(player.id)) {
         report('TRANSACTION_DUPLICATE_PLAYER', `assets/TransactionHistory.json players row ${index}`, player.id, `duplicate player ${player.id}`);
       }
       playerIds.add(player.id);
+      playersById.set(player.id, player);
     });
     const sortedPlayerIds = players.map(player => player.id).slice().sort((a, b) => a.localeCompare(b));
     if (players.some((player, index) => player.id !== sortedPlayerIds[index])) {
@@ -204,7 +206,42 @@ function validateSemanticBundle(bundle, opts = {}) {
         rosterOwners.set(team.roster_id, team.owner);
         owners.add(team.owner);
       });
+      const expectedTransactionRounds = Array.from({ length: season.max_week + 1 }, (_, week) => week);
+      const expectedMatchupWeeks = Array.from({ length: season.max_week }, (_, index) => index + 1);
+      if (canonicalJson(season.coverage.transaction_rounds) !== canonicalJson(expectedTransactionRounds)) {
+        report('TRANSACTION_COVERAGE_ROUNDS', `${location} coverage`, `${season.season}|transaction_rounds`, `transaction rounds must cover exactly 0-${season.max_week}`);
+      }
+      if (canonicalJson(season.coverage.matchup_weeks) !== canonicalJson(expectedMatchupWeeks)) {
+        report('TRANSACTION_COVERAGE_ROUNDS', `${location} coverage`, `${season.season}|matchup_weeks`, `matchup weeks must cover exactly 1-${season.max_week}`);
+      }
+      if (season.coverage.completed_week > season.max_week) {
+        report('TRANSACTION_COMPLETED_WEEK', `${location} coverage`, `${season.season}`, `completed week ${season.coverage.completed_week} exceeds max week ${season.max_week}`);
+      }
+      if (season.draft.pick_count !== season.draft.picks.length) {
+        report('TRANSACTION_DRAFT_RECONCILIATION', `${location} draft`, `${season.season}`, 'draft pick_count does not match picks length');
+      }
+      if (
+        (season.draft.status === 'selected' && !season.draft.draft_id)
+        || (season.draft.status === 'unavailable' && (
+          season.draft.draft_id !== null
+          || season.draft.pick_count !== 0
+          || season.draft.picks.length !== 0
+        ))
+      ) {
+        report('TRANSACTION_DRAFT_RECONCILIATION', `${location} draft`, `${season.season}|${season.draft.status}`, 'draft status, ID, and picks do not reconcile');
+      }
+      const referencedPlayers = new Set();
+      season.draft.picks.forEach((pick, index) => {
+        const pickLocation = `${location} draft.picks row ${index}`;
+        referencedPlayers.add(pick.player_id);
+        if (!playerIds.has(pick.player_id)) report('TRANSACTION_MISSING_PLAYER', pickLocation, `${season.season}|${pick.player_id}`, `missing player ${pick.player_id}`);
+        if (!owners.has(pick.owner)) report('TRANSACTION_UNKNOWN_OWNER', pickLocation, `${season.season}|${pick.owner}`, `unknown draft owner ${pick.owner}`);
+        if (rosterOwners.get(pick.roster_id) !== pick.owner) {
+          report('TRANSACTION_ROSTER_OWNER_MISMATCH', pickLocation, `${season.season}|${pick.roster_id}`, 'draft roster does not resolve to the listed owner');
+        }
+      });
       const transactionIds = new Set();
+      const transactionsById = new Map();
       const typeCounts = { commissioner: 0, free_agent: 0, trade: 0, waiver: 0 };
       const statusCounts = { complete: 0, failed: 0, pending: 0 };
       season.transactions.forEach((transaction, index) => {
@@ -213,6 +250,7 @@ function validateSemanticBundle(bundle, opts = {}) {
           report('TRANSACTION_DUPLICATE_ID', txLocation, `${season.season}|${transaction.id}`, `duplicate transaction ${transaction.id}`);
         }
         transactionIds.add(transaction.id);
+        transactionsById.set(transaction.id, transaction);
         if (transaction.week < 0 || transaction.week > season.max_week) {
           report('TRANSACTION_INVALID_WEEK', txLocation, `${season.season}|${transaction.id}`, `week ${transaction.week} exceeds 0-${season.max_week}`);
         }
@@ -224,8 +262,22 @@ function validateSemanticBundle(bundle, opts = {}) {
           if (!owners.has(owner)) report('TRANSACTION_UNKNOWN_OWNER', txLocation, `${transaction.id}|${owner}`, `unknown participant ${owner}`);
         }
         for (const movement of [...transaction.adds, ...transaction.drops]) {
+          referencedPlayers.add(movement.player_id);
           if (!owners.has(movement.owner)) report('TRANSACTION_UNKNOWN_OWNER', txLocation, `${transaction.id}|${movement.owner}`, `unknown movement owner ${movement.owner}`);
           if (!playerIds.has(movement.player_id)) report('TRANSACTION_MISSING_PLAYER', txLocation, `${transaction.id}|${movement.player_id}`, `missing player ${movement.player_id}`);
+        }
+        for (const pick of transaction.draft_picks) {
+          for (const owner of [pick.original_owner, pick.owner, pick.previous_owner].filter(Boolean)) {
+            if (!owners.has(owner)) report('TRANSACTION_UNKNOWN_OWNER', txLocation, `${transaction.id}|${owner}`, `unknown draft-pick owner ${owner}`);
+          }
+          if (rosterOwners.get(pick.roster_id) !== pick.original_owner) {
+            report('TRANSACTION_ROSTER_OWNER_MISMATCH', txLocation, `${transaction.id}|${pick.roster_id}`, 'transaction pick roster does not resolve to original_owner');
+          }
+        }
+        for (const transfer of transaction.waiver_budget) {
+          for (const owner of [transfer.sender, transfer.receiver]) {
+            if (!owners.has(owner)) report('TRANSACTION_UNKNOWN_OWNER', txLocation, `${transaction.id}|${owner}`, `unknown waiver-budget owner ${owner}`);
+          }
         }
       });
       const coverage = season.coverage;
@@ -249,9 +301,19 @@ function validateSemanticBundle(bundle, opts = {}) {
           report('TRANSACTION_DUPLICATE_JOURNEY', journeyLocation, `${season.season}|${journey.player_id}`, `duplicate journey ${journey.player_id}`);
         }
         journeyIds.add(journey.player_id);
+        referencedPlayers.add(journey.player_id);
         if (!playerIds.has(journey.player_id)) report('TRANSACTION_MISSING_PLAYER', journeyLocation, `${season.season}|${journey.player_id}`, `missing player ${journey.player_id}`);
         journey.stints.forEach(stint => {
           if (!owners.has(stint.owner)) report('TRANSACTION_UNKNOWN_OWNER', journeyLocation, `${journey.player_id}|${stint.owner}`, `unknown stint owner ${stint.owner}`);
+          for (const transactionId of [
+            stint.acquisition.transaction_id,
+            stint.release?.transaction_id,
+          ].filter(Boolean)) {
+            const source = transactionsById.get(transactionId);
+            if (!source || source.status !== 'complete') {
+              report('TRANSACTION_INVALID_STATUS_MUTATION', journeyLocation, `${journey.player_id}|${transactionId}`, 'journey mutations must reference complete transactions');
+            }
+          }
           for (const field of ['total_points', 'starter_points']) {
             if (Math.abs(stint[field] * 100 - Math.round(stint[field] * 100)) > 1e-7) {
               report('TRANSACTION_POINTS_PRECISION', journeyLocation, `${journey.player_id}|${stint.owner}|${field}`, `${field} must be rounded to two decimals`);
@@ -267,6 +329,9 @@ function validateSemanticBundle(bundle, opts = {}) {
         }
         trade.sides.forEach(side => {
           if (!owners.has(side.owner)) report('TRANSACTION_UNKNOWN_OWNER', `${location} insights.trades`, `${trade.transaction_id}|${side.owner}`, `unknown trade side owner ${side.owner}`);
+          side.players.forEach(playerId => {
+            if (!playerIds.has(playerId)) report('TRANSACTION_MISSING_PLAYER', `${location} insights.trades`, `${trade.transaction_id}|${playerId}`, `missing player ${playerId}`);
+          });
         });
         if (trade.edge_owner && (trade.even || !trade.sides.some(side => side.owner === trade.edge_owner))) {
           report('TRANSACTION_OUTCOME_RECONCILIATION', `${location} insights.trades`, trade.transaction_id, 'edge_owner must be a unique eligible side');
@@ -277,7 +342,30 @@ function validateSemanticBundle(bundle, opts = {}) {
         if (!source || !['waiver', 'free_agent'].includes(source.type)) {
           report('TRANSACTION_INVALID_STATUS_MUTATION', `${location} insights.wire_finds`, row.transaction_id, 'wire find must reference a complete waiver/free-agent transaction');
         }
+        if (!owners.has(row.owner)) report('TRANSACTION_UNKNOWN_OWNER', `${location} insights.wire_finds`, `${row.transaction_id}|${row.owner}`, `unknown wire-find owner ${row.owner}`);
+        if (!playerIds.has(row.player_id)) report('TRANSACTION_MISSING_PLAYER', `${location} insights.wire_finds`, `${row.transaction_id}|${row.player_id}`, `missing player ${row.player_id}`);
       });
+      season.insights.movement_counts.forEach(row => {
+        if (!playerIds.has(row.player_id)) report('TRANSACTION_MISSING_PLAYER', `${location} insights.movement_counts`, `${season.season}|${row.player_id}`, `missing player ${row.player_id}`);
+      });
+      for (const [name, rows] of [
+        ['owner_activity', season.insights.owner_activity],
+        ['draft_retention', season.insights.draft_retention],
+      ]) {
+        rows.forEach(row => {
+          if (!owners.has(row.owner)) report('TRANSACTION_UNKNOWN_OWNER', `${location} insights.${name}`, `${season.season}|${row.owner}`, `unknown insight owner ${row.owner}`);
+        });
+      }
+      season.insights.keeper_return.forEach(row => {
+        if (!owners.has(row.owner)) report('TRANSACTION_UNKNOWN_OWNER', `${location} insights.keeper_return`, `${season.season}|${row.owner}`, `unknown keeper owner ${row.owner}`);
+        if (!playerIds.has(row.player_id)) report('TRANSACTION_MISSING_PLAYER', `${location} insights.keeper_return`, `${season.season}|${row.player_id}`, `missing player ${row.player_id}`);
+      });
+      const missingMetadata = [...referencedPlayers]
+        .filter(playerId => !playersById.get(playerId)?.name)
+        .length;
+      if (season.coverage.missing_player_metadata !== missingMetadata) {
+        report('TRANSACTION_COVERAGE_MISMATCH', `${location} coverage`, `${season.season}|missing_player_metadata`, `missing-player metadata count ${season.coverage.missing_player_metadata} does not reconcile to ${missingMetadata}`);
+      }
       const seasonBytes = Buffer.byteLength(canonicalJson(season));
       if (seasonBytes > 750000) {
         report('TRANSACTION_SEASON_SIZE', location, `${season.season}`, `season slice is ${seasonBytes} bytes; maximum is 750000`);

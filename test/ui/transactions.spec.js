@@ -35,16 +35,48 @@ test('trade, player, owner, and keeper links are canonical and focus their conte
   await expect(page.locator(`#transaction-${trade.transaction_id}`)).toBeFocused();
   await expect(page.locator(`#transaction-${trade.transaction_id}`)).toContainText('On-field edge');
   await expect(page.locator(`#transaction-${trade.transaction_id}`)).toContainText('Method: starter fantasy points');
+  await page.locator('.transaction-controls').getByLabel('View').selectOption('overview');
+  await expect(page).not.toHaveURL(/txView=trades/);
+  await expect(page).not.toHaveURL(/txId=/);
+  await expect(page.locator('#transactions-overview')).toHaveAttribute('open', '');
 
   await page.goto(`/?tab=transactions&txPlayer=${encodeURIComponent(journey.player_id)}`);
   await expect(page.locator('#transactions-players')).toHaveAttribute('open', '');
   await expect(page.locator(`#transaction-player-${journey.player_id}`)).toBeFocused();
   await expect(page.locator('.transaction-journey ol li').first()).toContainText(/Week/);
+  await page.locator('.transaction-controls').getByLabel('View').selectOption('owners');
+  await expect(page).toHaveURL(/txView=owners/);
+  await expect(page).not.toHaveURL(/txPlayer=/);
+  await expect(page.locator('#transactions-owners')).toHaveAttribute('open', '');
+  const expectedAddsLeader = season.insights.owner_activity
+    .slice()
+    .sort((a, b) => b.adds - a.adds || a.owner.localeCompare(b.owner))[0].owner;
+  await page.locator('#transactions-owners').getByRole('button', { name: 'Adds' }).click();
+  await expect(page.locator('#transactions-owners thead th').nth(2)).toHaveAttribute('aria-sort', 'descending');
+  await expect(page.locator('#transactions-owners tbody th').first()).toHaveText(expectedAddsLeader);
 
   const owner = season.teams[0].owner;
   await page.goto(`/?tab=transactions&txView=owners&txOwner=${encodeURIComponent(owner)}`);
   await expect(page.locator('#transactions-owners')).toHaveAttribute('open', '');
   await expect(page.locator('#transactions-owners tbody tr')).toHaveCount(1);
+  await page.locator('.transaction-controls').getByLabel('View').selectOption('players');
+  const ownerJourneyCount = season.player_journeys
+    .filter(row => row.stints.some(stint => stint.owner === owner))
+    .length;
+  await expect(page.locator('.transaction-player-control option')).toHaveCount(ownerJourneyCount + 1);
+  const playerQuery = season.player_journeys
+    .find(row => row.stints.some(stint => stint.owner === owner))
+    .player_id;
+  const matchingPlayerCount = season.player_journeys
+    .filter(row => row.stints.some(stint => stint.owner === owner))
+    .filter(row => {
+      const player = asset.players.find(candidate => candidate.id === row.player_id);
+      return row.player_id.toLocaleLowerCase().includes(playerQuery.toLocaleLowerCase())
+        || (player?.name || '').toLocaleLowerCase().includes(playerQuery.toLocaleLowerCase());
+    })
+    .length;
+  await page.getByLabel('Search players').fill(playerQuery);
+  await expect(page.locator('.transaction-player-control option')).toHaveCount(matchingPlayerCount + 1);
 
   await page.goto('/?tab=transactions&txView=draft');
   await expect(page.locator('#transactions-draft')).toContainText('No keeper picks were recorded for 2025');

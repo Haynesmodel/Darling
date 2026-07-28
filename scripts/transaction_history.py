@@ -331,7 +331,8 @@ def build_journeys(
     draft: dict[str, Any],
     transactions: list[dict[str, Any]],
     matchup_index: dict[tuple[str, str], dict[str, Any]],
-    final_rosters: dict[str, set[str]],
+    boundary_rosters: dict[str, set[str]],
+    completed_week: int,
 ) -> list[dict[str, Any]]:
     events = _movement_events(draft, transactions)
     journeys = []
@@ -394,8 +395,9 @@ def build_journeys(
                     row["points"] for row in scoped_rows if row["started"]
                 )),
                 "retained": (
-                    stint["release"] is None
-                    and player_id in final_rosters.get(stint["owner"], set())
+                    stint["acquisition"]["week"] <= completed_week
+                    and (stint["release"] is None or stint["release"]["week"] > completed_week)
+                    and player_id in boundary_rosters.get(stint["owner"], set())
                 ),
             })
         journeys.append({
@@ -493,7 +495,12 @@ def build_insights(
         if acquisition["kind"] != "add" or not acquisition["transaction_id"]:
             continue
         transaction = next((row for row in transactions if row["id"] == acquisition["transaction_id"]), None)
-        if not transaction or transaction["type"] not in {"waiver", "free_agent"}:
+        if (
+            not transaction
+            or transaction["type"] not in {"waiver", "free_agent"}
+            or completed_week == 0
+            or transaction["week"] > completed_week
+        ):
             continue
         wire_finds.append({
             "transaction_id": transaction["id"],
@@ -646,15 +653,46 @@ def completed_week_from_current(
     max_week: int,
     league_status: str,
 ) -> int:
-    if int(current.get("season") or 0) == season:
-        final_weeks = [
-            int(game.get("week") or 0)
-            for game in (current.get("games") or []) if game.get("status") == "final"
-        ]
-        return min(max(final_weeks, default=0), max_week)
     if league_status == "complete":
         return max_week
+    if int(current.get("season") or 0) == season:
+        statuses_by_week: dict[int, list[str]] = defaultdict(list)
+        for game in current.get("games") or []:
+            week = int(game.get("week") or 0)
+            if 1 <= week <= max_week:
+                statuses_by_week[week].append(str(game.get("status") or "unknown"))
+        completed = 0
+        for week in range(1, max_week + 1):
+            statuses = statuses_by_week.get(week, [])
+            if not statuses or any(status != "final" for status in statuses):
+                break
+            completed = week
+        return completed
     return 0
+
+
+def rosters_at_completed_week(
+    rosters: list[dict[str, Any]],
+    owners: dict[int, str],
+    transactions: list[dict[str, Any]],
+    completed_week: int,
+) -> dict[str, set[str]]:
+    boundary = {
+        owners[int(roster["roster_id"])]: {
+            str(player_id) for player_id in (roster.get("players") or []) if player_id
+        }
+        for roster in rosters
+    }
+    future = [
+        transaction for transaction in transactions
+        if transaction["status"] == COMPLETE_STATUS and transaction["week"] > completed_week
+    ]
+    for transaction in sorted(future, key=lambda row: (row["created_ms"], row["id"]), reverse=True):
+        for movement in transaction["adds"]:
+            boundary[movement["owner"]].discard(movement["player_id"])
+        for movement in transaction["drops"]:
+            boundary[movement["owner"]].add(movement["player_id"])
+    return boundary
 
 
 def build_season(
@@ -678,14 +716,11 @@ def build_season(
     completed_week = completed_week_from_current(current, season, max_week, league_status)
     draft = _normalize_draft_asset(selected_draft, draft_picks, owners)
     transactions = normalize_transactions(transaction_rounds, owners, max_week)
-    final_rosters = {
-        owners[int(roster["roster_id"])]: {
-            str(player_id) for player_id in (roster.get("players") or []) if player_id
-        }
-        for roster in rosters
-    }
+    boundary_rosters = rosters_at_completed_week(rosters, owners, transactions, completed_week)
     score_index = _matchup_index(matchups, owners, completed_week)
-    journeys = build_journeys(draft, transactions, score_index, final_rosters)
+    journeys = build_journeys(
+        draft, transactions, score_index, boundary_rosters, completed_week
+    )
     provisional = {
         "season": season,
         "league_id": str(league_id),

@@ -2,13 +2,12 @@ import argparse
 import json
 import os
 import socket
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 from urllib.error import HTTPError
-
-import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -18,8 +17,10 @@ import transaction_history as history  # noqa: E402
 from generate_transaction_history import SleeperClient, cached_players, fetch_inputs, generate  # noqa: E402
 from transaction_history import (  # noqa: E402
     build_journeys,
+    completed_week_from_current,
     merge_asset,
     owner_map,
+    rosters_at_completed_week,
     select_draft,
     validate_asset_invariants,
 )
@@ -30,7 +31,7 @@ FIXTURES = ROOT / "test" / "fixtures" / "transaction-history"
 
 def fixture_args(output):
     return argparse.Namespace(
-        league="fixture-league",
+        league="12345",
         season=2025,
         map=str(FIXTURES / "mapping.json"),
         max_week=2,
@@ -61,6 +62,27 @@ class TransactionHistoryTests(unittest.TestCase):
             self.assertEqual(season["insights"]["trades"][0]["status"], "incomplete")
             self.assertFalse(any(row["transaction_id"] == "failed-waiver" for row in season["insights"]["wire_finds"]))
             validate_asset_invariants(two)
+
+    def test_cli_failure_preserves_an_existing_output_and_removes_only_temporary_data(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "TransactionHistory.json"
+            output.write_text('{"preserved":true}\n')
+            temporary = output.with_name(f".{output.name}.tmp")
+            temporary.write_text("partial")
+            argv = [
+                "generate_transaction_history.py",
+                "--league", "12345",
+                "--season", "2025",
+                "--map", str(Path(directory) / "missing-map.json"),
+                "--max-week", "2",
+                "--current-season", str(FIXTURES / "current-season.json"),
+                "--out", str(output),
+                "--fixture-dir", str(FIXTURES),
+            ]
+            with mock.patch.object(sys, "argv", argv), mock.patch("sys.stderr"):
+                self.assertEqual(generator.main(), 1)
+            self.assertEqual(output.read_text(), '{"preserved":true}\n')
+            self.assertFalse(temporary.exists())
 
     def test_target_replacement_preserves_other_season(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -158,6 +180,7 @@ class TransactionHistoryTests(unittest.TestCase):
             transactions,
             scoring,
             {"Alpha": {"p1"}},
+            5,
         )[0]
         first, second = journey["stints"]
         self.assertEqual(first["starter_points"], 21.0)
@@ -166,6 +189,54 @@ class TransactionHistoryTests(unittest.TestCase):
         self.assertEqual(second["starter_points"], 29.0)
         self.assertEqual(second["rostered_weeks"], 2)
         self.assertTrue(second["retained"])
+
+    def test_completed_week_and_roster_retention_ignore_live_week_moves(self):
+        current = {
+            "season": 2025,
+            "games": [
+                {"week": 1, "status": "final"},
+                {"week": 1, "status": "final"},
+                {"week": 2, "status": "final"},
+                {"week": 2, "status": "live"},
+            ],
+        }
+        self.assertEqual(completed_week_from_current(current, 2025, 17, "in_season"), 1)
+        self.assertEqual(completed_week_from_current(current, 2025, 17, "complete"), 17)
+        transactions = [
+            {
+                "id": "future-swap",
+                "status": "complete",
+                "type": "free_agent",
+                "week": 2,
+                "created_ms": 20,
+                "adds": [{"player_id": "new", "owner": "Alpha"}],
+                "drops": [{"player_id": "old", "owner": "Alpha"}],
+            },
+        ]
+        boundary = rosters_at_completed_week(
+            [{"roster_id": 1, "players": ["new"]}],
+            {1: "Alpha"},
+            transactions,
+            1,
+        )
+        self.assertEqual(boundary, {"Alpha": {"old"}})
+        journeys = build_journeys(
+            {
+                "picks": [{
+                    "player_id": "old",
+                    "owner": "Alpha",
+                    "pick_no": 1,
+                    "is_keeper": False,
+                }],
+            },
+            transactions,
+            {},
+            boundary,
+            1,
+        )
+        by_player = {row["player_id"]: row["stints"][0] for row in journeys}
+        self.assertTrue(by_player["old"]["retained"])
+        self.assertFalse(by_player["new"]["retained"])
 
     def test_fetch_inventory_includes_exact_round_and_matchup_boundaries(self):
         class RecordingClient:
@@ -181,12 +252,12 @@ class TransactionHistoryTests(unittest.TestCase):
             args = fixture_args(Path(directory) / "unused.json")
             fetch_inputs(args, client)
         endpoints = {endpoint for endpoint, _fixture in client.calls}
-        self.assertIn("/league/fixture-league/transactions/0", endpoints)
-        self.assertIn("/league/fixture-league/transactions/2", endpoints)
-        self.assertNotIn("/league/fixture-league/transactions/3", endpoints)
-        self.assertIn("/league/fixture-league/matchups/1", endpoints)
-        self.assertIn("/league/fixture-league/matchups/2", endpoints)
-        self.assertNotIn("/league/fixture-league/matchups/0", endpoints)
+        self.assertIn("/league/12345/transactions/0", endpoints)
+        self.assertIn("/league/12345/transactions/2", endpoints)
+        self.assertNotIn("/league/12345/transactions/3", endpoints)
+        self.assertIn("/league/12345/matchups/1", endpoints)
+        self.assertIn("/league/12345/matchups/2", endpoints)
+        self.assertNotIn("/league/12345/matchups/0", endpoints)
 
     def test_client_retries_only_retryable_http_statuses_with_a_bound(self):
         class Response:
@@ -250,7 +321,7 @@ class TransactionHistoryTests(unittest.TestCase):
                 SleeperClient().get("/test", "unused")
         self.assertEqual(request.call_count, 1)
 
-    def test_player_cache_accepts_fresh_and_rejects_expired_or_corrupt_data(self):
+    def test_player_cache_accepts_fresh_and_rejects_expired_corrupt_or_oversize_data(self):
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory) / "players.json"
             target.write_text('{"p1":{"full_name":"Player One"}}')
@@ -258,6 +329,9 @@ class TransactionHistoryTests(unittest.TestCase):
             os.utime(target, (0, 0))
             self.assertIsNone(cached_players(str(target)))
             target.write_text("{bad")
+            self.assertIsNone(cached_players(str(target)))
+            with target.open("wb") as cache:
+                cache.truncate(generator.PLAYER_MAX_BYTES + 1)
             self.assertIsNone(cached_players(str(target)))
 
     def test_failed_and_pending_moves_never_create_player_journeys(self):
@@ -282,7 +356,7 @@ class TransactionHistoryTests(unittest.TestCase):
                 "drops": [],
             },
         ]
-        self.assertEqual(build_journeys(draft, transactions, {}, {"Alpha": set()}), [])
+        self.assertEqual(build_journeys(draft, transactions, {}, {"Alpha": set()}, 1), [])
 
     def test_hard_size_boundaries_are_inclusive_and_fail_one_byte_over(self):
         empty = {

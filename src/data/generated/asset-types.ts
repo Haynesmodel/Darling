@@ -128,7 +128,10 @@ export interface TransactionHistory {
   source: 'sleeper';
   source_updated_ms: number;
   players: Player[];
-  seasons: Season[];
+  /**
+   * @minItems 1
+   */
+  seasons: [Season, ...Season[]];
 }
 export interface Player {
   id: string;

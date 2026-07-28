@@ -1,5 +1,6 @@
 import type { ComponentChildren } from 'preact';
-import type { Journey, Trade, Transaction } from '../../data/generated/asset-types';
+import { useState } from 'preact/hooks';
+import type { Journey, OwnerActivity, Trade, Transaction } from '../../data/generated/asset-types';
 import { transactionHref } from './transactions-model';
 import { TRANSACTION_VIEWS, type TransactionModel, type TransactionRouteState, type TransactionView } from './transactions-types';
 
@@ -16,6 +17,17 @@ const VIEW_LABELS: Record<TransactionView, string> = {
   owners: 'Owner Activity',
   draft: 'Draft & Keepers',
 };
+
+const OWNER_SORTS = [
+  ['owner', 'Owner'],
+  ['transactions', 'Moves'],
+  ['adds', 'Adds'],
+  ['drops', 'Drops'],
+  ['trades', 'Trades'],
+  ['faab_spent', 'FAAB'],
+  ['turnover', 'Turnover'],
+] as const;
+type OwnerSort = typeof OWNER_SORTS[number][0];
 
 function name(model: TransactionModel, playerId: string) {
   return model.playerNames.get(playerId) || `Player ${playerId}`;
@@ -69,7 +81,7 @@ function TransactionSummary({
     </div>
     <span>{transaction.participants.join(' · ') || 'League move'}</span>
     <span>{players.slice(0, 3).join(', ') || 'No player movement'}{players.length > 3 ? ` +${players.length - 3}` : ''}</span>
-    <StateLink model={model} state={{ transactionId: transaction.id }}>Details</StateLink>
+    <StateLink model={model} state={{ transactionId: transaction.id, player: null }}>Details</StateLink>
   </article>;
 }
 
@@ -91,7 +103,7 @@ function TradeCard({ trade, model }: { trade: Trade; model: TransactionModel }) 
         <h4>Week {trade.week} trade</h4>
         <p class="muted">{label} · {trade.status}</p>
       </div>
-      <StateLink model={model} state={{ transactionId: trade.transaction_id }}>Permalink</StateLink>
+      <StateLink model={model} state={{ transactionId: trade.transaction_id, player: null }}>Permalink</StateLink>
     </header>
     <div class="transaction-trade-sides">
       {trade.sides.map(side => <section key={side.owner}>
@@ -143,9 +155,25 @@ function JourneyView({ journey, model }: { journey: Journey | null; model: Trans
 }
 
 export default function TransactionsPage({ model, onStateChange }: Props) {
+  const [playerQuery, setPlayerQuery] = useState('');
+  const [ownerSort, setOwnerSort] = useState<{ field: OwnerSort; direction: 'ascending' | 'descending' }>({
+    field: 'transactions',
+    direction: 'descending',
+  });
   const { season, state } = model;
+  const playerJourneys = state.owner
+    ? season.player_journeys.filter(row => row.stints.some(stint => stint.owner === state.owner))
+    : season.player_journeys;
+  const normalizedPlayerQuery = playerQuery.trim().toLocaleLowerCase();
+  const visiblePlayerJourneys = normalizedPlayerQuery
+    ? playerJourneys.filter(row => (
+        row.player_id === state.player
+        || row.player_id.toLocaleLowerCase().includes(normalizedPlayerQuery)
+        || name(model, row.player_id).toLocaleLowerCase().includes(normalizedPlayerQuery)
+      ))
+    : playerJourneys;
   const selectedJourney = state.player
-    ? season.player_journeys.find(row => row.player_id === state.player) || null
+    ? playerJourneys.find(row => row.player_id === state.player) || null
     : null;
   const ownerTransactions = state.owner
     ? season.transactions.filter(row => row.participants.includes(state.owner as string))
@@ -154,6 +182,32 @@ export default function TransactionsPage({ model, onStateChange }: Props) {
     ? season.transactions.find(row => row.id === state.transactionId) || null
     : null;
   const latest = ownerTransactions.slice().sort((a, b) => b.created_ms - a.created_ms).slice(0, 8);
+  const ownerActivity = season.insights.owner_activity
+    .filter(row => !state.owner || row.owner === state.owner)
+    .slice()
+    .sort((a, b) => {
+      const field = ownerSort.field;
+      const left = a[field];
+      const right = b[field];
+      if (left === null && right !== null) return 1;
+      if (left !== null && right === null) return -1;
+      let comparison = 0;
+      if (typeof left === 'string' && typeof right === 'string') {
+        comparison = left.localeCompare(right);
+      } else {
+        comparison = Number(left) - Number(right);
+      }
+      if (ownerSort.direction === 'descending') comparison *= -1;
+      return comparison || a.owner.localeCompare(b.owner);
+    });
+  const changeOwnerSort = (field: OwnerSort) => {
+    setOwnerSort(previous => ({
+      field,
+      direction: previous.field === field && previous.direction === 'descending'
+        ? 'ascending'
+        : 'descending',
+    }));
+  };
   if (
     state.view === 'overview'
     && selectedTransaction
@@ -168,7 +222,12 @@ export default function TransactionsPage({ model, onStateChange }: Props) {
           {season.coverage.transaction_count} recorded moves · {season.coverage.complete_count} complete · scoring through Week {season.coverage.completed_week}
         </p>
       </div>
-      {model.favoriteOwner && <StateLink model={model} state={{ owner: model.favoriteOwner, view: 'owners' }}>
+      {model.favoriteOwner && <StateLink model={model} state={{
+        owner: model.favoriteOwner,
+        view: 'owners',
+        player: null,
+        transactionId: null,
+      }}>
         My Team: {model.favoriteOwner}
       </StateLink>}
     </section>
@@ -180,12 +239,26 @@ export default function TransactionsPage({ model, onStateChange }: Props) {
         </select>
       </label>
       <label>View
-        <select value={state.view} onChange={event => onStateChange({ view: event.currentTarget.value as TransactionView })}>
+        <select value={state.view} onChange={event => {
+          const view = event.currentTarget.value as TransactionView;
+          onStateChange({
+            view,
+            player: view === 'players' ? state.player : null,
+            transactionId: null,
+          });
+        }}>
           {TRANSACTION_VIEWS.map(value => <option value={value} key={value}>{VIEW_LABELS[value]}</option>)}
         </select>
       </label>
       <label>Owner
-        <select value={state.owner || ''} onChange={event => onStateChange({ owner: event.currentTarget.value || null })}>
+        <select value={state.owner || ''} onChange={event => {
+          setPlayerQuery('');
+          onStateChange({
+            owner: event.currentTarget.value || null,
+            player: null,
+            transactionId: null,
+          });
+        }}>
           <option value="">All owners</option>
           {season.teams.map(team => <option value={team.owner} key={team.owner}>{team.owner}</option>)}
         </select>
@@ -249,17 +322,26 @@ export default function TransactionsPage({ model, onStateChange }: Props) {
       <h4>Most added and dropped</h4>
       <ol class="transaction-ranking compact">
         {season.insights.movement_counts.slice(0, 20).map(row => <li key={row.player_id}>
-          <StateLink model={model} state={{ view: 'players', player: row.player_id }}>{name(model, row.player_id)}</StateLink>
+          <StateLink model={model} state={{ view: 'players', player: row.player_id, transactionId: null }}>{name(model, row.player_id)}</StateLink>
           <span>{row.adds} adds · {row.drops} drops</span>
         </li>)}
       </ol>
     </Details>
 
     <Details view="players" model={model}>
+      <label class="transaction-player-control">Search players
+        <input
+          type="search"
+          value={playerQuery}
+          onInput={event => setPlayerQuery(event.currentTarget.value)}
+          placeholder="Name or player ID"
+          autocomplete="off"
+        />
+      </label>
       <label class="transaction-player-control">Player
         <select value={state.player || ''} onChange={event => onStateChange({ player: event.currentTarget.value || null, view: 'players' })}>
           <option value="">Choose a player</option>
-          {season.player_journeys
+          {visiblePlayerJourneys
             .slice()
             .sort((a, b) => name(model, a.player_id).localeCompare(name(model, b.player_id)))
             .map(row => <option value={row.player_id} key={row.player_id}>{name(model, row.player_id)}</option>)}
@@ -272,11 +354,25 @@ export default function TransactionsPage({ model, onStateChange }: Props) {
       <div class="transaction-table-wrap" role="region" aria-label="Owner activity table" tabindex={0}>
         <table>
           <caption>Completed roster activity for {season.season}</caption>
-          <thead><tr><th scope="col">Owner</th><th scope="col">Moves</th><th scope="col">Adds</th><th scope="col">Drops</th><th scope="col">Trades</th><th scope="col">FAAB</th><th scope="col">Turnover</th></tr></thead>
-          <tbody>{season.insights.owner_activity
-            .filter(row => !state.owner || row.owner === state.owner)
-            .map(row => <tr key={row.owner}>
-              <th scope="row"><StateLink model={model} state={{ owner: row.owner, view: 'owners' }}>{row.owner}</StateLink></th>
+          <thead><tr>{OWNER_SORTS.map(([field, label]) => <th
+            scope="col"
+            aria-sort={ownerSort.field === field ? ownerSort.direction : 'none'}
+            key={field}
+          >
+            <button type="button" onClick={() => changeOwnerSort(field)}>
+              {label}
+              {ownerSort.field === field && <span aria-hidden="true">
+                {ownerSort.direction === 'descending' ? ' ↓' : ' ↑'}
+              </span>}
+            </button>
+          </th>)}</tr></thead>
+          <tbody>{ownerActivity.map((row: OwnerActivity) => <tr key={row.owner}>
+              <th scope="row"><StateLink model={model} state={{
+                owner: row.owner,
+                view: 'owners',
+                player: null,
+                transactionId: null,
+              }}>{row.owner}</StateLink></th>
               <td>{row.transactions}</td><td>{row.adds}</td><td>{row.drops}</td><td>{row.trades}</td><td>{row.faab_spent}</td>
               <td>{row.turnover === null ? 'Unavailable' : `${(row.turnover * 100).toFixed(1)}%`}</td>
             </tr>)}</tbody>
@@ -301,7 +397,7 @@ export default function TransactionsPage({ model, onStateChange }: Props) {
       <p class="transaction-method">Starter points produced by each keeper, then starts and later draft round.</p>
       {!season.insights.keeper_return.length ? <Empty>No keeper picks were recorded for {season.season}.</Empty> : <ol class="transaction-ranking">
         {season.insights.keeper_return.map(row => <li key={row.player_id}>
-          <StateLink model={model} state={{ view: 'players', player: row.player_id }}>{name(model, row.player_id)}</StateLink>
+          <StateLink model={model} state={{ view: 'players', player: row.player_id, transactionId: null }}>{name(model, row.player_id)}</StateLink>
           <span>{row.owner} · Round {row.round}</span><strong>{row.starter_points.toFixed(2)} pts</strong>
         </li>)}
       </ol>}

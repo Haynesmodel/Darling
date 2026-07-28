@@ -5631,6 +5631,15 @@ function validate83(data, { instancePath = "", parentData, parentDataProperty, r
     if (data.seasons !== void 0) {
       let data7 = data.seasons;
       if (Array.isArray(data7)) {
+        if (data7.length < 1) {
+          const err15 = { instancePath: instancePath + "/seasons", schemaPath: "#/properties/seasons/minItems", keyword: "minItems", params: { limit: 1 }, message: "must NOT have fewer than 1 items" };
+          if (vErrors === null) {
+            vErrors = [err15];
+          } else {
+            vErrors.push(err15);
+          }
+          errors++;
+        }
         const len1 = data7.length;
         for (let i1 = 0; i1 < len1; i1++) {
           if (!validate86(data7[i1], { instancePath: instancePath + "/seasons/" + i1, parentData: data7, parentDataProperty: i1, rootData, dynamicAnchors })) {
@@ -5639,21 +5648,21 @@ function validate83(data, { instancePath = "", parentData, parentDataProperty, r
           }
         }
       } else {
-        const err15 = { instancePath: instancePath + "/seasons", schemaPath: "#/properties/seasons/type", keyword: "type", params: { type: "array" }, message: "must be array" };
+        const err16 = { instancePath: instancePath + "/seasons", schemaPath: "#/properties/seasons/type", keyword: "type", params: { type: "array" }, message: "must be array" };
         if (vErrors === null) {
-          vErrors = [err15];
+          vErrors = [err16];
         } else {
-          vErrors.push(err15);
+          vErrors.push(err16);
         }
         errors++;
       }
     }
   } else {
-    const err16 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+    const err17 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
     if (vErrors === null) {
-      vErrors = [err16];
+      vErrors = [err17];
     } else {
-      vErrors.push(err16);
+      vErrors.push(err17);
     }
     errors++;
   }

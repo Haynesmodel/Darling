@@ -92,7 +92,10 @@ def cached_players(path: str | None):
         return None
     target = Path(path)
     try:
-        if time.time() - target.stat().st_mtime > CACHE_MAX_AGE_SECONDS:
+        stat = target.stat()
+        if stat.st_size > PLAYER_MAX_BYTES:
+            return None
+        if time.time() - stat.st_mtime > CACHE_MAX_AGE_SECONDS:
             return None
         value = load_json(target)
         return value if isinstance(value, dict) else None
@@ -172,11 +175,12 @@ def generate(args):
 def main() -> int:
     args = parser().parse_args()
     target = Path(args.out)
+    temporary = target.with_name(f".{target.name}.tmp")
     try:
         result = generate(args)
     except Exception as error:
         try:
-            target.unlink()
+            temporary.unlink()
         except FileNotFoundError:
             pass
         print(f"Transaction history generation failed: {error}", file=sys.stderr)

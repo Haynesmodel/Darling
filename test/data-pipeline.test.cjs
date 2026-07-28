@@ -91,6 +91,19 @@ test('Draft 2020-12 schemas accept representative data and locate invalid fields
       'TransactionHistory.json',
     ).some(error => error.includes('must NOT have additional properties')),
   );
+  const emptyHistory = {
+    ...readJson(path.join(root, 'assets', 'TransactionHistory.json')),
+    players: [],
+    seasons: [],
+  };
+  assert.ok(
+    validateWithSchema(
+      ajv,
+      'transaction-history.schema.json',
+      emptyHistory,
+      'TransactionHistory.json',
+    ).some(error => error.includes('must NOT have fewer than 1 items')),
+  );
 });
 
 test('semantic validation accepts the canonical bundle and reports stable rule IDs', () => {
@@ -108,6 +121,20 @@ test('semantic validation accepts the canonical bundle and reports stable rule I
   const current = clone(bundle);
   current.CurrentSeason.games[0].season -= 1;
   assert.ok(validateSemanticBundle(current, { root }).errors.some(error => error.includes('[CURRENT_SEASON_MISMATCH]')));
+
+  const invalidTransactionReference = clone(bundle);
+  invalidTransactionReference.TransactionHistory.seasons[0].draft.picks[0].player_id = 'missing-player';
+  assert.ok(
+    validateSemanticBundle(invalidTransactionReference, { root }).errors
+      .some(error => error.includes('[TRANSACTION_MISSING_PLAYER]')),
+  );
+
+  const invalidTransactionCoverage = clone(bundle);
+  invalidTransactionCoverage.TransactionHistory.seasons[0].coverage.transaction_rounds.pop();
+  assert.ok(
+    validateSemanticBundle(invalidTransactionCoverage, { root }).errors
+      .some(error => error.includes('[TRANSACTION_COVERAGE_ROUNDS]')),
+  );
 });
 
 test('canonical JSON hashing is independent of object key insertion order', () => {

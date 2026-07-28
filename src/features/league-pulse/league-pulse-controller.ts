@@ -27,6 +27,7 @@ export function createFeatureController(): DarlingFeatureController {
     id: 'pulse',
     mount(nextContext) {
       unsubscribeFreshness?.();
+      unsubscribePreference?.();
       context = nextContext;
       root = context.document.getElementById('leaguePulseRoot');
       if (!root) throw new Error('League Pulse mount #leaguePulseRoot is missing');

@@ -112,7 +112,7 @@ function HubContent({ model }: { model: OwnerHubModel }) {
     </div>
 
     <section class="card owner-hub-explore" aria-labelledby="ownerHubExploreTitle">
-      <p class="owner-hub-eyebrow">Go deeper</p><h3 id="ownerHubExploreTitle">Explore as {model.identity.owner}</h3>
+      <h3 id="ownerHubExploreTitle">Explore as {model.identity.owner}</h3>
       <nav aria-label={`Explore as ${model.identity.owner}`}>
         {model.actions.map(action => <a href={action.href} key={action.label}>{action.label}</a>)}
       </nav>

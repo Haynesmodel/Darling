@@ -46,7 +46,7 @@ export function createFeatureController(): DarlingFeatureController {
         const favorite = !explicit ? context.ownerPreference.getSnapshot().owner : null;
         selected = {
           owner: input.route.draftOwner || favorite,
-          mode: input.route.draftMode || (favorite ? 'owner' : null),
+          mode: input.route.draftMode || (input.route.draftOwner || favorite ? 'owner' : null),
           startSeason: input.route.draftStart,
           endSeason: input.route.draftEnd,
           metric: input.route.draftMetric,

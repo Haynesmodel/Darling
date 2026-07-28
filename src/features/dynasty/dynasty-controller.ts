@@ -183,7 +183,9 @@ export function createFeatureController(): DarlingFeatureController {
       active = !input.signal.aborted;
       const retained = input.reason === 'tab' ? state : null;
       const favorite = context.ownerPreference.getSnapshot().owner;
-      const mode = input.route.dynastyMode || retained?.mode || (favorite ? 'calculator' : 'all-time');
+      const mode = input.route.dynastyMode
+        || (input.route.dynastyOwner ? 'calculator' : retained?.mode)
+        || (favorite ? 'calculator' : 'all-time');
       const initial = {
         ...(retained || {}),
         mode,

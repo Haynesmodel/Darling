@@ -43,6 +43,22 @@ test('clearing My Team preserves the explicit Owner Hub preview', async ({ page 
   expect(await page.evaluate(key => localStorage.getItem(key), PREFERENCE_KEY)).toBeNull();
 });
 
+test('a bare Hub follows cross-tab preference changes and makes clear state explicit', async ({ page }) => {
+  await seedFavorite(page, 'Joe');
+  await page.goto('/?tab=owner');
+  await expect(page.locator('.owner-hub-owner-control select')).toHaveValue('Joe');
+
+  await page.evaluate(key => {
+    localStorage.setItem(key, 'Joel');
+    dispatchEvent(new StorageEvent('storage', { key, newValue: 'Joel' }));
+  }, PREFERENCE_KEY);
+  await expect(page.locator('.owner-hub-owner-control select')).toHaveValue('Joel');
+
+  await page.getByRole('button', { name: 'Clear My Team' }).click();
+  await expect(page).toHaveURL(/[?&]owner=Joel(?:&|$)/);
+  await expect(page.locator('.owner-hub-owner-control select')).toHaveValue('Joel');
+});
+
 test('explicit shared URLs override My Team without changing the saved preference', async ({ page }) => {
   await seedFavorite(page, 'Joe');
   const cases = [
@@ -58,6 +74,16 @@ test('explicit shared URLs override My Team without changing the saved preferenc
     await expect(page.locator(selector)).toHaveValue(value);
   }
   expect(await page.evaluate(key => localStorage.getItem(key), PREFERENCE_KEY)).toBe('Joe');
+});
+
+test('partial owner deep links select their owner-specific modes', async ({ page }) => {
+  await page.goto('/?tab=dynasty&dynastyOwner=Joel');
+  await expect(page.locator('#dynastyModeSelect')).toHaveValue('calculator');
+  await expect(page.locator('#dynastyOwnerSelect')).toHaveValue('Joel');
+
+  await page.goto('/?tab=draft&draftOwner=Joel');
+  await expect(page.locator('#draftModeSelect')).toHaveValue('owner');
+  await expect(page.locator('#draftOwnerSelect')).toHaveValue('Joel');
 });
 
 test('fresh feature defaults use My Team', async ({ page }) => {

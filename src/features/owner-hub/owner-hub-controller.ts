@@ -12,6 +12,7 @@ export function createFeatureController(): DarlingFeatureController {
   let selectedOwner: string | null = null;
   let invalidOwner: string | null = null;
   let message = '';
+  let followsPreference = false;
   let unsubscribe: (() => void) | null = null;
 
   const isValid = (owner: string | null): owner is string => !!owner && context.ownerPreference.validOwners().includes(owner);
@@ -30,6 +31,7 @@ export function createFeatureController(): DarlingFeatureController {
       }) : null,
       onPreview(owner: string) {
         if (!isValid(owner)) return;
+        followsPreference = false;
         selectedOwner = owner;
         invalidOwner = null;
         message = '';
@@ -47,7 +49,9 @@ export function createFeatureController(): DarlingFeatureController {
         renderCurrent();
       },
       onClear() {
+        followsPreference = false;
         context.ownerPreference.set(null);
+        if (selectedOwner) context.router.update({ tab: 'owner', selectedOwner });
         message = 'My Team cleared.';
         renderCurrent();
       },
@@ -60,19 +64,26 @@ export function createFeatureController(): DarlingFeatureController {
       context = nextContext;
       root = context.document.getElementById('ownerHubRoot');
       if (!root) throw new Error('Owner Hub root missing');
-      unsubscribe = context.ownerPreference.subscribe(() => renderCurrent());
+      unsubscribe = context.ownerPreference.subscribe(snapshot => {
+        if (followsPreference) selectedOwner = snapshot.owner;
+        renderCurrent();
+      });
     },
     activate(input: FeatureActivation) {
       activeSignal = input.signal;
       if (input.signal.aborted) return;
       const routeOwner = input.route.owner;
       if (routeOwner !== null) {
+        followsPreference = false;
         const valid = isValid(routeOwner);
         selectedOwner = valid ? routeOwner : null;
         invalidOwner = valid ? null : routeOwner;
       } else if (!(input.reason === 'tab' && isValid(selectedOwner))) {
+        followsPreference = true;
         selectedOwner = context.ownerPreference.getSnapshot().owner;
         invalidOwner = null;
+      } else {
+        followsPreference = false;
       }
       message = '';
       if (input.signal.aborted || activeSignal !== input.signal) return;

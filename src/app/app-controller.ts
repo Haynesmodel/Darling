@@ -15,6 +15,7 @@ import type { DataFreshnessRuntime } from '../components/data-freshness/DataFres
 import { isEligiblePrimaryNavigationClick } from '../accessibility/primary-navigation';
 import { buildUrlFromState } from '../../js/state-helpers.js';
 import {
+  canonicalOwners as normalizeOwners,
   createOwnerPreferenceService,
   type OwnerPreferenceService,
   type OwnerPreferenceSnapshot,
@@ -37,14 +38,12 @@ export function createFallbackFreshness<T>(assessment: T) {
   };
 }
 
-export function canonicalOwners(data: Pick<AppContext['data'], 'seasonSummaries' | 'leagueGames' | 'currentSeason'>): string[] {
-  const values = [
+export function canonicalOwners(data: Pick<AppContext['data'], 'seasonSummaries' | 'leagueGames' | 'currentSeason'>): readonly string[] {
+  return normalizeOwners([
     ...data.seasonSummaries.map(row => row.owner),
     ...data.leagueGames.flatMap(game => [game.teamA, game.teamB]),
     ...(data.currentSeason?.teams.map(team => team.owner) || []),
-  ];
-  return [...new Set(values.map(value => String(value).trim()).filter(Boolean))]
-    .sort((a, b) => a.localeCompare(b));
+  ]);
 }
 
 function updateOwnerDestination(doc: Document, win: Window, snapshot: OwnerPreferenceSnapshot): void {

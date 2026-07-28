@@ -26,7 +26,7 @@ interface OwnerPreferenceOptions {
   storageKey?: string;
 }
 
-function canonicalOwners(values: readonly string[]): readonly string[] {
+export function canonicalOwners(values: readonly string[]): readonly string[] {
   return [...new Set(values.map(value => String(value).trim()).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b));
 }

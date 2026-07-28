@@ -93,7 +93,7 @@ export function buildOwnerHubModel(
     .sort((a, b) => a.week - b.week || a.matchup_id - b.matchup_id)[0] || null
     : null;
   const currentSide = currentGame ? sidesForTeam(currentGame, owner) : null;
-  const currentSnapshot = data.currentSeason ? (buildTeamCurrentSeasonSnapshot as any)({
+  const currentSnapshot = data.currentSeason ? buildTeamCurrentSeasonSnapshot({
     owner,
     leagueGames: data.leagueGames,
     seasonSummaries: data.seasonSummaries,

@@ -22,14 +22,24 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   return <div><dt>{label}</dt><dd>{value}</dd></div>;
 }
 
-function Card(props: { title: string; children: ComponentChildren }) {
+function Card(props: { title: string; children: ComponentChildren; href?: string }) {
   return <section class="card">
     <h3>{props.title}</h3>
     {props.children}
+    {props.href && <a href={props.href}>Details</a>}
   </section>;
 }
 
 function HubContent({ model }: { model: OwnerHubModel }) {
+  const careerStats = model.legacy && [
+    ['Season', model.legacy.record],
+    ['Win %', model.legacy.winPct === null ? 'Not available' : `${(model.legacy.winPct * 100).toFixed(1)}%`],
+    ['Titles', model.legacy.championships],
+    ['Saunders', model.legacy.saundersTitles],
+    ['Playoffs', model.legacy.playoffRecord],
+    ['Best', model.legacy.bestFinish === null ? 'Not available' : `No. ${model.legacy.bestFinish}`],
+    ['Avg. finish', model.legacy.averageFinish === null ? 'Not available' : model.legacy.averageFinish.toFixed(1)],
+  ] as [string, string | number][];
   return <>
     <div class="owner-hub-lead">
       <Card title={model.identity.owner}>
@@ -40,24 +50,17 @@ function HubContent({ model }: { model: OwnerHubModel }) {
     </div>
 
     <div class="owner-hub-grid">
-      <Card title={model.rightNow?.heading || 'Right now'}>
+      <Card title={model.rightNow?.heading || 'Right now'} href={model.rightNow?.href}>
         {model.rightNow ? <>
           <p>{model.rightNow.summary}</p>
           {model.rightNow.detail && <strong>{model.rightNow.detail}</strong>}
-          <a href={model.rightNow.href}>Details</a>
         </> : <Empty />}
       </Card>
 
       <Card title="Career">
-        {model.legacy ? <dl class="owner-hub-stats">
-          <Stat label="Season" value={model.legacy.record} />
-          <Stat label="Win %" value={model.legacy.winPct === null ? 'Not available' : `${(model.legacy.winPct * 100).toFixed(1)}%`} />
-          <Stat label="Titles" value={model.legacy.championships} />
-          <Stat label="Saunders" value={model.legacy.saundersTitles} />
-          <Stat label="Playoffs" value={model.legacy.playoffRecord} />
-          <Stat label="Best" value={model.legacy.bestFinish === null ? 'Not available' : `No. ${model.legacy.bestFinish}`} />
-          <Stat label="Avg. finish" value={model.legacy.averageFinish === null ? 'Not available' : model.legacy.averageFinish.toFixed(1)} />
-        </dl> : <Empty />}
+        {careerStats
+          ? <dl class="owner-hub-stats">{careerStats.map(([label, value]) => <Stat label={label} value={value} />)}</dl>
+          : <Empty />}
       </Card>
 
       <Card title="Last five">
@@ -80,7 +83,7 @@ function HubContent({ model }: { model: OwnerHubModel }) {
           : <Empty />}
       </Card>
 
-      <Card title="Draft tendency">
+      <Card title="Draft tendency" href={model.draftIdentity?.href}>
         {model.draftIdentity ? <>
           <dl class="owner-hub-stats">
             <Stat label="Samples" value={model.draftIdentity.samples} />
@@ -88,7 +91,6 @@ function HubContent({ model }: { model: OwnerHubModel }) {
             <Stat label="Range" value={`${model.draftIdentity.earliestPick} / ${model.draftIdentity.latestPick}`} />
             <Stat label={`Latest (${model.draftIdentity.mostRecent.season})`} value={model.draftIdentity.mostRecent.pick} />
           </dl>
-          <a href={model.draftIdentity.href}>Details</a>
         </> : <Empty />}
       </Card>
 
@@ -102,11 +104,10 @@ function HubContent({ model }: { model: OwnerHubModel }) {
         </> : <Empty />}
       </Card>
 
-      <Card title="Curses">
+      <Card title="Curses" href={model.curses?.href}>
         {model.curses ? <>
           <p>{model.curses.counts.active} active · {model.curses.counts.cold} cold · {model.curses.counts.broken} broken</p>
           {model.curses.top && <p><strong>{model.curses.top.title}</strong> · {model.curses.top.status}</p>}
-          <a href={model.curses.href}>Open details</a>
         </> : <Empty curse />}
       </Card>
     </div>

@@ -258,7 +258,13 @@ export default defineConfig({
       compress: {
         booleans_as_integers: false,
         ecma: 2022,
+        hoist_funs: true,
+        hoist_props: true,
+        keep_fargs: false,
+        module: true,
         passes: 8,
+        pure_getters: 'strict',
+        toplevel: true,
       },
       mangle: { toplevel: true },
     },

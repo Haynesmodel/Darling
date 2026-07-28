@@ -27,8 +27,8 @@ interface OwnerPreferenceOptions {
 }
 
 function canonicalOwners(values: readonly string[]): readonly string[] {
-  return Object.freeze([...new Set(values.map(value => String(value).trim()).filter(Boolean))]
-    .sort((a, b) => a.localeCompare(b)));
+  return [...new Set(values.map(value => String(value).trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b));
 }
 
 export function createOwnerPreferenceService(
@@ -60,15 +60,15 @@ export function createOwnerPreferenceService(
       storageAvailable = false;
     }
   }
-  let snapshot: OwnerPreferenceSnapshot = Object.freeze({
+  let snapshot: OwnerPreferenceSnapshot = {
     owner: initialOwner,
     persisted: storageAvailable,
     revision: 0,
-  });
+  };
 
   const publish = (owner: string | null, persisted: boolean): OwnerPreferenceSnapshot => {
     if (snapshot.owner === owner && snapshot.persisted === persisted) return snapshot;
-    snapshot = Object.freeze({ owner, persisted, revision: snapshot.revision + 1 });
+    snapshot = { owner, persisted, revision: snapshot.revision + 1 };
     if (!disposed) listeners.forEach(listener => listener(snapshot));
     return snapshot;
   };
@@ -94,23 +94,15 @@ export function createOwnerPreferenceService(
       accepted: true,
       persisted,
       snapshot: next,
-      ...(persisted ? {} : { reason: 'storage-unavailable' as const }),
+      reason: persisted ? undefined : 'storage-unavailable',
     };
   };
 
   const onStorage = (event: StorageEvent) => {
     if (disposed || event.key !== storageKey) return;
     const incoming = event.newValue;
-    if (incoming === null) {
-      publish(null, true);
-      return;
-    }
-    if (ownerSet.has(incoming)) {
-      publish(incoming, true);
-      return;
-    }
-    const removed = persist(null);
-    publish(null, removed);
+    if (incoming === null || ownerSet.has(incoming)) publish(incoming, true);
+    else publish(null, persist(null));
   };
   win.addEventListener('storage', onStorage);
 

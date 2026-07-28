@@ -215,7 +215,7 @@ function createPropertyCompactionPlugin() {
             hoist_props: true,
             keep_fargs: false,
             module: true,
-            passes: 8,
+            passes: 10,
             pure_getters: 'strict',
             toplevel: true,
             unsafe: true,

@@ -20,6 +20,7 @@ test('primary navigation uses native link and disclosure keyboard order', async 
   const pulse = featureDestination(page, 'pulse');
   const current = featureDestination(page, 'current');
   const owners = page.locator('.primary-nav-group[data-navigation-group="owners"] > summary');
+  const owner = featureDestination(page, 'owner');
   const history = featureDestination(page, 'history');
   const rivalry = featureDestination(page, 'rivalry');
   const tools = page.locator('.primary-nav-group[data-navigation-group="tools"] > summary');
@@ -34,6 +35,8 @@ test('primary navigation uses native link and disclosure keyboard order', async 
   await expect(owners).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.locator('.primary-nav-group[data-navigation-group="owners"]')).toHaveAttribute('open', '');
+  await page.keyboard.press('Tab');
+  await expect(owner).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(history).toBeFocused();
   await page.keyboard.press('Enter');

@@ -89,6 +89,13 @@ export interface PulseRecordModel {
   href: string;
 }
 
+export interface PulseMyTeamModel {
+  owner: string;
+  summary: string;
+  detail: string;
+  href: string;
+}
+
 export interface PulseSuperlative {
   label: string;
   value: string;
@@ -115,6 +122,7 @@ export interface LeaguePulseViewModel {
   featuredMatchup: PulseFeaturedMatchup | null;
   curse: PulseCurseModel | null;
   record: PulseRecordModel | null;
+  myTeam: PulseMyTeamModel | null;
   quickLinks: PulseLink[];
   dataNote: {
     freshness: DataFreshnessAssessment;

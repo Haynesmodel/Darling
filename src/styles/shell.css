@@ -121,8 +121,10 @@ header h2{margin:8px 0 0;font-weight:500;text-shadow:0 1px 6px rgba(0,0,0,.5)}
   .theme-toggle-option{min-width:54px}
   :root[data-hero-mode="compact"] .site-hero{
     min-block-size:172px;
-    padding:64px 12px 14px;
+    padding:64px 12px 8px;
   }
+  :root[data-hero-mode="compact"] .banners{margin-block-start:4px;gap:4px}
+  :root[data-hero-mode="compact"] .banner{padding:2px 6px}
   :root[data-hero-mode="compact"] .site-hero:has(.data-freshness[open]){
     min-block-size:min(520px, calc(100svh - 48px));
   }
@@ -277,6 +279,7 @@ main{padding:16px}
 .page.visible{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,1fr);gap:16px;width:100%;min-width:0}
 #page-history.page.visible{grid-template-columns:minmax(0,1fr)}
 #page-pulse.page.visible{grid-template-columns:minmax(0,1fr)}
+#page-owner.page.visible{grid-template-columns:minmax(0,1fr)}
 #page-current.page.visible{grid-template-columns:minmax(0,1fr)}
 #page-rivalry.page.visible{grid-template-columns:minmax(0,1fr)}
 #page-trophy.page.visible{grid-template-columns:minmax(0,1fr)}

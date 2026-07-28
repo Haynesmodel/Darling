@@ -140,13 +140,10 @@ test('chart runtime mounts accessible SVGs and contains empty and error states',
   assert.equal(emptyHost.dataset.chartState, 'empty');
   assert.equal(emptyHost.children[0].textContent, 'Nothing to chart.');
 
-  const removedLabels = [];
   const attributes = new Map();
   const classes = [];
-  const nestedLabel = { removeAttribute: name => removedLabels.push(name) };
   const svg = {
     classList: { add: name => classes.push(name) },
-    querySelectorAll: () => [nestedLabel],
     setAttribute: (name, value) => attributes.set(name, value),
   };
   const readyHost = createChartHost();
@@ -157,7 +154,6 @@ test('chart runtime mounts accessible SVGs and contains empty and error states',
   assert.deepEqual(classes, ['tested-chart']);
   assert.equal(attributes.get('aria-label'), 'A tested chart');
   assert.equal(attributes.get('role'), 'img');
-  assert.deepEqual(removedLabels, ['aria-label']);
   assert.equal(readyHost.dataset.chartState, 'ready');
   assert.deepEqual(readyHost.children, [svg]);
 

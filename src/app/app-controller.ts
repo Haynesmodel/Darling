@@ -13,6 +13,13 @@ import type { DarlingTableRuntime } from '../tables/table-types';
 import type { DarlingSearchRuntime } from '../search/search-types';
 import type { DataFreshnessRuntime } from '../components/data-freshness/DataFreshnessBadge';
 import { isEligiblePrimaryNavigationClick } from '../accessibility/primary-navigation';
+import { buildUrlFromState } from '../../js/state-helpers.js';
+import {
+  canonicalOwners as normalizeOwners,
+  createOwnerPreferenceService,
+  type OwnerPreferenceService,
+  type OwnerPreferenceSnapshot,
+} from './services/owner-preference-service';
 
 export interface BootstrapOptions {
   tableRuntime: DarlingTableRuntime;
@@ -31,6 +38,26 @@ export function createFallbackFreshness<T>(assessment: T) {
   };
 }
 
+export function canonicalOwners(data: Pick<AppContext['data'], 'seasonSummaries' | 'leagueGames' | 'currentSeason'>): readonly string[] {
+  return normalizeOwners([
+    ...data.seasonSummaries.map(row => row.owner),
+    ...data.leagueGames.flatMap(game => [game.teamA, game.teamB]),
+    ...(data.currentSeason?.teams.map(team => team.owner) || []),
+  ]);
+}
+
+function updateOwnerDestination(doc: Document, win: Window, snapshot: OwnerPreferenceSnapshot): void {
+  const destination = doc.getElementById('tabOwnerBtn');
+  if (!(destination instanceof HTMLAnchorElement)) return;
+  destination.href = buildUrlFromState({
+    pathname: win.location.pathname,
+    tab: 'owner',
+    selectedOwner: snapshot.owner,
+  });
+  const status = destination.querySelector<HTMLElement>('[data-owner-preference-status]');
+  if (status) status.textContent = snapshot.owner ? `, current team: ${snapshot.owner}` : ', not chosen';
+}
+
 export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<() => Promise<void>> {
   const win = options.win || window;
   const doc = options.doc || document;
@@ -41,6 +68,7 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
   let activeController: DarlingFeatureController | null = null;
   let activationCount = 0;
   let abortController: AbortController | null = null;
+  let ownerPreference: OwnerPreferenceService | null = null;
   let disposed = false;
   const diagnostics: AppDiagnostics = {
     get activeFeature() { return activeFeature; },
@@ -65,6 +93,10 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
       coreVerified: ['H2H', 'SeasonSummary'].every(asset => data.diagnostics.integrity.verifiedAssets.includes(asset)),
     });
     options.searchRuntime.hydrate({ leagueGames: data.leagueGames, seasonSummaries: data.seasonSummaries, rivalries: data.rivalries, currentSeason: data.currentSeason });
+    ownerPreference = createOwnerPreferenceService(canonicalOwners(data), win);
+    updateOwnerDestination(doc, win, ownerPreference.getSnapshot());
+    ownerPreference.subscribe(snapshot => updateOwnerDestination(doc, win, snapshot));
+    if (disposed) ownerPreference.dispose();
     return {
       data,
       selectors: createLeagueSelectors(data),
@@ -74,6 +106,7 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
       status,
       tables: options.tableRuntime,
       freshness: options.freshnessRuntime || createFallbackFreshness(data.diagnostics.freshness),
+      ownerPreference,
       diagnostics,
       document: doc,
       window: win,
@@ -135,8 +168,7 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
     if (!anchor || !isEligiblePrimaryNavigationClick(event as MouseEvent, anchor, win.location.href)) return;
     const id = normalizeFeatureId(anchor.dataset.featureId);
     event.preventDefault();
-    const destination = new URL(win.location.href);
-    destination.searchParams.set('tab', id);
+    const destination = new URL(anchor.href, win.location.href);
     win.history.pushState(null, '', `${destination.pathname}${destination.search}${destination.hash}`);
     const route = router.parse();
     route.tab = id;
@@ -153,5 +185,6 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
     win.removeEventListener('popstate', onPopState);
     await activeController?.deactivate?.('pulse');
     await registry.dispose();
+    ownerPreference?.dispose();
   };
 }

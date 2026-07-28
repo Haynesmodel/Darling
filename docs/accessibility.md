@@ -8,7 +8,7 @@ The Darling targets WCAG 2.2 Level AA as its engineering baseline. Automated che
 
 - The sticky primary navigation uses ordinary links plus native `details`/`summary` disclosures.
 - Its five controls are Home, Season, Owners, Rivalries, and Tools; Search remains a separate utility action.
-- Home and Season are direct destinations. Owners exposes League History, Trophy Case, and Dynasty Rankings. Rivalries links to Head to Head. Tools exposes Draft Spot and Historical Matchup.
+- Home and Season are direct destinations. Owners exposes My Team first, then League History, Trophy Case, and Dynasty Rankings. Rivalries links to Head to Head. Tools exposes Draft Spot and Historical Matchup.
 - `Tab` follows visual order, Enter activates links, and Enter or Space toggles the Owners and Tools summaries without custom roving focus.
 - Only one grouped disclosure remains open. Escape closes it and restores its summary; an outside activation closes it without moving focus.
 - Exactly one destination link exposes `aria-current="page"`. A closed grouped disclosure includes visually hidden text naming its current child.
@@ -78,7 +78,7 @@ The Darling targets WCAG 2.2 Level AA as its engineering baseline. Automated che
 
 Run:
 
-- `npm run test:a11y` for axe WCAG A/AA scans of all eight pages in light and dark themes plus overlay and expanded-table states.
+- `npm run test:a11y` for axe WCAG A/AA scans of all nine pages in light and dark themes plus overlay and expanded-table states.
 - `npm run test:keyboard` for navigation links/disclosures, filters, dialogs, skip-link, reduced-motion, and responsive interaction checks.
 - `npm run test:ui` for the complete browser suite.
 - `test/ui/navigation-progressive-disclosure.spec.js` for compact defaults, signature memory, deep-link reveals, responsive route heights, visible-only charts, and open-everything parity.

@@ -181,16 +181,21 @@ export function createFeatureController(): DarlingFeatureController {
     },
     activate(input: FeatureActivation) {
       active = !input.signal.aborted;
+      const retained = input.reason === 'tab' ? state : null;
+      const favorite = context.ownerPreference.getSnapshot().owner;
+      const mode = input.route.dynastyMode
+        || (input.route.dynastyOwner ? 'calculator' : retained?.mode)
+        || (favorite ? 'calculator' : 'all-time');
       const initial = {
-        ...(state || {}),
-        mode: input.route.dynastyMode || state?.mode || 'calculator',
-        owner: input.route.dynastyOwner || state?.owner || null,
-        startSeason: input.route.dynastyStart ?? state?.startSeason,
-        endSeason: input.route.dynastyEnd ?? state?.endSeason,
-        requestedStartSeason: input.route.dynastyStart ?? state?.requestedStartSeason,
-        requestedEndSeason: input.route.dynastyEnd ?? state?.requestedEndSeason,
-        minSeasons: input.route.dynastyMinSeasons ?? state?.minSeasons ?? 2,
-        includeSaundersPenalty: input.route.dynastySaunders ?? state?.includeSaundersPenalty ?? true,
+        ...(retained || {}),
+        mode,
+        owner: input.route.dynastyOwner || retained?.owner || (mode === 'calculator' ? favorite : ALL_TEAMS),
+        startSeason: input.route.dynastyStart ?? retained?.startSeason,
+        endSeason: input.route.dynastyEnd ?? retained?.endSeason,
+        requestedStartSeason: input.route.dynastyStart ?? retained?.requestedStartSeason,
+        requestedEndSeason: input.route.dynastyEnd ?? retained?.requestedEndSeason,
+        minSeasons: input.route.dynastyMinSeasons ?? retained?.minSeasons ?? 2,
+        includeSaundersPenalty: input.route.dynastySaunders ?? retained?.includeSaundersPenalty ?? true,
       };
       state = (buildDynastyControls as any)({
         doc: context.document,

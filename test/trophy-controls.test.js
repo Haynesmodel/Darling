@@ -31,9 +31,9 @@ function makeDoc(select) {
   };
 }
 
-test('resolveInitialOwner prefers Joe then the first owner', () => {
+test('resolveInitialOwner preserves a valid owner then uses the first owner', () => {
   assert.equal(resolveInitialOwner(['Zook', 'Joe', 'Shap'], 'Shap'), 'Shap');
-  assert.equal(resolveInitialOwner(['Zook', 'Joe', 'Shap'], 'Missing'), 'Joe');
+  assert.equal(resolveInitialOwner(['Zook', 'Joe', 'Shap'], 'Missing'), 'Zook');
   assert.equal(resolveInitialOwner(['Zook', 'Shap'], 'Missing'), 'Zook');
 });
 

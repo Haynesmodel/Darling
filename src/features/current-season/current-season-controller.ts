@@ -223,7 +223,7 @@ export function createFeatureController(): DarlingFeatureController {
         currentSeason: context.data.currentSeason,
         selectedSeason: presentation.season,
         selectedWeek: input.route.currentWeek ?? existing.selectedWeek ?? null,
-        selectedOwner: input.route.currentOwner ?? existing.selectedOwner ?? '',
+        selectedOwner: input.route.currentOwner ?? existing.selectedOwner ?? context.ownerPreference.getSnapshot().owner ?? '',
         selectedView: input.route.currentView ?? existing.selectedView ?? defaultView,
         defaultView,
         selectedProjectionMode: input.route.currentProjection ?? existing.selectedProjectionMode ?? 'ifScoresHold',

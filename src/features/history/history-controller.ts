@@ -36,7 +36,7 @@ import { opponentOptions, teamOptions } from '../../../js/facet-helpers.js';
 import { setGroupBackdrop, triggerGroupEgg } from '../../../js/easter-eggs.js';
 import type { AppContext, AppRoute } from '../../app/app-types';
 import type { DarlingFeatureController, FeatureActivation } from '../../app/feature-contract';
-import { ALL_TEAMS, DEFAULT_TEAM, seasonModeFromLabels } from '../../app/feature-utils';
+import { ALL_TEAMS, seasonModeFromLabels } from '../../app/feature-utils';
 import { createSectionDisclosure, type SectionDisclosureController } from '../../app/section-disclosure';
 import { registerHistoryTables } from './history-tables';
 
@@ -52,7 +52,7 @@ const NOTES: Record<string, { champs?: Record<number, string>; saunders?: Record
 export function createFeatureController(): DarlingFeatureController {
   let context: AppContext;
   let active = false;
-  let selectedTeam = DEFAULT_TEAM;
+  let selectedTeam = ALL_TEAMS;
   let selectedSeasons = new Set<number>();
   let selectedWeeks = new Set<number>();
   let selectedOpponents = new Set<string>();
@@ -136,7 +136,8 @@ export function createFeatureController(): DarlingFeatureController {
     if (!select) throw new Error('History team control is missing');
     if (!select.dataset.ready) {
       const choices = teamOptions(context.data.seasonSummaries, context.data.leagueGames, ALL_TEAMS);
-      const fallback = choices.some((item: any) => item.value === DEFAULT_TEAM) ? DEFAULT_TEAM : choices[0]?.value;
+      const favorite = context.ownerPreference.getSnapshot().owner;
+      const fallback = favorite && choices.some((item: any) => item.value === favorite) ? favorite : ALL_TEAMS;
       const built = buildHistoryControls({ doc: context.document, leagueGames: context.data.leagueGames, seasonSummaries: context.data.seasonSummaries, derivedWeeksSet: context.data.derivedWeeksSet, allTeams: ALL_TEAMS, selectedTeam: fallback, onFacetChange: syncFromDom });
       selectedTeam = built.selectedTeam;
       select.dataset.ready = '1';
@@ -148,7 +149,8 @@ export function createFeatureController(): DarlingFeatureController {
   const applyRoute = (route: AppRoute) => {
     const select = ensureControls();
     const choices = teamOptions(context.data.seasonSummaries, context.data.leagueGames, ALL_TEAMS);
-    const fallback = choices.find((item: any) => item.value === DEFAULT_TEAM)?.value || choices[0]?.value || DEFAULT_TEAM;
+    const favorite = context.ownerPreference.getSnapshot().owner;
+    const fallback = favorite && choices.some((item: any) => item.value === favorite) ? favorite : ALL_TEAMS;
     const leagueQuery = !route.team && (route.hasGameQuery || (route.focus === 'games' && (route.seasons?.size || route.types?.size || route.rounds?.size)));
     selectedTeam = route.team && choices.some((item: any) => item.value === route.team) ? route.team : leagueQuery ? ALL_TEAMS : fallback;
     select.value = selectedTeam;
@@ -236,7 +238,7 @@ export function createFeatureController(): DarlingFeatureController {
     if (!active) return;
     const select = context.document.getElementById('teamSelect') as HTMLSelectElement | null;
     if (select && selectedTeam !== select.value) selectedTeam = select.value;
-    context.header.team(selectedTeam);
+    context.header.team(selectedTeam === ALL_TEAMS ? 'League History' : selectedTeam);
     context.theme.owner(selectedTeam, seasonModeFromLabels([...selectedTypes, ...selectedRounds]));
     const games = filtered();
     const route = context.router.parse();

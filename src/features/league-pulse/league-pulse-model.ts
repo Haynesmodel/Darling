@@ -313,8 +313,9 @@ function heroModel(data: PulseModelData, state: PulseSeasonState, year: PulseYea
   return { phase: state.phase, season, eyebrow, title, summary, badge, generatedAt: data.currentSeason?.generated_at || null, primaryAction: { label: 'Open Current Season', href: pathUrl(pathname, { tab: 'current', selectedCurrentSeason: season, selectedCurrentWeek: state.spotlightWeek }) }, secondaryAction: { label: 'Explore League History', href: historyHref } };
 }
 
-function quickLinks(data: PulseModelData, state: PulseSeasonState, featured: PulseFeaturedMatchup | null, year: PulseYearInReview | null, pathname: string): PulseLink[] {
+function quickLinks(data: PulseModelData, state: PulseSeasonState, featured: PulseFeaturedMatchup | null, year: PulseYearInReview | null, pathname: string, favoriteOwner: string | null): PulseLink[] {
   return [
+    { label: favoriteOwner ? 'My Team' : 'Choose My Team', href: pathUrl(pathname, { tab: 'owner', selectedOwner: favoriteOwner }) },
     { label: 'Current Season', href: pathUrl(pathname, { tab: 'current', selectedCurrentSeason: state.season, selectedCurrentWeek: state.spotlightWeek }) },
     { label: 'League History', href: state.season === null ? pathUrl(pathname, { tab: 'history' }) : historyLink(data, pathname, { selectedSeasons: new Set([state.season]) }) },
     { label: 'Head to Head', href: featured?.href || pathUrl(pathname, { tab: 'rivalry' }) },
@@ -325,12 +326,27 @@ function quickLinks(data: PulseModelData, state: PulseSeasonState, featured: Pul
   ];
 }
 
-export function buildLeaguePulseModel(data: PulseModelData, options: { pathname?: string; freshness?: NonNullable<PulseModelData['diagnostics']>['freshness'] } = {}): LeaguePulseViewModel {
+export function buildLeaguePulseModel(data: PulseModelData, options: { pathname?: string; favoriteOwner?: string | null; freshness?: NonNullable<PulseModelData['diagnostics']>['freshness'] } = {}): LeaguePulseViewModel {
   const pathname = options.pathname || '/';
   const state = resolvePulseSeasonState(data);
   const matchups = matchupModels(data, state, pathname);
+  const standings = standingsSection(data, state, pathname);
   const year = yearInReview(data, state, pathname);
   const featured = featuredMatchup(data, state, matchups, pathname);
+  const favoriteOwner = options.favoriteOwner || null;
+  const favoriteMatchup = favoriteOwner ? matchups.find(matchup => matchup.ownerA === favoriteOwner || matchup.ownerB === favoriteOwner) : null;
+  const favoriteStanding = favoriteOwner ? standings?.rows.find(row => row.owner === favoriteOwner) : null;
+  const favoriteSummary = favoriteOwner ? data.seasonSummaries.filter(row => row.owner === favoriteOwner).sort((a, b) => b.season - a.season)[0] : null;
+  const myTeam = favoriteOwner ? {
+    owner: favoriteOwner,
+    summary: favoriteMatchup
+      ? `${favoriteOwner} vs ${favoriteMatchup.ownerA === favoriteOwner ? favoriteMatchup.ownerB : favoriteMatchup.ownerA}`
+      : favoriteSummary ? `${favoriteSummary.season} finish: No. ${favoriteSummary.finish}` : 'Owner Hub',
+    detail: favoriteStanding?.record
+      ? `${favoriteStanding.record}${favoriteStanding.seed ? ` · seed ${favoriteStanding.seed}` : ''}`
+      : favoriteMatchup?.result || (favoriteSummary ? `${favoriteSummary.wins}-${favoriteSummary.losses}-${favoriteSummary.ties}` : 'Current details unavailable'),
+    href: pathUrl(pathname, { tab: 'owner', selectedOwner: favoriteOwner }),
+  } : null;
   const usedFallbacks = [];
   if (!data.currentSeason) usedFallbacks.push('CurrentSeason');
   if (!data.rivalries.length) usedFallbacks.push('Rivalries');
@@ -343,9 +359,9 @@ export function buildLeaguePulseModel(data: PulseModelData, options: { pathname?
   });
   return {
     state, hero: heroModel(data, state, year, pathname), matchups,
-    standings: standingsSection(data, state, pathname), yearInReview: year,
-    featuredMatchup: featured, curse: curseModel(data, pathname), record: recordModel(data, state, pathname),
-    quickLinks: quickLinks(data, state, featured, year, pathname),
+    standings, yearInReview: year,
+    featuredMatchup: featured, curse: curseModel(data, pathname), record: recordModel(data, state, pathname), myTeam,
+    quickLinks: quickLinks(data, state, featured, year, pathname, favoriteOwner),
     dataNote: {
       freshness,
       dataVersion: data.dataVersion,

@@ -8,8 +8,17 @@ const { pathToFileURL } = require('node:url');
 
 async function loadRegistry() {
   const source = fs.readFileSync(path.join(process.cwd(), 'src/app/feature-registry.ts'), 'utf8');
-  const output = await esbuild.transform(source, { loader: 'ts', format: 'esm', target: 'es2022' });
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-registry-'));
+  const output = await esbuild.transform(source, {
+    loader: 'ts',
+    format: 'esm',
+    target: 'es2022',
+    sourcefile: path.join(process.cwd(), 'src/app/feature-registry.ts'),
+    sourcemap: 'inline',
+    sourcesContent: true,
+  });
+  const coverageBundles = path.join(process.cwd(), 'coverage', 'test-bundles');
+  fs.mkdirSync(coverageBundles, { recursive: true });
+  const directory = fs.mkdtempSync(path.join(coverageBundles, 'feature-registry-'));
   const file = path.join(directory, 'feature-registry.mjs');
   fs.writeFileSync(file, output.code);
   return import(`${pathToFileURL(file).href}?v=${Date.now()}`);
@@ -63,11 +72,26 @@ test('feature registry contains failures and supports a controlled retry', async
 
 test('feature registry rejects malformed modules and disposes cached controllers', async () => {
   const { FeatureRegistry } = await loadRegistry();
+  const missingFactory = new FeatureRegistry({ history: async () => null });
+  await assert.rejects(missingFactory.load('history'), /Malformed history feature module/);
+
   const malformed = new FeatureRegistry({ rivalry: async () => ({ createFeatureController: () => controller('history') }) });
   await assert.rejects(malformed.load('rivalry'), /Malformed rivalry feature controller/);
+
+  const malformedShape = new FeatureRegistry({
+    current: async () => ({ createFeatureController: () => ({ id: 'current', mount() {} }) }),
+  });
+  await assert.rejects(malformedShape.load('current'), /Malformed current feature controller/);
+
+  const stringFailure = new FeatureRegistry({ gauntlet: async () => Promise.reject('offline') });
+  await assert.rejects(stringFailure.load('gauntlet'), error => error === 'offline');
+  assert.equal(stringFailure.diagnostics().gauntlet.lastError, 'offline');
+
   let disposals = 0;
   const registry = new FeatureRegistry({ draft: async () => ({ createFeatureController: () => controller('draft', { dispose: () => { disposals += 1; } }) }) });
-  await registry.load('draft');
+  const loaded = await registry.load('draft');
+  assert.equal(await registry.load('draft'), loaded);
+  assert.equal(await registry.retry('draft'), loaded);
   await registry.dispose();
   assert.equal(disposals, 1);
   assert.equal(registry.diagnostics().draft.state, 'idle');

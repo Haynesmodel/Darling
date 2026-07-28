@@ -23,6 +23,7 @@ test('route inference preserves implicit legacy URLs and defaults only bare stat
     ['?gameSort=scoreDesc&gameLimit=1', 'history'], ['?currentWeek=8', 'current'], ['?focus=standings', 'current'],
     ['?rivalryTeamA=Joe&rivalryTeamB=Shap', 'rivalry'], ['?trophyOwner=Zook', 'trophy'], ['?dynastyOwner=Joe', 'dynasty'],
     ['?draftOwner=Joe', 'draft'], ['?ga=Joe%3A2024', 'gauntlet'], ['?focus=curses', 'history'], ['?tab=unknown&team=Joe', 'pulse'],
+    ['?tab=owner', 'owner'], ['?owner=Joe', 'owner'], ['?tab=trophy&owner=Joe', 'trophy'],
   ];
   for (const [search, expected] of cases) {
     const service = router.createNavigationService({ location: { pathname: '/Darling/', search }, history: { replaceState() {} } });

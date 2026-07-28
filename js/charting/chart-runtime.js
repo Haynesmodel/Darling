@@ -15,10 +15,6 @@ function mountChart(host, chartNode, opts = {}) {
   if (opts.ariaLabel && chartNode.setAttribute) chartNode.setAttribute('aria-label', opts.ariaLabel);
   if (chartNode.setAttribute) chartNode.setAttribute('role', 'img');
   host.append(chartNode);
-  chartNode.querySelectorAll?.('[aria-label],[aria-hidden="1"]').forEach((element) => {
-    if (element !== chartNode) element.removeAttribute('aria-label');
-    if (element.getAttribute('aria-hidden') === '1') element.setAttribute('aria-hidden', 'true');
-  });
   host.dataset.chartState = 'ready';
   return chartNode;
 }

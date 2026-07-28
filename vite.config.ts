@@ -205,7 +205,10 @@ function createPropertyCompactionPlugin() {
         )];
         const result = await minify(code, {
           compress: {
-            booleans_as_integers: true,
+            // Plot writes boolean ARIA values through setAttribute. Preserve
+            // "true"/"false" in its shared chunk instead of emitting invalid
+            // aria-hidden="1" values.
+            booleans_as_integers: chunk.name !== 'chart-runtime',
             ecma: 2022,
             hoist_funs: true,
             hoist_props: true,

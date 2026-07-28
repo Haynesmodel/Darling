@@ -270,7 +270,7 @@ export default defineConfig({
       output: {
         // Runtime and tests resolve chunks through the manifest, so transport
         // filenames can stay compact without sacrificing feature diagnostics.
-        chunkFileNames: 'assets/[hash:6].js',
+        chunkFileNames: 'assets/[hash:4].js',
         // These neutral helpers are shared by several lazy features. Keeping them
         // together avoids tiny duplicate transport wrappers without pulling a
         // feature implementation into the shell.

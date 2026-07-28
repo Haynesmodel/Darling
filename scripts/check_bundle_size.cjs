@@ -164,6 +164,13 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
         }
       });
   }
+  for (const [name, maximum] of Object.entries(limits.feature_chunk_gzip_max_bytes_by_route || {})) {
+    const chunk = requiredEntries[name];
+    if (!chunk) errors.push(`feature chunk budget configured for missing route ${name}`);
+    else if (chunk.gzipBytes > maximum) {
+      errors.push(`${name} feature chunk ${chunk.gzipBytes} gzip exceeds ${maximum}`);
+    }
+  }
   if (limits.non_validator_chunk_max_bytes) {
     chunks
       .filter(chunk => !matchesToken(chunk, 'asset-validators'))

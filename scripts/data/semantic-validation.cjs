@@ -1,5 +1,5 @@
 const path = require('node:path');
-const { readJson } = require('./canonical-json.cjs');
+const { canonicalJson, readJson } = require('./canonical-json.cjs');
 
 function canonicalGameKey(game) {
   const teams = [game.teamA, game.teamB].sort((a, b) => a.localeCompare(b));
@@ -28,6 +28,7 @@ function validateSemanticBundle(bundle, opts = {}) {
   const summaries = bundle.SeasonSummary || [];
   const rivalries = bundle.Rivalries || [];
   const current = bundle.CurrentSeason || null;
+  const transactionHistory = bundle.TransactionHistory || null;
   const currentOwners = new Set((current?.teams || []).map(team => team.owner));
   const summaryOwners = new Set(summaries.map(row => row.owner));
   const summaryKeys = new Set(summaries.map(row => `${row.season}|${row.owner}`));
@@ -168,6 +169,127 @@ function validateSemanticBundle(bundle, opts = {}) {
     const newestFinalDate = current.games.filter(game => game.status === 'final').map(game => game.date).sort().at(-1);
     if (newestFinalDate && current.update_context.cutoff_date < newestFinalDate) {
       report('CURRENT_STALE_UPDATE_CONTEXT', 'assets/CurrentSeason.json update_context', `${current.season}`, `cutoff date ${current.update_context.cutoff_date} predates finalized game ${newestFinalDate}`);
+    }
+  }
+
+  if (transactionHistory) {
+    const players = transactionHistory.players || [];
+    const seasons = transactionHistory.seasons || [];
+    const playerIds = new Set();
+    players.forEach((player, index) => {
+      if (playerIds.has(player.id)) {
+        report('TRANSACTION_DUPLICATE_PLAYER', `assets/TransactionHistory.json players row ${index}`, player.id, `duplicate player ${player.id}`);
+      }
+      playerIds.add(player.id);
+    });
+    const sortedPlayerIds = players.map(player => player.id).slice().sort((a, b) => a.localeCompare(b));
+    if (players.some((player, index) => player.id !== sortedPlayerIds[index])) {
+      report('TRANSACTION_PLAYER_ORDER', 'assets/TransactionHistory.json players', 'players', 'players must be sorted by ID');
+    }
+    const seasonValues = seasons.map(season => season.season);
+    if (seasonValues.some((season, index) => index > 0 && season <= seasonValues[index - 1])) {
+      report('TRANSACTION_SEASON_ORDER', 'assets/TransactionHistory.json seasons', 'seasons', 'seasons must be unique and ascending');
+    }
+    seasons.forEach((season, seasonIndex) => {
+      const location = `assets/TransactionHistory.json seasons row ${seasonIndex}`;
+      const rosterOwners = new Map();
+      const owners = new Set();
+      season.teams.forEach(team => {
+        if (rosterOwners.has(team.roster_id)) {
+          report('TRANSACTION_DUPLICATE_ROSTER', `${location} teams`, `${season.season}|${team.roster_id}`, `duplicate roster ${team.roster_id}`);
+        }
+        if (owners.has(team.owner)) {
+          report('TRANSACTION_DUPLICATE_OWNER', `${location} teams`, `${season.season}|${team.owner}`, `duplicate owner ${team.owner}`);
+        }
+        rosterOwners.set(team.roster_id, team.owner);
+        owners.add(team.owner);
+      });
+      const transactionIds = new Set();
+      const typeCounts = { commissioner: 0, free_agent: 0, trade: 0, waiver: 0 };
+      const statusCounts = { complete: 0, failed: 0, pending: 0 };
+      season.transactions.forEach((transaction, index) => {
+        const txLocation = `${location} transactions row ${index}`;
+        if (transactionIds.has(transaction.id)) {
+          report('TRANSACTION_DUPLICATE_ID', txLocation, `${season.season}|${transaction.id}`, `duplicate transaction ${transaction.id}`);
+        }
+        transactionIds.add(transaction.id);
+        if (transaction.week < 0 || transaction.week > season.max_week) {
+          report('TRANSACTION_INVALID_WEEK', txLocation, `${season.season}|${transaction.id}`, `week ${transaction.week} exceeds 0-${season.max_week}`);
+        }
+        typeCounts[transaction.type] += 1;
+        if (transaction.status === 'complete') statusCounts.complete += 1;
+        else if (transaction.status === 'failed') statusCounts.failed += 1;
+        else statusCounts.pending += 1;
+        for (const owner of transaction.participants) {
+          if (!owners.has(owner)) report('TRANSACTION_UNKNOWN_OWNER', txLocation, `${transaction.id}|${owner}`, `unknown participant ${owner}`);
+        }
+        for (const movement of [...transaction.adds, ...transaction.drops]) {
+          if (!owners.has(movement.owner)) report('TRANSACTION_UNKNOWN_OWNER', txLocation, `${transaction.id}|${movement.owner}`, `unknown movement owner ${movement.owner}`);
+          if (!playerIds.has(movement.player_id)) report('TRANSACTION_MISSING_PLAYER', txLocation, `${transaction.id}|${movement.player_id}`, `missing player ${movement.player_id}`);
+        }
+      });
+      const coverage = season.coverage;
+      if (
+        coverage.transaction_count !== season.transactions.length
+        || coverage.complete_count !== statusCounts.complete
+        || coverage.failed_count !== statusCounts.failed
+        || coverage.pending_count !== statusCounts.pending
+      ) {
+        report('TRANSACTION_COVERAGE_MISMATCH', `${location} coverage`, `${season.season}`, 'coverage status counts do not reconcile to normalized transactions');
+      }
+      for (const [type, count] of Object.entries(typeCounts)) {
+        if (coverage.type_counts[type] !== count) {
+          report('TRANSACTION_TYPE_COUNT_MISMATCH', `${location} coverage`, `${season.season}|${type}`, `${type} count does not reconcile`);
+        }
+      }
+      const journeyIds = new Set();
+      season.player_journeys.forEach((journey, index) => {
+        const journeyLocation = `${location} player_journeys row ${index}`;
+        if (journeyIds.has(journey.player_id)) {
+          report('TRANSACTION_DUPLICATE_JOURNEY', journeyLocation, `${season.season}|${journey.player_id}`, `duplicate journey ${journey.player_id}`);
+        }
+        journeyIds.add(journey.player_id);
+        if (!playerIds.has(journey.player_id)) report('TRANSACTION_MISSING_PLAYER', journeyLocation, `${season.season}|${journey.player_id}`, `missing player ${journey.player_id}`);
+        journey.stints.forEach(stint => {
+          if (!owners.has(stint.owner)) report('TRANSACTION_UNKNOWN_OWNER', journeyLocation, `${journey.player_id}|${stint.owner}`, `unknown stint owner ${stint.owner}`);
+          for (const field of ['total_points', 'starter_points']) {
+            if (Math.abs(stint[field] * 100 - Math.round(stint[field] * 100)) > 1e-7) {
+              report('TRANSACTION_POINTS_PRECISION', journeyLocation, `${journey.player_id}|${stint.owner}|${field}`, `${field} must be rounded to two decimals`);
+            }
+          }
+        });
+      });
+      const completeById = new Map(season.transactions.filter(row => row.status === 'complete').map(row => [row.id, row]));
+      season.insights.trades.forEach(trade => {
+        const source = completeById.get(trade.transaction_id);
+        if (!source || source.type !== 'trade') {
+          report('TRANSACTION_INVALID_STATUS_MUTATION', `${location} insights.trades`, trade.transaction_id, 'trade insight must reference a complete trade');
+        }
+        trade.sides.forEach(side => {
+          if (!owners.has(side.owner)) report('TRANSACTION_UNKNOWN_OWNER', `${location} insights.trades`, `${trade.transaction_id}|${side.owner}`, `unknown trade side owner ${side.owner}`);
+        });
+        if (trade.edge_owner && (trade.even || !trade.sides.some(side => side.owner === trade.edge_owner))) {
+          report('TRANSACTION_OUTCOME_RECONCILIATION', `${location} insights.trades`, trade.transaction_id, 'edge_owner must be a unique eligible side');
+        }
+      });
+      season.insights.wire_finds.forEach(row => {
+        const source = completeById.get(row.transaction_id);
+        if (!source || !['waiver', 'free_agent'].includes(source.type)) {
+          report('TRANSACTION_INVALID_STATUS_MUTATION', `${location} insights.wire_finds`, row.transaction_id, 'wire find must reference a complete waiver/free-agent transaction');
+        }
+      });
+      const seasonBytes = Buffer.byteLength(canonicalJson(season));
+      if (seasonBytes > 750000) {
+        report('TRANSACTION_SEASON_SIZE', location, `${season.season}`, `season slice is ${seasonBytes} bytes; maximum is 750000`);
+      }
+    });
+    const totalBytes = Buffer.byteLength(canonicalJson(transactionHistory));
+    if (totalBytes > 2000000) {
+      report('TRANSACTION_ASSET_SIZE', 'assets/TransactionHistory.json', 'asset', `asset is ${totalBytes} bytes; maximum is 2000000`);
+    }
+    const maxCreated = Math.max(0, ...seasons.flatMap(season => season.transactions.map(transaction => transaction.created_ms)));
+    if (transactionHistory.source_updated_ms !== maxCreated) {
+      report('TRANSACTION_SOURCE_UPDATED', 'assets/TransactionHistory.json', 'source_updated_ms', 'source_updated_ms must equal the maximum source transaction timestamp');
     }
   }
 

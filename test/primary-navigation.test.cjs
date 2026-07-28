@@ -38,21 +38,22 @@ test('navigation metadata maps every stable feature once into the intended taxon
   });
   const metadata = await import(`${pathToFileURL(metadataTemp).href}?${Date.now()}`);
   assert.deepEqual(metadata.FEATURE_NAVIGATION_ITEMS.map(item => item.id), [
-    'pulse', 'owner', 'history', 'current', 'rivalry', 'trophy', 'dynasty', 'draft', 'gauntlet',
+    'pulse', 'owner', 'transactions', 'history', 'current', 'rivalry', 'trophy', 'dynasty', 'draft', 'gauntlet',
   ]);
   assert.deepEqual(
     metadata.FEATURE_NAVIGATION_ITEMS.filter(item => item.group === 'owners').map(item => item.id),
-    ['owner', 'history', 'trophy', 'dynasty'],
+    ['owner', 'transactions', 'history', 'trophy', 'dynasty'],
   );
   assert.deepEqual(
     metadata.FEATURE_NAVIGATION_ITEMS.filter(item => item.group === 'tools').map(item => item.id),
     ['draft', 'gauntlet'],
   );
   assert.equal(metadata.FEATURE_NAVIGATION.pulse.heroMode, 'full');
-  assert.equal(metadata.FEATURE_NAVIGATION_ITEMS.filter(item => item.heroMode === 'compact').length, 8);
+  assert.equal(metadata.FEATURE_NAVIGATION_ITEMS.filter(item => item.heroMode === 'compact').length, 9);
   assert.equal(metadata.featureDestinationHref('pulse', '/Darling/'), '/Darling/');
   assert.equal(metadata.featureDestinationHref('current', '/Darling/'), '/Darling/?tab=current');
   assert.equal(metadata.featureDestinationHref('owner', '/Darling/'), '/Darling/?tab=owner');
+  assert.equal(metadata.featureDestinationHref('transactions', '/Darling/'), '/Darling/?tab=transactions');
 });
 
 test('SPA interception accepts only unmodified same-origin primary link activation', () => {

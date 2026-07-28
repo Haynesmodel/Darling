@@ -29,6 +29,14 @@ export const FEATURE_NAVIGATION: Record<FeatureId, FeatureNavigationItem> = {
     destinationId: 'tabOwnerBtn',
     heroMode: 'compact',
   },
+  transactions: {
+    id: 'transactions',
+    label: 'Transactions',
+    compactLabel: 'Moves',
+    group: 'owners',
+    destinationId: 'tabTransactionsBtn',
+    heroMode: 'compact',
+  },
   history: {
     id: 'history',
     label: 'League History',

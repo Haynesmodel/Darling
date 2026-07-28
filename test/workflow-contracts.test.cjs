@@ -15,6 +15,7 @@ const SLEEPER_ALLOWLIST = [
   'assets/DerivedStats.json',
   'assets/H2H.json',
   'assets/SeasonSummary.draft.json',
+  'assets/TransactionHistory.json',
   'assets/asset-manifest.json',
 ];
 
@@ -199,7 +200,7 @@ function validateSleeperWorkflow(source, errors) {
     ? [...allowlistMatch[1].matchAll(/'([^']+)'/g)].map(match => match[1]).sort()
     : [];
   if (JSON.stringify(observedAllowlist) !== JSON.stringify(SLEEPER_ALLOWLIST)) {
-    errors.push('SLEEPER-DATA-001: publication allowlist must contain exactly the five reviewed data files');
+    errors.push('SLEEPER-DATA-001: publication allowlist must contain exactly the six reviewed data files');
   }
   if (!update.includes("if (status[1] !== ' ')")
     || !update.includes('Refusing an allowed path that is not fully staged')) {
@@ -221,7 +222,8 @@ function validateSleeperWorkflow(source, errors) {
   }
   if (!regenerate.includes('H2H_CHANGED=0')
     || countMatches(regenerate, /H2H_CHANGED=1/g) !== 1
-    || countMatches(regenerate, /node scripts\/compare_json\.cjs/g) !== 2
+    || countMatches(regenerate, /node scripts\/compare_json\.cjs/g) !== 3
+    || !/if \[\[ ! -f assets\/TransactionHistory\.json \]\] \|\| ! node scripts\/compare_json\.cjs assets\/TransactionHistory\.updated\.json assets\/TransactionHistory\.json; then/.test(regenerate)
     || !/if ! node scripts\/compare_json\.cjs assets\/H2H\.updated\.json assets\/H2H\.json; then[\s\S]*?H2H_CHANGED=1[\s\S]*?fi/.test(regenerate)
     || !/if \[\[ ! -f assets\/CurrentSeason\.json \]\] \|\| ! node scripts\/compare_json\.cjs assets\/CurrentSeason\.updated\.json assets\/CurrentSeason\.json; then/.test(regenerate)
     || !/if \[\[ "\$\{H2H_CHANGED\}" == "1" \]\]; then[\s\S]*?generate_season_summary_draft\.py[\s\S]*?npm run generate:derived[\s\S]*?fi/.test(regenerate)
@@ -793,7 +795,7 @@ test('Sleeper contract rejects publication allowlist expansion', () => {
   ));
   assert.match(
     validateWorkflowContracts(mutated).join('\n'),
-    /publication allowlist must contain exactly the five reviewed data files/,
+    /publication allowlist must contain exactly the six reviewed data files/,
   );
 });
 

@@ -50,6 +50,12 @@ test('WEBKIT-02 restores deep links and browser history', async ({ page }) => {
       verify: () => expect(page.locator('#teamSelect')).toHaveValue('Joe'),
     },
     {
+      url: '/?tab=transactions&txView=owners&txOwner=Joe',
+      id: 'transactions',
+      tab: 'Transactions',
+      verify: () => expect(page.locator('#transactions-owners tbody tr')).toHaveCount(1),
+    },
+    {
       url: '/?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel',
       id: 'rivalry',
       tab: 'Head to Head',

@@ -6,6 +6,7 @@ const { canonicalJson, readJson } = require('./data/canonical-json.cjs');
 const { canonicalGameKey } = require('./data/semantic-validation.cjs');
 
 const VALIDATION_COMMANDS = [
+  "python3 -m unittest discover -s test -p 'test_generate_transaction_history.py'",
   'npm run generate:derived',
   'npm run generate:manifest',
   'npm run check:data-generated',
@@ -213,12 +214,77 @@ function manifestStats(value) {
       data_version: null,
       h2h_sha256: null,
       current_season_sha256: null,
+      transaction_history_sha256: null,
     };
   }
   return {
     data_version: value.data_version ?? null,
     h2h_sha256: value.assets?.H2H?.sha256 ?? null,
     current_season_sha256: value.assets?.CurrentSeason?.sha256 ?? null,
+    transaction_history_sha256: value.assets?.TransactionHistory?.sha256 ?? null,
+  };
+}
+
+function transactionSlice(value, season) {
+  if (value === null) return null;
+  if (!value || typeof value !== 'object' || Array.isArray(value) || !Array.isArray(value.seasons)) {
+    throw new Error('TransactionHistory must contain a seasons array.');
+  }
+  const matches = value.seasons.filter(row => Number(row.season) === season);
+  if (matches.length > 1) throw new Error(`TransactionHistory contains duplicate target season ${season}.`);
+  return matches[0] || null;
+}
+
+function analyzeTransactions(beforeValue, afterValue, season, expectedLeagueId) {
+  const after = transactionSlice(afterValue, season);
+  if (!after) throw new Error(`TransactionHistory safety failed: target season ${season} is missing.`);
+  if (!expectedLeagueId || String(after.league_id) !== String(expectedLeagueId)) {
+    throw new Error('TransactionHistory safety failed: target league does not match the configured league.');
+  }
+  const beforeSeasons = new Map((beforeValue?.seasons || []).map(row => [Number(row.season), row]));
+  const afterSeasons = new Map((afterValue?.seasons || []).map(row => [Number(row.season), row]));
+  for (const [value, row] of beforeSeasons) {
+    if (value === season) continue;
+    if (!afterSeasons.has(value)) {
+      throw new Error(`TransactionHistory safety failed: non-target season ${value} was removed.`);
+    }
+    if (canonicalJson(row) !== canonicalJson(afterSeasons.get(value))) {
+      throw new Error(`TransactionHistory safety failed: non-target season ${value} was changed.`);
+    }
+  }
+  for (const value of afterSeasons.keys()) {
+    if (value !== season && !beforeSeasons.has(value)) {
+      throw new Error(`TransactionHistory safety failed: unexpected non-target season ${value} was added.`);
+    }
+  }
+  const before = transactionSlice(beforeValue, season);
+  const beforeMap = new Map((before?.transactions || []).map(row => [row.id, row]));
+  const afterMap = new Map(after.transactions.map(row => [row.id, row]));
+  if (afterMap.size !== after.transactions.length) {
+    throw new Error('TransactionHistory safety failed: duplicate transaction IDs in target season.');
+  }
+  const added = [...afterMap.keys()].filter(id => !beforeMap.has(id)).sort();
+  const removed = [...beforeMap.keys()].filter(id => !afterMap.has(id)).sort();
+  const changed = [...afterMap.keys()]
+    .filter(id => beforeMap.has(id) && canonicalJson(afterMap.get(id)) !== canonicalJson(beforeMap.get(id)))
+    .sort();
+  return {
+    target_rows_before: before?.transactions?.length || 0,
+    target_rows_after: after.transactions.length,
+    complete: after.coverage.complete_count,
+    failed: after.coverage.failed_count,
+    pending: after.coverage.pending_count,
+    type_counts: after.coverage.type_counts,
+    added_ids: added,
+    changed_ids: changed,
+    removed_ids: removed,
+    completed_week_before: before?.coverage?.completed_week ?? null,
+    completed_week_after: after.coverage.completed_week,
+    players: afterValue.players?.length || 0,
+    missing_player_metadata: after.coverage.missing_player_metadata,
+    draft_status: after.draft.status,
+    draft_picks: after.draft.pick_count,
+    non_target_seasons_preserved: true,
   };
 }
 
@@ -265,6 +331,7 @@ function buildMarkdown(summary) {
     `- Manifest data version: ${inlineCode(display(summary.manifest.before.data_version))} → ${inlineCode(display(summary.manifest.after.data_version))}`,
     `- H2H hash: ${inlineCode(display(summary.manifest.before.h2h_sha256))} → ${inlineCode(display(summary.manifest.after.h2h_sha256))}`,
     `- CurrentSeason hash: ${inlineCode(display(summary.manifest.before.current_season_sha256))} → ${inlineCode(display(summary.manifest.after.current_season_sha256))}`,
+    `- TransactionHistory hash: ${inlineCode(display(summary.manifest.before.transaction_history_sha256))} → ${inlineCode(display(summary.manifest.after.transaction_history_sha256))}`,
     '',
     '### H2H changes',
     '',
@@ -281,6 +348,17 @@ function buildMarkdown(summary) {
     `- Candidate season / current week / latest week: ${display(current?.season)} / ${display(current?.current_week)} / ${display(current?.latest_week)}`,
     `- Candidate statuses (final / live / scheduled): ${current?.statuses?.final ?? 0} / ${current?.statuses?.live ?? 0} / ${current?.statuses?.scheduled ?? 0}`,
     `- Candidate live scores / projections: ${display(current?.contains_live_scores)} / ${display(current?.contains_projected_scores)}`,
+    '',
+    '### Transaction history',
+    '',
+    `- Target-season rows: ${summary.transactions.target_rows_before} → ${summary.transactions.target_rows_after}`,
+    `- Complete / failed / pending: ${summary.transactions.complete} / ${summary.transactions.failed} / ${summary.transactions.pending}`,
+    `- Types (waiver / free agent / trade / commissioner): ${summary.transactions.type_counts.waiver} / ${summary.transactions.type_counts.free_agent} / ${summary.transactions.type_counts.trade} / ${summary.transactions.type_counts.commissioner}`,
+    `- Added / changed / removed IDs: ${summary.transactions.added_ids.length} / ${summary.transactions.changed_ids.length} / ${summary.transactions.removed_ids.length}`,
+    `- Completed scoring week: ${display(summary.transactions.completed_week_before)} → ${display(summary.transactions.completed_week_after)}`,
+    `- Referenced players / missing metadata: ${summary.transactions.players} / ${summary.transactions.missing_player_metadata}`,
+    `- Draft status / picks: ${summary.transactions.draft_status} / ${summary.transactions.draft_picks}`,
+    '- Non-target season slices: preserved byte-equivalently',
     '',
     '### Changed files',
     '',
@@ -301,6 +379,9 @@ function buildMarkdown(summary) {
     '- [ ] Current-season statuses and completeness are plausible.',
     '- [ ] Manual fields in `assets/SeasonSummary.draft.json` were reviewed; the draft was not promoted to `assets/SeasonSummary.json`.',
     '- [ ] Derived data and manifest hashes are coherent with the canonical inputs.',
+    '- [ ] Transaction counts, draft selection, player coverage, and completed-week boundary are plausible.',
+    '- [ ] Trade on-field edge, Wire Finds, retention, turnover, and keeper methodology were spot-checked.',
+    '- [ ] Non-target transaction seasons are unchanged.',
     '- [ ] The latest exact `ci / gate` result passes before merge.',
     '',
     '### Reproduce validation-only generation',
@@ -321,6 +402,8 @@ function summarize(options, environment = process.env) {
   const afterCurrent = readOptionalJson(path.join(afterDir, 'CurrentSeason.json'));
   const beforeManifest = readOptionalJson(path.join(beforeDir, 'asset-manifest.json'));
   const afterManifest = readOptionalJson(path.join(afterDir, 'asset-manifest.json'));
+  const beforeTransactions = readOptionalJson(path.join(beforeDir, 'TransactionHistory.json'));
+  const afterTransactions = readOptionalJson(path.join(afterDir, 'TransactionHistory.json'));
   const files = changedFiles(options['changed-files-file']);
 
   assertCurrentSeason(afterCurrent, options.season, environment.LEAGUE_ID);
@@ -338,6 +421,12 @@ function summarize(options, environment = process.env) {
       before: currentSeasonStats(beforeCurrent),
       after: currentSeasonStats(afterCurrent),
     },
+    transactions: analyzeTransactions(
+      beforeTransactions,
+      afterTransactions,
+      options.season,
+      environment.LEAGUE_ID,
+    ),
     manifest: {
       before: manifestStats(beforeManifest),
       after: manifestStats(afterManifest),
@@ -411,6 +500,7 @@ if (require.main === module) {
 
 module.exports = {
   analyzeH2H,
+  analyzeTransactions,
   buildMarkdown,
   currentSeasonStats,
   escapeMarkdown,

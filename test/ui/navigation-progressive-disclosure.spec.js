@@ -1,12 +1,12 @@
 import { expect, test } from './coverage-fixture.js';
 import { activateFeature, featureDestination } from './navigation-helpers.js';
 
-test('primary navigation exposes five semantic controls and all nine canonical destinations', async ({ page }) => {
+test('primary navigation exposes five semantic controls and all ten canonical destinations', async ({ page }) => {
   await page.goto('/');
   const navigation = page.locator('#primaryNavigation');
   await expect(navigation.locator(':scope > .primary-nav-control, :scope > .primary-nav-group')).toHaveCount(5);
   await expect(page.getByRole('link', { name: /Home/ })).toHaveAttribute('aria-current', 'page');
-  await expect(page.locator('[data-feature-id]')).toHaveCount(9);
+  await expect(page.locator('[data-feature-id]')).toHaveCount(10);
   await expect(page.locator('#page-pulse')).toHaveAttribute('data-feature-state', 'ready');
   expect(await page.evaluate(() => ({
     activeFeature: window.darlingFeatureDiagnostics.activeFeature,
@@ -15,10 +15,11 @@ test('primary navigation exposes five semantic controls and all nine canonical d
   }))).toEqual({
     activeFeature: 'pulse',
     activationCount: 1,
-    registeredFeatures: 9,
+    registeredFeatures: 10,
   });
   await page.getByText('Owners', { exact: true }).click();
   await expect(featureDestination(page, 'owner')).toBeVisible();
+  await expect(featureDestination(page, 'transactions')).toBeVisible();
   await expect(featureDestination(page, 'history')).toBeVisible();
   await expect(featureDestination(page, 'trophy')).toBeVisible();
   await expect(featureDestination(page, 'dynasty')).toBeVisible();
@@ -105,7 +106,7 @@ test('Pulse keeps its full hero while analytical routes publish compact chrome',
     expect(pulse.hero).toBeGreaterThanOrEqual(viewport.width === 390 ? 260 : 360);
     expect(pulse.hero).toBeLessThanOrEqual(viewport.width === 390 ? 300 : 400);
 
-    for (const id of ['owner', 'history', 'current', 'rivalry', 'trophy', 'dynasty', 'draft', 'gauntlet']) {
+    for (const id of ['owner', 'transactions', 'history', 'current', 'rivalry', 'trophy', 'dynasty', 'draft', 'gauntlet']) {
       await page.goto(`/?tab=${id}`);
       await expect(page.locator(`#page-${id}`)).toHaveAttribute('data-feature-state', 'ready');
       const compact = await page.evaluate(() => ({

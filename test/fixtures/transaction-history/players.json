@@ -1,0 +1,5 @@
+{
+  "p1": { "full_name": "Player One", "position": "QB", "team": "ONE" },
+  "p2": { "full_name": "Player Two", "position": "RB", "team": "TWO" },
+  "p3": { "first_name": "Player", "last_name": "Three", "position": "WR", "team": null }
+}

@@ -29,6 +29,8 @@ npx playwright install chromium webkit
 
 CI, preview, and coverage modes use one worker. CI rejects committed focused tests and fails when a test passes only on retry.
 
+Transaction-history changes must also run `npm run test:transaction-history`. The fixture suite proves deterministic bytes, draft selection safety, failed-transaction exclusion, non-target season preservation, strict owner mapping, and stint-scoped matchup scoring. The full unit lane includes these Python tests.
+
 ## Coverage
 
 `npm run test:coverage` is the only coverage entry point. It:
@@ -95,7 +97,7 @@ Browser failures upload lane-, run-, and attempt-specific Playwright reports and
 
 For a browser failure, first inspect the Playwright trace and the static-server lifecycle log. Do not increase timeouts to hide a refused connection. For a coverage failure, read the scope/file/metric line in the gate output; add behavior-focused tests or review a narrow expiring override. For an artifact failure, confirm `index.html`, `assets/asset-manifest.json`, and `.vite/manifest.json` were present in the producer before rerunning.
 
-Sleeper update triggers, permissions, inputs, and mutation behavior remain independent of the Pages delivery path.
+Sleeper update triggers, permissions, inputs, and mutation behavior remain independent of the Pages delivery path. Its contract test fixes the publication allowlist to H2H, CurrentSeason, TransactionHistory, SeasonSummary draft, DerivedStats, and the manifest; validation and summary safety run before App authentication.
 
 ## Stabilization and release evidence
 

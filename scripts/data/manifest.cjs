@@ -11,6 +11,15 @@ const { canonicalJson, readJson, sha256Json } = require('./canonical-json.cjs');
 const { inspectHeroAssets } = require('./media-validation.cjs');
 
 function seasonCoverage(name, value) {
+  if (name === 'TransactionHistory') {
+    const seasons = Array.isArray(value?.seasons) ? value.seasons : [];
+    const values = seasons.map(row => Number(row.season)).filter(Number.isFinite);
+    return {
+      rows: seasons.reduce((total, row) => total + (row.transactions?.length || 0), 0),
+      season_min: values.length ? Math.min(...values) : null,
+      season_max: values.length ? Math.max(...values) : null,
+    };
+  }
   const rows = Array.isArray(value) ? value : value?.games || value?.rows || [];
   if (name === 'Rivalries') return { rows: rows.length, season_min: null, season_max: null };
   const seasons = rows.map(row => Number(row.season)).filter(Number.isFinite);
@@ -69,6 +78,7 @@ async function buildManifest(root = process.cwd(), opts = {}) {
     SeasonSummary: SCHEMA_VERSION,
     Rivalries: SCHEMA_VERSION,
     CurrentSeason: SCHEMA_VERSION,
+    TransactionHistory: SCHEMA_VERSION,
     DraftSpot: SCHEMA_VERSION,
     DerivedStats: SCHEMA_VERSION,
   };

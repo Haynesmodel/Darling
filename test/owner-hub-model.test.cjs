@@ -77,7 +77,8 @@ test('builds deterministic historical cards and encoded explicit deep links', ()
   assert.equal(model.draftIdentity.samples, 3);
   assert.equal(model.draftIdentity.averagePick, 16 / 3);
   assert.equal(model.rivalries.mostPlayed.opponent, 'Beta');
-  assert.match(model.actions[0].href, /team=A%26B\+%2B\+C%2F%CE%94/);
+  assert.equal(model.actions[0].label, 'Moves');
+  assert.match(model.actions[0].href, /txOwner=A%26B\+%2B\+C%2F%CE%94/);
   assert.ok(model.actions.every(action => !action.href.includes('undefined')));
 });
 
@@ -191,7 +192,7 @@ test('empty and sparse history reports independent availability and direction st
     curses: 'no-curse',
     legacy: 'no-history',
   });
-  assert.equal(empty.actions.length, 5);
+  assert.equal(empty.actions.length, 6);
 
   const sparse = ownerHub.buildOwnerHubModel(data({
     leagueGames: [],

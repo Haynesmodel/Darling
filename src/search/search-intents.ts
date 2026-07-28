@@ -132,6 +132,9 @@ export function parseSearchIntents(rawQuery: string, context: SearchIntentContex
   if (owner && scopedQuery && /^(?:draft|draft spot|draft history)$/.test(scopedQuery)) {
     return [{ kind: 'draft-owner', owner }];
   }
+  if (owner && scopedQuery && /^(?:moves|transactions|owner activity)$/.test(scopedQuery)) {
+    return [{ kind: 'transaction-view', view: 'owners', owner }];
+  }
   const pickMatch = query.match(/^(?:draft )?pick (\d{1,2})$/);
   if (!owners.length && pickMatch && Number(pickMatch[1]) >= 1 && Number(pickMatch[1]) <= 24) {
     return [{ kind: 'draft-pick', pick: Number(pickMatch[1]) }];
@@ -144,6 +147,12 @@ export function parseSearchIntents(rawQuery: string, context: SearchIntentContex
     return [{ kind: 'feature', feature: 'draft' }];
   }
   if (!owners.length && /^(?:historical matchup|gauntlet)$/.test(query)) return [{ kind: 'feature', feature: 'gauntlet' }];
+  if (!owners.length && /^(?:transactions|moves|transaction history)$/.test(query)) return [{ kind: 'feature', feature: 'transactions' }];
+  if (!owners.length && /^(?:trades|trade desk|trade history)$/.test(query)) return [{ kind: 'transaction-view', view: 'trades' }];
+  if (!owners.length && /^(?:waivers|waiver wire|wire finds)$/.test(query)) return [{ kind: 'transaction-view', view: 'waivers' }];
+  if (!owners.length && /^(?:player journeys|player movement)$/.test(query)) return [{ kind: 'transaction-view', view: 'players' }];
+  if (!owners.length && /^(?:owner activity|owner moves)$/.test(query)) return [{ kind: 'transaction-view', view: 'owners' }];
+  if (!owners.length && /^(?:draft and keepers|draft retention|keeper return)$/.test(query)) return [{ kind: 'transaction-view', view: 'draft' }];
   if (!owners.length && query === 'playoff picture') return [{ kind: 'feature', feature: 'playoff-picture' }];
   if (!owners.length && /^(?:pulse|league pulse|home|dashboard)$/.test(query)) return [{ kind: 'feature', feature: 'pulse' }];
   if (!owners.length && /^(?:my team|owner hub|team hub)$/.test(query)) return [{ kind: 'feature', feature: 'owner' }];

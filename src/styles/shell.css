@@ -280,6 +280,7 @@ main{padding:16px}
 #page-history.page.visible{grid-template-columns:minmax(0,1fr)}
 #page-pulse.page.visible{grid-template-columns:minmax(0,1fr)}
 #page-owner.page.visible{grid-template-columns:minmax(0,1fr)}
+#page-transactions.page.visible{grid-template-columns:minmax(0,1fr)}
 #page-current.page.visible{grid-template-columns:minmax(0,1fr)}
 #page-rivalry.page.visible{grid-template-columns:minmax(0,1fr)}
 #page-trophy.page.visible{grid-template-columns:minmax(0,1fr)}

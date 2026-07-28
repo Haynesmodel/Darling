@@ -74,6 +74,35 @@ test('url helpers parse and rebuild an encoded Owner Hub state', () => {
   assert.equal(buildUrlFromState({ pathname: '/Darling/', tab: 'trophy', selectedOwner: canonical }), '/Darling/?tab=trophy');
 });
 
+test('url helpers parse, validate, and rebuild Transactions state without History facets', () => {
+  const parsed = parseUrlState('?tab=transactions&txSeason=2025&txView=players&txOwner=A%26B+%2B+C%2F%CE%94&txPlayer=p%2F1&txId=t%3A1&seasons=2024');
+  assert.equal(parsed.transactionSeason, 2025);
+  assert.equal(parsed.transactionView, 'players');
+  assert.equal(parsed.transactionOwner, 'A&B + C/Δ');
+  assert.equal(parsed.transactionPlayer, 'p/1');
+  assert.equal(parsed.transactionId, 't:1');
+  assert.equal(parsed.hasTransactions, true);
+  const built = buildUrlFromState({
+    pathname: '/Darling/',
+    tab: 'transactions',
+    selectedTransactionSeason: 2025,
+    selectedTransactionView: 'players',
+    selectedTransactionOwner: 'A&B + C/Δ',
+    selectedTransactionPlayer: 'p/1',
+    selectedTransactionId: 't:1',
+    selectedSeasons: new Set([2024]),
+    universe: { seasons: [2024, 2025], weeks: [], opponents: [], types: [], rounds: [] },
+  });
+  assert.equal(built, '/Darling/?tab=transactions&txSeason=2025&txView=players&txOwner=A%26B+%2B+C%2F%CE%94&txPlayer=p%2F1&txId=t%3A1');
+  assert.equal(buildUrlFromState({
+    pathname: '/Darling/',
+    tab: 'transactions',
+    selectedTransactionView: 'overview',
+  }), '/Darling/?tab=transactions');
+  assert.equal(parseUrlState('?txSeason=not-a-year&txView=unknown').transactionSeason, null);
+  assert.equal(parseUrlState('?txSeason=not-a-year&txView=unknown').transactionView, null);
+});
+
 test('url helpers parse and rebuild current season state', () => {
   const parsed = parseUrlState('?tab=current&currentSeason=2025&currentWeek=6&currentOwner=Joe&currentView=owners&currentProjection=current');
   assert.equal(parsed.tab, 'current');

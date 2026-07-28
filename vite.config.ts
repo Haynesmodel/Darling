@@ -68,7 +68,7 @@ function createPropertyCompactionPlugin() {
   // These literal keys are selected through FEATURE_IDS, so Terser cannot see
   // their computed property access while processing an individual chunk.
   const publicProperties = new Set([
-    'pulse', 'owner', 'history', 'current', 'rivalry', 'trophy', 'dynasty', 'draft', 'gauntlet',
+    'pulse', 'owner', 'transactions', 'history', 'current', 'rivalry', 'trophy', 'dynasty', 'draft', 'gauntlet',
     // DOM dataset and Window diagnostics are observable contracts, including
     // from accessibility tooling and the production browser suite.
     'accentTheme', 'activeFeature', 'bound', 'chartState', 'colorScheme',
@@ -76,6 +76,7 @@ function createPropertyCompactionPlugin() {
     'darlingDataLoader', 'darlingFeatureDiagnostics', 'darlingSearch', 'darlingTables',
     'darlingTheme', 'featureId', 'featureMessage', 'featureState', 'heroMode',
     'loadedAssets', 'manifestVersion', 'optionalAssetFailures',
+    'player',
     // Dynasty score component keys are iterated into visible breakdown labels.
     'consistency', 'hardware', 'penalties', 'regularSeason', 'scoringDominance',
     'navigationGroup', 'ready', 'reducedMotion', 'seasonMode', 'sectionId',

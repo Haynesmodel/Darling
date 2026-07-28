@@ -1,6 +1,6 @@
 # Data pipeline
 
-The Darling deploys one coherent, content-addressed data snapshot. The four source JSON files remain human-reviewable inputs; schemas, generated contracts, Draft Spot observations, derived statistics, and the manifest make the snapshot safe to consume and reproduce.
+The Darling deploys one coherent, content-addressed data snapshot. The five source JSON files remain human-reviewable inputs; schemas, generated contracts, Draft Spot observations, derived statistics, and the manifest make the snapshot safe to consume and reproduce.
 
 ## Source and generated files
 
@@ -10,6 +10,7 @@ Source files:
 - `assets/SeasonSummary.json`
 - `assets/Rivalries.json`
 - `assets/CurrentSeason.json`
+- `assets/TransactionHistory.json`
 - `schemas/*.schema.json`
 - `scripts/data/known-data-exceptions.json`
 
@@ -17,11 +18,14 @@ Generated files (do not edit by hand):
 
 - `src/data/generated/asset-types.ts`
 - `src/data/generated/asset-validators.ts`
+- `src/data/generated/transaction-history-validator.ts`
 - `assets/DraftSpot.json`
 - `assets/DerivedStats.json`
 - `assets/asset-manifest.json`
 
 JSON Schema Draft 2020-12 is authoritative. TypeScript types and standalone browser validators are generated from the schemas. Ajv is used only while generating and validating; the browser bundle receives compiled validators, not the Ajv compiler.
+
+`TransactionHistory.json` is produced by `scripts/generate_transaction_history.py`, not edited by hand. The client requests it only after the Transactions route activates. Its strict standalone validator is emitted separately so the large transaction schema remains outside the shell, core data loader, and unrelated route closures.
 
 The field-by-field source inventory is recorded in [data-field-inventory.md](data-field-inventory.md).
 
@@ -42,7 +46,7 @@ The generated order is significant:
 
 1. Generate `DraftSpot.json` deterministically from `SeasonSummary.json`.
 2. Generate TypeScript types.
-3. Generate standalone runtime validators.
+3. Generate the core and lazy transaction standalone runtime validators.
 4. Generate `DerivedStats.json` from H2H, SeasonSummary, and Rivalries.
 5. Generate `asset-manifest.json` last.
 
@@ -119,7 +123,7 @@ The twelve files under `assets/hero/` are runtime-required. Validation checks th
 
 ## Sleeper automation
 
-The weekly workflow runs only from the trusted `main` definition, with the default token limited to Contents read and Issues write. It writes candidate H2H and CurrentSeason files, promotes them only inside the runner, regenerates the review draft, derived data, and manifest, and validates the coherent snapshot before requesting publication credentials.
+The weekly workflow runs only from the trusted `main` definition, with the default token limited to Contents read and Issues write. It writes candidate H2H, CurrentSeason, and TransactionHistory files, promotes them only inside the runner, regenerates the review draft, derived data, and manifest, and validates the coherent snapshot before requesting publication credentials.
 
 Validation-only runs use the shell script's temporary directory and never copy canonical assets, stage files, mint an App token, update a branch or pull request, or close the failure issue. Full no-change runs likewise stop before App authentication and remote mutation.
 
@@ -127,11 +131,12 @@ For a changed candidate, publication is restricted to:
 
 - `assets/H2H.json`
 - `assets/CurrentSeason.json`
+- `assets/TransactionHistory.json`
 - `assets/SeasonSummary.draft.json`
 - `assets/DerivedStats.json`
 - `assets/asset-manifest.json`
 
-The summary helper rejects removed or changed historical H2H games, additions outside the target season, and a CurrentSeason season or league mismatch. It produces a deterministic, Markdown-escaped review summary with game/status deltas, manifest hashes, source SHAs, completed checks, and the human review checklist.
+The summary helper rejects removed or changed historical H2H games, additions outside the target season, a CurrentSeason season or league mismatch, duplicate transaction IDs, a target transaction league mismatch, and any removed, added, or changed non-target transaction season. It produces a deterministic, Markdown-escaped review summary with game/status and transaction deltas, manifest hashes, source SHAs, completed checks, and the human review checklist.
 
 Only after those checks pass does the workflow mint a short-lived Darling GitHub App token scoped to the current repository with Contents and Pull requests write permissions. App preflight verifies that the installation token can see exactly Darling and that `main` remains the default branch. The token is supplied through `GH_TOKEN`; checkout credentials are not persisted and the token is not placed in Git configuration or a remote URL.
 
@@ -180,8 +185,22 @@ npm run generate:draft-spot # stale SeasonSummary dependency
 npm run generate:manifest
 npm run generate:data-types # schema/type drift
 npm run generate:data-validators
+npm run test:transaction-history
 npm run test:assets         # inspect the complete snapshot
 npm run audit:dist          # confirm built output inventory, bytes, and hashes
+```
+
+## Transaction-history generation
+
+The generator uses an explicit bounded endpoint matrix: transaction rounds `0..max_week`, matchup weeks `1..max_week`, league rosters/drafts, one selected nonempty primary draft, and the NFL player directory. Requests use a 30-second timeout, bounded response bodies, and retries only for 429, 500, and 503 responses. Ambiguous same-size drafts fail unless `--draft-id` is supplied. Failed transactions remain in raw history but never produce acquisitions or outcome credit.
+
+The committed 2025 season contains 489 transactions: 417 complete and 72 failed, including 8 completed trades and a unique 192-pick draft. Player stints use weekly matchup ownership as the scoring boundary. Trade outcomes are labelled too early, incomplete, provisional, or final; future draft picks make an outcome incomplete. These are descriptive fantasy-point outcomes, not claims of real-world player value.
+
+Per-season raw JSON is capped at 750 KB and the merged asset at 2 MB; the current asset stays below the 500 KB review target. Run fixture tests before any live refresh:
+
+```sh
+npm run test:transaction-history
+python3 scripts/generate_transaction_history.py --help
 ```
 
 ## Current measurements

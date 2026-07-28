@@ -52,7 +52,29 @@ function manifest(suffix) {
     assets: {
       H2H: { sha256: `sha256:h2h-${suffix}` },
       CurrentSeason: { sha256: `sha256:current-${suffix}` },
+      TransactionHistory: { sha256: `sha256:transactions-${suffix}` },
     },
+  };
+}
+
+function transactions(overrides = {}) {
+  return {
+    players: [{ id: 'p1', name: 'Player One' }],
+    seasons: [{
+      season: 2025,
+      league_id: 'league-123',
+      coverage: {
+        complete_count: 1,
+        failed_count: 0,
+        pending_count: 0,
+        completed_week: 1,
+        missing_player_metadata: 0,
+        type_counts: { waiver: 1, free_agent: 0, trade: 0, commissioner: 0 },
+      },
+      draft: { status: 'selected', pick_count: 1 },
+      transactions: [{ id: 'tx-1', status: 'complete', type: 'waiver' }],
+      ...overrides,
+    }],
   };
 }
 
@@ -63,6 +85,8 @@ function fixture({
   afterCurrent = beforeCurrent,
   beforeManifest = manifest('before'),
   afterManifest = manifest('after'),
+  beforeTransactions = transactions(),
+  afterTransactions = beforeTransactions,
   changed = ['assets/CurrentSeason.json'],
 } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-sleeper-summary-'));
@@ -76,6 +100,8 @@ function fixture({
   if (afterCurrent !== null) fs.writeFileSync(path.join(afterDir, 'CurrentSeason.json'), JSON.stringify(afterCurrent));
   if (beforeManifest !== null) fs.writeFileSync(path.join(beforeDir, 'asset-manifest.json'), JSON.stringify(beforeManifest));
   if (afterManifest !== null) fs.writeFileSync(path.join(afterDir, 'asset-manifest.json'), JSON.stringify(afterManifest));
+  if (beforeTransactions !== null) fs.writeFileSync(path.join(beforeDir, 'TransactionHistory.json'), JSON.stringify(beforeTransactions));
+  if (afterTransactions !== null) fs.writeFileSync(path.join(afterDir, 'TransactionHistory.json'), JSON.stringify(afterTransactions));
   const changedFile = path.join(root, 'changed.txt');
   fs.writeFileSync(changedFile, changed.join('\n'));
   return {
@@ -186,6 +212,67 @@ test('candidate CurrentSeason season and league must match configured values', (
   });
 });
 
+test('transaction candidate enforces target league, unique IDs, and target presence', () => {
+  withFixture({ afterTransactions: transactions({ league_id: 'wrong-league' }) }, (value) => {
+    assert.throws(() => runSummary(value), /target league does not match/);
+  });
+  withFixture({
+    afterTransactions: transactions({
+      transactions: [
+        { id: 'duplicate', status: 'complete', type: 'waiver' },
+        { id: 'duplicate', status: 'failed', type: 'waiver' },
+      ],
+    }),
+  }, (value) => {
+    assert.throws(() => runSummary(value), /duplicate transaction IDs/);
+  });
+  withFixture({ afterTransactions: { players: [], seasons: [] } }, (value) => {
+    assert.throws(() => runSummary(value), /target season 2025 is missing/);
+  });
+});
+
+test('transaction candidate preserves every non-target season exactly', () => {
+  const historical = {
+    season: 2024,
+    league_id: 'historical-league',
+    coverage: { complete_count: 0 },
+    draft: { status: 'unavailable', pick_count: 0 },
+    transactions: [],
+  };
+  const before = transactions();
+  before.seasons.unshift(historical);
+  const changed = JSON.parse(JSON.stringify(before));
+  changed.seasons[0].coverage.complete_count = 1;
+  withFixture({ beforeTransactions: before, afterTransactions: changed }, (value) => {
+    assert.throws(() => runSummary(value), /non-target season 2024 was changed/);
+  });
+
+  const removed = transactions();
+  withFixture({ beforeTransactions: before, afterTransactions: removed }, (value) => {
+    assert.throws(() => runSummary(value), /non-target season 2024 was removed/);
+  });
+
+  const added = transactions();
+  added.seasons.unshift(historical);
+  withFixture({ beforeTransactions: transactions(), afterTransactions: added }, (value) => {
+    assert.throws(() => runSummary(value), /unexpected non-target season 2024 was added/);
+  });
+});
+
+test('transaction summary reports coverage, draft, players, hashes, and review method', () => {
+  withFixture({ changed: ['assets/TransactionHistory.json'] }, (value) => {
+    const result = runSummary(value);
+    assert.equal(result.summary.transactions.target_rows_after, 1);
+    assert.equal(result.summary.transactions.complete, 1);
+    assert.equal(result.summary.transactions.draft_picks, 1);
+    assert.equal(result.summary.transactions.players, 1);
+    assert.equal(result.summary.transactions.non_target_seasons_preserved, true);
+    assert.match(result.markdown, /TransactionHistory hash/);
+    assert.match(result.markdown, /Completed scoring week/);
+    assert.match(result.markdown, /Trade on-field edge.*methodology/i);
+  });
+});
+
 test('manifest hashes, source context, validations, and sorted files are deterministic', () => {
   withFixture({
     changed: [
@@ -206,6 +293,7 @@ test('manifest hashes, source context, validations, and sorted files are determi
     assert.equal(first.summary.manifest.before.data_version, 'sha256:data-before');
     assert.equal(first.summary.manifest.after.current_season_sha256, 'sha256:current-after');
     assert.deepEqual(first.summary.validation_commands, [
+      "python3 -m unittest discover -s test -p 'test_generate_transaction_history.py'",
       'npm run generate:derived',
       'npm run generate:manifest',
       'npm run check:data-generated',

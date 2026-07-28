@@ -13,6 +13,7 @@ const CHECKED = [
   GENERATED_ASSETS.DraftSpot.path,
   GENERATED_ASSETS.AssetTypes.path,
   GENERATED_ASSETS.AssetValidators.path,
+  GENERATED_ASSETS.TransactionHistoryValidator.path,
   GENERATED_ASSETS.DerivedStats.path,
   GENERATED_ASSETS.AssetManifest.path,
 ];

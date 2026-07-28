@@ -68,3 +68,11 @@ test('current-only owners and generic My Team remain searchable without persisti
   assert.equal(defaults[0].id, 'feature:current:all');
   assert.equal(defaults[1].id, 'feature:owner:all');
 });
+
+test('transaction destinations are generic and owner-scoped without transaction data hydration', () => {
+  const runtime = search.createSearchRuntime();
+  hydrate(runtime);
+  assert.equal(runtime.search('transactions')[0].action.url, '/Darling/?tab=transactions');
+  assert.equal(runtime.search('trade desk')[0].action.url, '/Darling/?tab=transactions&txView=trades');
+  assert.equal(runtime.search('Joe moves')[0].action.url, '/Darling/?tab=transactions&txView=owners&txOwner=Joe');
+});

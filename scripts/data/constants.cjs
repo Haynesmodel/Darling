@@ -1,7 +1,7 @@
 const path = require('node:path');
 
 const SCHEMA_VERSION = 1;
-const MANIFEST_VERSION = 2;
+const MANIFEST_VERSION = 3;
 const DERIVED_GENERATOR_VERSION = 1;
 
 const SOURCE_ASSETS = Object.freeze({
@@ -9,6 +9,7 @@ const SOURCE_ASSETS = Object.freeze({
   SeasonSummary: { path: 'assets/SeasonSummary.json', schema: 'season-summary.schema.json', required: true },
   Rivalries: { path: 'assets/Rivalries.json', schema: 'rivalries.schema.json', required: false },
   CurrentSeason: { path: 'assets/CurrentSeason.json', schema: 'current-season.schema.json', required: false },
+  TransactionHistory: { path: 'assets/TransactionHistory.json', schema: 'transaction-history.schema.json', required: false },
 });
 
 const GENERATED_ASSETS = Object.freeze({
@@ -17,6 +18,7 @@ const GENERATED_ASSETS = Object.freeze({
   AssetManifest: { path: 'assets/asset-manifest.json', schema: 'asset-manifest.schema.json' },
   AssetTypes: { path: 'src/data/generated/asset-types.ts' },
   AssetValidators: { path: 'src/data/generated/asset-validators.ts' },
+  TransactionHistoryValidator: { path: 'src/data/generated/transaction-history-validator.ts' },
 });
 
 const HERO_REQUIREMENTS = Object.freeze([

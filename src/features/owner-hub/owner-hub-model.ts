@@ -67,6 +67,7 @@ function direction(rows: SeasonSummaryRow[]) {
 
 function buildActions(pathname: string, owner: string, opponent: string | null) {
   return [
+    { label: 'Moves', href: url(pathname, { tab: 'transactions', selectedTransactionView: 'owners', selectedTransactionOwner: owner }) },
     { label: 'History', href: url(pathname, { tab: 'history', selectedTeam: owner }) },
     { label: 'Current', href: url(pathname, { tab: 'current', selectedCurrentOwner: owner }) },
     { label: 'Trophy', href: url(pathname, { tab: 'trophy', selectedTrophyOwner: owner }) },

@@ -21,6 +21,7 @@ const bundle = {
   SeasonSummary: readJson(path.join(root, 'assets', 'SeasonSummary.json')),
   Rivalries: readJson(path.join(root, 'assets', 'Rivalries.json')),
   CurrentSeason: readJson(path.join(root, 'assets', 'CurrentSeason.json')),
+  TransactionHistory: readJson(path.join(root, 'assets', 'TransactionHistory.json')),
 };
 
 function clone(value) {
@@ -75,6 +76,21 @@ test('Draft 2020-12 schemas accept representative data and locate invalid fields
     assert.ok(errors.some(error => error.includes(`field "${fixture.field}"`)), `${fixture.file}\n${errors.join('\n')}`);
     assert.ok(errors.some(error => error.includes(fixture.message)), `${fixture.file}\n${errors.join('\n')}`);
   }
+
+  const transactionHistory = readJson(path.join(root, 'assets', 'TransactionHistory.json'));
+  assert.deepEqual(
+    validateWithSchema(ajv, 'transaction-history.schema.json', transactionHistory, 'TransactionHistory.json'),
+    [],
+  );
+  transactionHistory.seasons[0].transactions[0].unexpected = true;
+  assert.ok(
+    validateWithSchema(
+      ajv,
+      'transaction-history.schema.json',
+      transactionHistory,
+      'TransactionHistory.json',
+    ).some(error => error.includes('must NOT have additional properties')),
+  );
 });
 
 test('semantic validation accepts the canonical bundle and reports stable rule IDs', () => {

@@ -11,11 +11,12 @@ The palette is a typed, in-browser navigator over the app's existing URL state. 
 - Records and filters: `biggest loss`, `Joe biggest loss`, `highest score`, `Joe losses`
 - Features: `current season`, `playoff picture`, `Joe trophy case`, `Joe dynasty`, `historical matchup`
 - Owner Hub: exact canonical owners (`Joe`), exact current display/team aliases, `Joe owner hub`, `my team`
+- Transactions: `transactions`, `trade desk`, `waiver wire`, `player journeys`, `owner activity`, `draft and keepers`, `Joe moves`
 - Draft Spot: `draft spot`, `pick 10`, `late draft picks`, `Joe draft history`
 - Commands: `dark mode`, `light mode`, `system theme`, `export history`
 
 Canonical owner names come from league assets. Sleeper display and team names in `CurrentSeason.json` are added as aliases when present, but generated URLs always use the canonical owner.
-An exact owner or alias produces that owner's explicit Owner Hub URL as the first result, ahead of owner-season History. Running the result does not save or change My Team.
+An exact owner or alias produces that owner's explicit Owner Hub URL as the first result, ahead of owner-season History. Running the result does not save or change My Team. Owner-scoped move results use `tab=transactions&txView=owners&txOwner=<canonical owner>` and do not hydrate `TransactionHistory.json` while search is ranking.
 
 ## Extension path
 

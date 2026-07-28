@@ -112,6 +112,17 @@ test('runtime loader rejects an invalid manifest', async () => {
 });
 
 test('runtime loader rejects unsupported schema and generator versions', async t => {
+  await t.test('manifest version 2', async () => {
+    const manifest = clone(assetValues['assets/asset-manifest.json']);
+    manifest.manifest_version = 2;
+    await assert.rejects(
+      loadLeagueAssets({ basePath: '/', fetchFn: createFetch({ 'assets/asset-manifest.json': manifest }) }),
+      error => error.code === 'INVALID_MANIFEST' || (
+        error.code === 'UNSUPPORTED_VERSION' && error.asset === 'asset-manifest.json'
+      ),
+    );
+  });
+
   await t.test('schema version', async () => {
     const manifest = clone(assetValues['assets/asset-manifest.json']);
     manifest.schema_versions.H2H = 2;
@@ -129,6 +140,15 @@ test('runtime loader rejects unsupported schema and generator versions', async t
       error => error.code === 'UNSUPPORTED_VERSION' && error.asset === 'DerivedStats',
     );
   });
+});
+
+test('runtime loader rejects manifest v3 without TransactionHistory coverage', async () => {
+  const manifest = clone(assetValues['assets/asset-manifest.json']);
+  delete manifest.assets.TransactionHistory;
+  await assert.rejects(
+    loadLeagueAssets({ basePath: '/', fetchFn: createFetch({ 'assets/asset-manifest.json': manifest }) }),
+    error => error.code === 'INVALID_MANIFEST' && error.asset === 'asset-manifest.json',
+  );
 });
 
 test('runtime loader rejects a missing required asset', async () => {

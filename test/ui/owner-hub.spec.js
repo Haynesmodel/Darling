@@ -13,7 +13,7 @@ async function seedFavorite(page, owner = 'Joe') {
 test('first visit stays neutral until preview is explicitly saved as My Team', async ({ page }) => {
   await page.goto('/?tab=owner');
   await expect(page.getByRole('region', { name: 'My Team', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Choose your league owner' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Choose an owner' })).toBeVisible();
   await expect(page.locator('.owner-hub-grid')).toHaveCount(0);
   await expect(page.locator('.owner-hub-owner-control select')).toHaveValue('');
   await expect(featureDestination(page, 'owner')).toHaveAttribute('href', /[?&]tab=owner$/);

@@ -161,7 +161,7 @@ export function buildOwnerHubModel(
   if (!recentForm) availability.recentForm = 'no-history';
 
   const draftRows = summaries
-    .filter(row => Number.isFinite(Number(row.draft_pick)))
+    .filter(row => row.draft_pick !== null && row.draft_pick !== undefined && Number.isFinite(Number(row.draft_pick)))
     .sort((a, b) => b.season - a.season);
   const draftPicks = draftRows.map(row => Number(row.draft_pick));
   const draftIdentity = draftRows.length ? {

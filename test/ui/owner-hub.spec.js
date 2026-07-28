@@ -22,6 +22,8 @@ test('first visit stays neutral until preview is explicitly saved as My Team', a
   await expect(page).toHaveURL(/[?&]owner=Joe(?:&|$)/);
   await expect(page.locator('.owner-hub-lead').getByRole('heading', { level: 3, name: 'Joe', exact: true })).toBeVisible();
   expect(await page.evaluate(key => localStorage.getItem(key), PREFERENCE_KEY)).toBeNull();
+  await page.locator('.owner-hub-owner-control select').selectOption('');
+  await page.locator('.owner-hub-owner-control select').selectOption('Joe');
 
   await page.getByRole('button', { name: 'Make Joe My Team' }).click();
   await expect(page.getByRole('status')).toContainText('Joe is now My Team');
@@ -108,6 +110,8 @@ test('without My Team, neutral feature defaults remain league-wide', async ({ pa
   await expect(page.locator('#teamSelect')).toHaveValue('__ALL__');
   await page.goto('/?tab=dynasty');
   await expect(page.locator('#dynastyModeSelect')).toHaveValue('all-time');
+  await page.goto('/?tab=rivalry');
+  await expect(page.locator('#rivalryTeamA')).not.toHaveValue('');
 });
 
 test('an invalid owner URL shows a recovery state and preserves My Team', async ({ page }) => {
@@ -117,6 +121,18 @@ test('an invalid owner URL shows a recovery state and preserves My Team', async 
   await expect(page.locator('.owner-hub-grid')).toHaveCount(0);
   await expect(page.locator('.owner-hub-owner-control select')).toHaveValue('');
   expect(await page.evaluate(key => localStorage.getItem(key), PREFERENCE_KEY)).toBe('Joe');
+});
+
+test('Owner Hub keeps sparse-data cards honest and independently unavailable', async ({ page }) => {
+  await page.route('**/assets/SeasonSummary.json', route => route.fulfill({
+    contentType: 'application/json',
+    body: '[]',
+  }));
+  await page.goto('/?tab=owner&owner=Joe');
+  await expect(page.locator('.owner-hub-lead')).toContainText('0 completed seasons');
+  await expect(page.getByRole('heading', { name: 'Career' }).locator('..')).toContainText('Unavailable');
+  await expect(page.getByRole('heading', { name: 'Recent finishes' }).locator('..')).toContainText('Unavailable');
+  await expect(page.getByRole('heading', { name: 'Draft tendency' }).locator('..')).toContainText('Unavailable');
 });
 
 test('exact owner Search opens Owner Hub first without mutating My Team', async ({ page }) => {

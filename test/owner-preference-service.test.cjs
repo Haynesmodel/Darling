@@ -10,7 +10,9 @@ let temp;
 let preference;
 
 test.before(async () => {
-  temp = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-owner-preference-'));
+  const coverageBundles = path.join(process.cwd(), 'coverage', 'test-bundles');
+  fs.mkdirSync(coverageBundles, { recursive: true });
+  temp = fs.mkdtempSync(path.join(coverageBundles, 'owner-preference-'));
   const outfile = path.join(temp, 'owner-preference.mjs');
   await esbuild.build({
     entryPoints: [path.join(__dirname, '../src/app/services/owner-preference-service.ts')],
@@ -19,6 +21,8 @@ test.before(async () => {
     platform: 'node',
     format: 'esm',
     target: 'node20',
+    sourcemap: 'inline',
+    sourcesContent: true,
     logLevel: 'silent',
   });
   preference = await import(`${pathToFileURL(outfile).href}?${Date.now()}`);
@@ -105,6 +109,26 @@ test('storage access and write failures retain a session-only preference without
   assert.equal(service.getSnapshot().owner, 'Joe');
 });
 
+test('explicit storage options and read failures remain deterministic', () => {
+  const noStorage = preference.createOwnerPreferenceService(
+    ['Joe'],
+    fakeWindow(storage()),
+    { storage: null, storageKey: 'custom.favorite' },
+  );
+  assert.deepEqual(noStorage.getSnapshot(), { owner: null, persisted: false, revision: 0 });
+  assert.equal(noStorage.set(null).reason, 'storage-unavailable');
+
+  const unreadable = storage();
+  unreadable.getItem = () => { throw new Error('read blocked'); };
+  const readFailure = preference.createOwnerPreferenceService(['Joe'], fakeWindow(unreadable));
+  assert.deepEqual(readFailure.getSnapshot(), { owner: null, persisted: false, revision: 0 });
+
+  const uncleareable = storage({ [preference.FAVORITE_OWNER_STORAGE_KEY]: 'Stale' });
+  uncleareable.removeItem = () => { throw new Error('remove blocked'); };
+  const clearFailure = preference.createOwnerPreferenceService(['Joe'], fakeWindow(uncleareable));
+  assert.deepEqual(clearFailure.getSnapshot(), { owner: null, persisted: false, revision: 0 });
+});
+
 test('storage events synchronize canonical values, ignore other keys, and clear stale values', () => {
   const key = preference.FAVORITE_OWNER_STORAGE_KEY;
   const stored = storage();
@@ -134,5 +158,9 @@ test('unsubscribe and dispose remove listeners and prevent later notifications',
   assert.equal(win.listenerCount(), 0);
   service.set(null);
   win.dispatch({ key, newValue: 'Joe' });
+  assert.equal(updates, 0);
+  assert.doesNotThrow(() => service.dispose());
+  const afterDispose = service.subscribe(() => { updates += 1; });
+  afterDispose();
   assert.equal(updates, 0);
 });

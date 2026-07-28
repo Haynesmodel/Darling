@@ -19,29 +19,25 @@ function mountChart(host, chartNode, opts = {}) {
   return chartNode;
 }
 
-function renderChartEmpty(host, message = 'No chart data available.') {
+function renderChartMessage(host, className, message, state, title) {
   if (!host) return;
   clearChart(host);
   const doc = host.ownerDocument || (typeof document !== 'undefined' ? document : null);
   if (!doc) return;
-  const empty = doc.createElement('div');
-  empty.className = 'chart-empty';
-  empty.textContent = message;
-  host.append(empty);
-  host.dataset.chartState = 'empty';
+  const element = doc.createElement('div');
+  element.className = className;
+  element.textContent = message;
+  if (title) element.title = title;
+  host.append(element);
+  host.dataset.chartState = state;
+}
+
+function renderChartEmpty(host, message = 'No chart data available.') {
+  renderChartMessage(host, 'chart-empty', message, 'empty');
 }
 
 function renderChartError(host, error, message = 'Chart unavailable.') {
-  if (!host) return;
-  clearChart(host);
-  const doc = host.ownerDocument || (typeof document !== 'undefined' ? document : null);
-  if (!doc) return;
-  const el = doc.createElement('div');
-  el.className = 'chart-error';
-  el.textContent = message;
-  if (error?.message) el.title = error.message;
-  host.append(el);
-  host.dataset.chartState = 'error';
+  renderChartMessage(host, 'chart-error', message, 'error', error?.message);
 }
 
 export {

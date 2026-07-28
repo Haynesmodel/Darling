@@ -36,13 +36,6 @@ function isDomHost(host) {
   return !!host && typeof host.append === 'function' && typeof host.replaceChildren === 'function';
 }
 
-function channelValue(mark, key) {
-  const value = mark[key];
-  if (typeof value === 'function') return value;
-  if (typeof value === 'string') return value;
-  return value;
-}
-
 function titleChannel(mark) {
   if (!mark.title) return undefined;
   if (typeof mark.title === 'function') return mark.title;
@@ -51,11 +44,11 @@ function titleChannel(mark) {
 
 function markOptions(mark) {
   const options = {
-    x: channelValue(mark, 'x'),
-    y: channelValue(mark, 'y'),
-    z: channelValue(mark, 'z'),
-    r: channelValue(mark, 'r'),
-    text: channelValue(mark, 'text'),
+    x: mark.x,
+    y: mark.y,
+    z: mark.z,
+    r: mark.r,
+    text: mark.text,
     dx: typeof mark.dx === 'function' ? undefined : mark.dx,
     dy: mark.dy,
     fill: mark.fill,
@@ -116,74 +109,50 @@ function renderSpec(host, spec, opts = {}) {
   }
 }
 
+function renderPrepared(host, spec, className, emptyMessage) {
+  return renderSpec(host, spec, { ariaLabel: spec.ariaLabel, className, emptyMessage });
+}
+
 function renderDynastyTrendPlot(host, chart = {}, opts = {}) {
   const rows = dynastyTrendRows(chart, opts);
   const spec = dynastyTrendPlotOptions(rows, chart, opts);
-  return renderSpec(host, spec, {
-    ariaLabel: spec.ariaLabel,
-    className: 'dynasty-trend-svg',
-    emptyMessage: (chart.series || []).length ? 'All teams are hidden. Click a team in the key to bring it back.' : 'No dynasty trend data available.',
-  });
+  return renderPrepared(host, spec, 'dynasty-trend-svg', (chart.series || []).length ? 'All teams are hidden. Click a team in the key to bring it back.' : 'No dynasty trend data available.');
 }
 
 function renderGauntletHistogramPlot(host, result, teamSeasonA, teamSeasonB, opts = {}) {
   const payload = gauntletHistogramRows(result, teamSeasonA, teamSeasonB, opts);
   const spec = gauntletHistogramPlotOptions(payload, opts);
-  return renderSpec(host, spec, {
-    ariaLabel: spec.ariaLabel,
-    className: 'gauntlet-histogram-svg',
-    emptyMessage: 'No simulation data available.',
-  });
+  return renderPrepared(host, spec, 'gauntlet-histogram-svg', 'No simulation data available.');
 }
 
 function renderTrophyCareerPlot(host, view = {}, opts = {}) {
   const rows = trophyCareerRows(view);
   const spec = trophyCareerPlotOptions(rows, opts);
-  return renderSpec(host, spec, {
-    ariaLabel: spec.ariaLabel,
-    className: 'trophy-career-svg',
-    emptyMessage: 'No seasons recorded.',
-  });
+  return renderPrepared(host, spec, 'trophy-career-svg', 'No seasons recorded.');
 }
 
 function renderRivalryLeadPlot(host, view = {}, opts = {}) {
   const rows = rivalryLeadRows(view, opts.points || []);
   const spec = rivalryLeadPlotOptions(rows, view, opts);
-  return renderSpec(host, spec, {
-    ariaLabel: spec.ariaLabel,
-    className: 'rivalry-trend-svg',
-    emptyMessage: 'No recorded games between these teams.',
-  });
+  return renderPrepared(host, spec, 'rivalry-trend-svg', 'No recorded games between these teams.');
 }
 
 function renderCurrentSeedMovementPlot(host, view = {}, opts = {}) {
   const rows = currentSeedMovementRows(view).slice(0, opts.limit || 8);
   const spec = currentSeedMovementPlotOptions(rows, opts);
-  return renderSpec(host, spec, {
-    ariaLabel: spec.ariaLabel,
-    className: 'current-seed-movement-svg',
-    emptyMessage: 'No movement available.',
-  });
+  return renderPrepared(host, spec, 'current-seed-movement-svg', 'No movement available.');
 }
 
 function renderCurrentProjectedStandingsPlot(host, view = {}, opts = {}) {
   const rows = currentProjectedSeedRows(view);
   const spec = currentProjectedSeedPlotOptions(rows, opts);
-  return renderSpec(host, spec, {
-    ariaLabel: spec.ariaLabel,
-    className: 'current-projected-standings-svg',
-    emptyMessage: 'No projection available.',
-  });
+  return renderPrepared(host, spec, 'current-projected-standings-svg', 'No projection available.');
 }
 
 function renderCurrentOddsMovementPlot(host, view = {}, opts = {}) {
   const rows = currentOddsMovementRows(view).slice(0, opts.limit || 8);
   const spec = currentOddsMovementPlotOptions(rows, opts);
-  return renderSpec(host, spec, {
-    ariaLabel: spec.ariaLabel,
-    className: 'current-odds-movement-svg',
-    emptyMessage: 'No playoff odds movement available.',
-  });
+  return renderPrepared(host, spec, 'current-odds-movement-svg', 'No playoff odds movement available.');
 }
 
 export {

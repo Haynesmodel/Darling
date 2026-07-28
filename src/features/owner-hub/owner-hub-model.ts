@@ -15,6 +15,12 @@ interface OwnerHubModelOptions {
 }
 
 type HubGame = H2HGame | CurrentSeasonGame;
+type TeamSnapshotBuilder = (options: {
+  owner: string;
+  leagueGames: H2HGame[];
+  seasonSummaries: SeasonSummaryRow[];
+  currentSeason: LeagueDataSnapshot['currentSeason'];
+}) => { standing?: { games: number; record: string; rank: number } };
 
 function url(pathname: string, state: Record<string, unknown>): string {
   return buildUrlFromState({ pathname, ...state });
@@ -93,7 +99,7 @@ export function buildOwnerHubModel(
     .sort((a, b) => a.week - b.week || a.matchup_id - b.matchup_id)[0] || null
     : null;
   const currentSide = currentGame ? sidesForTeam(currentGame, owner) : null;
-  const currentSnapshot = data.currentSeason ? buildTeamCurrentSeasonSnapshot({
+  const currentSnapshot = data.currentSeason ? (buildTeamCurrentSeasonSnapshot as TeamSnapshotBuilder)({
     owner,
     leagueGames: data.leagueGames,
     seasonSummaries: data.seasonSummaries,

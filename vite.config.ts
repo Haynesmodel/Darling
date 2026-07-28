@@ -75,6 +75,7 @@ function createPropertyCompactionPlugin() {
     'colorSchemePreference', 'darlingAccessibility', 'darlingDataDiagnostics',
     'darlingDataLoader', 'darlingFeatureDiagnostics', 'darlingSearch', 'darlingTables',
     'darlingTheme', 'featureId', 'featureMessage', 'featureState', 'heroMode',
+    'loadedAssets', 'manifestVersion', 'optionalAssetFailures',
     'navigationGroup', 'ready', 'reducedMotion', 'seasonMode', 'sectionId',
     'seed', 'seedSource', 'value', 'windowKey',
     // Preact plugins and JSX runtime share these option-hook names.

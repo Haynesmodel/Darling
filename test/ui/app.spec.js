@@ -311,7 +311,8 @@ test('page loads and renders the history tables', async ({ page }) => {
   await page.waitForLoadState('networkidle');
 
   await expect(page.locator('#appStatus')).toBeHidden();
-  await expect(page.locator('header h2')).toHaveText('Joe');
+  await expect(page.locator('header h2')).toHaveText('League History');
+  await expect(page.locator('#teamSelect')).toHaveValue('__ALL__');
   await expect(page.locator('.site-hero-media img')).toBeVisible();
   const heroBox = await page.locator('.site-hero-media img').boundingBox();
   expect(heroBox?.width).toBeGreaterThan(0);
@@ -319,6 +320,7 @@ test('page loads and renders the history tables', async ({ page }) => {
   expect(await page.evaluate(() => typeof window.triggerGroupEgg)).toBe('undefined');
   expect(await page.evaluate(() => typeof window.setGroupBackdrop)).toBe('undefined');
 
+  await page.locator('#teamSelect').selectOption('Joe');
   const seasonCount = await page.locator('#seasonRecapTable tbody tr').count();
   const weekCount = await page.locator('#weekTable tbody tr').count();
   const historyCount = await page.locator('#historyGamesTable tbody tr').count();
@@ -507,15 +509,15 @@ test('rivalry tab renders a tale of the tape and saved rivalry selection', async
   await expect(page.locator('#rivalryTeamA')).toBeVisible();
   await expect(page.locator('#rivalryTeamB')).toBeVisible();
   await expect(page.locator('#page-rivalry')).toContainText('Head to Head');
-  await expect(page.locator('#rivalryTeamA')).toHaveValue('Joel');
-  await expect(page.locator('header h2')).toHaveText('Joel');
+  await expect(page.locator('#rivalryTeamA')).toHaveValue('Connor');
+  await expect(page.locator('header h2')).toHaveText('Connor');
 
   await activateFeature(page, 'history');
   await expect(page.locator('#tabHistoryBtn')).toHaveClass(/active/);
   await expect(page.locator('header h2')).toHaveText('Joel');
 
   await page.locator('#tabRivalryBtn').click();
-  await expect(page.locator('#rivalryTeamA')).toHaveValue('Joel');
+  await expect(page.locator('#rivalryTeamA')).toHaveValue('Connor');
   await page.locator('#rivalryTeamB').selectOption('Zook');
   await page.locator('#rivalryTeamA').selectOption('Joe');
   await page.locator('#rivalryTeamB').selectOption('Joel');
@@ -604,7 +606,7 @@ test('trophy case url restores the trophy page and owner selection', async ({ pa
   const downloadPromise = page.waitForEvent('download');
   await page.locator('#exportCsv').click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe('history_Joe.csv');
+  expect(download.suggestedFilename()).toBe('history_ALL.csv');
 });
 
 test('history filters do not leak into dynasty controls', async ({ page }) => {
@@ -620,12 +622,9 @@ test('history filters do not leak into dynasty controls', async ({ page }) => {
 
   await activateFeature(page, 'dynasty');
   await expect(page.locator('#tabDynastyBtn')).toHaveClass(/active/);
-  await expect(page.locator('#dynastyModeSelect')).toHaveValue('calculator');
-  await expect(page.locator('#dynastyOwnerSelect')).toHaveValue('Joe');
-  await expect(page.locator('#dynastyStartSeason')).toHaveValue('2023');
-  await expect(page.locator('#dynastyEndSeason')).toHaveValue('2025');
-  await expect(page.locator('#dynastyCalculatorHero')).toContainText('Joe Dynasty Score');
-  await expect(page.locator('#dynastyCalculatorHero')).toContainText('2023-2025');
+  await expect(page.locator('#dynastyModeSelect')).toHaveValue('all-time');
+  await expect(page.locator('#dynastyOwnerSelect')).toHaveValue('__ALL__');
+  await expect(page.locator('#dynastyAllTimeLeaderboard')).toBeVisible();
 });
 
 test('browser back restores the previous history state after a tab change', async ({ page }) => {
@@ -642,7 +641,7 @@ test('browser back restores the previous history state after a tab change', asyn
 
   await activateFeature(page, 'trophy');
   await expect(page.locator('#tabTrophyBtn')).toHaveClass(/active/);
-  await expect(page.locator('#trophyOwnerSelect')).toHaveValue('Joel');
+  await expect(page.locator('#trophyOwnerSelect')).toHaveValue('Connor');
 
   await page.goBack();
   await page.waitForLoadState('networkidle');
@@ -666,8 +665,10 @@ test('dynasty tab renders controls and responds to calculator changes', async ({
   await expect(page.locator('#dynastyOwnerSelect')).toBeVisible();
   await expect(page.locator('#dynastyStartSeason')).toBeVisible();
   await expect(page.locator('#dynastyEndSeason')).toBeVisible();
-  await expect(page.locator('#dynastyModeSelect')).toHaveValue('calculator');
-  await expect(page.locator('#dynastyOwnerSelect')).toHaveValue('Joe');
+  await expect(page.locator('#dynastyModeSelect')).toHaveValue('all-time');
+  await expect(page.locator('#dynastyOwnerSelect')).toHaveValue('__ALL__');
+  await page.locator('#dynastyModeSelect').selectOption('calculator');
+  await page.locator('#dynastyOwnerSelect').selectOption('Joe');
   await expect(page.locator('#dynastyCalculatorHero')).toContainText('Dynasty Score');
 
   await page.locator('#dynastyStartSeason').selectOption('2021');

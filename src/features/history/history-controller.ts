@@ -238,8 +238,13 @@ export function createFeatureController(): DarlingFeatureController {
     if (!active) return;
     const select = context.document.getElementById('teamSelect') as HTMLSelectElement | null;
     if (select && selectedTeam !== select.value) selectedTeam = select.value;
-    context.header.team(selectedTeam);
-    context.theme.owner(selectedTeam, seasonModeFromLabels([...selectedTypes, ...selectedRounds]));
+    if (selectedTeam === ALL_TEAMS) {
+      context.header.feature('League History');
+      context.theme.league(seasonModeFromLabels([...selectedTypes, ...selectedRounds]));
+    } else {
+      context.header.team(selectedTeam);
+      context.theme.owner(selectedTeam, seasonModeFromLabels([...selectedTypes, ...selectedRounds]));
+    }
     const games = filtered();
     const route = context.router.parse();
     const gameQuery = { gameResult: route.gameResult, gameMinScore: route.gameMinScore, gameMaxScore: route.gameMaxScore, gameSort: route.gameSort, gameLimit: route.gameLimit };

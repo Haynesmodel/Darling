@@ -139,7 +139,7 @@ function MyTeam({ model }: { model: LeaguePulseViewModel }) {
   if (!team) return null;
   return <section class="card pulse-my-team">
     <p class="pulse-eyebrow">My Team</p><h3>{team.owner}</h3>
-    <p>{team.summary}</p><strong>{team.detail}</strong>
+    <p>{team.summary}</p><p><strong>{team.detail}</strong></p>
     <a href={team.href}>Open Owner Hub</a>
   </section>;
 }

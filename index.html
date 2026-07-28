@@ -59,6 +59,9 @@
           Owners<span class="visually-hidden" data-current-group-label></span>
         </summary>
         <div class="primary-nav-menu">
+          <a id="tabOwnerBtn" data-feature-id="owner" href="?tab=owner">
+            My Team<span class="visually-hidden" data-owner-preference-status>, not chosen</span>
+          </a>
           <a id="tabHistoryBtn" data-feature-id="history" href="?tab=history">League History</a>
           <a id="tabTrophyBtn" data-feature-id="trophy" href="?tab=trophy">Trophy Case</a>
           <a id="tabDynastyBtn" data-feature-id="dynasty" href="?tab=dynasty">Dynasty Rankings</a>
@@ -92,6 +95,11 @@
     <section id="page-pulse" class="page visible" aria-labelledby="page-pulse-title">
       <h2 id="page-pulse-title" class="visually-hidden">League Pulse</h2>
       <div id="leaguePulseRoot"></div>
+    </section>
+
+    <section id="page-owner" class="page" aria-labelledby="page-owner-title" hidden>
+      <h2 id="page-owner-title">My Team</h2>
+      <div id="ownerHubRoot"></div>
     </section>
 
     <section id="page-history" class="page" aria-labelledby="page-history-title" hidden>

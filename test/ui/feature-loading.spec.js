@@ -9,6 +9,7 @@ const manifest = preview
   : {};
 const sources = {
   pulse: 'src/features/league-pulse/league-pulse-controller.ts',
+  owner: 'src/features/owner-hub/owner-hub-controller.ts',
   history: 'src/features/history/history-controller.ts',
   current: 'src/features/current-season/current-season-controller.ts',
   rivalry: 'src/features/rivalry/rivalry-controller.ts',
@@ -40,6 +41,7 @@ test('every cold route requests only its feature entry and chart routes share on
   expect(chartRuntime).toBeTruthy();
   const routes = {
     pulse: '/',
+    owner: '/?tab=owner&owner=Joe',
     history: '/?tab=history',
     current: '/?tab=current&currentOwner=Joe',
     rivalry: '/?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel',
@@ -190,7 +192,7 @@ test('a delayed feature remains busy and cannot overwrite a newer activation', a
   await expect(featureDestination(page, 'trophy')).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('#page-trophy')).toBeVisible();
   await expect(page).toHaveURL(/tab=trophy/);
-  await expect(page.locator('header h2')).toHaveText('Joe');
+  await expect(page.locator('header h2')).toHaveText('Connor');
 });
 
 test('a failed feature import is contained in its section and other destinations remain usable', async ({ page }) => {

@@ -58,7 +58,7 @@ function showPage(id, doc) {
     window.darlingAccessibility.syncPageState(id);
     return;
   }
-  const resolvedId = ['pulse', 'history', 'current', 'rivalry', 'trophy', 'dynasty', 'draft', 'gauntlet'].includes(id)
+  const resolvedId = ['pulse', 'owner', 'history', 'current', 'rivalry', 'trophy', 'dynasty', 'draft', 'gauntlet'].includes(id)
     ? id
     : 'pulse';
   root.querySelectorAll('[data-feature-id]').forEach((destination) => {

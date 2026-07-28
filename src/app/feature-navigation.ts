@@ -21,6 +21,14 @@ export const FEATURE_NAVIGATION: Record<FeatureId, FeatureNavigationItem> = {
     destinationId: 'tabPulseBtn',
     heroMode: 'full',
   },
+  owner: {
+    id: 'owner',
+    label: 'My Team',
+    compactLabel: 'My Team',
+    group: 'owners',
+    destinationId: 'tabOwnerBtn',
+    heroMode: 'compact',
+  },
   history: {
     id: 'history',
     label: 'League History',

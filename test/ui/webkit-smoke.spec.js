@@ -38,6 +38,12 @@ test('WEBKIT-01 boots the verified Pulse snapshot without overflow', async ({ pa
 test('WEBKIT-02 restores deep links and browser history', async ({ page }) => {
   const routes = [
     {
+      url: '/?tab=owner&owner=Joe',
+      id: 'owner',
+      tab: 'Joe Owner Hub',
+      verify: () => expect(page.locator('.owner-hub-owner-control select')).toHaveValue('Joe'),
+    },
+    {
       url: '/?tab=history&team=Joe&seasons=2024',
       id: 'history',
       tab: 'League History',
@@ -80,20 +86,31 @@ test('WEBKIT-02 restores deep links and browser history', async ({ page }) => {
   await expect(page.locator('#teamSelect')).toHaveValue('Joe');
 });
 
+test('WEBKIT-07 saves and restores My Team', async ({ page }) => {
+  await page.goto('/?tab=owner&owner=Joe');
+  await page.getByRole('button', { name: 'Make Joe My Team' }).click();
+  await expect(page.getByRole('status')).toContainText('Joe is now My Team');
+  await page.reload();
+  await expect(page.locator('#page-owner-title')).toHaveText('Joe Owner Hub');
+  await expect(page.getByText('Current My Team')).toBeVisible();
+  await activateFeature(page, 'history');
+  await expect(page.locator('#teamSelect')).toHaveValue('Joe');
+});
+
 test('WEBKIT-03 supports mobile native navigation activation', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto('/');
   const owners = page.locator('.primary-nav-group[data-navigation-group="owners"] > summary');
-  const history = featureDestination(page, 'history');
+  const myTeam = featureDestination(page, 'owner');
   await owners.focus();
   await page.keyboard.press('Enter');
   await page.keyboard.press('Tab');
-  await expect(history).toBeFocused();
+  await expect(myTeam).toBeFocused();
   await expect(page.getByRole('region', { name: 'League Pulse', exact: true })).toBeVisible();
   await page.keyboard.press('Enter');
-  await expect(history).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByRole('region', { name: 'League History', exact: true })).toBeVisible();
-  await expect.poll(() => new URL(page.url()).searchParams.get('tab')).toBe('history');
+  await expect(myTeam).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('region', { name: 'My Team', exact: true })).toBeVisible();
+  await expect.poll(() => new URL(page.url()).searchParams.get('tab')).toBe('owner');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 

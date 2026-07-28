@@ -3,6 +3,7 @@ import { expectNoViolations } from './accessibility-helpers.js';
 import { createSnapshotFixture } from './snapshot-fixture.js';
 const pages = [
   ['pulse', 'League Pulse'],
+  ['owner', 'My Team'],
   ['history', 'League History'],
   ['current', 'Current Season'],
   ['rivalry', 'Head to Head'],

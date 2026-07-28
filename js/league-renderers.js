@@ -325,7 +325,7 @@ function leagueSummaryTablesHtml(opts = {}) {
   const regTable = `
   <div class="mini">
     <div class="mini-title">Regular Season (All-Time)</div>
-    <div class="table-wrap mini-table">
+    <div class="table-wrap mini-table" tabindex="0">
       <table>
         <thead><tr><th scope="col">Team</th><th scope="col">Record</th><th scope="col">Win%</th><th scope="col">PPG</th><th scope="col">OPPG</th></tr></thead>
         <tbody>${
@@ -339,7 +339,7 @@ function leagueSummaryTablesHtml(opts = {}) {
   const postTable = `
   <div class="mini">
     <div class="mini-title">Post Season (All-Time)</div>
-    <div class="table-wrap mini-table">
+    <div class="table-wrap mini-table" tabindex="0">
       <table>
         <thead>
           <tr>
@@ -375,7 +375,7 @@ function leagueSummaryTablesHtml(opts = {}) {
   const finishTable = `
   <div class="mini">
     <div class="mini-title">Average Finish (All-Time)</div>
-    <div class="table-wrap mini-table">
+    <div class="table-wrap mini-table" tabindex="0">
       <table>
         <thead><tr><th scope="col">Team</th><th scope="col">Avg Finish</th><th scope="col">Seasons</th></tr></thead>
         <tbody>${
@@ -615,7 +615,7 @@ function leagueFunListsAllTeamsHtml(opts = {}) {
   const mini = (title, headings, rows, emptyCols) => `
   <div class="mini">
     <div class="mini-title">${esc(title)}</div>
-    <div class="table-wrap mini-table">
+    <div class="table-wrap mini-table" tabindex="0">
       <table>
         <thead><tr>${headings.map(h => `<th scope="col">${esc(h)}</th>`).join('')}</tr></thead>
         <tbody>${rows || `<tr><td colspan="${emptyCols}" class="muted">\u2014</td></tr>`}</tbody>
@@ -662,7 +662,7 @@ function teamFunFactsView(team, games, opts = {}) {
   const listsHtml = `
   <div class="mini">
     <div class="mini-title">Top 5 Highest Scoring Games</div>
-    <div class="table-wrap mini-table">
+    <div class="table-wrap mini-table" tabindex="0">
       <table>
         <thead><tr><th scope="col">Score</th><th scope="col">Opponent</th><th scope="col">Date</th></tr></thead>
         <tbody>${vm.highestGames.map(r => `<tr><td>${esc(r.score)}</td><td>${esc(r.opponent)}</td><td>${esc(r.date)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">\u2014</td></tr>'}</tbody>
@@ -671,7 +671,7 @@ function teamFunFactsView(team, games, opts = {}) {
   </div>
   <div class="mini">
     <div class="mini-title">Bottom 5 Lowest Scoring Games</div>
-    <div class="table-wrap mini-table">
+    <div class="table-wrap mini-table" tabindex="0">
       <table>
         <thead><tr><th scope="col">Score</th><th scope="col">Opponent</th><th scope="col">Date</th></tr></thead>
         <tbody>${vm.lowestGames.map(r => `<tr><td>${esc(r.score)}</td><td>${esc(r.opponent)}</td><td>${esc(r.date)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">\u2014</td></tr>'}</tbody>

@@ -205,7 +205,7 @@ function createPropertyCompactionPlugin() {
         )];
         const result = await minify(code, {
           compress: {
-            booleans_as_integers: true,
+            booleans_as_integers: false,
             ecma: 2022,
             hoist_funs: true,
             hoist_props: true,

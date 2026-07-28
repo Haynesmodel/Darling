@@ -43,7 +43,7 @@ export function createFeatureController(): DarlingFeatureController {
         const result = context.ownerPreference.set(selectedOwner);
         message = result.persisted
           ? `${selectedOwner} is now My Team.`
-          : 'Saved for this visit; browser storage is unavailable.';
+          : 'Saved for this visit; storage is unavailable.';
         renderCurrent();
       },
       onClear() {

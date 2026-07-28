@@ -15,7 +15,7 @@ interface OwnerHubPageProps {
 }
 
 function Empty({ curse = false }: { curse?: boolean }) {
-  return <p class="muted">{curse ? 'No tracked owner curse.' : 'Not available for this owner.'}</p>;
+  return <p class="muted">{curse ? 'No tracked owner curse.' : 'Unavailable.'}</p>;
 }
 
 function Stat({ label, value }: { label: string; value: string | number }) {
@@ -33,7 +33,7 @@ function Card(props: { eyebrow: string; title: string; children: ComponentChildr
 function HubContent({ model }: { model: OwnerHubModel }) {
   return <>
     <div class="owner-hub-lead">
-      <Card eyebrow="Owner profile" title={model.identity.owner}>
+      <Card eyebrow="Profile" title={model.identity.owner}>
         {model.identity.displayName && <p>{model.identity.displayName}</p>}
         {model.identity.teamName && <p>{model.identity.teamName}</p>}
         <p>{model.identity.completedSeasons} completed seasons · {model.identity.phase.replaceAll('-', ' ')}</p>
@@ -45,25 +45,25 @@ function HubContent({ model }: { model: OwnerHubModel }) {
         {model.rightNow ? <>
           <p>{model.rightNow.summary}</p>
           {model.rightNow.detail && <strong>{model.rightNow.detail}</strong>}
-          <a href={model.rightNow.href}>Open details</a>
+          <a href={model.rightNow.href}>Details</a>
         </> : <Empty />}
       </Card>
 
       <Card eyebrow="Legacy" title="Career">
         {model.legacy ? <dl class="owner-hub-stats">
           <Stat label="Regular season" value={model.legacy.record} />
-          <Stat label="Win percentage" value={model.legacy.winPct === null ? 'Not available' : `${(model.legacy.winPct * 100).toFixed(1)}%`} />
+          <Stat label="Win %" value={model.legacy.winPct === null ? 'Not available' : `${(model.legacy.winPct * 100).toFixed(1)}%`} />
           <Stat label="Championships" value={model.legacy.championships} />
-          <Stat label="Saunders titles" value={model.legacy.saundersTitles} />
+          <Stat label="Saunders" value={model.legacy.saundersTitles} />
           <Stat label="Playoffs" value={model.legacy.playoffRecord} />
           <Stat label="Best finish" value={model.legacy.bestFinish === null ? 'Not available' : `No. ${model.legacy.bestFinish}`} />
-          <Stat label="Average finish" value={model.legacy.averageFinish === null ? 'Not available' : model.legacy.averageFinish.toFixed(1)} />
+          <Stat label="Avg. finish" value={model.legacy.averageFinish === null ? 'Not available' : model.legacy.averageFinish.toFixed(1)} />
         </dl> : <Empty />}
       </Card>
 
       <Card eyebrow="Recent form" title="Last five games">
         {model.recentForm ? <>
-          <p><strong>Current streak: {model.recentForm.streak}</strong></p>
+          <p><strong>Streak: {model.recentForm.streak}</strong></p>
           <ol class="owner-hub-form">
             {model.recentForm.games.map(game => <li key={`${game.when}-${game.opponent}`}>
               <span class={`owner-hub-result owner-hub-result-${game.result.toLowerCase()}`}>{game.result}</span>
@@ -81,15 +81,15 @@ function HubContent({ model }: { model: OwnerHubModel }) {
           : <Empty />}
       </Card>
 
-      <Card eyebrow="Draft identity" title="Draft tendency">
+      <Card eyebrow="Draft" title="Draft tendency">
         {model.draftIdentity ? <>
           <dl class="owner-hub-stats">
             <Stat label="Samples" value={model.draftIdentity.samples} />
             <Stat label="Average pick" value={model.draftIdentity.averagePick.toFixed(1)} />
             <Stat label="Earliest / latest" value={`${model.draftIdentity.earliestPick} / ${model.draftIdentity.latestPick}`} />
-            <Stat label={`Most recent (${model.draftIdentity.mostRecent.season})`} value={model.draftIdentity.mostRecent.pick} />
+            <Stat label={`Latest (${model.draftIdentity.mostRecent.season})`} value={model.draftIdentity.mostRecent.pick} />
           </dl>
-          <a href={model.draftIdentity.href}>Open details</a>
+          <a href={model.draftIdentity.href}>Details</a>
         </> : <Empty />}
       </Card>
 
@@ -98,12 +98,12 @@ function HubContent({ model }: { model: OwnerHubModel }) {
           {model.rivalries.configured.map(rivalry => <p key={rivalry.name}><strong>{rivalry.name}</strong> · {rivalry.opponents.join(', ')}</p>)}
           {model.rivalries.mostPlayed && <p>
             Most played: <strong>{model.rivalries.mostPlayed.opponent}</strong> · {model.rivalries.mostPlayed.record} across {model.rivalries.mostPlayed.games} games<br />
-            <a href={model.rivalries.mostPlayed.href}>Open details</a>
+            <a href={model.rivalries.mostPlayed.href}>Details</a>
           </p>}
         </> : <Empty />}
       </Card>
 
-      <Card eyebrow="Curses" title="Owner curses">
+      <Card eyebrow="Curses" title="Curses">
         {model.curses ? <>
           <p>{model.curses.counts.active} active · {model.curses.counts.cold} cold · {model.curses.counts.broken} broken</p>
           {model.curses.top && <p><strong>{model.curses.top.title}</strong> · {model.curses.top.status}</p>}
@@ -114,7 +114,7 @@ function HubContent({ model }: { model: OwnerHubModel }) {
 
     <section class="card owner-hub-explore" aria-labelledby="ownerHubExploreTitle">
       <p class="owner-hub-eyebrow">Go deeper</p><h3 id="ownerHubExploreTitle">Explore as {model.identity.owner}</h3>
-      <nav aria-label={`Explore Darling as ${model.identity.owner}`}>
+      <nav aria-label={`Explore as ${model.identity.owner}`}>
         {model.actions.map(action => <a href={action.href} key={action.label}>{action.label}</a>)}
       </nav>
     </section>
@@ -127,8 +127,8 @@ export function OwnerHubPage(props: OwnerHubPageProps) {
   return <div class="owner-hub">
     <section class="card owner-hub-setup" aria-labelledby="ownerHubSetupTitle">
       <p class="owner-hub-eyebrow">{selectedOwner ? 'Owner Hub' : 'Set up My Team'}</p>
-      <h3 id="ownerHubSetupTitle">{selectedOwner || 'Choose your owner'}</h3>
-      {!selectedOwner && <p>Preview an owner, then save My Team.</p>}
+      <h3 id="ownerHubSetupTitle">{selectedOwner || 'Choose an owner'}</h3>
+      {!selectedOwner && <p>Preview, then save My Team.</p>}
       {props.invalidOwner && <p class="status-banner status-error" role="alert">
         Owner not found: {props.invalidOwner}.
       </p>}

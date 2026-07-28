@@ -103,7 +103,7 @@ export function buildOwnerHubModel(
   if (currentGame) {
     const scoreState = currentSide && currentGame.status !== 'scheduled'
       ? `${currentSide.pf.toFixed(2)}–${currentSide.pa.toFixed(2)} · ${currentGame.status === 'live' ? 'Live' : 'Final'}`
-      : currentGame.status === 'scheduled' ? 'Scheduled · score not available' : null;
+      : currentGame.status === 'scheduled' ? 'Scheduled · score pending' : null;
     const standingState = standing?.games ? `${standing.record} · seed ${standing.rank}` : null;
     const score = [scoreState, standingState].filter(Boolean).join(' · ') || null;
     rightNow = {

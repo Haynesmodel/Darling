@@ -95,7 +95,7 @@ test('scheduled current matchup has no false 0-0 result and aliases stay owner-s
   });
   assert.equal(model.identity.displayName, 'Display <img>');
   assert.equal(model.identity.teamName, 'Team & Co');
-  assert.match(model.rightNow.detail, /score not available/i);
+  assert.match(model.rightNow.detail, /score pending/i);
   assert.doesNotMatch(model.rightNow.detail, /0.*0/);
 });
 

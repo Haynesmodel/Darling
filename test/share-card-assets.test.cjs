@@ -7,9 +7,15 @@ const sharp = require('sharp');
 
 const root = path.join(__dirname, '..');
 const sourceCard = path.join(root, 'assets/share/darling-default-card.png');
-const { generateShareCardAssets } = require('../scripts/generate_share_card_assets.cjs');
+const {
+  generateShareCardAssets,
+  runCli: runGeneratorCli,
+} = require('../scripts/generate_share_card_assets.cjs');
 const { auditBuiltAssets, SHARE_CARD_MAX_BYTES } = require('../scripts/audit_built_assets.cjs');
-const { isDeployableAsset } = require('../scripts/sync_public_assets.cjs');
+const {
+  isDeployableAsset,
+  runCli: runSyncCli,
+} = require('../scripts/sync_public_assets.cjs');
 
 function fixture() {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-share-assets-'));
@@ -36,6 +42,35 @@ test('default card generation is deterministic and drift detection fails closed'
     mutated[mutated.length - 1] ^= 1;
     fs.writeFileSync(output, mutated);
     await assert.rejects(generateShareCardAssets(root, { output, check: true }), /drifted/);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('share generator and public sync CLIs report success and failure without hidden writes', async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-share-cli-'));
+  const messages = [];
+  const logger = {
+    log: message => messages.push(String(message)),
+    error: message => messages.push(String(message)),
+  };
+  try {
+    assert.equal(await runGeneratorCli({ root: directory, args: [], logger }), 0);
+    assert.equal(await runGeneratorCli({ root: directory, args: ['--check'], logger }), 0);
+    assert.equal(runSyncCli(directory, logger), 0);
+    assert.ok(messages.some(message => message.includes('Generated assets/share/darling-default-card.png')));
+    assert.ok(messages.some(message => message.includes('Default share card is current')));
+    assert.ok(messages.some(message => message.includes('Synced assets to public/assets')));
+
+    const missing = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-share-cli-missing-'));
+    try {
+      assert.equal(await runGeneratorCli({ root: missing, args: ['--check'], logger }), 1);
+      assert.equal(runSyncCli(missing, logger), 1);
+      assert.ok(messages.some(message => message.includes('Default share card is missing')));
+      assert.ok(messages.some(message => message.includes('Missing source assets directory')));
+    } finally {
+      fs.rmSync(missing, { recursive: true, force: true });
+    }
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }

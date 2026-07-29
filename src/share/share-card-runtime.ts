@@ -163,7 +163,13 @@ export async function openShareCardPreview(spec: ShareCardSpec, opener: HTMLElem
     }
   }
   if (active !== preview || generation !== preview.token) return;
-  const sharePayload = file && navigator.canShare?.({ files: [file] })
+  let acceptsFile = false;
+  try {
+    acceptsFile = Boolean(file && navigator.canShare?.({ files: [file] }));
+  } catch {
+    acceptsFile = false;
+  }
+  const sharePayload = file && acceptsFile
     ? { files: [file], title: spec.title, text: spec.altText, url: spec.canonicalUrl }
     : { title: spec.title, text: spec.altText, url: spec.canonicalUrl };
   if (navigator.share) {

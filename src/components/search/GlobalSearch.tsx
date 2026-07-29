@@ -18,7 +18,12 @@ function loadCommandPalette(): Promise<CommandPaletteComponent> {
     commandPaletteRequest = (commandPaletteRetryUrl
       ? import(/* @vite-ignore */ `${commandPaletteRetryUrl}#${++commandPaletteRetries}`)
       : import('./CommandPalette'))
-      .then(module => module.default)
+      .then(module => {
+        if (typeof module.default !== 'function') {
+          throw new Error('Command Palette did not expose its component contract');
+        }
+        return module.default;
+      })
       .catch(error => {
         commandPaletteRetryUrl ||= performance.getEntriesByType('resource')
           .reverse()

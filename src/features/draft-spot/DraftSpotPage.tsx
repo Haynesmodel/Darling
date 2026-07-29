@@ -6,6 +6,7 @@ import type {
   DraftSpotMountOptions,
   DraftSpotState,
   DraftSpotUrlState,
+  DraftSpotViewModel,
 } from './draft-spot-types';
 import type { DraftSpot } from '../../data/generated/asset-types';
 import DraftSpotControls from './DraftSpotControls';
@@ -47,6 +48,68 @@ function DraftShareAction({ result }: { result: ShareCardBuildResult | null }) {
   return <div ref={host} class="share-card-action-host" />;
 }
 
+export function buildDraftShareResult(
+  model: DraftSpotViewModel,
+  dataVersion: string,
+  win: Window | null,
+): ShareCardBuildResult | null {
+  if (!win) return null;
+  const canonicalPath = buildUrlFromState({
+    pathname: win.location.pathname,
+    tab: 'draft',
+    selectedDraftOwner: model.state.owner,
+    selectedDraftMode: model.state.mode,
+    selectedDraftStartSeason: model.state.startSeason,
+    selectedDraftEndSeason: model.state.endSeason,
+    selectedDraftMetric: model.state.metric,
+    selectedDraftMinSample: model.state.minSample,
+    selectedDraftNormalize: model.state.normalize,
+    selectedDraftPick: model.state.selectedPick,
+    selectedDraftZone: model.state.selectedZone,
+  });
+  const bestAverage = model.hero.bestAvgPick;
+  const bestPlayoff = model.hero.bestPlayoffPick;
+  return buildFeatureShareCard('draft', {
+    id: [
+      model.state.mode,
+      model.state.owner,
+      model.state.startSeason,
+      model.state.endSeason,
+      model.state.selectedPick || '',
+      model.state.selectedZone || '',
+    ].join('|'),
+    eyebrow: 'Draft Spot Explorer',
+    title: model.hero.title,
+    subtitle: model.hero.subtitle,
+    metrics: [
+      {
+        label: 'Sample',
+        value: `${model.baseRows.length} owner-seasons`,
+        detail: `${model.state.startSeason}–${model.state.endSeason}`,
+      },
+      {
+        label: 'Best avg finish',
+        value: bestAverage ? draftPositionLabel(bestAverage.draft_pick, model.state.normalize) : '—',
+        detail: bestAverage ? `Finish ${formatNumber(bestAverage.avg_finish)} · n=${bestAverage.n}` : undefined,
+      },
+      {
+        label: 'Best playoff path',
+        value: bestPlayoff ? draftPositionLabel(bestPlayoff.draft_pick, model.state.normalize) : '—',
+        detail: bestPlayoff ? `${formatPercent(bestPlayoff.playoff_rate)} · n=${bestPlayoff.n}` : undefined,
+      },
+      {
+        label: 'Selected metric',
+        value: DRAFT_METRICS[model.state.metric].label,
+        detail: `${model.state.mode} view`,
+      },
+    ],
+    canonicalPath,
+    sourceLabel: 'Draft Spot',
+    dataVersion,
+    altText: `${model.hero.title}. ${model.baseRows.length} owner-seasons from ${model.state.startSeason} through ${model.state.endSeason}. ${model.hero.read}`,
+  }, win);
+}
+
 export default function DraftSpotPage({
   asset,
   requestedState,
@@ -74,56 +137,10 @@ export default function DraftSpotPage({
     model.state.selectedPick || '',
     model.state.selectedZone || '',
   ].join('|');
-  const shareResult = useMemo(() => {
-    if (typeof window === 'undefined') return null;
-    const canonicalPath = buildUrlFromState({
-      pathname: window.location.pathname,
-      tab: 'draft',
-      selectedDraftOwner: model.state.owner,
-      selectedDraftMode: model.state.mode,
-      selectedDraftStartSeason: model.state.startSeason,
-      selectedDraftEndSeason: model.state.endSeason,
-      selectedDraftMetric: model.state.metric,
-      selectedDraftMinSample: model.state.minSample,
-      selectedDraftNormalize: model.state.normalize,
-      selectedDraftPick: model.state.selectedPick,
-      selectedDraftZone: model.state.selectedZone,
-    });
-    const bestAverage = model.hero.bestAvgPick;
-    const bestPlayoff = model.hero.bestPlayoffPick;
-    return buildFeatureShareCard('draft', {
-      id: disclosureSignature,
-      eyebrow: 'Draft Spot Explorer',
-      title: model.hero.title,
-      subtitle: model.hero.subtitle,
-      metrics: [
-        {
-          label: 'Sample',
-          value: `${model.baseRows.length} owner-seasons`,
-          detail: `${model.state.startSeason}–${model.state.endSeason}`,
-        },
-        {
-          label: 'Best avg finish',
-          value: bestAverage ? draftPositionLabel(bestAverage.draft_pick, model.state.normalize) : '—',
-          detail: bestAverage ? `Finish ${formatNumber(bestAverage.avg_finish)} · n=${bestAverage.n}` : undefined,
-        },
-        {
-          label: 'Best playoff path',
-          value: bestPlayoff ? draftPositionLabel(bestPlayoff.draft_pick, model.state.normalize) : '—',
-          detail: bestPlayoff ? `${formatPercent(bestPlayoff.playoff_rate)} · n=${bestPlayoff.n}` : undefined,
-        },
-        {
-          label: 'Selected metric',
-          value: DRAFT_METRICS[model.state.metric].label,
-          detail: `${model.state.mode} view`,
-        },
-      ],
-      canonicalPath,
-      sourceLabel: 'Draft Spot',
-      dataVersion,
-      altText: `${model.hero.title}. ${model.baseRows.length} owner-seasons from ${model.state.startSeason} through ${model.state.endSeason}. ${model.hero.read}`,
-    }, window);
-  }, [dataVersion, disclosureSignature, model]);
+  const shareResult = useMemo(
+    () => buildDraftShareResult(model, dataVersion, typeof window === 'undefined' ? null : window),
+    [dataVersion, disclosureSignature, model],
+  );
 
   const update = (requested: Partial<DraftSpotState>) => {
     const next = buildDraftSpotModel(asset, requested, state).state;

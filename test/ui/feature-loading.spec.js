@@ -99,6 +99,27 @@ test('Command Palette implementation and CSS load only after the first open', as
   expect(resources.filter(resource => resource.endsWith(commandPalette.file))).toHaveLength(1);
 });
 
+test('Command Palette keyboard movement reaches the first, last, and adjacent results', async ({ page }) => {
+  await page.goto('/');
+  await waitForFeature(page, 'pulse');
+  await page.locator('.search-trigger').click();
+  const dialog = page.getByRole('dialog', { name: 'Search The Darling' });
+  const input = dialog.getByRole('combobox', { name: /Search owners, seasons/ });
+  await input.fill('Joe');
+  const options = dialog.getByRole('option');
+  expect(await options.count()).toBeGreaterThan(1);
+  await input.press('End');
+  await expect(input).toHaveAttribute('aria-activedescendant', `global-search-option-${await options.count() - 1}`);
+  await input.press('Home');
+  await expect(input).toHaveAttribute('aria-activedescendant', 'global-search-option-0');
+  await input.press('ArrowDown');
+  await expect(input).toHaveAttribute('aria-activedescendant', 'global-search-option-1');
+  await input.press('ArrowUp');
+  await expect(input).toHaveAttribute('aria-activedescendant', 'global-search-option-0');
+  await input.press('Enter');
+  await expect(page).toHaveURL(/[?&]tab=owner/);
+});
+
 test('Command Palette reports a failed import and retries without a reload', async ({ page }) => {
   let attempts = 0;
   await page.route(commandPalettePattern(), async route => {

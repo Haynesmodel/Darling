@@ -47,13 +47,13 @@ function syncPublicAssets(root = process.cwd()) {
   return targetDir;
 }
 
-function runCli(root = process.cwd()) {
+function runCli(root = process.cwd(), logger = console) {
   try {
     const targetDir = syncPublicAssets(root);
-    console.log(`Synced assets to ${path.relative(root, targetDir)}`);
+    logger.log(`Synced assets to ${path.relative(root, targetDir)}`);
     return 0;
   } catch (err) {
-    console.error(err.message);
+    logger.error(err.message);
     return 1;
   }
 }

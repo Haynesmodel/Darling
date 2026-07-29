@@ -75,6 +75,110 @@ test('coverage build exercises the share-card validation failures in authored co
   });
 });
 
+test('coverage build exercises internal share lifecycle and empty Draft branches', async ({ page }) => {
+  test.skip(!process.env.COLLECT_COVERAGE, 'Authored module contracts are available only from the instrumented development server.');
+  await page.goto('/');
+  expect(await page.evaluate(async () => {
+    const actions = await import('/src/share/share-card-actions.ts');
+    const adapters = await import('/src/share/share-card-feature-adapters.ts');
+    const { buildShareCard } = await import('/src/share/share-card-builders.ts');
+    const host = document.createElement('div');
+    document.body.append(host);
+    const unavailable = actions.mountShareCardAction({
+      host,
+      result: { ok: false, code: 'INCOMPLETE_DATA', message: 'Card unavailable.' },
+    });
+    const unavailableState = {
+      role: host.getAttribute('role'),
+      state: host.getAttribute('data-share-state'),
+    };
+    unavailable.dispose();
+    const cleaned = !host.hasAttribute('role') && !host.hasAttribute('data-share-state');
+    const copy = actions.mountCopyLinkAction(host, location.href);
+    copy.dispose();
+
+    const root = document.createElement('div');
+    const rowHost = document.createElement('div');
+    rowHost.dataset.shareTeamA = 'A';
+    rowHost.dataset.shareTeamB = 'B';
+    root.append(rowHost);
+    const emptyCurrent = adapters.mountCurrentMatchupCards(
+      null, { matchups: [] }, location.pathname, 'fixture', window,
+    );
+    const missingRow = adapters.mountCurrentMatchupCards(
+      root, { matchups: [], season: 2030, week: 1 }, location.pathname, 'fixture', window,
+    );
+    const pending = adapters.mountCurrentMatchupCards(root, {
+      season: 2030,
+      week: 1,
+      matchups: [{ teamA: 'A', teamB: 'B', completed: false }],
+    }, location.pathname, 'fixture', window);
+    pending.forEach(controller => controller.dispose());
+    const noRivalry = adapters.mountRivalryCard(
+      host,
+      { teamA: 'A', teamB: 'B', summary: { overall: { g: 0 } } },
+      location.pathname,
+      'fixture',
+      window,
+    );
+    const noTrophy = adapters.mountTrophyCard(host, {}, location.pathname, 'fixture', window);
+    const noDynasty = adapters.mountDynastyCard(host, null, location.pathname, 'fixture', window);
+    const incomplete = buildShareCard('matchup', {
+      id: 'coverage',
+      eyebrow: 'Coverage',
+      title: 'A vs B',
+      metrics: [{ label: 'A', value: '1' }, { label: 'B', value: '0' }],
+      canonicalHref: location.href,
+      sourceLabel: 'Coverage',
+      dataVersion: 'fixture',
+      altText: 'Coverage card.',
+      complete: false,
+    }, { origin: location.origin, basePath: '/' });
+    host.remove();
+
+    const [pageModule, draftModel, asset] = await Promise.all([
+      import('/src/features/draft-spot/DraftSpotPage.tsx'),
+      import('/src/features/draft-spot/draft-spot-model.ts'),
+      fetch('/assets/DraftSpot.json').then(response => response.json()),
+    ]);
+    const emptyAsset = {
+      ...asset,
+      rows: [],
+      pick_summary: [],
+      zone_summary: [],
+      owner_recommendations: [],
+      team_seasons: 0,
+    };
+    const emptyModel = draftModel.buildDraftSpotModel(emptyAsset);
+    const emptyDraft = pageModule.buildDraftShareResult(emptyModel, 'fixture', window);
+    const serverDraft = pageModule.buildDraftShareResult(emptyModel, 'fixture', null);
+
+    return {
+      unavailableState,
+      cleaned,
+      emptyCurrent: emptyCurrent.length,
+      missingRow: missingRow.length,
+      noRivalry,
+      noTrophy,
+      noDynasty,
+      incomplete: incomplete.code,
+      emptyDraft: emptyDraft?.ok,
+      serverDraft,
+    };
+  })).toEqual({
+    unavailableState: { role: 'alert', state: 'unavailable' },
+    cleaned: true,
+    emptyCurrent: 0,
+    missingRow: 0,
+    noRivalry: null,
+    noTrophy: null,
+    noDynasty: null,
+    incomplete: 'INCOMPLETE_DATA',
+    emptyDraft: true,
+    serverDraft: null,
+  });
+});
+
 test('Newspaper preview loads once, produces a fixed PNG, and restores focus', async ({ page }) => {
   test.skip(!preview, 'production manifest assertions require the preview build');
   const requested = [];
@@ -240,7 +344,10 @@ test('native file share cancellation and rejection keep recovery actions usable'
 test('native URL-only share omits the prepared file', async ({ page }) => {
   await page.addInitScript(() => {
     globalThis.__shareCall = null;
-    Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => false });
+    Object.defineProperty(navigator, 'canShare', {
+      configurable: true,
+      value: () => { throw new DOMException('Unsupported', 'NotSupportedError'); },
+    });
     Object.defineProperty(navigator, 'share', {
       configurable: true,
       value: async value => {
@@ -262,6 +369,18 @@ test('native URL-only share omits the prepared file', async ({ page }) => {
     title: '2025 Week 14 Recap',
     url: expect.stringContaining('currentWeek=14'),
   });
+});
+
+test('SVG decode failure preserves the original SVG download', async ({ page }) => {
+  await page.addInitScript(() => {
+    Image.prototype.decode = async () => {
+      throw new DOMException('Decode failed', 'EncodingError');
+    };
+  });
+  const { dialog } = await openNewspaperCard(page);
+  await expect(dialog.getByText('PNG creation failed; download the SVG card.', { exact: true })).toBeVisible();
+  await expect(dialog.getByRole('link', { name: 'Download SVG', exact: true })).toHaveAttribute('download', /\.svg$/);
+  await expect(dialog.getByRole('button', { name: 'Copy link', exact: true })).toBeEnabled();
 });
 
 test('Clipboard denial selects the canonical URL and Canvas failure offers SVG', async ({ page }) => {

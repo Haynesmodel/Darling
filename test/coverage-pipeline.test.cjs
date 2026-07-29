@@ -162,6 +162,41 @@ test('Node and browser maps for one source merge branch and function counters', 
   });
 });
 
+test('incompatible remaps use the stronger authored map without duplicating denominators', () => {
+  withTempRepo(root => {
+    const filePath = path.join(root, 'src', 'remapped-runtime.js');
+    const strongMap = instrumentAndRun(filePath, [
+      'function choose(flag) {',
+      '  return flag ? 1 : 2;',
+      '}',
+      'choose(true);',
+      '',
+    ].join('\n'));
+    const weakMap = instrumentAndRun(filePath, [
+      'const generatedWrapper = true;',
+      'function choose(flag) {',
+      '  return flag ? 1 : 2;',
+      '}',
+      'choose(true);',
+      '',
+    ].join('\n'));
+    const weakCoverage = Object.values(weakMap)[0];
+    Object.keys(weakCoverage.s).forEach(key => { weakCoverage.s[key] = 0; });
+    Object.keys(weakCoverage.f).forEach(key => { weakCoverage.f[key] = 0; });
+    Object.keys(weakCoverage.b).forEach(key => { weakCoverage.b[key] = weakCoverage.b[key].map(() => 0); });
+    const strongPath = path.join(root, 'strong.json');
+    const weakPath = path.join(root, 'weak.json');
+    fs.writeFileSync(strongPath, JSON.stringify(strongMap));
+    fs.writeFileSync(weakPath, JSON.stringify(weakMap));
+
+    const merged = mergeCoverageMaps(root, [strongPath, weakPath]);
+    const result = merged.fileCoverageFor(fs.realpathSync.native(filePath)).toSummary();
+    const strongKey = Object.keys(strongMap)[0];
+    const expected = createCoverageMap(strongMap).fileCoverageFor(strongKey).toSummary();
+    assert.deepEqual(result, expected);
+  });
+});
+
 test('Vite and Preact map instrumented TSX to original lines while normal mode stays clean', async () => {
   const root = process.cwd();
   const fixtureName = `__coverage-contract-${process.pid}-${Date.now()}.tsx`;

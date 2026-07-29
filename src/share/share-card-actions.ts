@@ -23,6 +23,9 @@ function loadRuntime(): Promise<RuntimeModule> {
       ? import(/* @vite-ignore */ `${retryUrl}#${++retry}`)
       : import('./share-card-runtime'))
       .then(module => {
+        if (typeof module.openShareCardPreview !== 'function') {
+          throw new Error('Share card runtime did not expose its preview contract');
+        }
         runtime = module;
         return module;
       })
@@ -60,11 +63,19 @@ export function mountShareCardAction(options: ShareCardActionOptions): ShareCard
   const { host, result } = options;
   const doc = host.ownerDocument;
   host.replaceChildren();
+  host.removeAttribute('data-share-state');
+  host.removeAttribute('role');
   if (result.ok === false) {
     host.setAttribute('data-share-state', 'unavailable');
     host.setAttribute('role', 'alert');
     host.textContent = result.message;
-    return { dispose() { host.replaceChildren(); } };
+    return {
+      dispose() {
+        host.replaceChildren();
+        host.removeAttribute('data-share-state');
+        host.removeAttribute('role');
+      },
+    };
   }
   const button = element(doc, 'button', 'btn share-card-button');
   button.type = 'button';
@@ -105,6 +116,8 @@ export function mountShareCardAction(options: ShareCardActionOptions): ShareCard
       button.removeEventListener('click', open);
       runtime?.closeShareCardPreview(button);
       host.replaceChildren();
+      host.removeAttribute('data-share-state');
+      host.removeAttribute('role');
     },
   };
 }
@@ -116,6 +129,8 @@ export function mountCopyLinkAction(
 ): ShareCardActionController {
   const doc = host.ownerDocument;
   host.replaceChildren();
+  host.removeAttribute('data-share-state');
+  host.removeAttribute('role');
   const button = element(doc, 'button', 'btn share-card-button');
   button.type = 'button';
   button.textContent = label;
@@ -142,6 +157,8 @@ export function mountCopyLinkAction(
     dispose() {
       button.removeEventListener('click', copy);
       host.replaceChildren();
+      host.removeAttribute('data-share-state');
+      host.removeAttribute('role');
     },
   };
 }

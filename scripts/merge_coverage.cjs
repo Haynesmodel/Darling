@@ -149,9 +149,17 @@ function normalizeCoveragePath(root, filePath) {
   return absolutePath;
 }
 
+function isUnexecutedRemap(coverage) {
+  const functionCounters = Object.values(coverage.data.f);
+  const branchCounters = Object.values(coverage.data.b).flat();
+  return functionCounters.length > 0
+    && functionCounters.every(value => value === 0)
+    && branchCounters.every(value => value === 0);
+}
+
 function mergeCoverageMaps(root = process.cwd(), mapFiles = discoverCoverageMaps(root)) {
   if (mapFiles.length === 0) throw new Error('No Node or browser Istanbul coverage maps were found.');
-  const merged = createCoverageMap({});
+  const candidates = new Map();
   for (const mapFile of mapFiles) {
     let input;
     try {
@@ -170,8 +178,18 @@ function mergeCoverageMaps(root = process.cwd(), mapFiles = discoverCoverageMaps
       if (!isCoverageSource(root, absolutePath)) continue;
       const coverage = coverageMap.fileCoverageFor(file).toJSON();
       coverage.path = absolutePath;
-      merged.addFileCoverage(coverage);
+      const values = candidates.get(absolutePath) || [];
+      values.push(coverage);
+      candidates.set(absolutePath, values);
     }
+  }
+  const merged = createCoverageMap({});
+  for (const values of candidates.values()) {
+    const hasExecutedMap = values.some(coverage => !isUnexecutedRemap({ data: coverage }));
+    const selected = hasExecutedMap
+      ? values.filter(coverage => !isUnexecutedRemap({ data: coverage }))
+      : values;
+    selected.forEach(coverage => merged.addFileCoverage(coverage));
   }
   return merged;
 }
@@ -259,6 +277,7 @@ module.exports = {
   assertRawCoverageSize,
   collectSourceFiles,
   directoryBytes,
+  isUnexecutedRemap,
   discoverCoverageMaps,
   isCoverageSource,
   isTypeOnlySourceFile,

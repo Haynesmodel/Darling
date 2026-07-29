@@ -45,16 +45,19 @@ async function generateShareCardAssets(root = process.cwd(), options = {}) {
   return { output, buffer, changed };
 }
 
-async function runCli() {
-  const check = process.argv.includes('--check');
+async function runCli(options = {}) {
+  const root = options.root || process.cwd();
+  const args = options.args || process.argv.slice(2);
+  const logger = options.logger || console;
+  const check = args.includes('--check');
   try {
-    const result = await generateShareCardAssets(process.cwd(), { check });
-    console.log(check
+    const result = await generateShareCardAssets(root, { check });
+    logger.log(check
       ? `Default share card is current (${result.buffer.length} bytes).`
-      : `Generated ${path.relative(process.cwd(), result.output)} (${result.buffer.length} bytes).`);
+      : `Generated ${path.relative(root, result.output)} (${result.buffer.length} bytes).`);
     return 0;
   } catch (error) {
-    console.error(error.message);
+    logger.error(error.message);
     return 1;
   }
 }
@@ -65,4 +68,5 @@ module.exports = {
   DEFAULT_SHARE_SPEC,
   generateShareCardAssets,
   generateShareCardBuffer,
+  runCli,
 };

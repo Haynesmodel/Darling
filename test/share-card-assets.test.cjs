@@ -8,7 +8,10 @@ const sharp = require('sharp');
 const root = path.join(__dirname, '..');
 const sourceCard = path.join(root, 'assets/share/darling-default-card.png');
 const {
+  decodePortableText,
   generateShareCardAssets,
+  portableTextPath,
+  renderPortableShareCardSvg,
   runCli: runGeneratorCli,
 } = require('../scripts/generate_share_card_assets.cjs');
 const { auditBuiltAssets, SHARE_CARD_MAX_BYTES } = require('../scripts/audit_built_assets.cjs');
@@ -45,6 +48,29 @@ test('default card generation is deterministic and drift detection fails closed'
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test('portable default-card text is platform-independent and fails closed', () => {
+  assert.equal(decodePortableText('&lt;Darling&gt; &quot;2014–present&quot; &apos;ok&apos;'), '<DARLING> "2014-PRESENT" \'OK\'');
+  assert.equal(decodePortableText('&amp;lt;'), '&LT;');
+  const style = { size: 16, scale: 2, fill: '#fff', spacing: 1 };
+  const start = portableTextPath('AB', 20, 40, style);
+  const end = portableTextPath('AB', 20, 40, style, 'end');
+  assert.match(start, /M20 /);
+  assert.notEqual(start, end);
+  assert.throws(() => portableTextPath('?', 0, 20, style), /portable font is missing/);
+
+  const portable = renderPortableShareCardSvg(
+    '<svg><text x="10" y="20" class="eye">A</text></svg>',
+    '#abcdef',
+  );
+  assert.match(portable, /<path d="M/);
+  assert.match(portable, /fill="#abcdef"/);
+  assert.doesNotMatch(portable, /<text/);
+  assert.throws(
+    () => renderPortableShareCardSvg('<svg><text x="10" y="20" class="missing">A</text></svg>', '#fff'),
+    /no style/,
+  );
 });
 
 test('share generator and public sync CLIs report success and failure without hidden writes', async () => {

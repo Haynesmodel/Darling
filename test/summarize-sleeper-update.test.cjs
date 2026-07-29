@@ -231,7 +231,7 @@ test('transaction candidate enforces target league, unique IDs, and target prese
   });
 });
 
-test('transaction candidate preserves every non-target season exactly', () => {
+test('transaction candidate preserves each retained non-target season exactly', () => {
   const historical = {
     season: 2024,
     league_id: 'historical-league',

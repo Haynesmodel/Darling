@@ -1,6 +1,10 @@
 const path = require('node:path');
 const { canonicalJson, readJson } = require('./canonical-json.cjs');
 
+const TRANSACTION_MAX_RETAINED_SEASONS = 12;
+const TRANSACTION_MAX_SEASON_BYTES = 750000;
+const TRANSACTION_MAX_ASSET_BYTES = 12 * 1024 * 1024;
+
 function canonicalGameKey(game) {
   const teams = [game.teamA, game.teamB].sort((a, b) => a.localeCompare(b));
   return [game.season, game.week, teams[0], teams[1], game.type, game.round || ''].join('|');
@@ -592,13 +596,16 @@ function validateSemanticBundle(bundle, opts = {}) {
         report('TRANSACTION_COVERAGE_MISMATCH', `${location} coverage`, `${season.season}|missing_player_metadata`, `missing-player metadata count ${season.coverage.missing_player_metadata} does not reconcile to ${missingMetadata}`);
       }
       const seasonBytes = Buffer.byteLength(canonicalJson(season));
-      if (seasonBytes > 750000) {
-        report('TRANSACTION_SEASON_SIZE', location, `${season.season}`, `season slice is ${seasonBytes} bytes; maximum is 750000`);
+      if (seasonBytes > TRANSACTION_MAX_SEASON_BYTES) {
+        report('TRANSACTION_SEASON_SIZE', location, `${season.season}`, `season slice is ${seasonBytes} bytes; maximum is ${TRANSACTION_MAX_SEASON_BYTES}`);
       }
     });
+    if (seasons.length > TRANSACTION_MAX_RETAINED_SEASONS) {
+      report('TRANSACTION_SEASON_RETENTION', 'assets/TransactionHistory.json seasons', 'seasons', `asset retains ${seasons.length} seasons; maximum is ${TRANSACTION_MAX_RETAINED_SEASONS}`);
+    }
     const totalBytes = Buffer.byteLength(canonicalJson(transactionHistory));
-    if (totalBytes > 2000000) {
-      report('TRANSACTION_ASSET_SIZE', 'assets/TransactionHistory.json', 'asset', `asset is ${totalBytes} bytes; maximum is 2000000`);
+    if (totalBytes > TRANSACTION_MAX_ASSET_BYTES) {
+      report('TRANSACTION_ASSET_SIZE', 'assets/TransactionHistory.json', 'asset', `asset is ${totalBytes} bytes; maximum is ${TRANSACTION_MAX_ASSET_BYTES}`);
     }
     const maxCreated = Math.max(0, ...seasons.flatMap(season => season.transactions.map(transaction => transaction.created_ms)));
     if (transactionHistory.source_updated_ms !== maxCreated) {

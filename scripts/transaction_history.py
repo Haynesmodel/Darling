@@ -10,10 +10,13 @@ from pathlib import Path
 from typing import Any
 
 SCHEMA_VERSION = 1
-GENERATOR_VERSION = 1
-METHODOLOGY_VERSION = 1
+GENERATOR_VERSION = 2
+METHODOLOGY_VERSION = 2
 COMPLETE_STATUS = "complete"
 SUPPORTED_TYPES = {"waiver", "free_agent", "trade", "commissioner"}
+MAX_RETAINED_SEASONS = 12
+MAX_SEASON_BYTES = 750_000
+MAX_ASSET_BYTES = 12 * 1024 * 1024
 
 
 def round2(value: Any) -> float:
@@ -356,6 +359,11 @@ def build_journeys(
                 stints.append(previous)
             open_stints[owner] = {
                 "owner": owner,
+                "_acquisition_order": (
+                    event["week"],
+                    event["created_ms"],
+                    str(event["transaction_id"] or ""),
+                ),
                 "acquisition": {
                     "kind": event["kind"],
                     "week": event["week"],
@@ -366,23 +374,59 @@ def build_journeys(
                 "release": None,
             }
         stints.extend(open_stints.values())
-        for stint in stints:
-            scoring = matchup_index.get((stint["owner"], player_id), {
+        allocated_weeks: dict[int, list[int]] = defaultdict(list)
+        retained_stint_indexes: set[int] = set()
+        for owner in sorted({stint["owner"] for stint in stints}):
+            scoring = matchup_index.get((owner, player_id), {
                 "weeks": [],
                 "starts": 0,
                 "total_points": 0.0,
                 "starter_points": 0.0,
                 "by_week": {},
             })
-            start_week = stint["acquisition"]["week"]
-            release_week = stint["release"]["week"] if stint["release"] else None
-            weeks = [
-                week for week in scoring["weeks"]
-                if week >= max(1, start_week) and (release_week is None or week <= release_week)
+            owner_stints = [
+                (index, stint) for index, stint in enumerate(stints)
+                if stint["owner"] == owner
             ]
-            # Matchup ownership is the authoritative weekly boundary. Aggregate
-            # only the weeks inside this stint so a later reacquisition by the
-            # same owner cannot duplicate the player's season totals.
+            for week in sorted(set(scoring["weeks"])):
+                eligible = [
+                    (index, stint) for index, stint in owner_stints
+                    if week >= max(1, stint["acquisition"]["week"])
+                    and (
+                        stint["release"] is None
+                        or week <= stint["release"]["week"]
+                    )
+                ]
+                if eligible:
+                    # Sleeper exposes matchup scoring at weekly granularity but
+                    # transactions at millisecond granularity. When multiple
+                    # stints touch the same scoring week, assign that one weekly
+                    # row to the latest acquisition so it can never be counted
+                    # by both sides of a same-week drop/re-add.
+                    selected, _ = max(
+                        eligible,
+                        key=lambda item: item[1]["_acquisition_order"],
+                    )
+                    allocated_weeks[selected].append(week)
+            retained_eligible = [
+                (index, stint) for index, stint in owner_stints
+                if stint["acquisition"]["week"] <= completed_week
+                and (
+                    stint["release"] is None
+                    or stint["release"]["week"] > completed_week
+                )
+            ]
+            if retained_eligible:
+                selected, _ = max(
+                    retained_eligible,
+                    key=lambda item: item[1]["_acquisition_order"],
+                )
+                retained_stint_indexes.add(selected)
+        for index, stint in enumerate(stints):
+            scoring = matchup_index.get((stint["owner"], player_id), {
+                "by_week": {},
+            })
+            weeks = allocated_weeks[index]
             scoped_rows = [
                 scoring.get("by_week", {}).get(week, {"started": False, "points": 0.0})
                 for week in weeks
@@ -397,16 +441,19 @@ def build_journeys(
                 "retained": (
                     stint["acquisition"]["week"] <= completed_week
                     and (stint["release"] is None or stint["release"]["week"] > completed_week)
+                    and index in retained_stint_indexes
                     and player_id in boundary_rosters.get(stint["owner"], set())
                 ),
             })
+        ordered_stints = sorted(stints, key=lambda row: (
+            row["_acquisition_order"],
+            row["owner"],
+        ))
+        for stint in ordered_stints:
+            del stint["_acquisition_order"]
         journeys.append({
             "player_id": player_id,
-            "stints": sorted(stints, key=lambda row: (
-                row["acquisition"]["week"],
-                str(row["acquisition"]["transaction_id"] or ""),
-                row["owner"],
-            )),
+            "stints": ordered_stints,
         })
     return sorted(journeys, key=lambda row: row["player_id"])
 
@@ -771,10 +818,12 @@ def merge_asset(
         if any(int(row["season"]) == int(season["season"]) for row in existing.get("seasons", []) if row is not None):
             if sum(int(row["season"]) == int(season["season"]) for row in existing["seasons"]) > 1:
                 raise ValueError(f"Existing asset contains duplicate season {season['season']}.")
-        seasons = [
+        non_target_seasons = [
             deepcopy(row) for row in existing.get("seasons", [])
             if int(row["season"]) != int(season["season"])
         ]
+        non_target_seasons.sort(key=lambda row: int(row["season"]), reverse=True)
+        seasons = non_target_seasons[:MAX_RETAINED_SEASONS - 1]
         seasons.append(season)
         seasons.sort(key=lambda row: int(row["season"]))
         referenced = set()
@@ -818,8 +867,16 @@ def validate_asset_invariants(asset: dict[str, Any]) -> None:
         if missing:
             raise ValueError(f"Season {season['season']} references missing players: {sorted(missing)}.")
         raw_size = len(canonical_json(season).encode("utf-8"))
-        if raw_size > 750_000:
-            raise ValueError(f"Season {season['season']} exceeds 750000 bytes ({raw_size}).")
+        if raw_size > MAX_SEASON_BYTES:
+            raise ValueError(
+                f"Season {season['season']} exceeds {MAX_SEASON_BYTES} bytes ({raw_size})."
+            )
+    if len(seasons) > MAX_RETAINED_SEASONS:
+        raise ValueError(
+            f"TransactionHistory exceeds {MAX_RETAINED_SEASONS} retained seasons."
+        )
     total_size = len(canonical_json(asset).encode("utf-8"))
-    if total_size > 2_000_000:
-        raise ValueError(f"TransactionHistory exceeds 2000000 bytes ({total_size}).")
+    if total_size > MAX_ASSET_BYTES:
+        raise ValueError(
+            f"TransactionHistory exceeds {MAX_ASSET_BYTES} bytes ({total_size})."
+        )

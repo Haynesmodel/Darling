@@ -123,15 +123,28 @@ export interface CurrentSeasonGame {
 }
 export interface TransactionHistory {
   schema_version: 1;
-  generator_version: 1;
-  methodology_version: 1;
+  generator_version: 2;
+  methodology_version: 2;
   source: 'sleeper';
   source_updated_ms: number;
   players: Player[];
   /**
    * @minItems 1
+   * @maxItems 12
    */
-  seasons: [Season, ...Season[]];
+  seasons:
+    | [Season]
+    | [Season, Season]
+    | [Season, Season, Season]
+    | [Season, Season, Season, Season]
+    | [Season, Season, Season, Season, Season]
+    | [Season, Season, Season, Season, Season, Season]
+    | [Season, Season, Season, Season, Season, Season, Season]
+    | [Season, Season, Season, Season, Season, Season, Season, Season]
+    | [Season, Season, Season, Season, Season, Season, Season, Season, Season]
+    | [Season, Season, Season, Season, Season, Season, Season, Season, Season, Season]
+    | [Season, Season, Season, Season, Season, Season, Season, Season, Season, Season, Season]
+    | [Season, Season, Season, Season, Season, Season, Season, Season, Season, Season, Season, Season];
 }
 export interface Player {
   id: string;
@@ -169,7 +182,7 @@ export interface Coverage {
     waiver: number;
   };
   missing_player_metadata: number;
-  outcome_methodology_version: 1;
+  outcome_methodology_version: 2;
 }
 export interface Team {
   roster_id: number;

@@ -194,9 +194,9 @@ npm run audit:dist          # confirm built output inventory, bytes, and hashes
 
 The generator uses an explicit bounded endpoint matrix: transaction rounds `0..max_week`, matchup weeks `1..max_week`, league rosters/drafts, one selected nonempty primary draft, and the NFL player directory. Requests use a 30-second timeout, bounded response bodies, and retries only for 429, 500, and 503 responses. Ambiguous same-size drafts fail unless `--draft-id` is supplied. Failed transactions remain in raw history but never produce acquisitions or outcome credit.
 
-The committed 2025 season contains 489 transactions: 417 complete and 72 failed, including 8 completed trades and a unique 192-pick draft. Player stints use weekly matchup ownership as the scoring boundary. Trade outcomes are labelled too early, incomplete, provisional, or final; future draft picks make an outcome incomplete. These are descriptive fantasy-point outcomes, not claims of real-world player value.
+The committed 2025 season contains 489 transactions: 417 complete and 72 failed, including 8 completed trades and a unique 192-pick draft. Player stints use weekly matchup ownership as the scoring boundary. When the same owner drops and reacquires a player during one transaction round, the weekly matchup row belongs only to the latest acquisition by transaction timestamp, preventing duplicate starts and points. Trade outcomes are labelled too early, incomplete, provisional, or final; future draft picks make an outcome incomplete. These are descriptive fantasy-point outcomes, not claims of real-world player value.
 
-Per-season raw JSON is capped at 750 KB and the merged asset at 2 MB; the current asset stays below the 500 KB review target. Run fixture tests before any live refresh:
+The asset retains at most 12 seasons. A refresh always retains its requested target season plus the 11 newest non-target seasons and deterministically evicts older slices. Each season is capped at 750 KB and the merged asset at 12 MiB, below the browser transport's 16 MiB ceiling. This rolling contract keeps weekly generation bounded without dead-ending as new seasons accumulate. The current single-season asset stays below the 500 KB review target. Run fixture tests before any live refresh:
 
 ```sh
 npm run test:transaction-history

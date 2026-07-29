@@ -304,8 +304,9 @@ function validateSleeperWorkflow(source, errors) {
   if (!artifact.includes("steps.resolve.outputs.season || 'unknown'")
     || !artifact.includes('${{ github.run_id }}-${{ github.run_attempt }}')
     || !artifact.includes('retention-days: 7')
+    || !artifact.includes('assets/TransactionHistory.updated.json')
     || artifact.includes('assets/CurrentSeason.updated.json')) {
-    errors.push('SLEEPER-REL-010: failure artifact must be unique, seven-day, and omit the credential-valued CurrentSeason candidate');
+    errors.push('SLEEPER-REL-010: failure artifact must be unique, seven-day, retain the transaction candidate, and omit the credential-valued CurrentSeason candidate');
   }
   if (!recovery.includes("steps.resolve.outputs.validate_only_flag == '0'")
     || !recovery.includes("title = 'Weekly Sleeper update failed'")
@@ -953,6 +954,13 @@ test('Sleeper contract rejects failure-artifact and recovery regressions', () =>
     [
       source => source.replace('-${{ github.run_id }}-${{ github.run_attempt }}', ''),
       /failure artifact must be unique/,
+    ],
+    [
+      source => source.replace(
+        '            assets/TransactionHistory.updated.json\n            assets/TransactionHistory.json',
+        '            assets/TransactionHistory.missing.json\n            assets/TransactionHistory.json',
+      ),
+      /failure artifact must be unique, seven-day, retain the transaction candidate/,
     ],
     [
       source => source.replace(

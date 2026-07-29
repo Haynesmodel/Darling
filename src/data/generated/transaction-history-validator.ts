@@ -224,7 +224,7 @@ function validate84(data, { instancePath = "", parentData, parentDataProperty, r
 }
 validate84.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 var schema191 = { "type": "object", "additionalProperties": false, "required": ["season", "league_id", "league_status", "max_week", "coverage", "teams", "draft", "transactions", "player_journeys", "insights"], "properties": { "season": { "type": "integer", "minimum": 2025, "maximum": 2100 }, "league_id": { "type": "string", "pattern": "^[0-9]+$" }, "league_status": { "type": "string", "minLength": 1, "maxLength": 40 }, "max_week": { "type": "integer", "minimum": 1, "maximum": 25 }, "coverage": { "$ref": "#/$defs/coverage" }, "teams": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/team" } }, "draft": { "$ref": "#/$defs/draft" }, "transactions": { "type": "array", "items": { "$ref": "#/$defs/transaction" } }, "player_journeys": { "type": "array", "items": { "$ref": "#/$defs/journey" } }, "insights": { "$ref": "#/$defs/insights" } } };
-var schema192 = { "type": "object", "additionalProperties": false, "required": ["completed_week", "transaction_rounds", "matchup_weeks", "transaction_count", "complete_count", "failed_count", "pending_count", "type_counts", "missing_player_metadata", "outcome_methodology_version"], "properties": { "completed_week": { "type": "integer", "minimum": 0, "maximum": 25 }, "transaction_rounds": { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 25 } }, "matchup_weeks": { "type": "array", "items": { "type": "integer", "minimum": 1, "maximum": 25 } }, "transaction_count": { "type": "integer", "minimum": 0 }, "complete_count": { "type": "integer", "minimum": 0 }, "failed_count": { "type": "integer", "minimum": 0 }, "pending_count": { "type": "integer", "minimum": 0 }, "type_counts": { "type": "object", "additionalProperties": false, "required": ["commissioner", "free_agent", "trade", "waiver"], "properties": { "commissioner": { "type": "integer", "minimum": 0 }, "free_agent": { "type": "integer", "minimum": 0 }, "trade": { "type": "integer", "minimum": 0 }, "waiver": { "type": "integer", "minimum": 0 } } }, "missing_player_metadata": { "type": "integer", "minimum": 0 }, "outcome_methodology_version": { "const": 1 } } };
+var schema192 = { "type": "object", "additionalProperties": false, "required": ["completed_week", "transaction_rounds", "matchup_weeks", "transaction_count", "complete_count", "failed_count", "pending_count", "type_counts", "missing_player_metadata", "outcome_methodology_version"], "properties": { "completed_week": { "type": "integer", "minimum": 0, "maximum": 25 }, "transaction_rounds": { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 25 } }, "matchup_weeks": { "type": "array", "items": { "type": "integer", "minimum": 1, "maximum": 25 } }, "transaction_count": { "type": "integer", "minimum": 0 }, "complete_count": { "type": "integer", "minimum": 0 }, "failed_count": { "type": "integer", "minimum": 0 }, "pending_count": { "type": "integer", "minimum": 0 }, "type_counts": { "type": "object", "additionalProperties": false, "required": ["commissioner", "free_agent", "trade", "waiver"], "properties": { "commissioner": { "type": "integer", "minimum": 0 }, "free_agent": { "type": "integer", "minimum": 0 }, "trade": { "type": "integer", "minimum": 0 }, "waiver": { "type": "integer", "minimum": 0 } } }, "missing_player_metadata": { "type": "integer", "minimum": 0 }, "outcome_methodology_version": { "const": 2 } } };
 var func1 = Object.prototype.hasOwnProperty;
 var pattern10 = new RegExp("^[0-9]+$", "u");
 function validate87(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
@@ -5341,8 +5341,8 @@ function validate86(data, { instancePath = "", parentData, parentDataProperty, r
           }
         }
         if (data4.outcome_methodology_version !== void 0) {
-          if (1 !== data4.outcome_methodology_version) {
-            const err68 = { instancePath: instancePath + "/coverage/outcome_methodology_version", schemaPath: "#/$defs/coverage/properties/outcome_methodology_version/const", keyword: "const", params: { allowedValue: 1 }, message: "must be equal to constant" };
+          if (2 !== data4.outcome_methodology_version) {
+            const err68 = { instancePath: instancePath + "/coverage/outcome_methodology_version", schemaPath: "#/$defs/coverage/properties/outcome_methodology_version/const", keyword: "const", params: { allowedValue: 2 }, message: "must be equal to constant" };
             if (vErrors === null) {
               vErrors = [err68];
             } else {
@@ -5553,8 +5553,8 @@ function validate83(data, { instancePath = "", parentData, parentDataProperty, r
       }
     }
     if (data.generator_version !== void 0) {
-      if (1 !== data.generator_version) {
-        const err9 = { instancePath: instancePath + "/generator_version", schemaPath: "#/properties/generator_version/const", keyword: "const", params: { allowedValue: 1 }, message: "must be equal to constant" };
+      if (2 !== data.generator_version) {
+        const err9 = { instancePath: instancePath + "/generator_version", schemaPath: "#/properties/generator_version/const", keyword: "const", params: { allowedValue: 2 }, message: "must be equal to constant" };
         if (vErrors === null) {
           vErrors = [err9];
         } else {
@@ -5564,8 +5564,8 @@ function validate83(data, { instancePath = "", parentData, parentDataProperty, r
       }
     }
     if (data.methodology_version !== void 0) {
-      if (1 !== data.methodology_version) {
-        const err10 = { instancePath: instancePath + "/methodology_version", schemaPath: "#/properties/methodology_version/const", keyword: "const", params: { allowedValue: 1 }, message: "must be equal to constant" };
+      if (2 !== data.methodology_version) {
+        const err10 = { instancePath: instancePath + "/methodology_version", schemaPath: "#/properties/methodology_version/const", keyword: "const", params: { allowedValue: 2 }, message: "must be equal to constant" };
         if (vErrors === null) {
           vErrors = [err10];
         } else {
@@ -5631,12 +5631,21 @@ function validate83(data, { instancePath = "", parentData, parentDataProperty, r
     if (data.seasons !== void 0) {
       let data7 = data.seasons;
       if (Array.isArray(data7)) {
-        if (data7.length < 1) {
-          const err15 = { instancePath: instancePath + "/seasons", schemaPath: "#/properties/seasons/minItems", keyword: "minItems", params: { limit: 1 }, message: "must NOT have fewer than 1 items" };
+        if (data7.length > 12) {
+          const err15 = { instancePath: instancePath + "/seasons", schemaPath: "#/properties/seasons/maxItems", keyword: "maxItems", params: { limit: 12 }, message: "must NOT have more than 12 items" };
           if (vErrors === null) {
             vErrors = [err15];
           } else {
             vErrors.push(err15);
+          }
+          errors++;
+        }
+        if (data7.length < 1) {
+          const err16 = { instancePath: instancePath + "/seasons", schemaPath: "#/properties/seasons/minItems", keyword: "minItems", params: { limit: 1 }, message: "must NOT have fewer than 1 items" };
+          if (vErrors === null) {
+            vErrors = [err16];
+          } else {
+            vErrors.push(err16);
           }
           errors++;
         }
@@ -5648,21 +5657,21 @@ function validate83(data, { instancePath = "", parentData, parentDataProperty, r
           }
         }
       } else {
-        const err16 = { instancePath: instancePath + "/seasons", schemaPath: "#/properties/seasons/type", keyword: "type", params: { type: "array" }, message: "must be array" };
+        const err17 = { instancePath: instancePath + "/seasons", schemaPath: "#/properties/seasons/type", keyword: "type", params: { type: "array" }, message: "must be array" };
         if (vErrors === null) {
-          vErrors = [err16];
+          vErrors = [err17];
         } else {
-          vErrors.push(err16);
+          vErrors.push(err17);
         }
         errors++;
       }
     }
   } else {
-    const err17 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+    const err18 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
     if (vErrors === null) {
-      vErrors = [err17];
+      vErrors = [err18];
     } else {
-      vErrors.push(err17);
+      vErrors.push(err18);
     }
     errors++;
   }

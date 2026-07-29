@@ -16,6 +16,7 @@ import generate_transaction_history as generator  # noqa: E402
 import transaction_history as history  # noqa: E402
 from generate_transaction_history import SleeperClient, cached_players, fetch_inputs, generate  # noqa: E402
 from transaction_history import (  # noqa: E402
+    build_insights,
     build_journeys,
     completed_week_from_current,
     merge_asset,
@@ -190,6 +191,88 @@ class TransactionHistoryTests(unittest.TestCase):
         self.assertEqual(second["rostered_weeks"], 2)
         self.assertTrue(second["retained"])
 
+    def test_same_week_drop_and_readd_allocates_scoring_to_latest_acquisition(self):
+        draft = {"status": "unavailable", "picks": []}
+        transactions = [
+            {
+                "id": "first-add",
+                "status": "complete",
+                "type": "free_agent",
+                "week": 2,
+                "created_ms": 10,
+                "participants": ["Alpha"],
+                "adds": [{"player_id": "p1", "owner": "Alpha"}],
+                "drops": [],
+            },
+            {
+                "id": "drop",
+                "status": "complete",
+                "type": "free_agent",
+                "week": 2,
+                "created_ms": 20,
+                "participants": ["Alpha"],
+                "adds": [],
+                "drops": [{"player_id": "p1", "owner": "Alpha"}],
+            },
+            {
+                "id": "second-add",
+                "status": "complete",
+                "type": "free_agent",
+                "week": 2,
+                "created_ms": 30,
+                "participants": ["Alpha"],
+                "adds": [{"player_id": "p1", "owner": "Alpha"}],
+                "drops": [],
+            },
+        ]
+        scoring = {
+            ("Alpha", "p1"): {
+                "weeks": [2],
+                "starts": 1,
+                "total_points": 10.0,
+                "starter_points": 10.0,
+                "by_week": {
+                    2: {"started": True, "points": 10.0},
+                },
+            }
+        }
+        journeys = build_journeys(
+            draft,
+            transactions,
+            scoring,
+            {"Alpha": {"p1"}},
+            2,
+        )
+        first, second = journeys[0]["stints"]
+        self.assertEqual(
+            (first["rostered_weeks"], first["starts"], first["starter_points"]),
+            (0, 0, 0.0),
+        )
+        self.assertEqual(
+            (second["rostered_weeks"], second["starts"], second["starter_points"]),
+            (1, 1, 10.0),
+        )
+        insights = build_insights(
+            transactions,
+            draft,
+            journeys,
+            {"p1": {"name": "Player One"}},
+            [{"owner": "Alpha"}],
+            2025,
+            2,
+            "complete",
+        )
+        wire_by_transaction = {
+            row["transaction_id"]: row for row in insights["wire_finds"]
+        }
+        self.assertEqual(wire_by_transaction["first-add"]["starter_points"], 0.0)
+        self.assertEqual(wire_by_transaction["second-add"]["starter_points"], 10.0)
+        self.assertEqual(
+            sum(row["starter_points"] for row in insights["wire_finds"]),
+            10.0,
+        )
+        self.assertEqual(sum(row["starts"] for row in insights["wire_finds"]), 1)
+
     def test_completed_week_and_roster_retention_ignore_live_week_moves(self):
         current = {
             "season": 2025,
@@ -361,18 +444,54 @@ class TransactionHistoryTests(unittest.TestCase):
     def test_hard_size_boundaries_are_inclusive_and_fail_one_byte_over(self):
         empty = {
             "schema_version": 1,
-            "generator_version": 1,
-            "methodology_version": 1,
+            "generator_version": history.GENERATOR_VERSION,
+            "methodology_version": history.METHODOLOGY_VERSION,
             "source": "sleeper",
             "source_updated_ms": 0,
             "players": [],
             "seasons": [],
         }
-        with mock.patch.object(history, "canonical_json", return_value="x" * 2_000_000):
+        with mock.patch.object(
+            history,
+            "canonical_json",
+            return_value="x" * history.MAX_ASSET_BYTES,
+        ):
             validate_asset_invariants(empty)
-        with mock.patch.object(history, "canonical_json", return_value="x" * 2_000_001):
-            with self.assertRaisesRegex(ValueError, "exceeds 2000000 bytes"):
+        with mock.patch.object(
+            history,
+            "canonical_json",
+            return_value="x" * (history.MAX_ASSET_BYTES + 1),
+        ):
+            with self.assertRaisesRegex(
+                ValueError,
+                f"exceeds {history.MAX_ASSET_BYTES} bytes",
+            ):
                 validate_asset_invariants(empty)
+
+    def test_merge_retains_target_and_eleven_newest_other_seasons(self):
+        with tempfile.TemporaryDirectory() as directory:
+            asset = generate(fixture_args(Path(directory) / "asset.json"))
+            base = asset["seasons"][0]
+            existing_seasons = []
+            for season in range(2025, 2037):
+                row = json.loads(json.dumps(base))
+                row["season"] = season
+                row["league_id"] = f"league-{season}"
+                existing_seasons.append(row)
+            target = json.loads(json.dumps(base))
+            target["season"] = 2024
+            target["league_id"] = "league-2024"
+            merged = merge_asset(
+                target,
+                asset["players"],
+                {**asset, "seasons": existing_seasons},
+            )
+            self.assertEqual(
+                [row["season"] for row in merged["seasons"]],
+                [2024, *range(2026, 2037)],
+            )
+            self.assertEqual(len(merged["seasons"]), history.MAX_RETAINED_SEASONS)
+            validate_asset_invariants(merged)
 
 
 if __name__ == "__main__":

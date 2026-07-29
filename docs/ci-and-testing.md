@@ -29,7 +29,7 @@ npx playwright install chromium webkit
 
 CI, preview, and coverage modes use one worker. CI rejects committed focused tests and fails when a test passes only on retry.
 
-Transaction-history changes must also run `npm run test:transaction-history`. The fixture suite proves deterministic bytes, draft selection safety, failed-transaction exclusion, non-target season preservation, strict owner mapping, and stint-scoped matchup scoring. The full unit lane includes these Python tests.
+Transaction-history changes must also run `npm run test:transaction-history`. The fixture suite proves deterministic bytes, draft selection safety, failed-transaction exclusion, bounded non-target season retention, strict owner mapping, and non-overlapping stint-scoped matchup scoring. The full unit lane includes these Python tests.
 
 ## Coverage
 

@@ -205,6 +205,53 @@ test('commissioner deep links stay in the requested non-type-specific view', asy
   await expect(page.getByRole('link', { name: `My Team: ${season.teams[0].owner}` })).toBeVisible();
 });
 
+test('league-wide player rankings clear an incompatible owner before opening a journey', async ({ page }) => {
+  const owner = season.teams.find(row => row.owner === 'Joe')?.owner || season.teams[0].owner;
+  const outsideMovement = season.insights.movement_counts.find(row => {
+    const playerJourney = season.player_journeys.find(journeyRow => journeyRow.player_id === row.player_id);
+    return playerJourney && !playerJourney.stints.some(stint => stint.owner === owner);
+  });
+  expect(outsideMovement).toBeTruthy();
+  const playerId = outsideMovement.player_id;
+  const playerName = asset.players.find(row => row.id === playerId)?.name || `Player ${playerId}`;
+  const fixture = createSnapshotFixture({
+    mutations: {
+      TransactionHistory(value) {
+        const current = value.seasons[0];
+        const movement = current.insights.movement_counts.find(row => row.player_id === playerId);
+        current.insights.movement_counts = [
+          movement,
+          ...current.insights.movement_counts.filter(row => row.player_id !== playerId),
+        ];
+        current.insights.keeper_return = [{
+          player_id: playerId,
+          owner: current.teams.find(row => row.owner !== owner).owner,
+          round: 8,
+          starts: 1,
+          starter_points: 10,
+        }];
+      },
+    },
+  });
+  await fixture.install(page);
+
+  await page.goto(`/?tab=transactions&txView=waivers&txOwner=${encodeURIComponent(owner)}`);
+  await page.locator('#transactions-waivers .transaction-ranking.compact')
+    .getByRole('link', { name: playerName })
+    .click();
+  await expect(page).toHaveURL(new RegExp(`txPlayer=${encodeURIComponent(playerId)}`));
+  await expect(page).not.toHaveURL(/txOwner=/);
+  await expect(page.locator(`#transaction-player-${playerId}`)).toBeFocused();
+
+  await page.goto(`/?tab=transactions&txView=draft&txOwner=${encodeURIComponent(owner)}`);
+  await page.locator('#transactions-draft .transaction-ranking')
+    .getByRole('link', { name: playerName })
+    .click();
+  await expect(page).toHaveURL(new RegExp(`txPlayer=${encodeURIComponent(playerId)}`));
+  await expect(page).not.toHaveURL(/txOwner=/);
+  await expect(page.locator(`#transaction-player-${playerId}`)).toBeFocused();
+});
+
 test('transaction controls update seasons, owners, players, searches, and owner sorts', async ({ page }) => {
   const favorite = season.teams[0].owner;
   const fixture = createSnapshotFixture({

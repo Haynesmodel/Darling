@@ -322,7 +322,12 @@ export default function TransactionsPage({ model, onStateChange }: Props) {
       <h4>Most added and dropped</h4>
       <ol class="transaction-ranking compact">
         {season.insights.movement_counts.slice(0, 20).map(row => <li key={row.player_id}>
-          <StateLink model={model} state={{ view: 'players', player: row.player_id, transactionId: null }}>{name(model, row.player_id)}</StateLink>
+          <StateLink model={model} state={{
+            view: 'players',
+            owner: null,
+            player: row.player_id,
+            transactionId: null,
+          }}>{name(model, row.player_id)}</StateLink>
           <span>{row.adds} adds · {row.drops} drops</span>
         </li>)}
       </ol>
@@ -397,7 +402,12 @@ export default function TransactionsPage({ model, onStateChange }: Props) {
       <p class="transaction-method">Starter points produced by each keeper, then starts and later draft round.</p>
       {!season.insights.keeper_return.length ? <Empty>No keeper picks were recorded for {season.season}.</Empty> : <ol class="transaction-ranking">
         {season.insights.keeper_return.map(row => <li key={row.player_id}>
-          <StateLink model={model} state={{ view: 'players', player: row.player_id, transactionId: null }}>{name(model, row.player_id)}</StateLink>
+          <StateLink model={model} state={{
+            view: 'players',
+            owner: null,
+            player: row.player_id,
+            transactionId: null,
+          }}>{name(model, row.player_id)}</StateLink>
           <span>{row.owner} · Round {row.round}</span><strong>{row.starter_points.toFixed(2)} pts</strong>
         </li>)}
       </ol>}

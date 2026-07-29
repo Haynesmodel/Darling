@@ -519,6 +519,7 @@ jobs:
             assets/SeasonSummary.draft.json
             assets/DerivedStats.json
             assets/asset-manifest.json
+            assets/TransactionHistory.updated.json
             assets/TransactionHistory.json
             ${{ runner.temp }}/sleeper-pr-body.md
             ${{ runner.temp }}/sleeper-summary.json

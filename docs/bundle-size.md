@@ -1,5 +1,29 @@
 # Production JavaScript bundle budgets
 
+## Shareable cards and automated recaps
+
+The July 29, 2026 share-card and League Newspaper implementation was measured from clean base `697eb411447abb4066f2b944168e5f0b6fd4c26d` to implementation commit `0746d45f3921ccd4edf9b925014ab94095b5676f` in [PR #53](https://github.com/Haynesmodel/Darling/pull/53). Both artifacts used Node 24.18.0, npm 11.18.0, Vite 8.1.4, and `VITE_BASE_PATH=/Darling/`.
+
+| Metric | Base | Implementation | Delta | Enforced ceiling |
+| --- | ---: | ---: | ---: | ---: |
+| Entry gzip | 55,962 | 47,844 | -8,118 | 56,000 |
+| Aggregate JavaScript gzip | 295,829 | 294,948 | -881 | 300,000 |
+| Chart-runtime gzip | 95,567 | 95,068 | -499 | 100,000 |
+| Share-card runtime gzip | — | 2,590 | — | Click-loaded only |
+| League Pulse feature gzip | 6,799 | 9,499 | +2,700 | Route-enforced |
+| Current Season feature gzip | 10,137 | 10,225 | +88 | Route-enforced |
+
+| Settled route | Base | Implementation | Delta | Ceiling |
+| --- | ---: | ---: | ---: | ---: |
+| League Pulse | 104,823 | 103,368 | -1,455 | 115,000 |
+| Current Season | 203,254 | 195,167 | -8,087 | 205,000 |
+| Head to Head | 189,300 | 188,737 | -563 | 205,000 |
+| Trophy Case | 188,899 | 181,638 | -7,261 | 205,000 |
+| Dynasty Rankings | 190,033 | 185,286 | -4,747 | 205,000 |
+| Draft Spot | 189,852 | 182,925 | -6,927 | 205,000 |
+
+No budget value or production dependency increased. The command palette and share preview are separately lazy-loaded; the bundle checker requires the share runtime to be a dynamic entry absent from every initial and settled route closure. Compact generated validator errors offset the feature fan-out without weakening browser schema validation or Node-side diagnostics.
+
 ## Transactions route delta
 
 The July 28, 2026 Transactions change was measured from clean base `2b8ead1b129262b8608e9ccd9613a474e9e1f76e` with Node 24.14.0, npm 11.18.0, Vite 8.1.4, and `VITE_BASE_PATH=/Darling/`.

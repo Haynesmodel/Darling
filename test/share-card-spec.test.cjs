@@ -93,6 +93,7 @@ test('text and metric boundaries return stable error codes', () => {
   assert.equal(share.validateShareCardSpec(candidate({ metrics: exact.metrics.concat({ label: 'x', value: 'y' }) }), environment).code, 'TOO_MANY_METRICS');
   assert.equal(share.validateShareCardSpec(candidate({ metrics: [{ label: 'x', value: 'y' }] }), environment).code, 'INCOMPLETE_DATA');
   assert.equal(share.validateShareCardSpec(candidate({ kind: 'unknown' }), environment).code, 'UNSUPPORTED_KIND');
+  assert.equal(share.validateShareCardSpec(candidate({ accent: 'orange' }), environment).code, 'INVALID_TEXT');
 });
 
 test('canonical URLs and filenames fail closed', () => {

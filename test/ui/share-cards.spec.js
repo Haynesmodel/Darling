@@ -61,6 +61,7 @@ test('coverage build exercises the share-card validation failures in authored co
       unsupported: validateShareCardSpec({ ...candidate, kind: 'unknown' }, environment).code,
       incomplete: validateShareCardSpec({ ...candidate, metrics: candidate.metrics.slice(0, 1) }, environment).code,
       invalidText: validateShareCardSpec({ ...candidate, title: 'bad\ntext' }, environment).code,
+      invalidAccent: validateShareCardSpec({ ...candidate, accent: 'orange' }, environment).code,
       invalidUrl: validateShareCardSpec({
         ...candidate,
         canonicalUrl: 'https://attacker.example/card',
@@ -71,6 +72,7 @@ test('coverage build exercises the share-card validation failures in authored co
     unsupported: 'UNSUPPORTED_KIND',
     incomplete: 'INCOMPLETE_DATA',
     invalidText: 'INVALID_TEXT',
+    invalidAccent: 'INVALID_TEXT',
     invalidUrl: 'INVALID_URL',
   });
 });
@@ -426,6 +428,25 @@ test('SVG decode failure preserves the original SVG download', async ({ page }) 
   await expect(dialog.getByText('PNG creation failed; download the SVG card.', { exact: true })).toBeVisible();
   await expect(dialog.getByRole('link', { name: 'Download SVG', exact: true })).toHaveAttribute('download', /\.svg$/);
   await expect(dialog.getByRole('button', { name: 'Copy link', exact: true })).toBeEnabled();
+});
+
+test('PNG download remains when native File construction is unavailable', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(globalThis, 'File', {
+      configurable: true,
+      value: function UnsupportedFile() {
+        throw new DOMException('File unavailable', 'NotSupportedError');
+      },
+    });
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: async () => {},
+    });
+  });
+  const { dialog } = await openNewspaperCard(page);
+  await expect(dialog.getByText('Card ready.', { exact: true })).toBeVisible();
+  await expect(dialog.getByRole('link', { name: 'Download PNG', exact: true })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Share link', exact: true })).toBeVisible();
 });
 
 test('Clipboard denial selects the canonical URL and Canvas failure offers SVG', async ({ page }) => {

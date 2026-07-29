@@ -191,7 +191,9 @@ function weeklyFacts(allGames: Game[], games: Game[], week: number): WeeklyRecap
     Math.abs(Number(b.scoreA) - Number(b.scoreB)) - Math.abs(Number(a.scoreA) - Number(a.scoreB))
     || pair(a).localeCompare(pair(b))
   ))[0];
-  const winner = Number(largest.scoreA) >= Number(largest.scoreB) ? largest.teamA : largest.teamB;
+  const winner = Number(largest.scoreA) === Number(largest.scoreB)
+    ? 'Tie'
+    : Number(largest.scoreA) > Number(largest.scoreB) ? largest.teamA : largest.teamB;
   return {
     highScore: {
       label: 'Highest score',

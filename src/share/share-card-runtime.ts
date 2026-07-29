@@ -152,10 +152,14 @@ export async function openShareCardPreview(spec: ShareCardSpec, opener: HTMLElem
     if (active !== preview || generation !== preview.token) return;
     const pngUrl = URL.createObjectURL(pngBlob);
     preview.urls.push(pngUrl);
-    file = new File([pngBlob], spec.filename, { type: 'image/png' });
     png.href = pngUrl;
     png.hidden = false;
     status.textContent = 'Card ready.';
+    try {
+      file = new File([pngBlob], spec.filename, { type: 'image/png' });
+    } catch {
+      file = null;
+    }
   } catch {
     if (active === preview && generation === preview.token) {
       svg.hidden = false;

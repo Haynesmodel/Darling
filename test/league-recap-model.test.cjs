@@ -117,6 +117,11 @@ test('tie handling is independent of source order and owner names are canonical'
   const second = weekly(recap.buildLeagueNewspaper(data(games.slice().reverse()), '/Darling/'));
   assert.deepEqual(first.facts, second.facts);
   assert.equal(first.facts.highScore.value, 'A, C');
+  const tiedWeek = weekly(recap.buildLeagueNewspaper(data([
+    game('A', 'B', { scoreA: 100, scoreB: 100 }),
+    game('C', 'D', { scoreA: 90, scoreB: 90 }),
+  ]), '/Darling/'));
+  assert.equal(tiedWeek.facts.largestMargin.value, 'Tie');
 });
 
 test('all ten audited historical anomalies remain partial and unshareable', () => {

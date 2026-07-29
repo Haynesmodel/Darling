@@ -197,6 +197,33 @@ test('incompatible remaps use the stronger authored map without duplicating deno
   });
 });
 
+test('an unexecuted remap is retained when it contains unique authored branches', () => {
+  withTempRepo(root => {
+    const filePath = path.join(root, 'src', 'partial-runtime.js');
+    const executed = instrumentAndRun(filePath, 'function ready(){ return true; }\nready();\n');
+    const unique = instrumentAndRun(filePath, [
+      'function ready(flag) {',
+      '  return flag ? true : false;',
+      '}',
+      'ready(true);',
+      '',
+    ].join('\n'));
+    const uniqueCoverage = Object.values(unique)[0];
+    Object.keys(uniqueCoverage.s).forEach(key => { uniqueCoverage.s[key] = 0; });
+    Object.keys(uniqueCoverage.f).forEach(key => { uniqueCoverage.f[key] = 0; });
+    Object.keys(uniqueCoverage.b).forEach(key => { uniqueCoverage.b[key] = uniqueCoverage.b[key].map(() => 0); });
+    const executedPath = path.join(root, 'executed.json');
+    const uniquePath = path.join(root, 'unique.json');
+    fs.writeFileSync(executedPath, JSON.stringify(executed));
+    fs.writeFileSync(uniquePath, JSON.stringify(unique));
+
+    const merged = mergeCoverageMaps(root, [executedPath, uniquePath]);
+    const result = merged.fileCoverageFor(fs.realpathSync.native(filePath)).toSummary();
+    assert.equal(result.branches.total, 2);
+    assert.equal(result.branches.covered, 0);
+  });
+});
+
 test('Vite and Preact map instrumented TSX to original lines while normal mode stays clean', async () => {
   const root = process.cwd();
   const fixtureName = `__coverage-contract-${process.pid}-${Date.now()}.tsx`;

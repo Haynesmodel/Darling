@@ -1,4 +1,5 @@
 import {
+  SHARE_CARD_ACCENTS,
   SHARE_CARD_KINDS,
   type ShareCardBuildEnvironment,
   type ShareCardBuildErrorCode,
@@ -54,6 +55,7 @@ export function validateShareCardSpec(
   environment: ShareCardBuildEnvironment,
 ): ShareCardBuildResult {
   if (!SHARE_CARD_KINDS.includes(candidate.kind)) return failure('UNSUPPORTED_KIND');
+  if (!SHARE_CARD_ACCENTS.includes(candidate.accent)) return failure('INVALID_TEXT');
   if (candidate.metrics.length > 4) return failure('TOO_MANY_METRICS');
   if (candidate.metrics.length < 2) return failure('INCOMPLETE_DATA');
   const normalized = {} as Record<keyof typeof TEXT_LIMITS, string>;

@@ -7,9 +7,10 @@ export const SHARE_CARD_KINDS = [
   'weekly-recap',
   'season-recap',
 ] as const;
+export const SHARE_CARD_ACCENTS = ['gold', 'red', 'blue', 'green', 'purple'] as const;
 
 export type ShareCardKind = typeof SHARE_CARD_KINDS[number];
-export type ShareCardAccent = 'gold' | 'red' | 'blue' | 'green' | 'purple';
+export type ShareCardAccent = typeof SHARE_CARD_ACCENTS[number];
 export type ShareCardBuildErrorCode =
   | 'INCOMPLETE_DATA'
   | 'INVALID_URL'

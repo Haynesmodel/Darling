@@ -15,6 +15,8 @@ import type { DarlingFeatureController, FeatureActivation } from '../../app/feat
 import { ALL_TEAMS } from '../../app/feature-utils';
 import { createSectionDisclosure, type SectionDisclosureController } from '../../app/section-disclosure';
 import { registerRivalryTables } from './rivalry-tables';
+import type { ShareCardActionController } from '../../share/share-card-actions';
+import { mountRivalryCard } from '../../share/share-card-feature-adapters';
 
 function scope(value: unknown): string {
   return ['allTime', 'currentSeason', 'historic'].includes(String(value)) ? String(value) : 'allTime';
@@ -28,9 +30,12 @@ export function createFeatureController(): DarlingFeatureController {
   let active = false;
   let initialized = false;
   let disclosure: SectionDisclosureController | null = null;
+  let shareAction: ShareCardActionController | null = null;
 
   const render = () => {
     if (!active || !teamA || !teamB) return;
+    shareAction?.dispose();
+    shareAction = null;
     const year = latestLeagueSeason(context.data.leagueGames, context.data.seasonSummaries, context.data.currentSeason);
     const view = buildRivalryViewModel(teamA, teamB, context.data.leagueGames, { scope: selectedScope, currentSeason: year });
     context.header.feature(teamA, teamA, `${teamA} vs ${teamB} — Head to Head`);
@@ -69,7 +74,9 @@ export function createFeatureController(): DarlingFeatureController {
         return details ? [{ id, label, details, available, defaultOpen, onVisible }] : [];
       }),
     });
-    context.router.update({ tab: 'rivalry', selectedRivalryTeamA: teamA, selectedRivalryTeamB: teamB, selectedRivalryScope: selectedScope });
+    const canonicalPath = context.router.update({ tab: 'rivalry', selectedRivalryTeamA: teamA, selectedRivalryTeamB: teamB, selectedRivalryScope: selectedScope });
+    const host = context.document.getElementById('rivalryShareCard');
+    shareAction = mountRivalryCard(host, view, canonicalPath, context.data.dataVersion, context.window);
   };
 
   return {
@@ -128,8 +135,14 @@ export function createFeatureController(): DarlingFeatureController {
       initialized = true;
       render();
     },
-    deactivate() { active = false; },
+    deactivate() {
+      active = false;
+      shareAction?.dispose();
+      shareAction = null;
+    },
     dispose() {
+      shareAction?.dispose();
+      shareAction = null;
       disclosure?.dispose();
       disclosure = null;
     },

@@ -951,6 +951,7 @@ function dynastyCalculatorHeroHtml(score, opts = {}) {
           <div class="dynasty-kicker">${escapeHtml(label)}</div>
           <h3>${heroTitle}</h3>
           <div class="dynasty-range">${escapeHtml(range)}</div>
+          ${score ? '<div id="dynastyShareCard" class="share-card-action-host" data-share-dynasty="1"></div>' : ''}
         </div>
         <div class="dynasty-score">
           <div class="dynasty-score-rank">${escapeHtml(rankText)}</div>

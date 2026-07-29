@@ -439,7 +439,14 @@ function currentMatchupCardHtml(row, view = {}) {
           <div class="card-kicker">${escapeHtml(rowWeekLabel(row))} &middot; ${escapeHtml(row.date)}${status ? ` &middot; ${escapeHtml(status)}` : ''}</div>
           <h3>${escapeHtml(row.teamA)} vs ${escapeHtml(row.teamB)}</h3>
         </div>
-        <a class="btn" href="${escapeHtml(row.rivalryUrl)}">Head to Head</a>
+        <div class="current-matchup-actions">
+          <a class="btn" href="${escapeHtml(row.rivalryUrl)}">Head to Head</a>
+          <div
+            class="share-card-action-host"
+            data-share-team-a="${escapeHtml(row.teamA)}"
+            data-share-team-b="${escapeHtml(row.teamB)}"
+          ></div>
+        </div>
       </div>
       <div class="current-scoreline">
         <span class="${resultClass(row.resultA)}">${escapeHtml(row.teamA)} ${scoreFmt(row.scoreA)}</span>

@@ -1101,8 +1101,11 @@ function trophyHeroHtml(view) {
     : '';
   return `
     <div class="trophy-hero-title">
-      <div class="trophy-identity">${esc(view.hero?.identityLabel || view.identity?.label || 'Contender Profile')}</div>
-      <h3>${esc(view.hero?.title || view.owner || '')}</h3>
+      <div>
+        <div class="trophy-identity">${esc(view.hero?.identityLabel || view.identity?.label || 'Contender Profile')}</div>
+        <h3>${esc(view.hero?.title || view.owner || '')}</h3>
+      </div>
+      <div id="trophyShareCard" class="share-card-action-host" data-share-trophy="1"></div>
     </div>
     <p class="trophy-hero-summary">${esc(view.hero?.summary || view.identity?.summary || 'No summary available')}</p>
     ${chipHtml}

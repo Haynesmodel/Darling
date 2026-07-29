@@ -14,6 +14,8 @@ import type { DarlingFeatureController, FeatureActivation } from '../../app/feat
 import { ALL_TEAMS } from '../../app/feature-utils';
 import { createSectionDisclosure, type SectionDisclosureController } from '../../app/section-disclosure';
 import { registerTrophyTables } from './trophy-tables';
+import type { ShareCardActionController } from '../../share/share-card-actions';
+import { mountTrophyCard } from '../../share/share-card-feature-adapters';
 
 export function createFeatureController(): DarlingFeatureController {
   let context: AppContext;
@@ -21,9 +23,12 @@ export function createFeatureController(): DarlingFeatureController {
   let initialized = false;
   let active = false;
   let disclosure: SectionDisclosureController | null = null;
+  let shareAction: ShareCardActionController | null = null;
 
   const render = () => {
     if (!active || !selectedOwner) return;
+    shareAction?.dispose();
+    shareAction = null;
     context.header.feature(selectedOwner, selectedOwner, `${selectedOwner} Trophy Case`);
     context.theme.owner(selectedOwner);
     const view = buildTrophyCaseViewModel(selectedOwner, {
@@ -65,7 +70,9 @@ export function createFeatureController(): DarlingFeatureController {
         return details ? [{ id, label, details, available: Boolean(content?.textContent?.trim()), defaultOpen, onVisible }] : [];
       }),
     });
-    context.router.update({ tab: 'trophy', selectedTrophyOwner: selectedOwner });
+    const canonicalPath = context.router.update({ tab: 'trophy', selectedTrophyOwner: selectedOwner });
+    const host = context.document.getElementById('trophyShareCard');
+    shareAction = mountTrophyCard(host, view, canonicalPath, context.data.dataVersion, context.window);
   };
 
   return {
@@ -102,8 +109,14 @@ export function createFeatureController(): DarlingFeatureController {
       initialized = true;
       render();
     },
-    deactivate() { active = false; },
+    deactivate() {
+      active = false;
+      shareAction?.dispose();
+      shareAction = null;
+    },
     dispose() {
+      shareAction?.dispose();
+      shareAction = null;
       disclosure?.dispose();
       disclosure = null;
     },

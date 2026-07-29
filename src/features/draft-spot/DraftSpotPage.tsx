@@ -15,6 +15,15 @@ import DraftZoneComparison from './DraftZoneComparison';
 import DraftOwnerRecommendations from './DraftOwnerRecommendations';
 import DraftOwnerTimeline from './DraftOwnerTimeline';
 import DraftSelectionDetail from './DraftSelectionDetail';
+import { buildUrlFromState } from '../../../js/state-helpers.js';
+import { DRAFT_METRICS, draftPositionLabel } from './draft-spot-model';
+import { formatNumber, formatPercent } from './draft-spot-format';
+import {
+  mountShareCardAction,
+  type ShareCardActionController,
+} from '../../share/share-card-actions';
+import { buildFeatureShareCard } from '../../share/share-card-feature-adapters';
+import type { ShareCardBuildResult } from '../../share/share-card-types';
 
 interface Props {
   asset: DraftSpot;
@@ -22,6 +31,20 @@ interface Props {
   dataVersion: string;
   onStateChange?: DraftSpotMountOptions['onStateChange'];
   onReady?: DraftSpotMountOptions['onReady'];
+}
+
+function DraftShareAction({ result }: { result: ShareCardBuildResult | null }) {
+  const host = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!host.current || !result) return;
+    const controller: ShareCardActionController = mountShareCardAction({
+      host: host.current,
+      result,
+      label: 'Share Draft Spot card',
+    });
+    return () => controller.dispose();
+  }, [result]);
+  return <div ref={host} class="share-card-action-host" />;
 }
 
 export default function DraftSpotPage({
@@ -51,6 +74,56 @@ export default function DraftSpotPage({
     model.state.selectedPick || '',
     model.state.selectedZone || '',
   ].join('|');
+  const shareResult = useMemo(() => {
+    if (typeof window === 'undefined') return null;
+    const canonicalPath = buildUrlFromState({
+      pathname: window.location.pathname,
+      tab: 'draft',
+      selectedDraftOwner: model.state.owner,
+      selectedDraftMode: model.state.mode,
+      selectedDraftStartSeason: model.state.startSeason,
+      selectedDraftEndSeason: model.state.endSeason,
+      selectedDraftMetric: model.state.metric,
+      selectedDraftMinSample: model.state.minSample,
+      selectedDraftNormalize: model.state.normalize,
+      selectedDraftPick: model.state.selectedPick,
+      selectedDraftZone: model.state.selectedZone,
+    });
+    const bestAverage = model.hero.bestAvgPick;
+    const bestPlayoff = model.hero.bestPlayoffPick;
+    return buildFeatureShareCard('draft', {
+      id: disclosureSignature,
+      eyebrow: 'Draft Spot Explorer',
+      title: model.hero.title,
+      subtitle: model.hero.subtitle,
+      metrics: [
+        {
+          label: 'Sample',
+          value: `${model.baseRows.length} owner-seasons`,
+          detail: `${model.state.startSeason}–${model.state.endSeason}`,
+        },
+        {
+          label: 'Best avg finish',
+          value: bestAverage ? draftPositionLabel(bestAverage.draft_pick, model.state.normalize) : '—',
+          detail: bestAverage ? `Finish ${formatNumber(bestAverage.avg_finish)} · n=${bestAverage.n}` : undefined,
+        },
+        {
+          label: 'Best playoff path',
+          value: bestPlayoff ? draftPositionLabel(bestPlayoff.draft_pick, model.state.normalize) : '—',
+          detail: bestPlayoff ? `${formatPercent(bestPlayoff.playoff_rate)} · n=${bestPlayoff.n}` : undefined,
+        },
+        {
+          label: 'Selected metric',
+          value: DRAFT_METRICS[model.state.metric].label,
+          detail: `${model.state.mode} view`,
+        },
+      ],
+      canonicalPath,
+      sourceLabel: 'Draft Spot',
+      dataVersion,
+      altText: `${model.hero.title}. ${model.baseRows.length} owner-seasons from ${model.state.startSeason} through ${model.state.endSeason}. ${model.hero.read}`,
+    }, window);
+  }, [dataVersion, disclosureSignature, model]);
 
   const update = (requested: Partial<DraftSpotState>) => {
     const next = buildDraftSpotModel(asset, requested, state).state;
@@ -142,6 +215,7 @@ export default function DraftSpotPage({
       <section class="card draft-hero" aria-labelledby="draftSpotTitle">
         <h2 id="draftSpotTitle" class="visually-hidden">Draft Spot Explorer</h2>
         <DraftSpotHero model={model} />
+        <DraftShareAction result={shareResult} />
       </section>
       <div ref={disclosureNav} />
       <details ref={pickDisclosure} id="draftPickDisclosure" class="card feature-disclosure">

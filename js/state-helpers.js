@@ -22,6 +22,7 @@ function isFiniteInput(value) {
 const GAME_RESULTS = new Set(['W', 'L', 'T']);
 const GAME_SORTS = new Set(['dateDesc', 'scoreDesc', 'scoreAsc', 'marginDesc', 'marginAsc', 'combinedDesc']);
 const FOCUS_TARGETS = new Set(['top', 'overview', 'games', 'curses', 'standings', 'playoff-picture']);
+const TRANSACTION_VIEWS = new Set(['overview', 'trades', 'waivers', 'players', 'owners', 'draft']);
 
 function enumParam(params, key, allowed) {
   const value = params.get(key);
@@ -63,6 +64,11 @@ function parseUrlState(search) {
   const team = params.get('team') || null;
   const tab = params.get('tab') || null;
   const owner = params.get('owner') || null;
+  const transactionSeason = numericParam(params, 'txSeason', { integer: true, min: 2025, max: 2100 });
+  const transactionView = enumParam(params, 'txView', TRANSACTION_VIEWS);
+  const transactionOwner = params.get('txOwner') || null;
+  const transactionPlayer = params.get('txPlayer') || null;
+  const transactionId = params.get('txId') || null;
   const rivalryTeamA = params.get('rivalryTeamA') || null;
   const rivalryTeamB = params.get('rivalryTeamB') || null;
   const rivalryScope = params.get('rivalryScope') || null;
@@ -117,7 +123,8 @@ function parseUrlState(search) {
   const hasDraft = !!(tab === 'draft' || draftOwner || draftMode || parsedDraftStart !== null || parsedDraftEnd !== null || draftMetric || parsedDraftPick !== null || draftZone || parsedDraftMinSample !== null || draftNormalize);
   const hasGameQuery = !!(gameResult || gameMinScore !== null || gameMaxScore !== null || gameSort || gameLimit !== null);
   const hasOwner = tab === 'owner' || !!owner;
-  const hasAny = !!(team || owner || trophyOwner || hasCurrent || hasDynasty || hasGauntlet || hasDraft || hasGameQuery || focus || (seasons && seasons.length) || (weeks && weeks.length) || (opps && opps.length) || (types && types.length) || (rounds && rounds.length));
+  const hasTransactions = !!(tab === 'transactions' || transactionSeason !== null || transactionView || transactionOwner || transactionPlayer || transactionId);
+  const hasAny = !!(team || owner || trophyOwner || hasTransactions || hasCurrent || hasDynasty || hasGauntlet || hasDraft || hasGameQuery || focus || (seasons && seasons.length) || (weeks && weeks.length) || (opps && opps.length) || (types && types.length) || (rounds && rounds.length));
   return {
     team,
     seasons: seasons ? new Set(seasons) : null,
@@ -127,6 +134,11 @@ function parseUrlState(search) {
     rounds: rounds ? new Set(rounds) : null,
     tab,
     owner,
+    transactionSeason,
+    transactionView,
+    transactionOwner,
+    transactionPlayer,
+    transactionId,
     rivalryTeamA,
     rivalryTeamB,
     rivalryScope,
@@ -166,6 +178,7 @@ function parseUrlState(search) {
     hasGameQuery,
     hasRivalry: tab === 'rivalry' || !!rivalryTeamA || !!rivalryTeamB,
     hasOwner,
+    hasTransactions,
     hasCurrent,
     hasDraft,
     hasGauntlet,
@@ -206,6 +219,11 @@ function buildUrlFromState(opts = {}) {
   const selectedTeam = Object.prototype.hasOwnProperty.call(opts, 'selectedTeam') ? opts.selectedTeam : allTeams;
   const tab = Object.prototype.hasOwnProperty.call(opts, 'tab') ? opts.tab : null;
   const selectedOwner = Object.prototype.hasOwnProperty.call(opts, 'selectedOwner') ? opts.selectedOwner : null;
+  const selectedTransactionSeason = Object.prototype.hasOwnProperty.call(opts, 'selectedTransactionSeason') ? opts.selectedTransactionSeason : null;
+  const selectedTransactionView = Object.prototype.hasOwnProperty.call(opts, 'selectedTransactionView') ? opts.selectedTransactionView : null;
+  const selectedTransactionOwner = Object.prototype.hasOwnProperty.call(opts, 'selectedTransactionOwner') ? opts.selectedTransactionOwner : null;
+  const selectedTransactionPlayer = Object.prototype.hasOwnProperty.call(opts, 'selectedTransactionPlayer') ? opts.selectedTransactionPlayer : null;
+  const selectedTransactionId = Object.prototype.hasOwnProperty.call(opts, 'selectedTransactionId') ? opts.selectedTransactionId : null;
   const selectedRivalryTeamA = Object.prototype.hasOwnProperty.call(opts, 'selectedRivalryTeamA') ? opts.selectedRivalryTeamA : null;
   const selectedRivalryTeamB = Object.prototype.hasOwnProperty.call(opts, 'selectedRivalryTeamB') ? opts.selectedRivalryTeamB : null;
   const selectedRivalryScope = Object.prototype.hasOwnProperty.call(opts, 'selectedRivalryScope') ? opts.selectedRivalryScope : null;
@@ -255,7 +273,14 @@ function buildUrlFromState(opts = {}) {
   if (tab === 'pulse') return pathname;
   if (tab) params.set('tab', tab);
   if (tab === 'owner' && selectedOwner) params.set('owner', selectedOwner);
-  if (tab !== 'trophy' && tab !== 'dynasty' && tab !== 'gauntlet' && tab !== 'draft' && selectedTeam && selectedTeam !== allTeams) params.set('team', selectedTeam);
+  if (tab !== 'trophy' && tab !== 'dynasty' && tab !== 'gauntlet' && tab !== 'draft' && tab !== 'transactions' && selectedTeam && selectedTeam !== allTeams) params.set('team', selectedTeam);
+  if (tab === 'transactions') {
+    if (isFiniteInput(selectedTransactionSeason)) params.set('txSeason', `${selectedTransactionSeason}`);
+    if (TRANSACTION_VIEWS.has(selectedTransactionView) && selectedTransactionView !== 'overview') params.set('txView', selectedTransactionView);
+    if (selectedTransactionOwner) params.set('txOwner', selectedTransactionOwner);
+    if (selectedTransactionPlayer) params.set('txPlayer', selectedTransactionPlayer);
+    if (selectedTransactionId) params.set('txId', selectedTransactionId);
+  }
   if (tab === 'rivalry') {
     if (selectedRivalryTeamA) params.set('rivalryTeamA', selectedRivalryTeamA);
     if (selectedRivalryTeamB) params.set('rivalryTeamB', selectedRivalryTeamB);
@@ -302,7 +327,7 @@ function buildUrlFromState(opts = {}) {
     else if (selectedDraftZone) params.set('draftZone', selectedDraftZone);
   }
   const setIf = (key, set, uni) => { if (isRestrictiveFn(set, uni)) params.set(key, [...set].join(',')); };
-  if (tab !== 'gauntlet' && tab !== 'draft') {
+  if (tab !== 'gauntlet' && tab !== 'draft' && tab !== 'transactions') {
     setIf('seasons', selectedSeasons, universe.seasons || []);
     setIf('weeks', selectedWeeks, universe.weeks || []);
     setIf('opps', selectedOpponents, universe.opponents || []);

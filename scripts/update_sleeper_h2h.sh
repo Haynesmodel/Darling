@@ -22,11 +22,13 @@ ASSETS_DIR="${SCRIPT_DIR}/../assets"
 IN_H2H="${ASSETS_DIR}/H2H.json"
 OUT_H2H="${ASSETS_DIR}/H2H.updated.json"
 OUT_CURRENT="${ASSETS_DIR}/CurrentSeason.updated.json"
+OUT_TRANSACTIONS="${ASSETS_DIR}/TransactionHistory.updated.json"
 VALIDATE="${SCRIPT_DIR}/validate_assets.cjs"
 
 PY="${PYTHON:-python3}"
 UPDATER="${SCRIPT_DIR}/sleeper_to_h2h.py"
 CURRENT_UPDATER="${SCRIPT_DIR}/generate_current_season.py"
+TRANSACTION_UPDATER="${SCRIPT_DIR}/generate_transaction_history.py"
 
 if [[ "${UPDATE_LIVE}" != "1" ]]; then
   echo "ERROR: this script makes live Sleeper API calls. Re-run with UPDATE_LIVE=1." >&2
@@ -88,6 +90,7 @@ echo "Current week: ${CURRENT_WEEK:-auto}"
 echo "Input:        ${IN_H2H}"
 echo "Output:       ${OUT_H2H}"
 echo "Current:      ${OUT_CURRENT}"
+echo "Transactions: ${OUT_TRANSACTIONS}"
 echo "Map:          ${MAP_FILE}"
 echo
 
@@ -102,6 +105,7 @@ if [[ "${VALIDATE_ONLY}" == "1" ]]; then
   WORKDIR="$(mktemp -d "${SCRIPT_DIR}/.update-XXXXXX")"
   OUT_H2H="${WORKDIR}/H2H.updated.json"
   OUT_CURRENT="${WORKDIR}/CurrentSeason.updated.json"
+  OUT_TRANSACTIONS="${WORKDIR}/TransactionHistory.updated.json"
   cleanup() {
     rm -rf "${WORKDIR}"
   }
@@ -134,8 +138,24 @@ CURRENT_CMD+=(--allow-postseason)
 
 "${CURRENT_CMD[@]}"
 
-# 4) Validate the generated bundle before it is copied into the canonical asset file
-node "${VALIDATE}" "${OUT_H2H}" "${ASSETS_DIR}/SeasonSummary.json" "${ASSETS_DIR}/Rivalries.json" "${OUT_CURRENT}"
+# 4) Generate the target transaction season against the candidate scoring boundary.
+TRANSACTION_CMD=(
+  "${PY}" "${TRANSACTION_UPDATER}"
+  --league "${LEAGUE_ID}"
+  --season "${SEASON}"
+  --map "${MAP_FILE}"
+  --max-week "${MAX_WEEK}"
+  --current-season "${OUT_CURRENT}"
+  --out "${OUT_TRANSACTIONS}"
+  --players-cache "${WORKDIR:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}}/sleeper-players-cache.json"
+)
+if [[ -f "${ASSETS_DIR}/TransactionHistory.json" ]]; then
+  TRANSACTION_CMD+=(--existing "${ASSETS_DIR}/TransactionHistory.json")
+fi
+"${TRANSACTION_CMD[@]}"
+
+# 5) Validate the generated bundle before it is copied into canonical asset files.
+node "${VALIDATE}" "${OUT_H2H}" "${ASSETS_DIR}/SeasonSummary.json" "${ASSETS_DIR}/Rivalries.json" "${OUT_CURRENT}" "${OUT_TRANSACTIONS}"
 
 echo
 if [[ "${VALIDATE_ONLY}" == "1" ]]; then
@@ -148,4 +168,5 @@ echo "Next steps:"
 echo "  1) Review diff:  diff -u \"${IN_H2H}\" \"${OUT_H2H}\" | less"
 echo "  2) Copy over:    cp \"${OUT_H2H}\" \"${IN_H2H}\""
 echo "                  cp \"${OUT_CURRENT}\" \"${ASSETS_DIR}/CurrentSeason.json\""
-echo "  3) Commit:       git add \"${IN_H2H}\" \"${ASSETS_DIR}/CurrentSeason.json\" && git commit -m \"Update Sleeper data\""
+echo "                  cp \"${OUT_TRANSACTIONS}\" \"${ASSETS_DIR}/TransactionHistory.json\""
+echo "  3) Commit:       git add \"${IN_H2H}\" \"${ASSETS_DIR}/CurrentSeason.json\" \"${ASSETS_DIR}/TransactionHistory.json\" && git commit -m \"Update Sleeper data\""

@@ -18,6 +18,7 @@ export interface LeagueAssetBundle {
   seasonSummary: SeasonSummary;
   rivalries: RivalryDefinitions;
   currentSeason: CurrentSeasonData;
+  transactionHistory: TransactionHistory;
   draftSpot: DraftSpot;
   derivedStats: DerivedStats;
   assetManifest: AssetManifest;
@@ -119,6 +120,218 @@ export interface CurrentSeasonGame {
   matchup_id: number;
   rosterA: number;
   rosterB: number;
+}
+export interface TransactionHistory {
+  schema_version: 1;
+  generator_version: 2;
+  methodology_version: 2;
+  source: 'sleeper';
+  source_updated_ms: number;
+  players: Player[];
+  /**
+   * @minItems 1
+   * @maxItems 12
+   */
+  seasons:
+    | [Season]
+    | [Season, Season]
+    | [Season, Season, Season]
+    | [Season, Season, Season, Season]
+    | [Season, Season, Season, Season, Season]
+    | [Season, Season, Season, Season, Season, Season]
+    | [Season, Season, Season, Season, Season, Season, Season]
+    | [Season, Season, Season, Season, Season, Season, Season, Season]
+    | [Season, Season, Season, Season, Season, Season, Season, Season, Season]
+    | [Season, Season, Season, Season, Season, Season, Season, Season, Season, Season]
+    | [Season, Season, Season, Season, Season, Season, Season, Season, Season, Season, Season]
+    | [Season, Season, Season, Season, Season, Season, Season, Season, Season, Season, Season, Season];
+}
+export interface Player {
+  id: string;
+  name: string | null;
+  position: string | null;
+  nfl_team: string | null;
+}
+export interface Season {
+  season: number;
+  league_id: string;
+  league_status: string;
+  max_week: number;
+  coverage: Coverage;
+  /**
+   * @minItems 1
+   */
+  teams: [Team, ...Team[]];
+  draft: Draft;
+  transactions: Transaction[];
+  player_journeys: Journey[];
+  insights: Insights;
+}
+export interface Coverage {
+  completed_week: number;
+  transaction_rounds: number[];
+  matchup_weeks: number[];
+  transaction_count: number;
+  complete_count: number;
+  failed_count: number;
+  pending_count: number;
+  type_counts: {
+    commissioner: number;
+    free_agent: number;
+    trade: number;
+    waiver: number;
+  };
+  missing_player_metadata: number;
+  outcome_methodology_version: 2;
+}
+export interface Team {
+  roster_id: number;
+  owner: string;
+}
+export interface Draft {
+  status: 'selected' | 'unavailable';
+  draft_id: string | null;
+  pick_count: number;
+  picks: DraftPick[];
+}
+export interface DraftPick {
+  pick_no: number;
+  round: number;
+  roster_id: number;
+  owner: string;
+  player_id: string;
+  is_keeper: boolean;
+}
+export interface Transaction {
+  id: string;
+  status: string;
+  type: 'waiver' | 'free_agent' | 'trade' | 'commissioner';
+  week: number;
+  created_ms: number;
+  participants: string[];
+  adds: PlayerMovement[];
+  drops: PlayerMovement[];
+  draft_picks: TransactionPick[];
+  faab_bid: number | null;
+  waiver_budget: BudgetTransfer[];
+}
+export interface PlayerMovement {
+  player_id: string;
+  owner: string;
+}
+export interface TransactionPick {
+  season: number;
+  round: number;
+  roster_id: number;
+  original_owner: string;
+  owner: string;
+  previous_owner: string | null;
+}
+export interface BudgetTransfer {
+  sender: string;
+  receiver: string;
+  amount: number;
+}
+export interface Journey {
+  player_id: string;
+  stints: Stint[];
+}
+export interface Stint {
+  owner: string;
+  acquisition: Acquisition;
+  release: Release | null;
+  rostered_weeks: number;
+  starts: number;
+  total_points: number;
+  starter_points: number;
+  retained: boolean;
+}
+export interface Acquisition {
+  kind: 'draft' | 'keeper' | 'add' | 'trade_in' | 'commissioner';
+  week: number;
+  transaction_id: string | null;
+  pick_no: number | null;
+  is_keeper: boolean;
+}
+export interface Release {
+  kind: 'drop' | 'trade_out';
+  week: number;
+  transaction_id: string;
+}
+export interface Insights {
+  trades: Trade[];
+  wire_finds: WireFind[];
+  movement_counts: MovementCount[];
+  owner_activity: OwnerActivity[];
+  draft_retention: Retention[];
+  keeper_return: KeeperReturn[];
+}
+export interface Trade {
+  transaction_id: string;
+  week: number;
+  created_ms: number;
+  status: 'too_early' | 'incomplete' | 'provisional' | 'final';
+  even: boolean;
+  edge_owner: string | null;
+  completed_through_week: number;
+  /**
+   * @minItems 2
+   */
+  sides: [TradeSide, TradeSide, ...TradeSide[]];
+}
+export interface TradeSide {
+  owner: string;
+  players: string[];
+  picks: TransactionPick[];
+  faab: number;
+  starts: number;
+  starter_points: number;
+  total_points: number;
+  rostered_weeks: number;
+  retained_players: number;
+}
+export interface WireFind {
+  transaction_id: string;
+  player_id: string;
+  owner: string;
+  acquisition_type: 'waiver' | 'free_agent';
+  week: number;
+  starts: number;
+  starter_points: number;
+  rostered_weeks: number;
+  retained: boolean;
+}
+export interface MovementCount {
+  player_id: string;
+  adds: number;
+  drops: number;
+}
+export interface OwnerActivity {
+  owner: string;
+  transactions: number;
+  adds: number;
+  drops: number;
+  trades: number;
+  commissioner_moves: number;
+  faab_spent: number;
+  distinct_incoming_players: number;
+  retention: number | null;
+  turnover: number | null;
+}
+export interface Retention {
+  owner: string;
+  available: boolean;
+  drafted: number;
+  retained: number;
+  retention: number | null;
+  turnover: number | null;
+}
+export interface KeeperReturn {
+  player_id: string;
+  owner: string;
+  round: number;
+  starts: number;
+  starter_points: number;
 }
 /**
  * Deterministic draft-position observations generated from SeasonSummary.
@@ -373,6 +586,7 @@ export interface AssetManifest {
     SeasonSummary: number;
     Rivalries: number;
     CurrentSeason: number;
+    TransactionHistory: number;
     DraftSpot: number;
     DerivedStats: number;
   };
@@ -381,6 +595,7 @@ export interface AssetManifest {
     SeasonSummary: JsonAsset;
     Rivalries: JsonAsset;
     CurrentSeason: JsonAsset;
+    TransactionHistory: JsonAsset;
     DraftSpot: JsonAsset;
   };
   derived: {

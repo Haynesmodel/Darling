@@ -30,7 +30,8 @@ export type SearchIntent =
   | { kind: 'score-threshold'; owner?: string; season?: number; min?: number; max?: number }
   | { kind: 'game-extreme'; metric: 'largest-loss-margin' | 'largest-win-margin' | 'highest-score' | 'lowest-score'; owner?: string; season?: number }
   | { kind: 'game-filter'; owner?: string; season?: number; result: 'W' | 'L' | 'T' }
-  | { kind: 'feature'; feature: 'pulse' | 'owner' | 'history' | 'current' | 'playoff-picture' | 'trophy' | 'dynasty' | 'draft' | 'gauntlet'; owner?: string }
+  | { kind: 'feature'; feature: 'pulse' | 'owner' | 'transactions' | 'history' | 'current' | 'playoff-picture' | 'trophy' | 'dynasty' | 'draft' | 'gauntlet'; owner?: string }
+  | { kind: 'transaction-view'; view: 'trades' | 'waivers' | 'players' | 'owners' | 'draft'; owner?: string }
   | { kind: 'draft-pick'; pick: number }
   | { kind: 'draft-zone'; zone: 'early' | 'middle' | 'late' }
   | { kind: 'draft-owner'; owner: string }

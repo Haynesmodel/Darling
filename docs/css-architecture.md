@@ -26,6 +26,7 @@ The import order is deterministic, and every imported file is assigned to a laye
 - `features/*.css`: styles and responsive rules owned by one page or feature.
 - `features/draft-spot.css`: Draft Spot controls, charts, pick board, owner evidence, receipts, and responsive/forced-colors behavior.
 - `src/features/owner-hub/owner-hub.entry.css`: lazy Owner Hub setup, chart-free card grid, owner form, and responsive/forced-colors behavior.
+- `src/features/transactions/transactions.entry.css`: lazy Transactions setup, six disclosure views, semantic tables/journeys, and responsive/forced-colors behavior.
 - `src/components/search/search.css` and `src/components/tables/table.css`: component-owned styles imported into the components layer.
 
 ## Rules
@@ -42,8 +43,8 @@ The import order is deterministic, and every imported file is assigned to a laye
 
 ## Adding a feature
 
-1. Create or choose a feature file under `src/styles/features/`.
-2. Import it in `src/styles/app.css` in the features layer.
+1. Create a feature-owned `.entry.css` beside a lazy controller, or choose a shared feature file under `src/styles/features/` only when the shell genuinely owns it.
+2. Import feature-owned CSS from the literal lazy entry; import shell-owned feature CSS in `src/styles/app.css` in the features layer.
 3. Reuse tokens and shared primitives.
 4. Add the feature’s mobile rules in the same file.
 5. Run `npm run lint:css`, `npm run check:css`, the relevant browser tests, and `npm run build`.

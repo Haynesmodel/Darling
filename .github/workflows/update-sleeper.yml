@@ -118,6 +118,9 @@ jobs:
           mkdir -p "${BASELINE_DIR}"
           cp assets/H2H.json "${BASELINE_DIR}/H2H.json"
           cp assets/asset-manifest.json "${BASELINE_DIR}/asset-manifest.json"
+          if [[ -f assets/TransactionHistory.json ]]; then
+            cp assets/TransactionHistory.json "${BASELINE_DIR}/TransactionHistory.json"
+          fi
           if [[ -f assets/CurrentSeason.json ]]; then
             cp assets/CurrentSeason.json "${BASELINE_DIR}/CurrentSeason.json"
           fi
@@ -156,6 +159,7 @@ jobs:
           echo "FAILED_PHASE=local promotion/regeneration" >> "$GITHUB_ENV"
           test -f assets/H2H.updated.json
           test -f assets/CurrentSeason.updated.json
+          test -f assets/TransactionHistory.updated.json
 
           SOURCE_CHANGED=0
           H2H_CHANGED=0
@@ -166,6 +170,10 @@ jobs:
           fi
           if [[ ! -f assets/CurrentSeason.json ]] || ! node scripts/compare_json.cjs assets/CurrentSeason.updated.json assets/CurrentSeason.json; then
             cp assets/CurrentSeason.updated.json assets/CurrentSeason.json
+            SOURCE_CHANGED=1
+          fi
+          if [[ ! -f assets/TransactionHistory.json ]] || ! node scripts/compare_json.cjs assets/TransactionHistory.updated.json assets/TransactionHistory.json; then
+            cp assets/TransactionHistory.updated.json assets/TransactionHistory.json
             SOURCE_CHANGED=1
           fi
 
@@ -199,6 +207,7 @@ jobs:
           ALLOWLIST=(
             assets/H2H.json
             assets/CurrentSeason.json
+            assets/TransactionHistory.json
             assets/SeasonSummary.draft.json
             assets/DerivedStats.json
             assets/asset-manifest.json
@@ -211,6 +220,7 @@ jobs:
           const allowed = new Set([
             'assets/H2H.json',
             'assets/CurrentSeason.json',
+            'assets/TransactionHistory.json',
             'assets/SeasonSummary.draft.json',
             'assets/DerivedStats.json',
             'assets/asset-manifest.json',
@@ -509,6 +519,8 @@ jobs:
             assets/SeasonSummary.draft.json
             assets/DerivedStats.json
             assets/asset-manifest.json
+            assets/TransactionHistory.updated.json
+            assets/TransactionHistory.json
             ${{ runner.temp }}/sleeper-pr-body.md
             ${{ runner.temp }}/sleeper-summary.json
           if-no-files-found: ignore

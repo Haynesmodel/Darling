@@ -17,16 +17,23 @@
     "post_change_chart_runtime_gzip_bytes": 97674,
     "reason": "Replace the broad Plot namespace prebundle with the nine APIs Darling uses and ratchet route/runtime ceilings."
   },
+  "transaction_route_baseline": {
+    "base_commit": "2b8ead1b129262b8608e9ccd9613a474e9e1f76e",
+    "pre_change_total_javascript_gzip_bytes": 279007,
+    "target_total_javascript_gzip_bytes": 298000,
+    "reason": "One-time allowance for the tenth lazy feature route; existing user-path ceilings remain unchanged."
+  },
   "budgets": {
     "entry_chunk_max_bytes": 190000,
     "entry_chunk_gzip_max_bytes": 56000,
-    "total_javascript_gzip_max_bytes": 280000,
+    "total_javascript_gzip_target_bytes": 298000,
+    "total_javascript_gzip_max_bytes": 300000,
     "feature_chunk_gzip_max_bytes": 50000,
     "non_validator_chunk_max_bytes": 320000,
     "chart_runtime_max_bytes": 305000,
     "chart_runtime_gzip_max_bytes": 100000,
     "chart_runtime_exact_copies": 1,
-    "chart_runtime_excluded_routes": ["league-pulse", "owner-hub", "history"],
+    "chart_runtime_excluded_routes": ["league-pulse", "owner-hub", "transactions", "history"],
     "chart_runtime_required_routes": ["current-season", "rivalry", "trophy", "dynasty", "draft-spot", "gauntlet"],
     "chart_runtime_dynamic_routes": ["draft-spot"],
     "plot_vendor_max_copies": 1,
@@ -35,6 +42,7 @@
     "required_dynamic_entries": {
       "league-pulse": "src/features/league-pulse/league-pulse-controller.ts",
       "owner-hub": "src/features/owner-hub/owner-hub-controller.ts",
+      "transactions": "src/features/transactions/transactions-controller.ts",
       "history": "src/features/history/history-controller.ts",
       "current-season": "src/features/current-season/current-season-controller.ts",
       "rivalry": "src/features/rivalry/rivalry-controller.ts",
@@ -48,9 +56,13 @@
       "current-season": ["current-season-odds"],
       "draft-spot": ["chart-runtime"]
     },
+    "feature_chunk_gzip_max_bytes_by_route": {
+      "transactions": 18000
+    },
     "route_settled_gzip_max_bytes": {
       "league-pulse": 115000,
       "owner-hub": 115000,
+      "transactions": 120000,
       "history": 115000,
       "current-season": 205000,
       "rivalry": 205000,

@@ -1,0 +1,187 @@
+@layer features {
+  .transactions {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .transactions-hero,
+  .transaction-controls,
+  .transaction-trade-card header,
+  .transaction-row {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    justify-content: space-between;
+  }
+
+  .transactions-hero h3,
+  .transactions-hero p,
+  .transaction-trade-card h4,
+  .transaction-trade-card h5,
+  .transaction-trade-card p {
+    margin: 0;
+  }
+
+  .transaction-controls label,
+  .transaction-player-control {
+    display: grid;
+    gap: var(--space-1);
+    min-width: min(100%, 12rem);
+  }
+
+  .transaction-jump-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .transaction-jump-nav a {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .transaction-section > .feature-section-content {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .transaction-stats {
+    display: grid;
+    gap: var(--space-2);
+    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+    margin: 0;
+  }
+
+  .transaction-stats div {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-control);
+    padding: var(--space-2);
+  }
+
+  .transaction-stats dt {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+  }
+
+  .transaction-stats dd {
+    font-weight: 700;
+    margin: var(--space-1) 0 0;
+  }
+
+  .transaction-list,
+  .transaction-ranking,
+  .transaction-journey ol {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .transaction-row {
+    border-block-end: 1px solid var(--border);
+    padding-block: var(--space-2);
+  }
+
+  .transaction-row div,
+  .transaction-journey li {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .transaction-row small,
+  .transaction-journey small {
+    color: var(--text-muted);
+  }
+
+  .transaction-trade-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-panel);
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-3);
+  }
+
+  .transaction-trade-sides {
+    display: grid;
+    gap: var(--space-3);
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  }
+
+  .transaction-trade-sides > section {
+    background: var(--surface-panel-alt);
+    border-radius: var(--radius-control);
+    min-width: 0;
+    padding: var(--space-3);
+  }
+
+  .transaction-method {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  .transaction-ranking {
+    list-style-position: inside;
+    margin: 0;
+    padding: 0;
+  }
+
+  .transaction-ranking li {
+    align-items: baseline;
+    border-block-end: 1px solid var(--border);
+    display: grid;
+    gap: var(--space-2);
+    grid-template-columns: minmax(10rem, 1fr) minmax(12rem, 2fr) auto;
+    padding-block: var(--space-2);
+  }
+
+  .transaction-ranking.compact li {
+    grid-template-columns: minmax(10rem, 1fr) auto;
+  }
+
+  .transaction-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .transaction-table-wrap table {
+    border-collapse: collapse;
+    min-width: 44rem;
+    width: 100%;
+  }
+
+  .transaction-table-wrap th,
+  .transaction-table-wrap td {
+    border-block-end: 1px solid var(--border);
+    padding: var(--space-2);
+    text-align: start;
+  }
+
+  .transaction-empty {
+    margin: 0;
+  }
+
+  @media (max-width: 600px) {
+    .transaction-row {
+      align-items: start;
+      display: grid;
+    }
+
+    .transaction-ranking li,
+    .transaction-ranking.compact li {
+      grid-template-columns: 1fr;
+    }
+
+    .transaction-trade-sides {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .transaction-trade-card,
+    .transaction-jump-nav a,
+    .transaction-stats div {
+      border: 1px solid CanvasText;
+    }
+  }
+}

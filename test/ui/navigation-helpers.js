@@ -1,5 +1,6 @@
 const groupedFeatures = {
   owner: 'Owners',
+  transactions: 'Owners',
   history: 'Owners',
   trophy: 'Owners',
   dynasty: 'Owners',

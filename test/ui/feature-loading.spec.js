@@ -10,6 +10,7 @@ const manifest = preview
 const sources = {
   pulse: 'src/features/league-pulse/league-pulse-controller.ts',
   owner: 'src/features/owner-hub/owner-hub-controller.ts',
+  transactions: 'src/features/transactions/transactions-controller.ts',
   history: 'src/features/history/history-controller.ts',
   current: 'src/features/current-season/current-season-controller.ts',
   rivalry: 'src/features/rivalry/rivalry-controller.ts',
@@ -42,6 +43,7 @@ test('every cold route requests only its feature entry and chart routes share on
   const routes = {
     pulse: '/',
     owner: '/?tab=owner&owner=Joe',
+    transactions: '/?tab=transactions',
     history: '/?tab=history',
     current: '/?tab=current&currentOwner=Joe',
     rivalry: '/?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel',

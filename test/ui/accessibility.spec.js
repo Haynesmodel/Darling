@@ -4,6 +4,7 @@ import { createSnapshotFixture } from './snapshot-fixture.js';
 const pages = [
   ['pulse', 'League Pulse'],
   ['owner', 'My Team'],
+  ['transactions', 'Transactions'],
   ['history', 'League History'],
   ['current', 'Current Season'],
   ['rivalry', 'Head to Head'],

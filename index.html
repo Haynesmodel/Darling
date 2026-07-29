@@ -62,6 +62,7 @@
           <a id="tabOwnerBtn" data-feature-id="owner" href="?tab=owner">
             My Team<span class="visually-hidden" data-owner-preference-status>, not chosen</span>
           </a>
+          <a id="tabTransactionsBtn" data-feature-id="transactions" href="?tab=transactions">Transactions</a>
           <a id="tabHistoryBtn" data-feature-id="history" href="?tab=history">League History</a>
           <a id="tabTrophyBtn" data-feature-id="trophy" href="?tab=trophy">Trophy Case</a>
           <a id="tabDynastyBtn" data-feature-id="dynasty" href="?tab=dynasty">Dynasty Rankings</a>
@@ -100,6 +101,13 @@
     <section id="page-owner" class="page" aria-labelledby="page-owner-title" hidden>
       <h2 id="page-owner-title">My Team</h2>
       <div id="ownerHubRoot"></div>
+    </section>
+
+    <section id="page-transactions" class="page" aria-labelledby="page-transactions-title" hidden>
+      <h2 id="page-transactions-title" class="visually-hidden">Transactions</h2>
+      <div id="transactionHistoryRoot">
+        <div class="status-banner status-loading" role="status">Open Transactions to load player movement history.</div>
+      </div>
     </section>
 
     <section id="page-history" class="page" aria-labelledby="page-history-title" hidden>

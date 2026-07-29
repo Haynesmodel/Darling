@@ -13,12 +13,13 @@
     "schema_versions": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["H2H", "SeasonSummary", "Rivalries", "CurrentSeason", "DraftSpot", "DerivedStats"],
+      "required": ["H2H", "SeasonSummary", "Rivalries", "CurrentSeason", "TransactionHistory", "DraftSpot", "DerivedStats"],
       "properties": {
         "H2H": { "type": "integer", "minimum": 1 },
         "SeasonSummary": { "type": "integer", "minimum": 1 },
         "Rivalries": { "type": "integer", "minimum": 1 },
         "CurrentSeason": { "type": "integer", "minimum": 1 },
+        "TransactionHistory": { "type": "integer", "minimum": 1 },
         "DraftSpot": { "type": "integer", "minimum": 1 },
         "DerivedStats": { "type": "integer", "minimum": 1 }
       }
@@ -26,12 +27,13 @@
     "assets": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["H2H", "SeasonSummary", "Rivalries", "CurrentSeason", "DraftSpot"],
+      "required": ["H2H", "SeasonSummary", "Rivalries", "CurrentSeason", "TransactionHistory", "DraftSpot"],
       "properties": {
         "H2H": { "$ref": "#/$defs/jsonAsset" },
         "SeasonSummary": { "$ref": "#/$defs/jsonAsset" },
         "Rivalries": { "$ref": "#/$defs/jsonAsset" },
         "CurrentSeason": { "$ref": "#/$defs/jsonAsset" },
+        "TransactionHistory": { "$ref": "#/$defs/jsonAsset" },
         "DraftSpot": { "$ref": "#/$defs/jsonAsset" }
       }
     },

@@ -733,8 +733,12 @@ test('update workflow validation-only mode runs with a stub updater and leaves a
   const stubPath = path.join(stubDir, 'python-stub.sh');
   const updatedPath = path.join(repoRoot, 'assets', 'H2H.updated.json');
   const currentUpdatedPath = path.join(repoRoot, 'assets', 'CurrentSeason.updated.json');
+  const transactionUpdatedPath = path.join(repoRoot, 'assets', 'TransactionHistory.updated.json');
   const before = fs.existsSync(updatedPath) ? fs.readFileSync(updatedPath, 'utf8') : null;
   const currentBefore = fs.existsSync(currentUpdatedPath) ? fs.readFileSync(currentUpdatedPath, 'utf8') : null;
+  const transactionBefore = fs.existsSync(transactionUpdatedPath)
+    ? fs.readFileSync(transactionUpdatedPath, 'utf8')
+    : null;
 
 fs.writeFileSync(stubPath, `#!/usr/bin/env bash
 set -euo pipefail
@@ -766,6 +770,11 @@ done
 mkdir -p "$(dirname "$out")"
 if [[ "$script" == *"generate_current_season.py" ]]; then
 cp assets/CurrentSeason.json "$out"
+exit 0
+fi
+
+if [[ "$script" == *"generate_transaction_history.py" ]]; then
+cp assets/TransactionHistory.json "$out"
 exit 0
 fi
 
@@ -806,6 +815,11 @@ fi
       assert.equal(fs.existsSync(currentUpdatedPath), false);
     } else {
       assert.equal(fs.readFileSync(currentUpdatedPath, 'utf8'), currentBefore);
+    }
+    if (transactionBefore === null) {
+      assert.equal(fs.existsSync(transactionUpdatedPath), false);
+    } else {
+      assert.equal(fs.readFileSync(transactionUpdatedPath, 'utf8'), transactionBefore);
     }
   } finally {
     fs.rmSync(stubDir, { recursive: true, force: true });

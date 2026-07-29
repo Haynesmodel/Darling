@@ -331,7 +331,7 @@ test('page loads and renders the history tables', async ({ page }) => {
   expect(weekCount).toBe(historyCount);
   const diagnostics = await page.evaluate(() => window.darlingDataDiagnostics);
   expect(diagnostics.dataVersion).toMatch(/^sha256:[a-f0-9]{64}$/);
-  expect(diagnostics.manifestVersion).toBe(2);
+  expect(diagnostics.manifestVersion).toBe(3);
   expect(diagnostics.loadedAssets).toContain('DerivedStats');
   expect(diagnostics.optionalAssetFailures).toEqual([]);
 });

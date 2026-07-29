@@ -1,5 +1,20 @@
 # Production JavaScript bundle budgets
 
+## Transactions route delta
+
+The July 28, 2026 Transactions change was measured from clean base `2b8ead1b129262b8608e9ccd9613a474e9e1f76e` with Node 24.14.0, npm 11.18.0, Vite 8.1.4, and `VITE_BASE_PATH=/Darling/`.
+
+| Metric | Base | Transactions | Delta | Enforced ceiling |
+| --- | ---: | ---: | ---: | ---: |
+| Entry gzip | 55,028 | 55,962 | +934 | 56,000 |
+| Aggregate JavaScript gzip | 279,770 | 295,829 | +16,059 | 300,000 |
+| Transactions feature chunk gzip | — | 14,374 | — | 18,000 |
+| Transactions settled route gzip | — | 95,294 | — | 120,000 |
+| Current Season settled gzip | ≤205,000 | 203,254 | — | 205,000 |
+| Chart-runtime gzip | 96,430 | 95,567 | -863 | 100,000 |
+
+The aggregate target is 298,000 gzip with a 300,000 hard ceiling. Transaction schema code is generated into `transaction-history-validator.ts` and reachable only from the Transactions entry; keeping it out of the shared core validator protects every existing route closure. Transactions has no chart or interactive-table runtime dependency, and cold non-transaction routes do not fetch its JSON asset.
+
 The July 23, 2026 chart-runtime optimization keeps Observable Plot and one shared `chart-runtime`, but the committed vendor now exports only the nine Plot functions Darling uses. The same-revision comparison starts at merged `main` commit `2f61d1a` with Node 24.14.0, npm 11.18.0, Observable Plot 0.6.17, esbuild 0.28.1, and Vite 8.1.4.
 
 | Metric | Before | After | Delta | Enforced ceiling |
@@ -91,17 +106,18 @@ The manifest contains exactly one named `chart-runtime`. Current Season, Head to
 
 `scripts/data/bundle-budget.json` and `npm run check:bundle` enforce:
 
-- aggregate JavaScript at or below 280,000 gzip;
+- aggregate JavaScript targeting 298,000 gzip and at or below the 300,000 hard ceiling;
 - entry at or below 190,000 raw and 56,000 gzip;
 - chart-runtime at or below 305,000 raw and 100,000 gzip;
 - every non-validator chunk at or below 320,000 raw;
-- League Pulse and History settled closures at or below 115,000 gzip;
+- League Pulse, Owner Hub, and History settled closures at or below 115,000 gzip;
+- Transactions settled closure at or below 120,000 gzip and its feature entry at or below 18,000 gzip;
 - every settled chart route at or below 205,000 gzip;
 - exactly one named chart-runtime and one Plot/vendor copy;
-- Plot exclusion from the entry, League Pulse, and History;
+- Plot exclusion from the entry, League Pulse, Owner Hub, Transactions, and History;
 - a dynamic, not static, Plot dependency for Draft Spot;
 - one shared runtime in every chart route;
-- dynamic manifest entries for all eight feature destinations and `load-league-assets`.
+- dynamic manifest entries for all ten feature destinations and `load-league-assets`.
 
 `node scripts/check_bundle_size.cjs --json` emits stable static and settled fields for every route. The human report prints the same route table plus chunk and runtime measurements. Synthetic graph tests cover cycles, shared-chunk deduplication, selected dynamics, missing/duplicate/leaked runtimes, separator normalization, and budget diagnostics.
 

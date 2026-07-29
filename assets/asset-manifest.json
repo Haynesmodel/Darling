@@ -44,9 +44,18 @@
       "season_max": 2025,
       "season_min": 2014,
       "sha256": "sha256:2fac336af3e8324a1213fd34f39de5d574bcc0e5b99212ebba05ab007de8a11f"
+    },
+    "TransactionHistory": {
+      "bytes": 407684,
+      "path": "assets/TransactionHistory.json",
+      "required": false,
+      "rows": 489,
+      "season_max": 2025,
+      "season_min": 2025,
+      "sha256": "sha256:1dc2ad97f69bfd444c55ceb4d29243dc8dc96ca96f6b86142dfaad96cca61618"
     }
   },
-  "data_version": "sha256:32c57e28628162d8d48f27ff38837654710b0c5a5b6f854a66e5ba49e9b2a127",
+  "data_version": "sha256:9967006f990c70272cea8bb33de91bb8f396595a70f8f85de6873ecdc87d507a",
   "derived": {
     "bytes": 180301,
     "path": "assets/DerivedStats.json",
@@ -59,7 +68,7 @@
     }
   },
   "derived_generator_version": 1,
-  "manifest_version": 2,
+  "manifest_version": 3,
   "media": {
     "leagueHero": {
       "role": "runtime-required",
@@ -186,6 +195,7 @@
     "DraftSpot": 1,
     "H2H": 1,
     "Rivalries": 1,
-    "SeasonSummary": 1
+    "SeasonSummary": 1,
+    "TransactionHistory": 1
   }
 }

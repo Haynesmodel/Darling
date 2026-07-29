@@ -44,7 +44,7 @@ test('runtime requests a no-store manifest and full per-asset versions', async (
   const manifestUrl = requests.find(url => new URL(url).pathname.endsWith('/assets/asset-manifest.json'));
   expect(new URL(manifestUrl).search).toBe('');
   for (const [name, entry] of Object.entries({ ...manifest.assets, DerivedStats: manifest.derived })) {
-    if (name === 'DraftSpot') continue;
+    if (name === 'DraftSpot' || name === 'TransactionHistory') continue;
     const requestUrl = requests.find(url => new URL(url).pathname.endsWith(`/${entry.path}`));
     expect(requestUrl, `${name} request`).toBeTruthy();
     expect(new URL(requestUrl).searchParams.get('v')).toBe(entry.sha256.replace('sha256:', ''));
@@ -158,11 +158,12 @@ test('a long-open Pulse and global badge reassess together without network polli
   expect(dataRequests).toBe(bootRequests);
 });
 
-test('freshness disclosure remains available after visiting all nine destinations', async ({ page }) => {
+test('freshness disclosure remains available after visiting all ten destinations', async ({ page }) => {
   await page.goto('/');
   const destinations = [
     ['pulse', 'League Pulse'],
     ['owner', 'My Team'],
+    ['transactions', 'Transactions'],
     ['history', 'League History'],
     ['current', 'Current Season'],
     ['rivalry', 'Head to Head'],
@@ -275,6 +276,8 @@ test('every runtime JSON request uses the deployment base path and full manifest
   const fixture = createSnapshotFixture({ basePath });
   await fixture.install(page);
   await page.goto('/');
+  await activateFeature(page, 'transactions');
+  await expect(page.locator('.transactions-hero')).toBeVisible();
   await activateFeature(page, 'draft');
   await expect(page.locator('.draft-hero')).toBeVisible();
 

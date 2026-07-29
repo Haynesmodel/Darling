@@ -7,6 +7,9 @@ const {
   outputRootFromArgs,
   specializeFormatRuntime,
 } = require('../scripts/generate_asset_validators.cjs');
+const {
+  outputRootFromArgs: assetTypesOutputRootFromArgs,
+} = require('../scripts/generate_asset_types.cjs');
 
 test('browser standalone date formats match the AJV format validators', () => {
   const samples = {
@@ -41,6 +44,8 @@ test('browser standalone date formats match the AJV format validators', () => {
 test('validator generation resolves output roots and rejects a full format-runtime leak', () => {
   assert.equal(outputRootFromArgs([]), process.cwd());
   assert.equal(outputRootFromArgs(['--output-root', 'generated']), path.join(process.cwd(), 'generated'));
+  assert.equal(assetTypesOutputRootFromArgs([]), process.cwd());
+  assert.equal(assetTypesOutputRootFromArgs(['--output-root', 'types']), path.join(process.cwd(), 'types'));
 
   const source = 'const format = require("ajv-formats/dist/formats").fullFormats.date;';
   const specialized = specializeFormatRuntime(source);

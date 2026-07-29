@@ -20,6 +20,8 @@ Test locally:
 - `npm test` runs the data and helper tests.
 - `npm run test:assets` validates source and generated JSON, cross-file league semantics, manifest freshness, and responsive media.
 - `npm run generate:data` intentionally refreshes generated types, standalone validators, derived statistics, and the manifest.
+- `npm run generate:transaction-history` refreshes the bounded Sleeper transaction, draft, player-journey, and outcome snapshot for a configured league season.
+- `npm run test:transaction-history` runs the deterministic fixture and reconciliation tests for that generator.
 - `npm run check:data-generated` performs a read-only byte-for-byte drift check.
 - `npm run check:bundle` verifies the production entry, lazy data-runtime chunk, and total gzip budgets.
 - `npm run check:feature-boundaries` rejects eager/cross-feature imports, feature CSS in the shell, oversized controllers, and a restored legacy monolith.
@@ -44,6 +46,7 @@ Test locally:
 Primary web-served data:
 - `assets/H2H.json`
 - `assets/CurrentSeason.json` (optional Sleeper-generated live/current season source)
+- `assets/TransactionHistory.json` (optional Sleeper-generated transaction, draft, journey, and outcome source)
 - `assets/SeasonSummary.json`
 - `assets/DraftSpot.json` (generated, runtime-optional Draft Spot observations)
 - `assets/Rivalries.json`
@@ -66,7 +69,7 @@ Theme and hero assets:
 
 Global search and command palette:
 - Open Search from the sticky navigation, with `Command+K` / `Control+K`, or with `/` while focus is outside an editable field.
-- Exact owner names and current-team aliases open that owner's Hub first. Other structured phrases include owner seasons (`Joe 2021`), rivalries (`Zubs vs Joel`), Draft Spot destinations (`pick 10`, `late draft picks`, `Joe draft history`), season types (`2024 playoffs`), thresholds (`150 point games`), records (`biggest loss`), feature destinations, and color-scheme commands.
+- Exact owner names and current-team aliases open that owner's Hub first. Other structured phrases include owner seasons (`Joe 2021`), rivalries (`Zubs vs Joel`), transaction destinations (`transactions`, `trade desk`, `waiver wire`, `Joe moves`), Draft Spot destinations (`pick 10`, `late draft picks`, `Joe draft history`), season types (`2024 playoffs`), thresholds (`150 point games`), records (`biggest loss`), feature destinations, and color-scheme commands.
 - Search is local-only. It hydrates from the existing league JSON assets, stores only up to eight executed result IDs in `localStorage["darling.search.recent"]`, and navigates through canonical URL state.
 - History record URLs support `gameResult`, `gameMinScore`, `gameMaxScore`, `gameSort`, `gameLimit`, and `focus`. Invalid values are ignored and limits are capped at 100.
 - See [`docs/SEARCH_COMMAND_PALETTE.md`](./docs/SEARCH_COMMAND_PALETTE.md) before adding aliases, intent families, or commands.
@@ -78,7 +81,7 @@ Interactive tables:
 - See [`docs/INTERACTIVE_TABLES.md`](./docs/INTERACTIVE_TABLES.md) before adding a table ID, column, adapter, quick filter, or saved-state field.
 
 Feature architecture:
-- The shell loads one validated data snapshot and lazy-loads Owner Hub, League History, Current Season, Head to Head, Trophy Case, Dynasty Rankings, Draft Spot, and Historical Matchup through cached lifecycle controllers.
+- The shell loads one validated core data snapshot and lazy-loads Owner Hub, Transactions, League History, Current Season, Head to Head, Trophy Case, Dynasty Rankings, Draft Spot, and Historical Matchup through cached lifecycle controllers. Transactions fetches and validates its optional asset only when activated.
 - Feature-owned renderers, table adapters, charts, and CSS stay behind each dynamic entry; Observable Plot is absent from the default History route.
 - See [`docs/feature-architecture.md`](./docs/feature-architecture.md) before adding a feature destination or changing routing, activation, loading/error behavior, feature diagnostics, or import ownership.
 
@@ -89,7 +92,7 @@ My Team and Owner Hub:
 
 Accessibility and CSS:
 - Primary navigation uses five semantic link/disclosure groups with canonical destination URLs and `aria-current`; filter disclosures retain native checkbox semantics, and application dialogs manage inertness, focus containment, scroll lock, and focus restoration.
-- The seven deep analytical destinations use native `details`/`summary` plus a feature-labelled “Jump to section” control; Owner Hub instead uses a compact chart-free card grid. Mode, owner, range, and matchup signatures choose compact primary defaults; user choices are remembered per signature in memory only. Existing History focus links reveal their target, and disclosure state never changes the product URL.
+- The eight deep analytical destinations use native `details`/`summary` plus a feature-labelled “Jump to section” control; Owner Hub instead uses a compact chart-free card grid. Mode, owner, range, and matchup signatures choose compact primary defaults; user choices are remembered per signature in memory only. Existing History and Transactions focus links reveal their target, and disclosure state never changes the product URL.
 - The application stylesheet entry is `src/styles/app.css`; shared and feature styles are assigned to explicit cascade layers.
 - See [`docs/accessibility.md`](./docs/accessibility.md) and [`docs/css-architecture.md`](./docs/css-architecture.md) before adding a feature destination, disclosure, modal, animation, shared style, or feature stylesheet.
 
@@ -117,18 +120,19 @@ Reference data:
 
 Generated or local-only files:
 - `js/charting/vendor/charting-vendor.js` is generated by `npm run build:charts` and committed so the static site can run without a deployment build phase. Its exact nine named exports are intentional; adding an API requires updating the allowlist and contract test, regenerating, running the chart matrix, and recording the bundle delta.
-- `src/data/generated/asset-types.ts`, `src/data/generated/asset-validators.ts`, `assets/DraftSpot.json`, `assets/DerivedStats.json`, and `assets/asset-manifest.json` are generated by `npm run generate:data` and committed as one coherent snapshot.
+- `src/data/generated/asset-types.ts`, `src/data/generated/asset-validators.ts`, `src/data/generated/transaction-history-validator.ts`, `assets/DraftSpot.json`, `assets/DerivedStats.json`, and `assets/asset-manifest.json` are generated by `npm run generate:data` and committed as one coherent snapshot.
 - `assets/hero/league-*` is generated by `npm run build:hero` and committed so the static site can serve optimized hero images without the original full-size JPEG.
 - `public/assets/` is generated by `scripts/sync_public_assets.cjs` before Vite dev/build so JSON fetch assets and hero media remain compatible without copying unrelated source media.
 - `dist/` is generated by `npm run build`.
 - `assets/H2H.updated.json` is generated by `scripts/update_sleeper_h2h.sh` and is safe to delete after copying reviewed changes into `assets/H2H.json`.
 - `assets/CurrentSeason.updated.json` is generated by `scripts/update_sleeper_h2h.sh` and is safe to delete after copying reviewed changes into `assets/CurrentSeason.json`.
+- `assets/TransactionHistory.updated.json` is generated by `scripts/update_sleeper_h2h.sh` and is safe to delete after copying reviewed changes into `assets/TransactionHistory.json`.
 - `assets/H2H_backup.json`, `coverage/`, `test-results/`, `playwright-report/`, `.nyc_output/`, `scripts/__pycache__/`, and `.DS_Store` files are local artifacts and should not be committed.
 
 Season update flow:
 - Set `SEASON` and `LEAGUE_ID` when needed, then confirm the Week 1 Sunday anchor exists in `scripts/sleeper_week1_anchors.json`.
 - Dry run locally with `UPDATE_LIVE=1 VALIDATE_ONLY=1 scripts/update_sleeper_h2h.sh`, or dispatch the main-only workflow with `validate_only: true`, to generate and validate a temporary bundle without touching tracked assets or remote Git state.
-- A full scheduled or manual workflow run validates the candidate, permits only the five reviewed data outputs, and enforces append-only H2H history before requesting a short-lived Darling GitHub App token.
+- A full scheduled or manual workflow run validates the candidate, permits only the six reviewed data outputs, preserves the 11 newest non-target transaction seasons byte-for-byte at the JSON-value level, evicts older transaction slices under the documented 12-season retention contract, and enforces append-only H2H history before requesting a short-lived Darling GitHub App token.
 - Changed data is proposed on the bot-owned `automation/sleeper-<season>` branch in exactly one draft pull request targeting `main`. Every refresh updates the same pull request and returns it to draft.
 - Review the generated checklist and complete data diff, wait for the exact `ci / gate`, then have a human mark the latest candidate ready, approve it, and merge it. The bot cannot ready, approve, auto-merge, merge, or push directly to `main`.
 - Full no-change runs create no token, branch update, or pull request update. Failures retain safe candidate evidence for seven days and update the exact `Weekly Sleeper update failed` issue; the next successful full run closes that issue with a recovery link.

@@ -1,5 +1,14 @@
-import type { LeaguePulseViewModel, PulseLink, PulseMatchupModel } from './league-pulse-types';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import type { LeagueEdition, LeaguePulseViewModel, PulseLink, PulseMatchupModel } from './league-pulse-types';
 import { shortDataVersion } from '../../data/data-version';
+import {
+  absoluteShareHref,
+  mountCopyLinkAction,
+  mountShareCardAction,
+  type ShareCardActionController,
+} from '../../share/share-card-actions';
+import { buildFeatureShareCard } from '../../share/share-card-feature-adapters';
+import type { ShareCardBuildResult } from '../../share/share-card-types';
 
 function ActionLink({ link, className = '' }: { link?: PulseLink; className?: string }) {
   return link ? <a class={className} href={link.href}>{link.label}</a> : null;
@@ -21,7 +30,50 @@ function PulseHero({ model }: { model: LeaguePulseViewModel }) {
   </section>;
 }
 
-function MatchupCard({ matchup }: { matchup: PulseMatchupModel }) {
+function ShareAction({
+  result,
+  copyHref,
+  label,
+}: {
+  result?: ShareCardBuildResult;
+  copyHref?: string;
+  label?: string;
+}) {
+  const host = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!host.current) return;
+    let controller: ShareCardActionController | null = null;
+    if (result) controller = mountShareCardAction({ host: host.current, result, label });
+    else if (copyHref) controller = mountCopyLinkAction(host.current, copyHref, label);
+    return () => controller?.dispose();
+  }, [result, copyHref, label]);
+  return <div ref={host} class="share-card-action-host" />;
+}
+
+function MatchupCard({ matchup, dataVersion }: { matchup: PulseMatchupModel; dataVersion: string }) {
+  const final = matchup.status === 'Final'
+    && matchup.scoreA !== null
+    && matchup.scoreB !== null;
+  const href = absoluteShareHref(matchup.currentHref, window);
+  const result = final ? buildFeatureShareCard('matchup', {
+    id: `${matchup.ownerA}-${matchup.ownerB}`,
+    eyebrow: `${matchup.type} matchup`,
+    title: `${matchup.ownerA} vs ${matchup.ownerB}`,
+    subtitle: matchup.result,
+    metrics: [
+      { label: matchup.ownerA, value: matchup.scoreA!.toFixed(2) },
+      { label: matchup.ownerB, value: matchup.scoreB!.toFixed(2) },
+      {
+        label: 'Winner',
+        value: matchup.scoreA === matchup.scoreB ? 'Tie' : matchup.scoreA! > matchup.scoreB! ? matchup.ownerA : matchup.ownerB,
+        detail: `${Math.abs(matchup.scoreA! - matchup.scoreB!).toFixed(2)}-point margin`,
+      },
+    ],
+    canonicalPath: matchup.currentHref,
+    sourceLabel: 'Current Season',
+    dataVersion,
+    altText: `${matchup.ownerA} ${matchup.scoreA!.toFixed(2)}, ${matchup.ownerB} ${matchup.scoreB!.toFixed(2)}. ${matchup.result}.`,
+  }, window) : undefined;
   return <article class="pulse-matchup-card">
     <div class="pulse-card-topline"><span>{matchup.round || matchup.type}</span><strong>{matchup.status}</strong></div>
     <div class="pulse-scoreline">
@@ -33,6 +85,11 @@ function MatchupCard({ matchup }: { matchup: PulseMatchupModel }) {
       <a href={matchup.currentHref}>Open week detail</a>
       <a href={matchup.rivalryHref}>Open {matchup.ownerA} vs {matchup.ownerB} Head to Head</a>
     </div>
+    <ShareAction
+      result={result}
+      copyHref={final ? undefined : href}
+      label={final ? `Share ${matchup.ownerA} vs ${matchup.ownerB} card` : 'Copy matchup link'}
+    />
   </article>;
 }
 
@@ -48,8 +105,89 @@ function Matchups({ model }: { model: LeaguePulseViewModel }) {
     <div class="pulse-section-heading"><div><p class="pulse-eyebrow">Spotlight</p><h3 id="pulseMatchupsTitle">Week {model.state.spotlightWeek} matchups</h3></div></div>
     {groups.map(group => <div class="pulse-matchup-group" key={group.title || 'week'}>
       {group.title && <h4>{group.title}</h4>}
-      <div class="pulse-matchup-grid">{group.rows.map(matchup => <MatchupCard key={`${matchup.ownerA}-${matchup.ownerB}`} matchup={matchup} />)}</div>
+      <div class="pulse-matchup-grid">{group.rows.map(matchup => <MatchupCard key={`${matchup.ownerA}-${matchup.ownerB}`} matchup={matchup} dataVersion={model.dataNote.dataVersion} />)}</div>
     </div>)}
+  </section>;
+}
+
+function editionCardResult(edition: LeagueEdition): ShareCardBuildResult | undefined {
+  if (edition.state !== 'complete') return undefined;
+  const facts = {
+    id: edition.id,
+    eyebrow: 'The League Newspaper',
+    title: edition.kind === 'weekly'
+      ? `${edition.season} Week ${edition.week} Recap`
+      : `${edition.season} Season Recap`,
+    subtitle: edition.headline,
+    metrics: edition.highlights.slice(0, 4),
+    canonicalPath: edition.sourceHref,
+    sourceLabel: edition.sourceLabel,
+    dataVersion: edition.dataVersion,
+    altText: `${edition.headline}. ${edition.highlights.map(item => `${item.label}: ${item.value}, ${item.detail}`).join('. ')}.`,
+  };
+  return buildFeatureShareCard(edition.kind === 'weekly' ? 'weekly-recap' : 'season-recap', facts, window);
+}
+
+function Newspaper({ model }: { model: LeaguePulseViewModel }) {
+  const { editions, defaultEditionId } = model.newspaper;
+  const [selectedId, setSelectedId] = useState(defaultEditionId || '');
+  useEffect(() => {
+    if (!editions.some(edition => edition.id === selectedId)) setSelectedId(defaultEditionId || editions[0]?.id || '');
+  }, [defaultEditionId, editions, selectedId]);
+  const selected = editions.find(edition => edition.id === selectedId) || editions[0] || null;
+  const kinds = [...new Set(editions.map(edition => edition.kind))];
+  const seasons = [...new Set(editions.filter(edition => !selected || edition.kind === selected.kind).map(edition => edition.season))];
+  const peers = editions.filter(edition => !selected || (edition.kind === selected.kind && edition.season === selected.season));
+  const result = useMemo(() => selected ? editionCardResult(selected) : undefined, [selected]);
+  const selectEdition = (kind: string, season?: number) => {
+    const edition = editions.find(item => item.kind === kind && (season === undefined || item.season === season))
+      || editions.find(item => item.kind === kind);
+    if (edition) setSelectedId(edition.id);
+  };
+  return <section class="card pulse-newspaper" aria-labelledby="pulseNewspaperTitle">
+    <div class="pulse-section-heading">
+      <div>
+        <p class="pulse-eyebrow">Generated from the latest reviewed league snapshot</p>
+        <h3 id="pulseNewspaperTitle">The League Newspaper</h3>
+      </div>
+      {selected && <span class={`pulse-edition-status pulse-edition-${selected.state}`}>{selected.statusLabel}</span>}
+    </div>
+    {!selected ? <p>No edition can be generated because the canonical season and matchup assets are incomplete.</p> : <>
+      <div class="pulse-newspaper-controls">
+        {kinds.length > 1 && <label>Type
+          <select value={selected.kind} onChange={event => {
+            const kind = event.currentTarget.value;
+            selectEdition(kind, selected.season);
+          }}>
+            <option value="weekly">Weekly</option><option value="season">Season</option>
+          </select>
+        </label>}
+        {seasons.length > 1 && <label>Season
+          <select value={String(selected.season)} onChange={event => selectEdition(selected.kind, Number(event.currentTarget.value))}>
+            {seasons.map(season => <option key={season} value={season}>{season}</option>)}
+          </select>
+        </label>}
+        {peers.length > 1 && <label>Edition
+          <select value={selected.id} onChange={event => setSelectedId(event.currentTarget.value)}>
+            {peers.map(edition => <option key={edition.id} value={edition.id}>{edition.week ? `Week ${edition.week}` : 'Year-end'}</option>)}
+          </select>
+        </label>}
+      </div>
+      <article class="pulse-edition">
+        <p class="pulse-eyebrow">{selected.season}{selected.week ? ` · Week ${selected.week}` : ' · Season edition'}</p>
+        <h4>{selected.headline}</h4>
+        {selected.state === 'complete'
+          ? <dl class="pulse-edition-highlights">{selected.highlights.slice(0, 4).map(item => <div key={item.label}><dt>{item.label}</dt><dd><strong>{item.value}</strong><span>{item.detail}</span></dd></div>)}</dl>
+          : <p>{selected.state === 'partial'
+            ? `Partial archive — ${selected.issue?.recordedGames || 0} of ${selected.issue?.expectedGames || 0} games recorded.`
+            : 'This edition will become share-ready after the reviewed data snapshot is complete.'}</p>}
+        <div class="pulse-inline-links">
+          <a href={selected.sourceHref}>Open source</a>
+          <span>Snapshot {shortDataVersion(selected.dataVersion)}</span>
+        </div>
+        {result && <ShareAction result={result} />}
+      </article>
+    </>}
   </section>;
 }
 
@@ -149,6 +287,7 @@ export function LeaguePulsePage({ model }: { model: LeaguePulseViewModel }) {
   return <div class="league-pulse">
     <PulseHero model={model} />
     <div class="pulse-primary-grid"><Matchups model={model} /><Standings model={model} /></div>
+    <Newspaper model={model} />
     <YearInReview model={model} />
     <div class="pulse-story-grid"><MyTeam model={model} /><Featured model={model} /><Record model={model} /><Curse model={model} /></div>
     <QuickLinks model={model} />

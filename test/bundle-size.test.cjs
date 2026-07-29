@@ -200,3 +200,60 @@ test('configured entry matching is separator-independent and route JSON fields a
     ]);
   });
 });
+
+test('click-loaded entries must be dynamic and absent from initial and settled route closures', () => {
+  const budgets = {
+    required_dynamic_entries: {
+      history: 'src/features/history.ts',
+    },
+    required_click_loaded_entries: {
+      share: 'src/share/runtime.ts',
+    },
+  };
+  const manifest = {
+    'index.html': {
+      file: 'assets/index.js',
+      isEntry: true,
+      dynamicImports: ['src/features/history.ts'],
+    },
+    'src/features/history.ts': {
+      file: 'assets/history.js',
+      isDynamicEntry: true,
+      dynamicImports: ['src/share/runtime.ts'],
+    },
+    'src/share/runtime.ts': {
+      file: 'assets/share.js',
+      isDynamicEntry: true,
+    },
+  };
+  withBundleFixture({ budgets, manifest }, result => {
+    assert.deepEqual(result.errors, []);
+    assert.equal(result.clickLoadedEntries.share.id, 'src/share/runtime.ts');
+  });
+
+  withBundleFixture({
+    budgets,
+    manifest: {
+      ...manifest,
+      'src/features/history.ts': {
+        file: 'assets/history.js',
+        isDynamicEntry: true,
+        imports: ['src/share/runtime.ts'],
+      },
+    },
+  }, result => {
+    assert.ok(result.errors.includes('history settled route contains click-loaded entry share'));
+  });
+
+  withBundleFixture({
+    budgets,
+    manifest: {
+      ...manifest,
+      'src/share/runtime.ts': {
+        file: 'assets/share.js',
+      },
+    },
+  }, result => {
+    assert.ok(result.errors.includes('required click-loaded entry share (src/share/runtime.ts) is not marked as a dynamic entry'));
+  });
+});

@@ -127,8 +127,9 @@ test('exact owner Search opens Owner Hub first without mutating My Team', async 
   await seedFavorite(page, 'Joel');
   await page.goto('/');
   await page.locator('.search-trigger').click();
-  await page.getByRole('combobox', { name: /Search owners, seasons/ }).fill('Joe');
-  const results = page.getByRole('option');
+  const search = page.getByRole('dialog', { name: 'Search The Darling' });
+  await search.getByRole('combobox', { name: /Search owners, seasons/ }).fill('Joe');
+  const results = search.getByRole('option');
   await expect(results.first()).toContainText('Joe Owner Hub');
   await results.first().click();
   await expect(page).toHaveURL(/[?&]tab=owner/);

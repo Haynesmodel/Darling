@@ -4,6 +4,7 @@ const path = require('node:path');
 const addFormats = require('ajv-formats').default;
 const { fullFormats } = require('../scripts/data/standalone-formats.cjs');
 const {
+  compactValidatorErrors,
   outputRootFromArgs,
   specializeFormatRuntime,
 } = require('../scripts/generate_asset_validators.cjs');
@@ -54,5 +55,12 @@ test('validator generation resolves output roots and rejects a full format-runti
   assert.throws(
     () => specializeFormatRuntime('require("ajv-formats/dist/formats/renamed")'),
     /still reference the full ajv-formats runtime/,
+  );
+
+  const errorObject = 'const error={instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: field}};';
+  assert.equal(compactValidatorErrors(errorObject), 'const error={instancePath};');
+  assert.throws(
+    () => compactValidatorErrors('const error={instancePath,schemaPath:dynamic,keyword:"type",params:{}};'),
+    /unsupported error-object shape/,
   );
 });

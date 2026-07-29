@@ -13,6 +13,9 @@ function isDeployableAsset(sourceDir, filePath) {
   if (normalizedRel.startsWith('hero/')) {
     return ['.avif', '.webp', '.jpg', '.jpeg'].includes(ext.toLowerCase());
   }
+  if (normalizedRel.startsWith('share/')) {
+    return normalizedRel === 'share/darling-default-card.png';
+  }
 
   if (ext && ext !== '.json') return false;
   if (name.startsWith('.')) return false;

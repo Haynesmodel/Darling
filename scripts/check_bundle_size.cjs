@@ -73,6 +73,13 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
     if (!found) errors.push(`required dynamic entry ${name} (${id}) is missing`);
     else if (!found.isDynamicEntry) errors.push(`required entry ${name} (${id}) is not marked as a dynamic entry`);
   }
+  const clickLoadedEntries = {};
+  for (const [name, id] of Object.entries(limits.required_click_loaded_entries || {})) {
+    const found = resolveConfiguredEntry(id);
+    clickLoadedEntries[name] = found;
+    if (!found) errors.push(`required click-loaded entry ${name} (${id}) is missing`);
+    else if (!found.isDynamicEntry) errors.push(`required click-loaded entry ${name} (${id}) is not marked as a dynamic entry`);
+  }
 
   const namedDataChunk = requiredEntries['load-league-assets']
     || chunks.find(chunk => matchesToken(chunk, 'load-league-assets'));
@@ -184,6 +191,17 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
     const leaked = entryClosure.find(chunk => matchesToken(chunk, token));
     if (leaked) errors.push(`initial static closure contains forbidden module ${leaked.id}`);
   }
+  for (const [name, chunk] of Object.entries(clickLoadedEntries)) {
+    if (!chunk) continue;
+    if (entryClosure.some(candidate => candidate.id === chunk.id)) {
+      errors.push(`initial static closure contains click-loaded entry ${name}`);
+    }
+    for (const [routeName, route] of Object.entries(routes)) {
+      if (route.settledChunks.some(candidate => candidate.id === chunk.id)) {
+        errors.push(`${routeName} settled route contains click-loaded entry ${name}`);
+      }
+    }
+  }
   if (limits.plot_vendor_max_copies !== undefined && vendorCopies.length > limits.plot_vendor_max_copies) {
     errors.push(`Plot/vendor emitted ${vendorCopies.length} copies; maximum is ${limits.plot_vendor_max_copies}`);
   }
@@ -210,6 +228,7 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
     pulseRouteGzipBytes: pulse.staticGzipBytes,
     pulseRouteBytes: pulse.staticBytes,
     requiredEntries,
+    clickLoadedEntries,
     vendorCopies,
     budget,
   };
@@ -232,6 +251,8 @@ if (require.main === module) {
     }
     const dynamics = Object.entries(result.requiredEntries || {}).filter(([, chunk]) => chunk).map(([name]) => name);
     if (dynamics.length) console.log(`Required dynamic entries: ${dynamics.join(', ')}.`);
+    const clickLoaded = Object.entries(result.clickLoadedEntries || {}).filter(([, chunk]) => chunk).map(([name]) => name);
+    if (clickLoaded.length) console.log(`Required click-loaded entries: ${clickLoaded.join(', ')}.`);
     if (!result.errors.length) console.log(`Bundle budget passed; total JavaScript gzip ${result.totalGzipBytes} bytes.`);
   }
   if (result.errors.length) {

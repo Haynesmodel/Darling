@@ -187,10 +187,10 @@ function createPropertyCompactionPlugin() {
         chunk: { isEntry?: boolean; name?: string; moduleIds?: string[] },
         outputOptions: { format?: string; sourcemap?: unknown },
       ) {
-        // The entry contains Preact's delegated event dispatcher. A second
-        // minification pass changes its runtime behavior, so retain Vite's
-        // already-minified entry verbatim.
-        if (chunk.isEntry || (chunk.moduleIds || []).some(id => id.includes('/node_modules/preact/'))) return null;
+        // Preact's delegated event dispatcher is sensitive to unsafe
+        // compression, but its generated property keys remain consistent
+        // within the chunk and can still be compacted.
+        const preactChunk = (chunk.moduleIds || []).some(id => id.includes('/node_modules/preact/'));
         const compactProperties = true;
         const chunkModules = new Set((chunk.moduleIds || []).map(id => id.split('?')[0]));
         const reservedProperties = compactProperties
@@ -199,7 +199,8 @@ function createPropertyCompactionPlugin() {
                 const values = [...sources];
                 const crossesLibraryBoundary = values.some(source => source.includes('/node_modules/'))
                   && values.some(source => !source.includes('/node_modules/'));
-                return crossesLibraryBoundary || values.some(source => !chunkModules.has(source));
+                return crossesLibraryBoundary
+                  || values.some(source => !chunkModules.has(source));
               })
               .map(([identifier]) => identifier)
               .concat([...publicProperties])
@@ -208,7 +209,7 @@ function createPropertyCompactionPlugin() {
           (code.match(/\b[$A-Z_a-z][$\w]*\b/g) || []).filter(name => name.length <= 3),
         )];
         const result = await minify(code, {
-          compress: {
+          compress: chunk.isEntry || preactChunk ? false : {
             // Plot writes boolean ARIA values through setAttribute. Preserve
             // "true"/"false" in its shared chunk instead of emitting invalid
             // aria-hidden="1" values.
@@ -272,6 +273,7 @@ export default defineConfig({
         // Runtime and tests resolve chunks through the manifest, so transport
         // filenames can stay compact without sacrificing feature diagnostics.
         chunkFileNames: 'assets/[hash:6].js',
+        assetFileNames: 'assets/[hash:6][extname]',
         // These neutral helpers are shared by several lazy features. Keeping them
         // together avoids tiny duplicate transport wrappers without pulling a
         // feature implementation into the shell.
@@ -284,8 +286,13 @@ export default defineConfig({
               minSize: 0,
             },
             {
-              name: 'shared-feature-core',
-              test: /(?:core-helpers|facet-helpers|head-to-head-context|season-mode)\.(?:js|ts)$/,
+              name: 'shared-shell-runtime',
+              test: /(?:core-helpers|facet-helpers|head-to-head-context|season-mode)\.(?:js|ts)$|(?:section-disclosure|table-registry)\.ts$/,
+              minSize: 0,
+            },
+            {
+              name: 'season-runtime',
+              test: /(?:current-season-command-data|current-season-data|season-recap|season-presentation)\.(?:js|ts)$/,
               minSize: 0,
             },
           ],

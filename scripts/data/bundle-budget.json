@@ -52,6 +52,9 @@
       "gauntlet": "src/features/gauntlet/gauntlet-controller.ts",
       "load-league-assets": "src/data/load-league-assets.ts"
     },
+    "required_click_loaded_entries": {
+      "share-card-runtime": "src/share/share-card-runtime.ts"
+    },
     "settled_dynamic_entries": {
       "current-season": ["current-season-odds"],
       "draft-spot": ["chart-runtime"]

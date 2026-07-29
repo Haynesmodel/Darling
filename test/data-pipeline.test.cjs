@@ -6,13 +6,13 @@ const path = require('node:path');
 const sharp = require('sharp');
 
 const { canonicalJson, readJson, sha256Json } = require('../scripts/data/canonical-json.cjs');
-const { HERO_REQUIREMENTS } = require('../scripts/data/constants.cjs');
+const { HERO_REQUIREMENTS, fromRoot } = require('../scripts/data/constants.cjs');
 const { buildDerivedStats } = require('../scripts/data/derived-stats.cjs');
-const { buildManifest, verifyManifest } = require('../scripts/data/manifest.cjs');
+const { buildManifest, seasonCoverage, verifyManifest } = require('../scripts/data/manifest.cjs');
 const { inspectHeroAssets } = require('../scripts/data/media-validation.cjs');
-const { createAjv, validateWithSchema } = require('../scripts/data/schema-validation.cjs');
+const { createAjv, validateStructuralAssets, validateWithSchema } = require('../scripts/data/schema-validation.cjs');
 const { validateSemanticBundle } = require('../scripts/data/semantic-validation.cjs');
-const { checkGeneratedAssets } = require('../scripts/check_generated_assets.cjs');
+const { checkGeneratedAssets, compareGeneratedFiles } = require('../scripts/check_generated_assets.cjs');
 const { validateDraftSpotDependencies, validateDerivedDependencies } = require('../scripts/validate_assets.cjs');
 
 const root = path.join(__dirname, '..');
@@ -135,6 +135,103 @@ test('semantic validation accepts the canonical bundle and reports stable rule I
     validateSemanticBundle(invalidTransactionCoverage, { root }).errors
       .some(error => error.includes('[TRANSACTION_COVERAGE_ROUNDS]')),
   );
+
+  const invalidTransactionSemantics = clone(bundle);
+  const invalidSeason = invalidTransactionSemantics.TransactionHistory.seasons[0];
+  const unknownOwner = 'Unknown Owner';
+  const unknownPlayer = 'missing-player';
+  invalidSeason.coverage.completed_week = invalidSeason.max_week + 1;
+  invalidSeason.coverage.matchup_weeks.pop();
+  invalidSeason.coverage.missing_player_metadata += 1;
+  invalidSeason.draft.pick_count -= 1;
+  invalidSeason.draft.draft_id = null;
+  Object.assign(invalidSeason.draft.picks[0], {
+    owner: unknownOwner,
+    player_id: unknownPlayer,
+    roster_id: invalidSeason.teams[0].roster_id,
+  });
+  const transaction = invalidSeason.transactions[0];
+  transaction.week = invalidSeason.max_week + 1;
+  transaction.participants.push(unknownOwner);
+  transaction.adds.push({ owner: unknownOwner, player_id: unknownPlayer });
+  transaction.draft_picks.push({
+    season: invalidSeason.season,
+    round: 1,
+    roster_id: invalidSeason.teams[0].roster_id,
+    original_owner: unknownOwner,
+    owner: unknownOwner,
+    previous_owner: unknownOwner,
+  });
+  transaction.waiver_budget.push({ sender: unknownOwner, receiver: unknownOwner, amount: 1 });
+  Object.assign(invalidSeason.player_journeys[0].stints[0], {
+    owner: unknownOwner,
+    starter_points: 1.234,
+  });
+  invalidSeason.player_journeys[0].stints[0].acquisition.transaction_id = 'missing-transaction';
+  Object.assign(invalidSeason.insights.trades[0], {
+    edge_owner: unknownOwner,
+    even: true,
+    transaction_id: transaction.id,
+  });
+  invalidSeason.insights.trades[0].sides[0].owner = unknownOwner;
+  invalidSeason.insights.trades[0].sides[0].players.push(unknownPlayer);
+  Object.assign(invalidSeason.insights.wire_finds[0], {
+    transaction_id: transaction.id,
+    owner: unknownOwner,
+    player_id: unknownPlayer,
+  });
+  invalidSeason.insights.movement_counts[0].player_id = unknownPlayer;
+  invalidSeason.insights.owner_activity[0].owner = unknownOwner;
+  invalidSeason.insights.draft_retention[0].owner = unknownOwner;
+  invalidSeason.insights.keeper_return.push({
+    owner: unknownOwner,
+    player_id: unknownPlayer,
+    round: 1,
+    starts: 0,
+    starter_points: 0,
+  });
+  const semanticErrors = validateSemanticBundle(invalidTransactionSemantics, { root }).errors;
+  for (const ruleId of [
+    'TRANSACTION_COMPLETED_WEEK',
+    'TRANSACTION_DRAFT_RECONCILIATION',
+    'TRANSACTION_INVALID_WEEK',
+    'TRANSACTION_INVALID_STATUS_MUTATION',
+    'TRANSACTION_MISSING_PLAYER',
+    'TRANSACTION_OUTCOME_RECONCILIATION',
+    'TRANSACTION_POINTS_PRECISION',
+    'TRANSACTION_ROSTER_OWNER_MISMATCH',
+    'TRANSACTION_UNKNOWN_OWNER',
+  ]) {
+    assert.ok(semanticErrors.some(error => error.includes(`[${ruleId}]`)), ruleId);
+  }
+
+  const staleInsights = clone(bundle);
+  staleInsights.TransactionHistory.seasons[0].insights.wire_finds[0].starter_points += 1;
+  assert.ok(
+    validateSemanticBundle(staleInsights, { root }).errors
+      .some(error => error.includes('[TRANSACTION_INSIGHT_RECONCILIATION]')),
+  );
+});
+
+test('structural validation accepts injected values and reports required source files', () => {
+  assert.deepEqual(validateStructuralAssets(root, {
+    values: { TransactionHistory: bundle.TransactionHistory },
+  }), []);
+
+  const invalid = clone(bundle.TransactionHistory);
+  invalid.seasons = [];
+  assert.ok(validateStructuralAssets(root, {
+    values: { TransactionHistory: invalid },
+  }).some(error => error.includes('TransactionHistory.json')));
+
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-structural-'));
+  try {
+    fs.cpSync(path.join(root, 'schemas'), path.join(temp, 'schemas'), { recursive: true });
+    assert.ok(validateStructuralAssets(temp, { includeGenerated: true })
+      .some(error => error.includes('[ASSET_MISSING]')));
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true });
+  }
 });
 
 test('canonical JSON hashing is independent of object key insertion order', () => {
@@ -203,6 +300,50 @@ test('manifest is deterministic, content-addressed, and excludes its own bytes',
     assert.equal(canonicalJson(withPlaceholder), canonicalJson(withoutPlaceholder));
   } finally {
     fs.rmSync(temp, { recursive: true, force: true });
+  }
+});
+
+test('manifest transaction coverage handles populated, empty, and generic assets', () => {
+  assert.deepEqual(seasonCoverage('TransactionHistory', {
+    seasons: [
+      { season: 2025, transactions: [{}, {}] },
+      { season: 2026, transactions: [{}] },
+    ],
+  }), { rows: 3, season_min: 2025, season_max: 2026 });
+  assert.deepEqual(seasonCoverage('TransactionHistory', {}), {
+    rows: 0,
+    season_min: null,
+    season_max: null,
+  });
+  assert.deepEqual(seasonCoverage('Rivalries', [{ slug: 'fixture' }]), {
+    rows: 1,
+    season_min: null,
+    season_max: null,
+  });
+});
+
+test('generated-file comparison reports equal, missing, and stale artifacts', () => {
+  const committed = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-committed-'));
+  const generated = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-generated-'));
+  try {
+    for (const directory of [committed, generated]) fs.mkdirSync(path.join(directory, 'nested'));
+    fs.writeFileSync(path.join(committed, 'nested/equal.txt'), 'equal');
+    fs.writeFileSync(path.join(generated, 'nested/equal.txt'), 'equal');
+    fs.writeFileSync(path.join(committed, 'nested/stale.txt'), 'old');
+    fs.writeFileSync(path.join(generated, 'nested/stale.txt'), 'new');
+    fs.writeFileSync(path.join(generated, 'nested/missing.txt'), 'generated');
+    assert.deepEqual(compareGeneratedFiles(committed, generated, ['nested/equal.txt']), []);
+    assert.deepEqual(compareGeneratedFiles(committed, generated, [
+      'nested/missing.txt',
+      'nested/stale.txt',
+    ]), [
+      'nested/missing.txt: committed generated file is missing',
+      'nested/stale.txt: stale; run npm run generate:data',
+    ]);
+    assert.equal(fromRoot(committed, 'nested/equal.txt'), path.join(committed, 'nested/equal.txt'));
+  } finally {
+    fs.rmSync(committed, { recursive: true, force: true });
+    fs.rmSync(generated, { recursive: true, force: true });
   }
 });
 

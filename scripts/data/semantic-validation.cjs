@@ -322,6 +322,231 @@ function validateSemanticBundle(bundle, opts = {}) {
         });
       });
       const completeById = new Map(season.transactions.filter(row => row.status === 'complete').map(row => [row.id, row]));
+      const roundPoints = value => Number(Number(value || 0).toFixed(2));
+      const acquisitionStints = new Map();
+      const allStints = [];
+      for (const journey of season.player_journeys) {
+        for (const stint of journey.stints) {
+          const row = { player_id: journey.player_id, ...stint };
+          allStints.push(row);
+          const transactionId = stint.acquisition.transaction_id;
+          if (!transactionId) continue;
+          const key = `${transactionId}|${stint.owner}|${journey.player_id}`;
+          if (!acquisitionStints.has(key)) acquisitionStints.set(key, []);
+          acquisitionStints.get(key).push(stint);
+        }
+      }
+      const expectedTrades = season.transactions
+        .filter(transaction => transaction.status === 'complete' && transaction.type === 'trade')
+        .map(transaction => {
+          const unresolved = transaction.draft_picks.some(pick => pick.season > season.season);
+          const sides = transaction.participants.map(owner => {
+            const received = transaction.adds
+              .filter(row => row.owner === owner)
+              .map(row => row.player_id);
+            const sideStints = received.flatMap(playerId => {
+              const rows = acquisitionStints.get(`${transaction.id}|${owner}|${playerId}`) || [];
+              return rows.length ? [rows.at(-1)] : [];
+            });
+            const picks = transaction.draft_picks
+              .filter(pick => pick.owner === owner && pick.previous_owner !== owner);
+            const faab = transaction.waiver_budget
+              .filter(transfer => transfer.receiver === owner)
+              .reduce((total, transfer) => total + transfer.amount, 0)
+              - transaction.waiver_budget
+                .filter(transfer => transfer.sender === owner)
+                .reduce((total, transfer) => total + transfer.amount, 0);
+            return {
+              owner,
+              players: received,
+              picks,
+              faab,
+              starts: sideStints.reduce((total, stint) => total + stint.starts, 0),
+              starter_points: roundPoints(sideStints.reduce((total, stint) => total + stint.starter_points, 0)),
+              total_points: roundPoints(sideStints.reduce((total, stint) => total + stint.total_points, 0)),
+              rostered_weeks: sideStints.reduce((total, stint) => total + stint.rostered_weeks, 0),
+              retained_players: sideStints.filter(stint => stint.retained).length,
+            };
+          });
+          const hasWeek = season.coverage.completed_week > transaction.week;
+          const status = !hasWeek
+            ? 'too_early'
+            : unresolved
+              ? 'incomplete'
+              : season.league_status === 'complete'
+                ? 'final'
+                : 'provisional';
+          const best = sides.length ? Math.max(...sides.map(side => side.starter_points)) : 0;
+          const leaders = sides.filter(side => side.starter_points === best).map(side => side.owner);
+          return {
+            transaction_id: transaction.id,
+            week: transaction.week,
+            created_ms: transaction.created_ms,
+            status,
+            even: leaders.length !== 1,
+            edge_owner: leaders.length === 1 && hasWeek && !unresolved ? leaders[0] : null,
+            completed_through_week: season.coverage.completed_week,
+            sides,
+          };
+        });
+      if (canonicalJson(season.insights.trades) !== canonicalJson(expectedTrades)) {
+        report('TRANSACTION_INSIGHT_RECONCILIATION', `${location} insights.trades`, `${season.season}|trades`, 'trade outcomes do not reconcile to normalized transactions and journeys');
+      }
+      const playerName = playerId => playersById.get(playerId)?.name || playerId;
+      const expectedWireFinds = allStints
+        .flatMap(stint => {
+          const transactionId = stint.acquisition.transaction_id;
+          const source = transactionId ? completeById.get(transactionId) : null;
+          if (
+            stint.acquisition.kind !== 'add'
+            || !source
+            || !['waiver', 'free_agent'].includes(source.type)
+            || season.coverage.completed_week === 0
+            || source.week > season.coverage.completed_week
+          ) return [];
+          return [{
+            transaction_id: source.id,
+            player_id: stint.player_id,
+            owner: stint.owner,
+            acquisition_type: source.type,
+            week: source.week,
+            starts: stint.starts,
+            starter_points: stint.starter_points,
+            rostered_weeks: stint.rostered_weeks,
+            retained: stint.retained,
+          }];
+        })
+        .sort((a, b) => (
+          b.starter_points - a.starter_points
+          || b.starts - a.starts
+          || b.rostered_weeks - a.rostered_weeks
+          || Number(b.retained) - Number(a.retained)
+          || playerName(a.player_id).localeCompare(playerName(b.player_id), undefined, { sensitivity: 'base' })
+          || a.player_id.localeCompare(b.player_id)
+        ));
+      if (canonicalJson(season.insights.wire_finds) !== canonicalJson(expectedWireFinds)) {
+        report('TRANSACTION_INSIGHT_RECONCILIATION', `${location} insights.wire_finds`, `${season.season}|wire_finds`, 'wire-find rankings do not reconcile to complete acquisition stints');
+      }
+      const movement = new Map();
+      const incomingByOwner = new Map(season.teams.map(team => [team.owner, new Set()]));
+      const expectedOwnerActivity = new Map(season.teams.map(team => [team.owner, {
+        owner: team.owner,
+        transactions: 0,
+        adds: 0,
+        drops: 0,
+        trades: 0,
+        commissioner_moves: 0,
+        faab_spent: 0,
+        distinct_incoming_players: 0,
+        retention: null,
+        turnover: null,
+      }]));
+      const changeMovement = (playerId, field) => {
+        const counts = movement.get(playerId) || { adds: 0, drops: 0 };
+        counts[field] += 1;
+        movement.set(playerId, counts);
+      };
+      for (const transaction of completeById.values()) {
+        for (const owner of transaction.participants) {
+          const activity = expectedOwnerActivity.get(owner);
+          if (!activity) continue;
+          activity.transactions += 1;
+          if (transaction.type === 'trade') activity.trades += 1;
+          if (transaction.type === 'commissioner') activity.commissioner_moves += 1;
+        }
+        if (['waiver', 'free_agent'].includes(transaction.type)) {
+          for (const row of transaction.adds) {
+            changeMovement(row.player_id, 'adds');
+            const activity = expectedOwnerActivity.get(row.owner);
+            const incoming = incomingByOwner.get(row.owner);
+            if (activity) activity.adds += 1;
+            if (incoming) incoming.add(row.player_id);
+          }
+          for (const row of transaction.drops) {
+            changeMovement(row.player_id, 'drops');
+            const activity = expectedOwnerActivity.get(row.owner);
+            if (activity) activity.drops += 1;
+          }
+        }
+        for (const row of transaction.adds) {
+          const incoming = incomingByOwner.get(row.owner);
+          if (incoming) incoming.add(row.player_id);
+        }
+        if (transaction.type === 'waiver' && transaction.faab_bid) {
+          for (const row of transaction.adds) {
+            const activity = expectedOwnerActivity.get(row.owner);
+            if (activity) activity.faab_spent += transaction.faab_bid;
+          }
+        }
+      }
+      const expectedMovementCounts = [...movement.entries()]
+        .map(([player_id, counts]) => ({ player_id, ...counts }))
+        .sort((a, b) => (
+          Math.max(b.adds, b.drops) - Math.max(a.adds, a.drops)
+          || b.adds - a.adds
+          || b.drops - a.drops
+          || playerName(a.player_id).localeCompare(playerName(b.player_id), undefined, { sensitivity: 'base' })
+          || a.player_id.localeCompare(b.player_id)
+        ));
+      if (canonicalJson(season.insights.movement_counts) !== canonicalJson(expectedMovementCounts)) {
+        report('TRANSACTION_INSIGHT_RECONCILIATION', `${location} insights.movement_counts`, `${season.season}|movement_counts`, 'movement rankings do not reconcile to complete waiver/free-agent transactions');
+      }
+      const expectedRetention = season.teams.map(team => {
+        const drafted = season.draft.picks.filter(pick => pick.owner === team.owner);
+        const retainedIds = new Set(allStints
+          .filter(stint => stint.owner === team.owner && stint.retained)
+          .map(stint => stint.player_id));
+        const retained = drafted.filter(pick => retainedIds.has(pick.player_id)).length;
+        const available = season.draft.status === 'selected'
+          && season.coverage.completed_week > 0
+          && drafted.length > 0;
+        const retention = available ? Number((retained / drafted.length).toFixed(4)) : null;
+        const activity = expectedOwnerActivity.get(team.owner);
+        activity.retention = retention;
+        activity.turnover = retention === null ? null : Number((1 - retention).toFixed(4));
+        activity.distinct_incoming_players = incomingByOwner.get(team.owner).size;
+        return {
+          owner: team.owner,
+          available,
+          drafted: drafted.length,
+          retained,
+          retention,
+          turnover: activity.turnover,
+        };
+      });
+      if (canonicalJson(season.insights.draft_retention) !== canonicalJson(expectedRetention)) {
+        report('TRANSACTION_INSIGHT_RECONCILIATION', `${location} insights.draft_retention`, `${season.season}|draft_retention`, 'draft retention does not reconcile to draft picks and retained journeys');
+      }
+      const expectedActivity = [...expectedOwnerActivity.values()].sort((a, b) => (
+        b.transactions - a.transactions
+        || b.trades - a.trades
+        || b.adds - a.adds
+        || a.owner.localeCompare(b.owner, undefined, { sensitivity: 'base' })
+      ));
+      if (canonicalJson(season.insights.owner_activity) !== canonicalJson(expectedActivity)) {
+        report('TRANSACTION_INSIGHT_RECONCILIATION', `${location} insights.owner_activity`, `${season.season}|owner_activity`, 'owner activity does not reconcile to complete transactions and retention');
+      }
+      const expectedKeeperReturn = season.draft.picks
+        .filter(pick => pick.is_keeper)
+        .map(pick => {
+          const stint = allStints.find(row => row.player_id === pick.player_id && row.owner === pick.owner);
+          return {
+            player_id: pick.player_id,
+            owner: pick.owner,
+            round: pick.round,
+            starts: stint?.starts || 0,
+            starter_points: stint?.starter_points || 0,
+          };
+        })
+        .sort((a, b) => (
+          b.starter_points - a.starter_points
+          || b.starts - a.starts
+          || b.round - a.round
+          || a.player_id.localeCompare(b.player_id)
+        ));
+      if (canonicalJson(season.insights.keeper_return) !== canonicalJson(expectedKeeperReturn)) {
+        report('TRANSACTION_INSIGHT_RECONCILIATION', `${location} insights.keeper_return`, `${season.season}|keeper_return`, 'keeper return does not reconcile to keeper picks and journeys');
+      }
       season.insights.trades.forEach(trade => {
         const source = completeById.get(trade.transaction_id);
         if (!source || source.type !== 'trade') {

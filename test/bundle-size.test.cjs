@@ -142,6 +142,7 @@ test('raw, gzip, aggregate, and route overages report actual and allowed values'
       total_javascript_gzip_max_bytes: 5,
       required_dynamic_entries: { history: 'src/features/history.ts' },
       route_settled_gzip_max_bytes: { history: 5 },
+      feature_chunk_gzip_max_bytes_by_route: { history: 5 },
     },
     manifest: {
       'index.html': { file: 'assets/index.js', isEntry: true },
@@ -155,7 +156,23 @@ test('raw, gzip, aggregate, and route overages report actual and allowed values'
     assert.ok(result.errors.some(error => /entry chunk \d+ bytes exceeds 5/.test(error)));
     assert.ok(result.errors.some(error => /entry chunk \d+ gzip exceeds 5/.test(error)));
     assert.ok(result.errors.some(error => /history settled route \d+ gzip exceeds 5/.test(error)));
+    assert.ok(result.errors.some(error => /history feature chunk \d+ gzip exceeds 5/.test(error)));
     assert.ok(result.errors.some(error => /total JavaScript gzip \d+ bytes exceeds 5/.test(error)));
+  });
+});
+
+test('missing configured route budgets report the unavailable routes', () => {
+  withBundleFixture({
+    budgets: {
+      route_settled_gzip_max_bytes: { missing: 10 },
+      feature_chunk_gzip_max_bytes_by_route: { missing: 10 },
+    },
+    manifest: {
+      'index.html': { file: 'assets/index.js', isEntry: true },
+    },
+  }, result => {
+    assert.ok(result.errors.includes('route budget configured for missing route missing'));
+    assert.ok(result.errors.includes('feature chunk budget configured for missing route missing'));
   });
 });
 

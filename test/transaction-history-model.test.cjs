@@ -39,6 +39,51 @@ test('resolves newest, deep-linked player, owner, and transaction state', () => 
   assert.equal(model.resolveTransactionState(asset, { transactionId: trade.id }).view, 'trades');
   assert.equal(model.resolveTransactionState(asset, { transactionOwner: season.teams[0].owner }).owner, season.teams[0].owner);
   assert.equal(model.resolveTransactionState(asset, { transactionSeason: 1900, transactionView: 'bogus' }).season, 2025);
+
+  const waiver = season.transactions.find(row => row.type === 'waiver');
+  const freeAgent = season.transactions.find(row => row.type === 'free_agent');
+  const commissioner = season.transactions.find(row => row.type === 'commissioner');
+  assert.equal(model.resolveTransactionState(asset, {
+    transactionId: waiver.id,
+    transactionView: 'owners',
+  }).view, 'waivers');
+  assert.equal(model.resolveTransactionState(asset, {
+    transactionId: freeAgent.id,
+    transactionView: 'draft',
+  }).view, 'waivers');
+  assert.equal(model.resolveTransactionState(asset, {
+    transactionId: commissioner.id,
+    transactionView: 'owners',
+  }).view, 'owners');
+  assert.deepEqual(model.resolveTransactionState(asset, {
+    transactionId: 'missing',
+    transactionPlayer: 'missing',
+    transactionOwner: 'missing',
+  }), {
+    season: 2025, view: 'overview', owner: null, player: null, transactionId: null,
+  });
+});
+
+test('builds descending season models, favorite owners, and player fallbacks', () => {
+  const fixture = JSON.parse(JSON.stringify(asset));
+  fixture.seasons.push({
+    ...JSON.parse(JSON.stringify(fixture.seasons[0])),
+    season: 2026,
+  });
+  const unnamed = fixture.players.find(row => row.name === null) || fixture.players[0];
+  unnamed.name = null;
+  const favorite = fixture.seasons[1].teams[0].owner;
+  const built = model.buildTransactionModel(fixture, { transactionSeason: 2026 }, {
+    pathname: '/Darling/',
+    favoriteOwner: favorite,
+  });
+  assert.deepEqual(built.seasons, [2026, 2025]);
+  assert.equal(built.favoriteOwner, favorite);
+  assert.equal(built.playerNames.get(unnamed.id), `Player ${unnamed.id}`);
+  assert.equal(model.buildTransactionModel(fixture, {}, {
+    pathname: '/',
+    favoriteOwner: 'missing',
+  }).favoriteOwner, null);
 });
 
 test('builds canonical transaction URLs with encoded punctuation', () => {

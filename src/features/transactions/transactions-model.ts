@@ -4,11 +4,6 @@ import { TRANSACTION_VIEWS, type TransactionModel, type TransactionRouteState, t
 
 const viewSet = new Set<string>(TRANSACTION_VIEWS);
 
-export function playerLabel(asset: TransactionHistory, playerId: string): string {
-  const player = asset.players.find(row => row.id === playerId);
-  return player?.name || `Player ${playerId}`;
-}
-
 export function transactionHref(
   pathname: string,
   state: Partial<TransactionRouteState>,

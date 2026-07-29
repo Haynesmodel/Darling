@@ -2,7 +2,7 @@
 
 ## Shareable cards and automated recaps
 
-The July 29, 2026 share-card and League Newspaper implementation was measured from clean base `697eb411447abb4066f2b944168e5f0b6fd4c26d` to implementation commit `30d62af8de9c4aa50e326fe9ef70b9b767ac3853` in [PR #53](https://github.com/Haynesmodel/Darling/pull/53). Both artifacts used Node 24.18.0, npm 11.18.0, Vite 8.1.4, and `VITE_BASE_PATH=/Darling/`.
+The July 29, 2026 share-card and League Newspaper implementation was measured from clean base `697eb411447abb4066f2b944168e5f0b6fd4c26d` to implementation commit `cda5478df2c56784265076a0b0e0dfc22d8d0248` in [PR #53](https://github.com/Haynesmodel/Darling/pull/53). Both artifacts used Node 24.18.0, npm 11.18.0, Vite 8.1.4, and `VITE_BASE_PATH=/Darling/`.
 
 | Metric | Base | Implementation | Delta | Enforced ceiling |
 | --- | ---: | ---: | ---: | ---: |
@@ -23,6 +23,8 @@ The July 29, 2026 share-card and League Newspaper implementation was measured fr
 | Draft Spot | 189,852 | 183,741 | -6,111 | 205,000 |
 
 No budget value or production dependency increased. The command palette and share preview are separately lazy-loaded; the bundle checker requires the share runtime to be a dynamic entry absent from every initial and settled route closure. Compact generated validator errors offset the feature fan-out without weakening browser schema validation or Node-side diagnostics.
+
+The committed default card is a 10,657-byte 1200×630 PNG with SHA-256 `bb33ae849f29517dcd85110bcf5b1257faa2ea0b2bb512bd2144fd7739f6866b`. Its static raster path converts the shared SVG text into integer-coordinate vector glyphs before Sharp encodes it, avoiding operating-system font substitution while retaining exact byte-for-byte regeneration.
 
 ## Transactions route delta
 

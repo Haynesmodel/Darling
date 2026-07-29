@@ -82,6 +82,8 @@ test('coverage build exercises internal share lifecycle and empty Draft branches
     const actions = await import('/src/share/share-card-actions.ts');
     const adapters = await import('/src/share/share-card-feature-adapters.ts');
     const { buildShareCard } = await import('/src/share/share-card-builders.ts');
+    const runtime = await import('/src/share/share-card-runtime.ts');
+    runtime.closeShareCardPreview();
     const host = document.createElement('div');
     document.body.append(host);
     const unavailable = actions.mountShareCardAction({
@@ -94,8 +96,22 @@ test('coverage build exercises internal share lifecycle and empty Draft branches
     };
     unavailable.dispose();
     const cleaned = !host.hasAttribute('role') && !host.hasAttribute('data-share-state');
+    const copied = [];
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: async value => { copied.push(value); } },
+    });
     const copy = actions.mountCopyLinkAction(host, location.href);
+    host.querySelector('button').click();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const copiedStatus = host.querySelector('[aria-live]')?.textContent;
     copy.dispose();
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
+    const failedCopy = actions.mountCopyLinkAction(host, location.href);
+    host.querySelector('button').click();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const selectedFallback = !host.querySelector('input')?.hidden;
+    failedCopy.dispose();
 
     const root = document.createElement('div');
     const rowHost = document.createElement('div');
@@ -134,6 +150,29 @@ test('coverage build exercises internal share lifecycle and empty Draft branches
       altText: 'Coverage card.',
       complete: false,
     }, { origin: location.origin, basePath: '/' });
+    const valid = buildShareCard('matchup', {
+      id: 'coverage-valid',
+      eyebrow: 'Coverage',
+      title: 'A vs B',
+      metrics: [{ label: 'A', value: '1' }, { label: 'B', value: '0' }],
+      canonicalHref: location.href,
+      sourceLabel: 'Coverage',
+      dataVersion: 'fixture',
+      altText: 'Coverage card.',
+    }, { origin: location.origin, basePath: '/' });
+    const preview = actions.mountShareCardAction({ host, result: valid });
+    const previewButton = host.querySelector('button');
+    previewButton.click();
+    previewButton.click();
+    for (let attempt = 0; attempt < 100 && previewButton.disabled; attempt += 1) {
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    runtime.closeShareCardPreview(previewButton);
+    previewButton.click();
+    for (let attempt = 0; attempt < 100 && previewButton.disabled; attempt += 1) {
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    preview.dispose();
     host.remove();
 
     const [pageModule, draftModel, asset] = await Promise.all([
@@ -156,6 +195,9 @@ test('coverage build exercises internal share lifecycle and empty Draft branches
     return {
       unavailableState,
       cleaned,
+      copied: copied.length,
+      copiedStatus,
+      selectedFallback,
       emptyCurrent: emptyCurrent.length,
       missingRow: missingRow.length,
       noRivalry,
@@ -168,6 +210,9 @@ test('coverage build exercises internal share lifecycle and empty Draft branches
   })).toEqual({
     unavailableState: { role: 'alert', state: 'unavailable' },
     cleaned: true,
+    copied: 1,
+    copiedStatus: 'Link copied.',
+    selectedFallback: true,
     emptyCurrent: 0,
     missingRow: 0,
     noRivalry: null,

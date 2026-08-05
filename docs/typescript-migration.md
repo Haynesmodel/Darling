@@ -13,7 +13,7 @@ For migrated pages, the controller owns activation, routing, header/theme side e
 ## Adding or changing a chart
 
 1. Add the payload and discriminant to `ChartRequest` in `src/charting/chart-types.ts`; arbitrary renderer callbacks and import paths are not supported.
-2. Add an exhaustive `renderChart` case in the chart runtime and preserve the existing accessible SVG name, axes, marks, colors, and text/table alternative.
+2. Add an exhaustive `renderChart` case in `src/charting/plot-charts.ts` and preserve the existing accessible SVG name, axes, marks, colors, and text/table alternative. Chart data, theme, specifications, DOM helpers, and rendering remain authored TypeScript in this strict island.
 3. Build a stable signature from every input that changes visible marks. Pass `request: null` plus a specific empty message when no rows exist.
 4. Keep the chart inside its native disclosure. Automatic loading requires an active, connected host in an open disclosure intersecting `rootMargin: "600px 0px"`; the named native Load button remains the no-IntersectionObserver fallback.
 5. Add loader/component/model tests, production-preview cold/proximity/reuse coverage, accessibility and keyboard assertions, and bundle graph coverage.

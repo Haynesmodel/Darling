@@ -14,7 +14,7 @@ import {
   computeLuckSummary,
   computeWeeklyAwards,
 } from './stats-helpers.js';
-import { renderTrophyCareerPlot } from './charting/plot-charts.js';
+import { renderTrophyCareerPlot } from '../src/charting/plot-charts.ts';
 
 function docOrDefault(doc) {
   return doc || (typeof document !== 'undefined' ? document : null);

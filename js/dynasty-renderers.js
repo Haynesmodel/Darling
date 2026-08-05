@@ -2,7 +2,7 @@ import {
   escapeHtml,
   fmtTrimmed,
 } from './render-helpers.js';
-import { renderDynastyTrendPlot } from './charting/plot-charts.js';
+import { renderDynastyTrendPlot } from '../src/charting/plot-charts.ts';
 import {
   isPlayoffGame as isPlayoffGameFn,
   isSaundersGame as isSaundersGameFn,

@@ -2,7 +2,7 @@ import type { ChartRuntimeModule } from './chart-types';
 
 let runtimePromise: Promise<ChartRuntimeModule> | null = null;
 type RuntimeImporter = () => Promise<ChartRuntimeModule>;
-const defaultImporter: RuntimeImporter = () => import('./chart-runtime-module').then(module => ({
+const defaultImporter: RuntimeImporter = () => import('./plot-charts.ts').then(module => ({
   renderChart: module.renderChart,
 }));
 let runtimeImporter = defaultImporter;

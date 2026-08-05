@@ -77,14 +77,23 @@ export interface DraftChartRow {
 
 export interface GauntletHistogramChartRow {
   key: 'A' | 'B';
+  owner?: string;
+  season?: number;
   label: string;
+  binIndex?: number;
+  start?: number;
+  end?: number;
   center: number;
   count: number;
+  rangeLabel?: string;
+  mean?: number;
   title: string;
 }
 
 export interface GauntletHistogramMean {
   key: 'A' | 'B';
+  owner?: string;
+  season?: number;
   label: string;
   mean: number;
   title: string;

@@ -67,7 +67,7 @@ test.before(async () => {
   directory = fs.mkdtempSync(path.join(bundles, 'chart-runtime-'));
   const outfile = path.join(directory, 'chart-runtime.mjs');
   await esbuild.build({
-    entryPoints: [path.join(root, 'src/charting/chart-runtime-module.ts')],
+    entryPoints: [path.join(root, 'src/charting/plot-charts.ts')],
     outfile,
     bundle: true,
     platform: 'node',
@@ -79,8 +79,8 @@ test.before(async () => {
     plugins: [{
       name: 'chart-runtime-stubs',
       setup(build) {
-        build.onResolve({ filter: /plot-specs\.js$/ }, () => ({ path: 'plot-specs', namespace: 'test-stub' }));
-        build.onResolve({ filter: /chart-vendor$/ }, () => ({ path: 'chart-vendor', namespace: 'test-stub' }));
+        build.onResolve({ filter: /plot-specs\.ts$/ }, () => ({ path: 'plot-specs', namespace: 'test-stub' }));
+        build.onResolve({ filter: /chart-vendor\.ts$/ }, () => ({ path: 'chart-vendor', namespace: 'test-stub' }));
         build.onLoad({ filter: /.*/, namespace: 'test-stub' }, args => ({
           contents: args.path === 'plot-specs' ? plotSpecStub : vendorStub,
           loader: 'js',

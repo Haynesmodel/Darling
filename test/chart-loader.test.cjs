@@ -23,7 +23,7 @@ test.before(async () => {
     sourcemap: 'inline',
     sourcesContent: true,
     logLevel: 'silent',
-    external: ['./chart-runtime-module'],
+    external: ['./plot-charts.ts'],
   });
   loader = await import(`${pathToFileURL(outfile).href}?${Date.now()}`);
 });

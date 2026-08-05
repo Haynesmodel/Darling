@@ -6,14 +6,14 @@ The first migration slice was measured from clean base `de9f11d42cc79e31f9cc3d5a
 
 | Metric | Base | PR A | Delta | Target / maximum |
 | --- | ---: | ---: | ---: | ---: |
-| Entry gzip | 48,009 | 48,026 | +17 | 48,250 / 56,000 |
-| Aggregate JavaScript gzip | 297,868 | 299,419 | +1,551 | final 297,868 / 300,000 |
-| Chart-runtime gzip | 95,561 | 96,037 | +476 | 97,000 / 100,000 |
-| Head to Head feature gzip | 7,100 | 8,186 | +1,086 | 50,000 maximum |
-| Head to Head static route gzip | 191,922 | 88,505 | -103,417 | 115,000 maximum |
-| Head to Head settled route gzip | 191,922 | 184,542 | -7,380 | 205,000 maximum |
+| Entry gzip | 48,009 | 48,018 | +9 | 48,250 / 56,000 |
+| Aggregate JavaScript gzip | 297,868 | 299,487 | +1,619 | final 297,868 / 300,000 |
+| Chart-runtime gzip | 95,561 | 96,124 | +563 | 97,000 / 100,000 |
+| Head to Head feature gzip | 7,100 | 8,185 | +1,085 | 50,000 maximum |
+| Head to Head static route gzip | 191,922 | 88,495 | -103,427 | 115,000 maximum |
+| Head to Head settled route gzip | 191,922 | 184,619 | -7,303 | 205,000 maximum |
 
-PR A deliberately enforces only the initiative's hard aggregate maximum; the 297,868 final target applies after the remaining paired legacy deletions. The Head to Head static closure no longer contains Plot. Its settled closure discovers `chart-runtime` through the feature's recursive static closure and the shared loader, with cycle-safe traversal and shared-chunk deduplication.
+PR A deliberately enforces only the initiative's hard aggregate maximum; the 297,868 final target applies after the remaining paired legacy deletions. Authored chart data, theme, specification, runtime, and rendering helpers now live in the strict `src/charting/` island; only the generated vendor remains under `js/charting/`. The Head to Head static closure no longer contains Plot. Its settled closure discovers `chart-runtime` through the feature's recursive static closure and the shared loader, with cycle-safe traversal and shared-chunk deduplication.
 
 The network contract is: a cold Head to Head route has zero `chart-runtime` responses; opening a far-away Lead Trend disclosure still has zero; entering the 600-pixel expanded viewport or activating `Load Lead Trend chart` produces exactly one successful response. Later charts use the cached module promise. A failed import clears the application promise for Retry, while reload remains the recovery path if the browser module map retains a failed fetch.
 

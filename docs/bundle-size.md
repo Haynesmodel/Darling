@@ -2,25 +2,25 @@
 
 ## Shareable cards and automated recaps
 
-The final share-card and League Newspaper implementation was remeasured on August 5, 2026 from clean base `697eb411447abb4066f2b944168e5f0b6fd4c26d` to implementation commit `4fa9a3a2d93faa95bfc94f75bdac230e8d6ea47b` in [PR #53](https://github.com/Haynesmodel/Darling/pull/53). Both artifacts used Node 24.14.0, npm 11.18.0, Vite 8.1.4, and `VITE_BASE_PATH=/Darling/`.
+The final share-card and League Newspaper implementation was remeasured on August 5, 2026 from clean base `697eb411447abb4066f2b944168e5f0b6fd4c26d` to implementation commit `1ac09ffe8be4c7a8434c082260992781700e4933` in [PR #53](https://github.com/Haynesmodel/Darling/pull/53). Both artifacts used Node 24.14.0, npm 11.18.0, Vite 8.1.4, and `VITE_BASE_PATH=/Darling/`.
 
 | Metric | Base | Implementation | Delta | Enforced ceiling |
 | --- | ---: | ---: | ---: | ---: |
-| Entry gzip | 55,962 | 48,003 | -7,959 | 56,000 |
-| Aggregate JavaScript gzip | 295,829 | 297,426 | +1,597 | 300,000 |
+| Entry gzip | 55,962 | 48,007 | -7,955 | 56,000 |
+| Aggregate JavaScript gzip | 295,829 | 297,689 | +1,860 | 300,000 |
 | Chart-runtime gzip | 95,567 | 95,561 | -6 | 100,000 |
 | Share-card runtime gzip | — | 1,671 | — | Click-loaded only |
-| League Pulse feature gzip | 6,799 | 9,406 | +2,607 | Route-enforced |
-| Current Season feature gzip | 10,137 | 10,233 | +96 | Route-enforced |
+| League Pulse feature gzip | 6,799 | 9,408 | +2,609 | Route-enforced |
+| Current Season feature gzip | 10,137 | 10,235 | +98 | Route-enforced |
 
 | Settled route | Base | Implementation | Delta | Ceiling |
 | --- | ---: | ---: | ---: | ---: |
-| League Pulse | 104,823 | 105,541 | +718 | 115,000 |
-| Current Season | 203,254 | 197,939 | -5,315 | 205,000 |
-| Head to Head | 189,300 | 191,501 | +2,201 | 205,000 |
-| Trophy Case | 188,899 | 184,458 | -4,441 | 205,000 |
-| Dynasty Rankings | 190,033 | 188,142 | -1,891 | 205,000 |
-| Draft Spot | 189,852 | 186,260 | -3,592 | 205,000 |
+| League Pulse | 104,823 | 105,796 | +973 | 115,000 |
+| Current Season | 203,254 | 198,193 | -5,061 | 205,000 |
+| Head to Head | 189,300 | 191,751 | +2,451 | 205,000 |
+| Trophy Case | 188,899 | 184,711 | -4,188 | 205,000 |
+| Dynasty Rankings | 190,033 | 188,393 | -1,640 | 205,000 |
+| Draft Spot | 189,852 | 186,517 | -3,335 | 205,000 |
 
 No budget value or production dependency increased. The command palette and share preview are separately lazy-loaded; the bundle checker requires the share runtime to be a dynamic entry absent from every initial and settled route closure. Compact generated validator errors offset the feature fan-out without weakening browser schema validation or Node-side diagnostics.
 

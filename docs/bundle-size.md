@@ -2,29 +2,29 @@
 
 ## Shareable cards and automated recaps
 
-The July 29, 2026 share-card and League Newspaper implementation was measured from clean base `697eb411447abb4066f2b944168e5f0b6fd4c26d` to implementation commit `cda5478df2c56784265076a0b0e0dfc22d8d0248` in [PR #53](https://github.com/Haynesmodel/Darling/pull/53). Both artifacts used Node 24.18.0, npm 11.18.0, Vite 8.1.4, and `VITE_BASE_PATH=/Darling/`.
+The final share-card and League Newspaper implementation was remeasured on August 5, 2026 from clean base `697eb411447abb4066f2b944168e5f0b6fd4c26d` to implementation commit `4fa9a3a2d93faa95bfc94f75bdac230e8d6ea47b` in [PR #53](https://github.com/Haynesmodel/Darling/pull/53). Both artifacts used Node 24.14.0, npm 11.18.0, Vite 8.1.4, and `VITE_BASE_PATH=/Darling/`.
 
 | Metric | Base | Implementation | Delta | Enforced ceiling |
 | --- | ---: | ---: | ---: | ---: |
-| Entry gzip | 55,962 | 48,002 | -7,960 | 56,000 |
-| Aggregate JavaScript gzip | 295,829 | 295,927 | +98 | 300,000 |
+| Entry gzip | 55,962 | 48,003 | -7,959 | 56,000 |
+| Aggregate JavaScript gzip | 295,829 | 297,426 | +1,597 | 300,000 |
 | Chart-runtime gzip | 95,567 | 95,561 | -6 | 100,000 |
-| Share-card runtime gzip | — | 2,625 | — | Click-loaded only |
-| League Pulse feature gzip | 6,799 | 9,500 | +2,701 | Route-enforced |
-| Current Season feature gzip | 10,137 | 10,234 | +97 | Route-enforced |
+| Share-card runtime gzip | — | 1,671 | — | Click-loaded only |
+| League Pulse feature gzip | 6,799 | 9,406 | +2,607 | Route-enforced |
+| Current Season feature gzip | 10,137 | 10,233 | +96 | Route-enforced |
 
 | Settled route | Base | Implementation | Delta | Ceiling |
 | --- | ---: | ---: | ---: | ---: |
-| League Pulse | 104,823 | 103,666 | -1,157 | 115,000 |
-| Current Season | 203,254 | 195,969 | -7,285 | 205,000 |
-| Head to Head | 189,300 | 189,531 | +231 | 205,000 |
-| Trophy Case | 188,899 | 182,489 | -6,410 | 205,000 |
-| Dynasty Rankings | 190,033 | 186,133 | -3,900 | 205,000 |
-| Draft Spot | 189,852 | 183,741 | -6,111 | 205,000 |
+| League Pulse | 104,823 | 105,541 | +718 | 115,000 |
+| Current Season | 203,254 | 197,939 | -5,315 | 205,000 |
+| Head to Head | 189,300 | 191,501 | +2,201 | 205,000 |
+| Trophy Case | 188,899 | 184,458 | -4,441 | 205,000 |
+| Dynasty Rankings | 190,033 | 188,142 | -1,891 | 205,000 |
+| Draft Spot | 189,852 | 186,260 | -3,592 | 205,000 |
 
 No budget value or production dependency increased. The command palette and share preview are separately lazy-loaded; the bundle checker requires the share runtime to be a dynamic entry absent from every initial and settled route closure. Compact generated validator errors offset the feature fan-out without weakening browser schema validation or Node-side diagnostics.
 
-The committed default card is a 10,657-byte 1200×630 PNG with SHA-256 `bb33ae849f29517dcd85110bcf5b1257faa2ea0b2bb512bd2144fd7739f6866b`. Its static raster path converts the shared SVG text into integer-coordinate vector glyphs before Sharp encodes it, avoiding operating-system font substitution while retaining exact byte-for-byte regeneration.
+The committed default card is a 10,620-byte 1200×630 PNG with SHA-256 `c751180ae59a400c401c59f8f9051f6a5ebb9d6ec26ac5a4d1416a87cab51cc5`. Its static raster path converts the shared SVG text into integer-coordinate vector glyphs before Sharp encodes it, avoiding operating-system font substitution while retaining exact byte-for-byte regeneration.
 
 ## Transactions route delta
 

@@ -325,7 +325,17 @@ test('complete, partial, and season Newspaper editions fail closed without chang
   await share.click();
   const dialog = page.getByRole('dialog', { name: 'Share card preview', exact: true });
   await expect(dialog).toBeVisible();
-  expect(await svgText(dialog)).toContain('2015 Season Recap');
+  const seasonSvg = await svgText(dialog);
+  expect(seasonSvg).toContain('2015 Season Recap');
+  const metricCells = [...seasonSvg.matchAll(/<g>.*?<\/g>/g)].map(match => match[0]);
+  const championCell = metricCells.find(cell => cell.includes('>Champion<'));
+  const runnerUpCell = metricCells.find(cell => cell.includes('>Runner-up<'));
+  expect(championCell).toContain('>Zook<');
+  expect(championCell).toContain('>148.3 points<');
+  expect(championCell).not.toContain('111.5');
+  expect(runnerUpCell).toContain('>Zubs<');
+  expect(runnerUpCell).toContain('>111.5 points<');
+  expect(runnerUpCell).not.toContain('148.3');
   await dialog.getByRole('button', { name: 'Close share card preview', exact: true }).click();
   expect(page.url()).toBe(initialUrl);
 });

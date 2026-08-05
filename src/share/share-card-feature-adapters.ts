@@ -31,6 +31,26 @@ type LeagueEditionCardInput = {
   dataVersion: string;
 };
 
+function championshipScores(
+  highlights: LeagueEditionCardInput['highlights'],
+): Map<string, string> {
+  const champion = highlights.find(metric => metric.label === 'Champion');
+  const runnerUp = highlights.find(metric => metric.label === 'Runner-up');
+  if (!champion || !runnerUp || champion.detail !== runnerUp.detail) return new Map();
+  for (const [leftOwner, rightOwner] of [
+    [champion.value, runnerUp.value],
+    [runnerUp.value, champion.value],
+  ]) {
+    const prefix = `${leftOwner} `;
+    const suffix = ` ${rightOwner}`;
+    if (!champion.detail.startsWith(prefix) || !champion.detail.endsWith(suffix)) continue;
+    const scoreline = champion.detail.slice(prefix.length, -suffix.length);
+    const scores = scoreline.match(/^(-?\d+(?:\.\d+)?)\s*[–-]\s*(-?\d+(?:\.\d+)?)$/);
+    if (scores) return new Map([[leftOwner, scores[1]], [rightOwner, scores[2]]]);
+  }
+  return new Map();
+}
+
 function result(kind: ShareCardKind, input: StoryInput, win: Window): ShareCardBuildResult {
   const facts = { ...input, canonicalHref: absoluteShareHref(input.canonicalPath, win) };
   return buildShareCard(kind, facts, {
@@ -75,7 +95,8 @@ export function buildLeagueEditionCardResult(
   win: Window,
 ): ShareCardBuildResult | null {
   if (edition.state !== 'complete') return null;
-  const metrics = edition.highlights.slice(0, 4).map(metric => {
+  const finalScores = championshipScores(edition.highlights);
+  const metrics: ShareStoryFacts['metrics'] = edition.highlights.slice(0, 4).map(metric => {
     if (metric.label === 'Closest matchup') {
       const margin = metric.detail.match(/^([\d.]+)-point margin$/)?.[1];
       return margin
@@ -83,8 +104,10 @@ export function buildLeagueEditionCardResult(
         : metric;
     }
     if (metric.label === 'Champion' || metric.label === 'Runner-up') {
-      const score = metric.detail.match(/\d+(?:\.\d+)?[–-]\d+(?:\.\d+)?/)?.[0];
-      return score ? { ...metric, detail: score } : metric;
+      const score = finalScores.get(metric.value);
+      return score
+        ? { ...metric, detail: `${score} points` }
+        : { label: metric.label, value: metric.value };
     }
     return metric;
   });
@@ -99,7 +122,9 @@ export function buildLeagueEditionCardResult(
     canonicalPath: edition.sourceHref,
     sourceLabel: edition.sourceLabel,
     dataVersion: edition.dataVersion,
-    altText: `${edition.headline}. ${metrics.map(item => `${item.label}: ${item.value}, ${item.detail}`).join('. ')}.`,
+    altText: `${edition.headline}. ${metrics.map(item => (
+      `${item.label}: ${item.value}${item.detail ? `, ${item.detail}` : ''}`
+    )).join('. ')}.`,
   }, win);
 }
 

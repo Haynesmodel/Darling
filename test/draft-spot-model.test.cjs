@@ -147,6 +147,18 @@ test('Draft share cards describe the active league, owner, pick, and zone analys
     if (expectedMode === 'league') assert.doesNotMatch(result.spec.canonicalUrl, /draftMode=/);
     else assert.match(result.spec.canonicalUrl, new RegExp(`draftMode=${expectedMode}`), expectedMode);
   }
+  const fallback = page.buildDraftShareResult(model.buildDraftSpotModel(asset, {
+    owner: 'Joe',
+    mode: 'owner',
+    startSeason: 2025,
+    endSeason: 2025,
+  }), 'fixture', win);
+  assert.equal(fallback.ok, true);
+  assert.deepEqual(fallback.spec.metrics.find(metric => metric.label === 'Confidence'), {
+    label: 'Confidence',
+    value: 'League fallback',
+    detail: 'League-wide history',
+  });
 });
 
 test('Draft share cards fail closed for empty data or a missing active selection', () => {

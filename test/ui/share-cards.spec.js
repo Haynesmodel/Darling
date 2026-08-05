@@ -328,7 +328,7 @@ test('each story family opens the shared renderer with its selected facts', asyn
     await page.goto(item.route);
     await waitForFeature(page, item.id);
     const buttons = page.locator(`${item.host} button`);
-    expect(await buttons.count(), `${item.id} share action`).toBeGreaterThan(0);
+    await expect(buttons.first(), `${item.id} share action`).toBeVisible();
     await buttons.first().click();
     const dialog = page.getByRole('dialog', { name: 'Share card preview', exact: true });
     await expect(dialog).toBeVisible();

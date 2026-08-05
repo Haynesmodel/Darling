@@ -375,6 +375,22 @@ test('selected-range hero shows the top owner for the period, not the selected o
   assert.equal(vm.selectedScore.rankInPeriod, 1);
 });
 
+test('calculator mode does not substitute another owner when the selection has no score', () => {
+  const vm = buildDynastyViewModel({
+    seasonSummaries,
+    seasonAggregates,
+    mode: 'calculator',
+    owner: 'Shemer',
+    startSeason: 2021,
+    endSeason: 2023,
+    minSeasons: 1,
+  });
+
+  assert.ok(vm.periodScores.length > 0);
+  assert.equal(vm.periodScores.some(row => row.owner === 'Shemer'), false);
+  assert.equal(vm.selectedScore, null);
+});
+
 test('renderer html includes the selected owner, breakdown, leaderboard, heatmap, and formula', () => {
   const vm = buildDynastyViewModel({
     seasonSummaries,

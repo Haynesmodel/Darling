@@ -40,6 +40,7 @@ test.before(async () => {
       path.join(root, 'src/share/share-card-spec.ts'),
       path.join(root, 'src/share/share-card-builders.ts'),
       path.join(root, 'src/share/share-card-feature-adapters.ts'),
+      path.join(root, 'src/features/league-pulse/league-recap-model.ts'),
       path.join(root, 'js/share-card-svg.js'),
     ],
     outdir: temp,
@@ -55,8 +56,9 @@ test.before(async () => {
   const spec = await import(`${pathToFileURL(path.join(temp, 'share-card-spec.js')).href}?${Date.now()}`);
   const builders = await import(`${pathToFileURL(path.join(temp, 'share-card-builders.js')).href}?${Date.now()}`);
   const adapters = await import(`${pathToFileURL(path.join(temp, 'share-card-feature-adapters.js')).href}?${Date.now()}`);
+  const recap = await import(`${pathToFileURL(path.join(temp, 'league-recap-model.js')).href}?${Date.now()}`);
   const svg = await import(`${pathToFileURL(path.join(temp, 'share-card-svg.js')).href}?${Date.now()}`);
-  share = { ...spec, ...builders, ...adapters, ...svg };
+  share = { ...spec, ...builders, ...adapters, ...recap, ...svg };
 });
 
 test.after(() => fs.rmSync(temp, { recursive: true, force: true }));
@@ -78,19 +80,19 @@ test('valid specs normalize, freeze, and serialize deterministically at 1200x630
   assert.doesNotMatch(first, /foreignObject|<script|onload=|xlink:href|<image/i);
 });
 
-test('text and metric boundaries return stable error codes', () => {
+test('layout-aware text and metric boundaries return stable error codes', () => {
   const exact = candidate({
     id: 'i'.repeat(96),
     eyebrow: 'e'.repeat(48),
-    title: `${'t'.repeat(34)} ${'u'.repeat(34)}`,
+    title: `${'t'.repeat(32)} ${'u'.repeat(32)}`,
     subtitle: `${'s'.repeat(74)} ${'u'.repeat(65)}`,
     sourceLabel: 'l'.repeat(48),
     dataVersion: 'd'.repeat(96),
     altText: 'a'.repeat(240),
     metrics: Array.from({ length: 4 }, (_, index) => ({
       label: `${index}`.padEnd(26, 'l'),
-      value: `${index}`.padEnd(15, 'v'),
-      detail: `${index}`.padEnd(26, 'd'),
+      value: `${index}`.padEnd(13, 'v'),
+      detail: `${index}`.padEnd(22, 'd'),
     })),
   });
   assert.equal(share.validateShareCardSpec(exact, environment).ok, true);
@@ -103,6 +105,12 @@ test('text and metric boundaries return stable error codes', () => {
   assert.equal(share.validateShareCardSpec(candidate({ metrics: [
     { label: 'Alpha', value: 'unbreakable-token-that-overflows-the-cell', detail: 'Final' },
     { label: 'Beta', value: '2', detail: 'Final' },
+  ] }), environment).code, 'INVALID_TEXT');
+  assert.equal(share.validateShareCardSpec(candidate({ metrics: [
+    { label: 'Alpha', value: 'W'.repeat(15), detail: 'Final' },
+    { label: 'Beta', value: '2', detail: 'Final' },
+    { label: 'Gamma', value: '3', detail: 'Final' },
+    { label: 'Delta', value: '4', detail: 'Final' },
   ] }), environment).code, 'INVALID_TEXT');
   assert.equal(share.validateShareCardSpec(candidate({ title: 'bad\ntext' }), environment).code, 'INVALID_TEXT');
   assert.equal(share.validateShareCardSpec(candidate({ metrics: exact.metrics.concat({ label: 'x', value: 'y' }) }), environment).code, 'TOO_MANY_METRICS');
@@ -168,4 +176,67 @@ test('Pulse matchup identity and visible context include season and week', () =>
   assert.match(weekFour.spec.eyebrow, /2025 · Week 4/);
   assert.match(weekFour.spec.altText, /^2025 Week 4:/);
   assert.match(share.renderShareCardSvg(weekFour.spec), /class="eye">2025 · Week 4 · Regular<\/text>/);
+});
+
+test('every complete canonical League Newspaper edition builds a share-ready card', () => {
+  const data = {
+    leagueGames: JSON.parse(fs.readFileSync(path.join(root, 'assets/H2H.json'), 'utf8')),
+    seasonSummaries: JSON.parse(fs.readFileSync(path.join(root, 'assets/SeasonSummary.json'), 'utf8')),
+    currentSeason: JSON.parse(fs.readFileSync(path.join(root, 'assets/CurrentSeason.json'), 'utf8')),
+    rivalries: [],
+    derivedStats: null,
+    dataVersion: 'fixture',
+  };
+  const win = { location: { origin: environment.origin, href: `${environment.origin}/Darling/` } };
+  const complete = share.buildLeagueNewspaper(data, '/Darling/').editions
+    .filter(edition => edition.state === 'complete');
+  assert.ok(complete.length > 0);
+  const results = complete.map(edition => [edition.id, share.buildLeagueEditionCardResult(edition, win)]);
+  assert.deepEqual(
+    results.filter(([, result]) => !result?.ok).map(([id, result]) => [id, result?.code || 'NO_RESULT']),
+    [],
+  );
+  for (const id of ['weekly:2025:9', 'weekly:2017:10', 'weekly:2015:1']) {
+    assert.equal(results.find(([editionId]) => editionId === id)?.[1]?.ok, true, id);
+  }
+});
+
+test('Dynasty cards bind to the selected owner and disclose partial coverage', () => {
+  const win = { location: { origin: environment.origin, href: `${environment.origin}/Darling/` } };
+  const score = {
+    owner: 'Shemer',
+    requestedStartSeason: 2014,
+    requestedEndSeason: 2025,
+    requestedSeasonCount: 12,
+    scoredStartSeason: 2025,
+    scoredEndSeason: 2025,
+    scoredSeasonCount: 1,
+    score: 10,
+    rankInPeriod: 8,
+    totalOwners: 12,
+    wins: 8,
+    losses: 6,
+    ties: 0,
+    label: 'Contender Stretch',
+    components: { hardware: 10 },
+  };
+  assert.equal(
+    share.buildDynastyCardResult(score, '/Darling/?tab=dynasty&dynastyOwner=Shemer', 'fixture', win, 'Joel'),
+    null,
+  );
+  const result = share.buildDynastyCardResult(
+    score,
+    '/Darling/?tab=dynasty&dynastyOwner=Shemer',
+    'fixture',
+    win,
+    'Shemer',
+  );
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.spec.metrics.at(-1), {
+    label: 'Coverage',
+    value: '1/12 seasons',
+    detail: 'Scored 2025',
+  });
+  assert.match(result.spec.subtitle, /Partial coverage/);
+  assert.match(result.spec.altText, /1 of 12 requested seasons; scored range 2025/);
 });

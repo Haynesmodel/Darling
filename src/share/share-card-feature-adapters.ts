@@ -18,6 +18,18 @@ type PulseMatchupCardInput = {
   result: string;
   currentHref: string;
 };
+type LeagueEditionCardInput = {
+  id: string;
+  kind: 'weekly' | 'season';
+  season: number;
+  week: number | null;
+  state: 'complete' | 'pending' | 'partial';
+  headline: string;
+  highlights: Array<{ label: string; value: string; detail: string }>;
+  sourceHref: string;
+  sourceLabel: string;
+  dataVersion: string;
+};
 
 function result(kind: ShareCardKind, input: StoryInput, win: Window): ShareCardBuildResult {
   const facts = { ...input, canonicalHref: absoluteShareHref(input.canonicalPath, win) };
@@ -55,6 +67,26 @@ export function buildPulseMatchupCardResult(
     sourceLabel: 'Current Season',
     dataVersion,
     altText: `${season} Week ${week}: ${matchup.ownerA} ${matchup.scoreA.toFixed(2)}, ${matchup.ownerB} ${matchup.scoreB.toFixed(2)}. ${matchup.result}.`,
+  }, win);
+}
+
+export function buildLeagueEditionCardResult(
+  edition: LeagueEditionCardInput,
+  win: Window,
+): ShareCardBuildResult | null {
+  if (edition.state !== 'complete') return null;
+  return result(edition.kind === 'weekly' ? 'weekly-recap' : 'season-recap', {
+    id: edition.id,
+    eyebrow: 'The League Newspaper',
+    title: edition.kind === 'weekly'
+      ? `${edition.season} Week ${edition.week} Recap`
+      : `${edition.season} Season Recap`,
+    subtitle: edition.headline,
+    metrics: edition.highlights.slice(0, 4),
+    canonicalPath: edition.sourceHref,
+    sourceLabel: edition.sourceLabel,
+    dataVersion: edition.dataVersion,
+    altText: `${edition.headline}. ${edition.highlights.map(item => `${item.label}: ${item.value}, ${item.detail}`).join('. ')}.`,
   }, win);
 }
 
@@ -156,30 +188,81 @@ export function mountTrophyCard(host: HTMLElement | null, view: any, canonicalPa
   });
 }
 
-export function mountDynastyCard(host: HTMLElement | null, score: any, canonicalPath: string, dataVersion: string, win: Window) {
-  if (!host || !score) return null;
+export function buildDynastyCardResult(
+  score: any,
+  canonicalPath: string,
+  dataVersion: string,
+  win: Window,
+  expectedOwner?: string | null,
+): ShareCardBuildResult | null {
+  if (!score || (expectedOwner && score.owner !== expectedOwner)) return null;
+  const requestedSeasonCount = Number(score.requestedSeasonCount);
+  const scoredSeasonCount = Number(score.scoredSeasonCount);
+  const requestedStartSeason = Number(score.requestedStartSeason);
+  const requestedEndSeason = Number(score.requestedEndSeason);
+  const scoredStartSeason = Number(score.scoredStartSeason);
+  const scoredEndSeason = Number(score.scoredEndSeason);
+  if (
+    !String(score.owner || '').trim()
+    || !Number.isInteger(requestedSeasonCount)
+    || requestedSeasonCount <= 0
+    || !Number.isInteger(scoredSeasonCount)
+    || scoredSeasonCount <= 0
+    || scoredSeasonCount > requestedSeasonCount
+    || !Number.isInteger(requestedStartSeason)
+    || !Number.isInteger(requestedEndSeason)
+    || requestedStartSeason > requestedEndSeason
+    || requestedSeasonCount !== requestedEndSeason - requestedStartSeason + 1
+    || !Number.isInteger(scoredStartSeason)
+    || !Number.isInteger(scoredEndSeason)
+    || scoredStartSeason < requestedStartSeason
+    || scoredEndSeason > requestedEndSeason
+    || scoredStartSeason > scoredEndSeason
+    || ![score.score, score.rankInPeriod, score.totalOwners, score.wins, score.losses, score.ties]
+      .every(value => Number.isFinite(Number(value)))
+  ) return null;
   const top = Object.entries(score.components || {})
     .map(([label, value]) => ({ label, value: Number(value) || 0 }))
     .sort((a, b) => Math.abs(b.value) - Math.abs(a.value) || a.label.localeCompare(b.label))[0];
+  const partialCoverage = scoredSeasonCount < requestedSeasonCount;
+  const scoredRange = scoredStartSeason === scoredEndSeason
+    ? String(scoredStartSeason)
+    : `${scoredStartSeason}–${scoredEndSeason}`;
+  return result('dynasty', {
+    id: `${score.owner}-${score.requestedStartSeason}-${score.requestedEndSeason}`,
+    eyebrow: `${score.requestedStartSeason}–${score.requestedEndSeason} Dynasty Rankings`,
+    title: `${score.owner} Dynasty Score`,
+    subtitle: `${score.label || 'Dynasty profile'}${partialCoverage ? ' · Partial coverage' : ''}`,
+    metrics: [
+      { label: 'Dynasty score', value: Number(score.score).toFixed(1) },
+      { label: 'Period rank', value: `#${score.rankInPeriod} of ${score.totalOwners}` },
+      { label: 'Record', value: `${score.wins}-${score.losses}-${score.ties}` },
+      partialCoverage
+        ? { label: 'Coverage', value: `${scoredSeasonCount}/${requestedSeasonCount} seasons`, detail: `Scored ${scoredRange}` }
+        : { label: top?.label || 'Top component', value: top ? `${top.value >= 0 ? '+' : ''}${top.value.toFixed(1)}` : '—' },
+    ],
+    canonicalPath,
+    sourceLabel: 'Dynasty Rankings',
+    dataVersion,
+    altText: `${score.owner}: ${Number(score.score).toFixed(1)} Dynasty score, rank ${score.rankInPeriod} of ${score.totalOwners}, ${score.requestedStartSeason}–${score.requestedEndSeason}.${partialCoverage ? ` Based on ${scoredSeasonCount} of ${requestedSeasonCount} requested seasons; scored range ${scoredRange}.` : ''}`,
+  }, win);
+}
+
+export function mountDynastyCard(
+  host: HTMLElement | null,
+  score: any,
+  canonicalPath: string,
+  dataVersion: string,
+  win: Window,
+  expectedOwner?: string | null,
+) {
+  if (!host) return null;
+  const cardResult = buildDynastyCardResult(score, canonicalPath, dataVersion, win, expectedOwner);
+  if (!cardResult) return null;
   return mountShareCardAction({
     host,
     label: `Share ${score.owner} dynasty card`,
-    result: result('dynasty', {
-      id: `${score.owner}-${score.requestedStartSeason}-${score.requestedEndSeason}`,
-      eyebrow: `${score.requestedStartSeason}–${score.requestedEndSeason} Dynasty Rankings`,
-      title: `${score.owner} Dynasty Score`,
-      subtitle: score.label || 'Dynasty profile',
-      metrics: [
-        { label: 'Dynasty score', value: Number(score.score).toFixed(1) },
-        { label: 'Period rank', value: `#${score.rankInPeriod} of ${score.totalOwners}` },
-        { label: 'Record', value: `${score.wins}-${score.losses}-${score.ties}` },
-        { label: top?.label || 'Top component', value: top ? `${top.value >= 0 ? '+' : ''}${top.value.toFixed(1)}` : '—' },
-      ],
-      canonicalPath,
-      sourceLabel: 'Dynasty Rankings',
-      dataVersion,
-      altText: `${score.owner}: ${Number(score.score).toFixed(1)} Dynasty score, rank ${score.rankInPeriod} of ${score.totalOwners}, ${score.requestedStartSeason}–${score.requestedEndSeason}.`,
-    }, win),
+    result: cardResult,
   });
 }
 

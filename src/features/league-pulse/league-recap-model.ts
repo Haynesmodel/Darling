@@ -223,7 +223,7 @@ function weeklyFacts(allGames: Game[], games: Game[], week: number): WeeklyRecap
     },
     closestGame: {
       label: 'Closest matchup',
-      value: `${closest.teamA} vs ${closest.teamB}`,
+      value: `${closest.teamA}–${closest.teamB}`,
       detail: `${score(Math.abs(Number(closest.scoreA) - Number(closest.scoreB)))}-point margin`,
     },
     largestMargin: {

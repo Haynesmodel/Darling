@@ -7,7 +7,11 @@ import {
   type ShareCardMetric,
   type ShareCardSpec,
 } from './share-card-types';
-import { shareCardMetricTextWidths, shareCardTextFits } from '../../js/share-card-svg.js';
+import {
+  SHARE_CARD_TEXT_STYLES,
+  shareCardMetricTextWidths,
+  shareCardTextFits,
+} from '../../js/share-card-svg.js';
 
 const TEXT_LIMITS = {
   id: [1, 96],
@@ -66,8 +70,8 @@ export function validateShareCardSpec(
     normalized[field as keyof typeof TEXT_LIMITS] = value;
   }
   if (
-    !shareCardTextFits(normalized.title, 34, 2)
-    || !shareCardTextFits(normalized.subtitle, 74, 2)
+    !shareCardTextFits(normalized.title, 1104, 2, SHARE_CARD_TEXT_STYLES.title)
+    || !shareCardTextFits(normalized.subtitle, 1104, 2, SHARE_CARD_TEXT_STYLES.subtitle)
   ) return failure('INVALID_TEXT');
   const metricWidths = shareCardMetricTextWidths(candidate.metrics.length);
   const metrics: ShareCardMetric[] = [];
@@ -79,9 +83,9 @@ export function validateShareCardSpec(
       label === null
       || value === null
       || detail === null
-      || !shareCardTextFits(label, metricWidths.label, 1)
-      || !shareCardTextFits(value, metricWidths.value, 1)
-      || !shareCardTextFits(detail, metricWidths.detail, 1)
+      || !shareCardTextFits(label, metricWidths.label, 1, SHARE_CARD_TEXT_STYLES.label)
+      || !shareCardTextFits(value, metricWidths.value, 1, SHARE_CARD_TEXT_STYLES.metric)
+      || !shareCardTextFits(detail, metricWidths.detail, 1, SHARE_CARD_TEXT_STYLES.detail)
     ) {
       return failure('INVALID_TEXT');
     }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import type { LeagueEdition, LeaguePulseViewModel, PulseLink, PulseMatchupModel } from './league-pulse-types';
+import type { LeaguePulseViewModel, PulseLink, PulseMatchupModel } from './league-pulse-types';
 import { shortDataVersion } from '../../data/data-version';
 import {
   absoluteShareHref,
@@ -7,7 +7,7 @@ import {
   mountShareCardAction,
   type ShareCardActionController,
 } from '../../share/share-card-actions';
-import { buildFeatureShareCard, buildPulseMatchupCardResult } from '../../share/share-card-feature-adapters';
+import { buildLeagueEditionCardResult, buildPulseMatchupCardResult } from '../../share/share-card-feature-adapters';
 import type { ShareCardBuildResult } from '../../share/share-card-types';
 
 function ActionLink({ link, className = '' }: { link?: PulseLink; className?: string }) {
@@ -114,24 +114,6 @@ function Matchups({ model }: { model: LeaguePulseViewModel }) {
   </section>;
 }
 
-function editionCardResult(edition: LeagueEdition): ShareCardBuildResult | undefined {
-  if (edition.state !== 'complete') return undefined;
-  const facts = {
-    id: edition.id,
-    eyebrow: 'The League Newspaper',
-    title: edition.kind === 'weekly'
-      ? `${edition.season} Week ${edition.week} Recap`
-      : `${edition.season} Season Recap`,
-    subtitle: edition.headline,
-    metrics: edition.highlights.slice(0, 4),
-    canonicalPath: edition.sourceHref,
-    sourceLabel: edition.sourceLabel,
-    dataVersion: edition.dataVersion,
-    altText: `${edition.headline}. ${edition.highlights.map(item => `${item.label}: ${item.value}, ${item.detail}`).join('. ')}.`,
-  };
-  return buildFeatureShareCard(edition.kind === 'weekly' ? 'weekly-recap' : 'season-recap', facts, window);
-}
-
 function Newspaper({ model }: { model: LeaguePulseViewModel }) {
   const { editions, defaultEditionId } = model.newspaper;
   const [selectedId, setSelectedId] = useState(defaultEditionId || '');
@@ -142,7 +124,7 @@ function Newspaper({ model }: { model: LeaguePulseViewModel }) {
   const kinds = [...new Set(editions.map(edition => edition.kind))];
   const seasons = [...new Set(editions.filter(edition => !selected || edition.kind === selected.kind).map(edition => edition.season))];
   const peers = editions.filter(edition => !selected || (edition.kind === selected.kind && edition.season === selected.season));
-  const result = useMemo(() => selected ? editionCardResult(selected) : undefined, [selected]);
+  const result = useMemo(() => selected ? buildLeagueEditionCardResult(selected, window) || undefined : undefined, [selected]);
   const selectEdition = (kind: string, season?: number) => {
     const edition = editions.find(item => item.kind === kind && (season === undefined || item.season === season))
       || editions.find(item => item.kind === kind);

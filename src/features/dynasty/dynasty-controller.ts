@@ -123,7 +123,16 @@ export function createFeatureController(): DarlingFeatureController {
       selectedDynastySaunders: view.controls.includeSaundersPenalty,
     });
     const host = context.document.getElementById('dynastyShareCard');
-    shareAction = mountDynastyCard(host, score, canonicalPath, context.data.dataVersion, context.window);
+    shareAction = mountDynastyCard(
+      host,
+      score,
+      canonicalPath,
+      context.data.dataVersion,
+      context.window,
+      view.controls.mode === 'calculator' && view.controls.owner !== ALL_TEAMS
+        ? view.controls.owner
+        : null,
+    );
   };
 
   return {

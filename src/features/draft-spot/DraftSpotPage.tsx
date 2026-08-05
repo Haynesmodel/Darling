@@ -85,14 +85,15 @@ export function buildDraftShareResult(
       || !Number.isFinite(recommendation.best_pick.avg_finish)
       || !Number.isFinite(recommendation.best_zone.avg_finish)
     ) return incomplete();
-    const confidence = recommendation.confidence === 'league-wide fallback'
+    const fallback = recommendation.confidence === 'league-wide fallback';
+    const confidence = fallback
       ? 'League fallback'
       : recommendation.confidence;
     metrics = [
       { label: 'Owner sample', value: `${profile.rows.length} seasons`, detail: `${model.state.startSeason}–${model.state.endSeason}` },
       { label: 'Best pick', value: recommendation.best_pick.label, detail: `Finish ${formatNumber(recommendation.best_pick.avg_finish)} · n=${recommendation.best_pick.n}` },
       { label: 'Best zone', value: recommendation.best_zone.label, detail: `Finish ${formatNumber(recommendation.best_zone.avg_finish)} · n=${recommendation.best_zone.n}` },
-      { label: 'Confidence', value: confidence, detail: 'Owner-specific history' },
+      { label: 'Confidence', value: confidence, detail: fallback ? 'League-wide history' : 'Owner-specific history' },
     ];
     altText = `${model.state.owner} Draft Spot profile from ${profile.rows.length} seasons. Best pick: ${recommendation.best_pick.label}. Best zone: ${recommendation.best_zone.label}.`;
   } else if (model.state.mode === 'pick') {

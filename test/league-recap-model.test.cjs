@@ -108,6 +108,22 @@ test('weekly integrity failures use deterministic issue codes', () => {
   }
 });
 
+test('a complete week after a partial week cannot publish cumulative standings', () => {
+  const games = [
+    game('A', 'B'),
+    game('A', 'B', { week: 2, date: '2030-09-15', scoreA: 80, scoreB: 90 }),
+    game('C', 'D', { week: 2, date: '2030-09-15', scoreA: 95, scoreB: 85 }),
+  ];
+  const model = recap.buildLeagueNewspaper(data(games), '/Darling/');
+  const first = model.editions.find(edition => edition.id === 'weekly:2030:1');
+  const second = model.editions.find(edition => edition.id === 'weekly:2030:2');
+  assert.equal(first.state, 'partial');
+  assert.equal(second.state, 'partial');
+  assert.equal(second.issue.code, 'INCOMPLETE_STANDINGS_PREFIX');
+  assert.equal(second.issue.standingsWeek, 1);
+  assert.equal(second.facts, null);
+});
+
 test('tie handling is independent of source order and owner names are canonical', () => {
   const games = [
     game('C', 'D', { scoreA: 120, scoreB: 100 }),
@@ -141,6 +157,12 @@ test('all ten audited historical anomalies remain partial and unshareable', () =
     anomalies.map(id => [id, 'partial']),
   );
   assert.ok(anomalies.every(id => model.editions.find(edition => edition.id === id)?.facts === null));
+  for (const id of ['weekly:2015:9', 'weekly:2015:14', 'weekly:2016:14', 'weekly:2019:12']) {
+    const edition = model.editions.find(candidate => candidate.id === id);
+    assert.equal(edition?.state, 'partial', id);
+    assert.equal(edition?.issue?.code, 'INCOMPLETE_STANDINGS_PREFIX', id);
+    assert.equal(edition?.facts, null, id);
+  }
   assert.equal(model.editions.find(edition => edition.id === 'season:2025').state, 'complete');
   assert.equal(model.defaultEditionId.startsWith('weekly:2025:'), true);
 });

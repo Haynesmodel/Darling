@@ -8,6 +8,16 @@ import {
 import type { ShareCardBuildResult, ShareCardKind } from './share-card-types';
 
 type StoryInput = Omit<ShareStoryFacts, 'canonicalHref'> & { canonicalPath: string };
+type PulseMatchupCardInput = {
+  ownerA: string;
+  ownerB: string;
+  scoreA: number;
+  scoreB: number;
+  type: string;
+  round: string;
+  result: string;
+  currentHref: string;
+};
 
 function result(kind: ShareCardKind, input: StoryInput, win: Window): ShareCardBuildResult {
   const facts = { ...input, canonicalHref: absoluteShareHref(input.canonicalPath, win) };
@@ -15,6 +25,37 @@ function result(kind: ShareCardKind, input: StoryInput, win: Window): ShareCardB
     origin: win.location.origin,
     basePath: import.meta.env.BASE_URL,
   });
+}
+
+export function buildPulseMatchupCardResult(
+  matchup: PulseMatchupCardInput,
+  season: number,
+  week: number,
+  dataVersion: string,
+  win: Window,
+): ShareCardBuildResult {
+  const winner = matchup.scoreA === matchup.scoreB
+    ? 'Tie'
+    : matchup.scoreA > matchup.scoreB ? matchup.ownerA : matchup.ownerB;
+  return result('matchup', {
+    id: `${season}-week-${week}-${matchup.ownerA}-${matchup.ownerB}`,
+    eyebrow: `${season} · Week ${week} · ${matchup.round || matchup.type}`,
+    title: `${matchup.ownerA} vs ${matchup.ownerB}`,
+    subtitle: matchup.result,
+    metrics: [
+      { label: matchup.ownerA, value: matchup.scoreA.toFixed(2) },
+      { label: matchup.ownerB, value: matchup.scoreB.toFixed(2) },
+      {
+        label: 'Winner',
+        value: winner,
+        detail: `${Math.abs(matchup.scoreA - matchup.scoreB).toFixed(2)}-point margin`,
+      },
+    ],
+    canonicalPath: matchup.currentHref,
+    sourceLabel: 'Current Season',
+    dataVersion,
+    altText: `${season} Week ${week}: ${matchup.ownerA} ${matchup.scoreA.toFixed(2)}, ${matchup.ownerB} ${matchup.scoreB.toFixed(2)}. ${matchup.result}.`,
+  }, win);
 }
 
 export function mountCurrentMatchupCards(
@@ -44,7 +85,7 @@ export function mountCurrentMatchupCards(
       label: `Share ${row.teamA} vs ${row.teamB} card`,
       result: result('matchup', {
         id: `${view.season}-week-${view.week}-${row.teamA}-${row.teamB}`,
-        eyebrow: `${view.season} · ${row.round || row.type || `Week ${view.week}`}`,
+        eyebrow: `${view.season} · Week ${view.week}${row.round || row.type ? ` · ${row.round || row.type}` : ''}`,
         title: `${row.teamA} vs ${row.teamB}`,
         subtitle: `${winner === 'Tie' ? 'Final tie' : `${winner} wins`} · ${row.date}`,
         metrics: [
@@ -55,7 +96,7 @@ export function mountCurrentMatchupCards(
         canonicalPath,
         sourceLabel: 'Current Season',
         dataVersion,
-        altText: `${row.teamA} ${scoreA.toFixed(2)}, ${row.teamB} ${scoreB.toFixed(2)}; ${winner === 'Tie' ? 'tie' : `${winner} won`}.`,
+        altText: `${view.season} Week ${view.week}: ${row.teamA} ${scoreA.toFixed(2)}, ${row.teamB} ${scoreB.toFixed(2)}; ${winner === 'Tie' ? 'tie' : `${winner} won`}.`,
       }, win),
     })];
   });

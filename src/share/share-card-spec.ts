@@ -7,6 +7,7 @@ import {
   type ShareCardMetric,
   type ShareCardSpec,
 } from './share-card-types';
+import { shareCardMetricTextWidths, shareCardTextFits } from '../../js/share-card-svg.js';
 
 const TEXT_LIMITS = {
   id: [1, 96],
@@ -64,12 +65,24 @@ export function validateShareCardSpec(
     if (value === null) return failure('INVALID_TEXT');
     normalized[field as keyof typeof TEXT_LIMITS] = value;
   }
+  if (
+    !shareCardTextFits(normalized.title, 34, 2)
+    || !shareCardTextFits(normalized.subtitle, 74, 2)
+  ) return failure('INVALID_TEXT');
+  const metricWidths = shareCardMetricTextWidths(candidate.metrics.length);
   const metrics: ShareCardMetric[] = [];
   for (const metric of candidate.metrics) {
     const label = text(metric.label, METRIC_LIMITS.label);
     const value = text(metric.value, METRIC_LIMITS.value);
     const detail = text(metric.detail, METRIC_LIMITS.detail);
-    if (label === null || value === null || detail === null) {
+    if (
+      label === null
+      || value === null
+      || detail === null
+      || !shareCardTextFits(label, metricWidths.label, 1)
+      || !shareCardTextFits(value, metricWidths.value, 1)
+      || !shareCardTextFits(detail, metricWidths.detail, 1)
+    ) {
       return failure('INVALID_TEXT');
     }
     metrics.push(Object.freeze({ label, value, ...(detail ? { detail } : {}) }));

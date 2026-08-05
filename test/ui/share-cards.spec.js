@@ -221,7 +221,7 @@ test('coverage build exercises internal share lifecycle and empty Draft branches
     noTrophy: null,
     noDynasty: null,
     incomplete: 'INCOMPLETE_DATA',
-    emptyDraft: true,
+    emptyDraft: false,
     serverDraft: null,
   });
 });

@@ -10,6 +10,7 @@ const root = path.join(__dirname, '..');
 const asset = JSON.parse(fs.readFileSync(path.join(root, 'assets/DraftSpot.json'), 'utf8'));
 let temp;
 let model;
+let page;
 let state;
 
 test.before(async () => {
@@ -17,6 +18,7 @@ test.before(async () => {
   await esbuild.build({
     entryPoints: {
       model: path.join(root, 'src/features/draft-spot/draft-spot-model.ts'),
+      page: path.join(root, 'src/features/draft-spot/DraftSpotPage.tsx'),
       state: path.join(root, 'src/features/draft-spot/draft-spot-state.ts'),
     },
     outdir: temp,
@@ -24,9 +26,11 @@ test.before(async () => {
     platform: 'node',
     format: 'esm',
     target: 'node20',
+    define: { 'import.meta.env.BASE_URL': "'/Darling/'" },
     logLevel: 'silent',
   });
   model = await import(`${pathToFileURL(path.join(temp, 'model.js')).href}?${Date.now()}`);
+  page = await import(`${pathToFileURL(path.join(temp, 'page.js')).href}?${Date.now()}`);
   state = await import(`${pathToFileURL(path.join(temp, 'state.js')).href}?${Date.now()}`);
 });
 
@@ -109,4 +113,71 @@ test('percentile mode groups and selects equivalent positions on a 12-team scale
   assert.ok(normalized.detailRows.some(row => row.team_count === 12 && row.draft_pick === 12));
   assert.ok(normalized.detailRows.every(row => model.draftPickBucket(row, 'percentile') === 12));
   assert.equal(normalized.selectedPickSummary.n, normalized.detailRows.length);
+});
+
+test('Draft share cards describe the active league, owner, pick, and zone analysis', () => {
+  const win = { location: { pathname: '/Darling/', origin: 'https://example.com', href: 'https://example.com/Darling/' } };
+  const cases = [
+    {
+      mode: 'league',
+      view: model.buildDraftSpotModel(asset),
+      labels: ['League sample', 'Best avg finish', 'Best playoff path', 'Metric leader'],
+    },
+    {
+      mode: 'owner',
+      view: model.buildDraftSpotModel(asset, { owner: 'Joe', mode: 'owner' }),
+      labels: ['Owner sample', 'Best pick', 'Best zone', 'Confidence'],
+    },
+    {
+      mode: 'pick',
+      view: model.buildDraftSpotModel(asset, { mode: 'pick', selectedPick: 10 }),
+      labels: ['Selected pick', 'Avg finish', 'Playoff rate', 'Avg Finish'],
+    },
+    {
+      mode: 'zone',
+      view: model.buildDraftSpotModel(asset, { mode: 'zone', selectedZone: 'late' }),
+      labels: ['Selected zone', 'Average pick', 'Avg finish', 'Avg Finish'],
+    },
+  ];
+  for (const { mode: expectedMode, view, labels } of cases) {
+    const result = page.buildDraftShareResult(view, 'fixture', win);
+    assert.equal(result.ok, true, expectedMode);
+    assert.deepEqual(result.spec.metrics.map(metric => metric.label), labels, expectedMode);
+    assert.match(result.spec.id, new RegExp(`^draft:${expectedMode}\\|`), expectedMode);
+    if (expectedMode === 'league') assert.doesNotMatch(result.spec.canonicalUrl, /draftMode=/);
+    else assert.match(result.spec.canonicalUrl, new RegExp(`draftMode=${expectedMode}`), expectedMode);
+  }
+});
+
+test('Draft share cards fail closed for empty data or a missing active selection', () => {
+  const win = { location: { pathname: '/Darling/', origin: 'https://example.com', href: 'https://example.com/Darling/' } };
+  const emptyAsset = {
+    ...asset,
+    rows: [],
+    pick_summary: [],
+    zone_summary: [],
+    owner_recommendations: [],
+    team_seasons: 0,
+  };
+  const empty = page.buildDraftShareResult(model.buildDraftSpotModel(emptyAsset), 'fixture', win);
+  assert.equal(empty.ok, false);
+  assert.equal(empty.code, 'INCOMPLETE_DATA');
+
+  const league = model.buildDraftSpotModel(asset);
+  for (const modeName of ['pick', 'zone']) {
+    const invalid = page.buildDraftShareResult({
+      ...league,
+      state: {
+        ...league.state,
+        mode: modeName,
+        selectedPick: null,
+        selectedZone: null,
+      },
+      selectedPickSummary: null,
+      selectedZoneSummary: null,
+    }, 'fixture', win);
+    assert.equal(invalid.ok, false, modeName);
+    assert.equal(invalid.code, 'INCOMPLETE_DATA', modeName);
+  }
+  assert.equal(page.buildDraftShareResult(league, 'fixture', null), null);
 });

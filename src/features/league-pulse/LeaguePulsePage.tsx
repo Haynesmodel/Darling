@@ -7,7 +7,7 @@ import {
   mountShareCardAction,
   type ShareCardActionController,
 } from '../../share/share-card-actions';
-import { buildFeatureShareCard } from '../../share/share-card-feature-adapters';
+import { buildFeatureShareCard, buildPulseMatchupCardResult } from '../../share/share-card-feature-adapters';
 import type { ShareCardBuildResult } from '../../share/share-card-types';
 
 function ActionLink({ link, className = '' }: { link?: PulseLink; className?: string }) {
@@ -50,30 +50,28 @@ function ShareAction({
   return <div ref={host} class="share-card-action-host" />;
 }
 
-function MatchupCard({ matchup, dataVersion }: { matchup: PulseMatchupModel; dataVersion: string }) {
+function MatchupCard({
+  matchup,
+  dataVersion,
+  season,
+  week,
+}: {
+  matchup: PulseMatchupModel;
+  dataVersion: string;
+  season: number | null;
+  week: number | null;
+}) {
   const final = matchup.status === 'Final'
     && matchup.scoreA !== null
-    && matchup.scoreB !== null;
+    && matchup.scoreB !== null
+    && season !== null
+    && week !== null;
   const href = absoluteShareHref(matchup.currentHref, window);
-  const result = final ? buildFeatureShareCard('matchup', {
-    id: `${matchup.ownerA}-${matchup.ownerB}`,
-    eyebrow: `${matchup.type} matchup`,
-    title: `${matchup.ownerA} vs ${matchup.ownerB}`,
-    subtitle: matchup.result,
-    metrics: [
-      { label: matchup.ownerA, value: matchup.scoreA!.toFixed(2) },
-      { label: matchup.ownerB, value: matchup.scoreB!.toFixed(2) },
-      {
-        label: 'Winner',
-        value: matchup.scoreA === matchup.scoreB ? 'Tie' : matchup.scoreA! > matchup.scoreB! ? matchup.ownerA : matchup.ownerB,
-        detail: `${Math.abs(matchup.scoreA! - matchup.scoreB!).toFixed(2)}-point margin`,
-      },
-    ],
-    canonicalPath: matchup.currentHref,
-    sourceLabel: 'Current Season',
-    dataVersion,
-    altText: `${matchup.ownerA} ${matchup.scoreA!.toFixed(2)}, ${matchup.ownerB} ${matchup.scoreB!.toFixed(2)}. ${matchup.result}.`,
-  }, window) : undefined;
+  const result = final ? buildPulseMatchupCardResult({
+    ...matchup,
+    scoreA: matchup.scoreA!,
+    scoreB: matchup.scoreB!,
+  }, season!, week!, dataVersion, window) : undefined;
   return <article class="pulse-matchup-card">
     <div class="pulse-card-topline"><span>{matchup.round || matchup.type}</span><strong>{matchup.status}</strong></div>
     <div class="pulse-scoreline">
@@ -105,7 +103,13 @@ function Matchups({ model }: { model: LeaguePulseViewModel }) {
     <div class="pulse-section-heading"><div><p class="pulse-eyebrow">Spotlight</p><h3 id="pulseMatchupsTitle">Week {model.state.spotlightWeek} matchups</h3></div></div>
     {groups.map(group => <div class="pulse-matchup-group" key={group.title || 'week'}>
       {group.title && <h4>{group.title}</h4>}
-      <div class="pulse-matchup-grid">{group.rows.map(matchup => <MatchupCard key={`${matchup.ownerA}-${matchup.ownerB}`} matchup={matchup} dataVersion={model.dataNote.dataVersion} />)}</div>
+      <div class="pulse-matchup-grid">{group.rows.map(matchup => <MatchupCard
+        key={`${model.state.season}-${model.state.spotlightWeek}-${matchup.ownerA}-${matchup.ownerB}`}
+        matchup={matchup}
+        dataVersion={model.dataNote.dataVersion}
+        season={model.state.season}
+        week={model.state.spotlightWeek}
+      />)}</div>
     </div>)}
   </section>;
 }

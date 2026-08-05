@@ -11,6 +11,7 @@ import type {
 } from './league-pulse-types';
 
 type Game = H2HGame | CurrentSeasonGame;
+type WeeklyIntegrityIssue = Exclude<LeagueEdition['issue'], null>['code'];
 
 function score(value: number): string {
   return Number(value).toFixed(2).replace(/\.00$/, '');
@@ -142,6 +143,26 @@ function sourceGames(data: PulseModelData, season: number): Game[] {
   return data.leagueGames.filter(game => Number(game.season) === season);
 }
 
+function weeklyIntegrityIssue(
+  owners: string[],
+  games: Game[],
+  expectedGames: number,
+): WeeklyIntegrityIssue | null {
+  const counts = new Map<string, number>();
+  games.forEach(game => {
+    counts.set(game.teamA, (counts.get(game.teamA) || 0) + 1);
+    counts.set(game.teamB, (counts.get(game.teamB) || 0) + 1);
+  });
+  return !owners.length ? 'MISSING_EXPECTED_OWNERS'
+    : games.length !== expectedGames ? 'MISSING_GAMES'
+      : new Set(games.map(pair)).size !== games.length ? 'DUPLICATE_PAIR'
+        : owners.some(owner => (counts.get(owner) || 0) > 1) ? 'DUPLICATE_OWNER'
+          : [...counts.keys()].some(owner => !owners.includes(owner)) ? 'UNKNOWN_OWNER'
+            : owners.some(owner => counts.get(owner) !== 1) ? 'MISSING_GAMES'
+              : games.some(game => !hasFiniteScore(game.scoreA) || !hasFiniteScore(game.scoreB)) ? 'INVALID_SCORE'
+                : null;
+}
+
 function standingLeader(games: Game[], week: number): PulseSuperlative {
   const records = new Map<string, { wins: number; losses: number; ties: number; points: number }>();
   games.filter(game => Number(game.week) <= week && game.type === 'Regular').forEach(game => {
@@ -245,21 +266,34 @@ function weeklyEdition(data: PulseModelData, pathname: string, season: number, w
   if (current && games.some(game => !('status' in game) || game.status !== 'final' || !hasFiniteScore(game.scoreA) || !hasFiniteScore(game.scoreB))) {
     return { ...base, state: 'pending', headline: `${season} Week ${week} is still in progress`, statusLabel: 'Pending', facts: null, highlights: [], issue: { code: 'LIVE_GAMES', recordedGames: games.length, expectedGames } };
   }
-  const counts = new Map<string, number>();
-  games.forEach(game => {
-    counts.set(game.teamA, (counts.get(game.teamA) || 0) + 1);
-    counts.set(game.teamB, (counts.get(game.teamB) || 0) + 1);
-  });
-  const issue = !owners.length ? 'MISSING_EXPECTED_OWNERS'
-    : games.length !== expectedGames ? 'MISSING_GAMES'
-      : new Set(games.map(pair)).size !== games.length ? 'DUPLICATE_PAIR'
-        : owners.some(owner => (counts.get(owner) || 0) > 1) ? 'DUPLICATE_OWNER'
-          : [...counts.keys()].some(owner => !owners.includes(owner)) ? 'UNKNOWN_OWNER'
-            : owners.some(owner => counts.get(owner) !== 1) ? 'MISSING_GAMES'
-              : games.some(game => !hasFiniteScore(game.scoreA) || !hasFiniteScore(game.scoreB)) ? 'INVALID_SCORE'
-                : null;
+  const issue = weeklyIntegrityIssue(owners, games, expectedGames);
   if (issue) {
     return { ...base, state: 'partial', headline: `Partial archive — ${games.length} of ${expectedGames} games recorded`, statusLabel: 'Partial archive', facts: null, highlights: [], issue: { code: issue, recordedGames: games.length, expectedGames } };
+  }
+  for (let standingsWeek = 1; standingsWeek < week; standingsWeek += 1) {
+    const prefixGames = allGames.filter(game => Number(game.week) === standingsWeek);
+    const nonFinalCurrentGame = current && prefixGames.some(game => (
+      !('status' in game)
+      || game.status !== 'final'
+      || !hasFiniteScore(game.scoreA)
+      || !hasFiniteScore(game.scoreB)
+    ));
+    if (nonFinalCurrentGame || weeklyIntegrityIssue(owners, prefixGames, expectedGames)) {
+      return {
+        ...base,
+        state: 'partial',
+        headline: `Partial archive — standings history is incomplete at Week ${standingsWeek}`,
+        statusLabel: 'Partial archive',
+        facts: null,
+        highlights: [],
+        issue: {
+          code: 'INCOMPLETE_STANDINGS_PREFIX',
+          recordedGames: prefixGames.length,
+          expectedGames,
+          standingsWeek,
+        },
+      };
+    }
   }
   const facts = weeklyFacts(allGames, games, week);
   return {

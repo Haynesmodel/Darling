@@ -164,6 +164,86 @@ function coverageLocationCounts(coverage) {
   };
 }
 
+function locationSignature(location) {
+  if (!location) return '';
+  return [
+    Number(location.start?.line) || 0,
+    Number(location.start?.column) || 0,
+    Number(location.end?.line) || 0,
+    Number(location.end?.column) || 0,
+  ].join(':');
+}
+
+function coverageLocationSets(coverage) {
+  return {
+    statements: new Set(Object.values(coverage.data.statementMap).map(locationSignature)),
+    functions: new Set(Object.values(coverage.data.fnMap).map(entry => JSON.stringify({
+      name: entry.name || '',
+      decl: locationSignature(entry.decl),
+      loc: locationSignature(entry.loc),
+    }))),
+    branches: new Set(Object.values(coverage.data.branchMap).map(entry => JSON.stringify({
+      type: entry.type || '',
+      loc: locationSignature(entry.loc),
+      locations: (entry.locations || []).map(locationSignature),
+    }))),
+  };
+}
+
+function isLineCoverageRemap(coverage) {
+  const statements = Object.values(coverage.data.statementMap);
+  return statements.length > 0 && statements.every(location => (
+    location.start?.column === 0
+    && location.start?.line === location.end?.line
+  ));
+}
+
+function lineCoverageFunctionIsAuthored(coverage, entry) {
+  const sourcePath = coverage.data.path;
+  if (!sourcePath || !fs.existsSync(sourcePath)) return true;
+  const startLine = Number(entry.decl?.start?.line) || Number(entry.loc?.start?.line) || 0;
+  const sourceLine = fs.readFileSync(sourcePath, 'utf8').split(/\r?\n/)[startLine - 1]?.trim() || '';
+  return !/^(?:import\b|export\s+type\b|type\b|interface\b)/.test(sourceLine);
+}
+
+function coverageSpanSets(coverage) {
+  return {
+    functions: new Set(Object.values(coverage.data.fnMap)
+      .filter(entry => lineCoverageFunctionIsAuthored(coverage, entry))
+      .map(entry => JSON.stringify({
+        startLine: Number(entry.decl?.start?.line) || Number(entry.loc?.start?.line) || 0,
+        endLine: Number(entry.loc?.end?.line) || 0,
+      }))),
+    branches: new Set(Object.values(coverage.data.branchMap).map(entry => JSON.stringify({
+      type: entry.type || '',
+      startLine: Number(entry.loc?.start?.line) || 0,
+      endLine: Number(entry.loc?.end?.line) || 0,
+      locations: (entry.locations || []).map(location => [
+        Number(location.start?.line) || 0,
+        Number(location.end?.line) || 0,
+      ]),
+    }))),
+  };
+}
+
+function coverageLocationsSubset(candidate, other) {
+  if (isLineCoverageRemap(candidate)) {
+    // V8 remaps synthesize one "statement" for every source line, including
+    // imports and type-only lines. Function and branch spans are the authored
+    // locations that can be compared to an Istanbul statement map safely.
+    const candidateSpans = coverageSpanSets(candidate);
+    const otherSpans = coverageSpanSets(other);
+    return Object.keys(candidateSpans).every(kind => (
+      [...candidateSpans[kind]].every(location => otherSpans[kind].has(location))
+    ));
+  }
+  const candidateLocations = coverageLocationSets(candidate);
+  const otherLocations = coverageLocationSets(other);
+  return Object.keys(candidateLocations).every(kind => (
+    [...candidateLocations[kind]].every(location => otherLocations[kind].has(location))
+  ));
+}
+
 function mergeCoverageMaps(root = process.cwd(), mapFiles = discoverCoverageMaps(root)) {
   if (mapFiles.length === 0) throw new Error('No Node or browser Istanbul coverage maps were found.');
   const candidates = new Map();
@@ -195,13 +275,10 @@ function mergeCoverageMaps(root = process.cwd(), mapFiles = discoverCoverageMaps
     const selected = values.filter(coverage => {
       const candidate = { data: coverage };
       if (!isUnexecutedRemap(candidate)) return true;
-      const counts = coverageLocationCounts(candidate);
       return !values.some(other => {
         const otherCoverage = { data: other };
         if (isUnexecutedRemap(otherCoverage)) return false;
-        const otherCounts = coverageLocationCounts(otherCoverage);
-        return otherCounts.functions >= counts.functions
-          && otherCounts.branches >= counts.branches;
+        return coverageLocationsSubset(candidate, otherCoverage);
       });
     });
     selected.forEach(coverage => merged.addFileCoverage(coverage));
@@ -291,6 +368,7 @@ module.exports = {
   addUncoveredSourceFiles,
   assertRawCoverageSize,
   collectSourceFiles,
+  coverageLocationsSubset,
   directoryBytes,
   coverageLocationCounts,
   isUnexecutedRemap,

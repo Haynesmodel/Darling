@@ -39,6 +39,7 @@ test.before(async () => {
     entryPoints: [
       path.join(root, 'src/share/share-card-spec.ts'),
       path.join(root, 'src/share/share-card-builders.ts'),
+      path.join(root, 'src/share/share-card-feature-adapters.ts'),
       path.join(root, 'js/share-card-svg.js'),
     ],
     outdir: temp,
@@ -48,12 +49,14 @@ test.before(async () => {
     format: 'esm',
     target: 'node20',
     entryNames: '[name]',
+    define: { 'import.meta.env.BASE_URL': "'/Darling/'" },
     logLevel: 'silent',
   });
   const spec = await import(`${pathToFileURL(path.join(temp, 'share-card-spec.js')).href}?${Date.now()}`);
   const builders = await import(`${pathToFileURL(path.join(temp, 'share-card-builders.js')).href}?${Date.now()}`);
+  const adapters = await import(`${pathToFileURL(path.join(temp, 'share-card-feature-adapters.js')).href}?${Date.now()}`);
   const svg = await import(`${pathToFileURL(path.join(temp, 'share-card-svg.js')).href}?${Date.now()}`);
-  share = { ...spec, ...builders, ...svg };
+  share = { ...spec, ...builders, ...adapters, ...svg };
 });
 
 test.after(() => fs.rmSync(temp, { recursive: true, force: true }));
@@ -69,6 +72,9 @@ test('valid specs normalize, freeze, and serialize deterministically at 1200x630
   assert.match(first, /width="1200" height="630"/);
   assert.match(first, /<title id="title">Alpha vs Beta<\/title>/);
   assert.match(first, /<desc id="desc">Alpha defeated Beta/);
+  assert.match(first, /<text[^>]*class="title">Alpha vs Beta<\/text>/);
+  assert.match(first, /<text[^>]*class="metric">120\.50<\/text>/);
+  assert.match(first, /<text[^>]*class="soft">Winner<\/text>/);
   assert.doesNotMatch(first, /foreignObject|<script|onload=|xlink:href|<image/i);
 });
 
@@ -76,19 +82,28 @@ test('text and metric boundaries return stable error codes', () => {
   const exact = candidate({
     id: 'i'.repeat(96),
     eyebrow: 'e'.repeat(48),
-    title: 't'.repeat(90),
-    subtitle: 's'.repeat(140),
+    title: `${'t'.repeat(34)} ${'u'.repeat(34)}`,
+    subtitle: `${'s'.repeat(74)} ${'u'.repeat(65)}`,
     sourceLabel: 'l'.repeat(48),
     dataVersion: 'd'.repeat(96),
     altText: 'a'.repeat(240),
     metrics: Array.from({ length: 4 }, (_, index) => ({
-      label: `${index}`.padEnd(32, 'l'),
-      value: `${index}`.padEnd(48, 'v'),
-      detail: `${index}`.padEnd(80, 'd'),
+      label: `${index}`.padEnd(26, 'l'),
+      value: `${index}`.padEnd(15, 'v'),
+      detail: `${index}`.padEnd(26, 'd'),
     })),
   });
   assert.equal(share.validateShareCardSpec(exact, environment).ok, true);
   assert.equal(share.validateShareCardSpec(candidate({ title: 'x'.repeat(91) }), environment).code, 'INVALID_TEXT');
+  assert.equal(share.validateShareCardSpec(candidate({ title: 'word '.repeat(17).trim() }), environment).code, 'INVALID_TEXT');
+  assert.equal(share.validateShareCardSpec(candidate({ metrics: [
+    { label: 'Alpha', value: 'value '.repeat(8).trim(), detail: 'Final' },
+    { label: 'Beta', value: '2', detail: 'detail '.repeat(13).trim() },
+  ] }), environment).code, 'INVALID_TEXT');
+  assert.equal(share.validateShareCardSpec(candidate({ metrics: [
+    { label: 'Alpha', value: 'unbreakable-token-that-overflows-the-cell', detail: 'Final' },
+    { label: 'Beta', value: '2', detail: 'Final' },
+  ] }), environment).code, 'INVALID_TEXT');
   assert.equal(share.validateShareCardSpec(candidate({ title: 'bad\ntext' }), environment).code, 'INVALID_TEXT');
   assert.equal(share.validateShareCardSpec(candidate({ metrics: exact.metrics.concat({ label: 'x', value: 'y' }) }), environment).code, 'TOO_MANY_METRICS');
   assert.equal(share.validateShareCardSpec(candidate({ metrics: [{ label: 'x', value: 'y' }] }), environment).code, 'INCOMPLETE_DATA');
@@ -132,4 +147,25 @@ test('builders accept zero-value Trophy facts and reject incomplete stories', ()
   };
   assert.equal(share.buildShareCard('trophy', facts, environment).ok, true);
   assert.equal(share.buildShareCard('trophy', { ...facts, complete: false }, environment).code, 'INCOMPLETE_DATA');
+});
+
+test('Pulse matchup identity and visible context include season and week', () => {
+  const win = { location: { origin: environment.origin, href: `${environment.origin}/Darling/` } };
+  const matchup = {
+    ownerA: 'Alpha', ownerB: 'Beta', scoreA: 120.5, scoreB: 100.25,
+    type: 'Regular', round: '', result: 'Alpha wins',
+    currentHref: '/Darling/?tab=current&currentSeason=2025&currentWeek=4',
+  };
+  const weekFour = share.buildPulseMatchupCardResult(matchup, 2025, 4, 'fixture', win);
+  const weekFive = share.buildPulseMatchupCardResult({
+    ...matchup,
+    currentHref: '/Darling/?tab=current&currentSeason=2025&currentWeek=5',
+  }, 2025, 5, 'fixture', win);
+  assert.equal(weekFour.ok, true);
+  assert.equal(weekFive.ok, true);
+  assert.notEqual(weekFour.spec.id, weekFive.spec.id);
+  assert.notEqual(weekFour.spec.filename, weekFive.spec.filename);
+  assert.match(weekFour.spec.eyebrow, /2025 · Week 4/);
+  assert.match(weekFour.spec.altText, /^2025 Week 4:/);
+  assert.match(share.renderShareCardSvg(weekFour.spec), /class="eye">2025 · Week 4 · Regular<\/text>/);
 });

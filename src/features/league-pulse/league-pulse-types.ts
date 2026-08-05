@@ -122,6 +122,7 @@ export type EditionIssueCode =
   | 'DUPLICATE_PAIR'
   | 'UNKNOWN_OWNER'
   | 'INVALID_SCORE'
+  | 'INCOMPLETE_STANDINGS_PREFIX'
   | 'HONORS_PENDING';
 
 export interface LeagueEdition<TFacts = PulseYearInReview | WeeklyRecapFacts> {
@@ -141,6 +142,7 @@ export interface LeagueEdition<TFacts = PulseYearInReview | WeeklyRecapFacts> {
     code: EditionIssueCode;
     recordedGames?: number;
     expectedGames?: number;
+    standingsWeek?: number;
   };
 }
 

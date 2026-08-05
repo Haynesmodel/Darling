@@ -72,6 +72,19 @@ test('Rivalry cumulative lead chart redraws for a new opponent', async ({ page }
   await expectNoPageOverflow(page);
 });
 
+test('Rivalry explicit Load button works without IntersectionObserver', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'IntersectionObserver', { configurable: true, value: undefined });
+  });
+  await page.goto('/?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel');
+  await page.locator('#rivalry-section-jump').selectOption('rivalry-trend');
+  const load = page.getByRole('button', { name: 'Load Lead Trend chart' });
+  await expect(load).toBeVisible();
+  await load.focus();
+  await page.keyboard.press('Enter');
+  await assertChart(page, '#rivalryLeadPlot', /Series lead over time relative to \.500/);
+});
+
 test('Trophy career chart redraws for a new owner', async ({ page }) => {
   await page.goto('/?tab=trophy&trophyOwner=Joe');
   await expect(page.locator('#trophyCareerPlot svg')).toHaveCount(0);

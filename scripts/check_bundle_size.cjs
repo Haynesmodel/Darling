@@ -20,6 +20,17 @@ function collectClosure(byId, startIds) {
   return [...ids].map(id => byId.get(id));
 }
 
+function findReachableDynamic(byId, startId, token) {
+  for (const chunk of collectClosure(byId, [startId])) {
+    const dynamicId = (chunk.dynamicImports || []).find(id => {
+      const target = byId.get(id);
+      return normalizeId(id) === normalizeId(token) || (target && matchesToken(target, token));
+    });
+    if (dynamicId) return dynamicId;
+  }
+  return null;
+}
+
 function routeMeasurement(staticChunks, settledChunks) {
   return {
     staticChunks,
@@ -97,10 +108,7 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
     const settledRoots = [...roots];
     const requestedDynamics = limits.settled_dynamic_entries?.[routeName] || [];
     for (const token of requestedDynamics) {
-      const dynamicId = featureChunk.dynamicImports.find(id => {
-        const target = byId.get(id);
-        return normalizeId(id) === normalizeId(token) || (target && matchesToken(target, token));
-      });
+      const dynamicId = findReachableDynamic(byId, featureChunk.id, token);
       if (!dynamicId) errors.push(`settled route ${routeName} cannot resolve configured dynamic import ${token}`);
       else settledRoots.push(dynamicId);
     }
@@ -117,6 +125,9 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
     if (limits.entry_chunk_gzip_max_bytes && entry.gzipBytes > limits.entry_chunk_gzip_max_bytes) {
       errors.push(`entry chunk ${entry.gzipBytes} gzip exceeds ${limits.entry_chunk_gzip_max_bytes}`);
     }
+    if (limits.entry_chunk_gzip_target_bytes && entry.gzipBytes > limits.entry_chunk_gzip_target_bytes) {
+      errors.push(`entry chunk ${entry.gzipBytes} gzip exceeds target ${limits.entry_chunk_gzip_target_bytes}`);
+    }
   }
   if (limits.require_data_runtime_chunk && !dataChunk) {
     errors.push(namedDataChunk
@@ -132,6 +143,9 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
     }
     if (limits.chart_runtime_gzip_max_bytes && chartRuntime.gzipBytes > limits.chart_runtime_gzip_max_bytes) {
       errors.push(`chart-runtime ${chartRuntime.gzipBytes} gzip exceeds ${limits.chart_runtime_gzip_max_bytes}`);
+    }
+    if (limits.chart_runtime_gzip_target_bytes && chartRuntime.gzipBytes > limits.chart_runtime_gzip_target_bytes) {
+      errors.push(`chart-runtime ${chartRuntime.gzipBytes} gzip exceeds target ${limits.chart_runtime_gzip_target_bytes}`);
     }
     for (const routeName of limits.chart_runtime_excluded_routes || []) {
       if (routes[routeName]?.settledChunks.some(chunk => chunk.id === chartRuntime.id)) {
@@ -160,6 +174,13 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
     if (!route) errors.push(`route budget configured for missing route ${routeName}`);
     else if (route.settledGzipBytes > maximum) {
       errors.push(`${routeName} settled route ${route.settledGzipBytes} gzip exceeds ${maximum}`);
+    }
+  }
+  for (const [routeName, maximum] of Object.entries(limits.route_static_gzip_max_bytes || {})) {
+    const route = routes[routeName];
+    if (!route) errors.push(`static route budget configured for missing route ${routeName}`);
+    else if (route.staticGzipBytes > maximum) {
+      errors.push(`${routeName} static route ${route.staticGzipBytes} gzip exceeds ${maximum}`);
     }
   }
   if (limits.feature_chunk_gzip_max_bytes) {
@@ -263,6 +284,7 @@ if (require.main === module) {
 
 module.exports = {
   collectClosure,
+  findReachableDynamic,
   measureBundle,
   normalizeId,
   routeMeasurement,

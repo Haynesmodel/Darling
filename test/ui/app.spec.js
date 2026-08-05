@@ -529,6 +529,7 @@ test('rivalry tab renders a tale of the tape and saved rivalry selection', async
   await expect(page.locator('#rivalryLeadMeter')).toContainText('Joe');
   await expect(page.locator('#rivalryHighlightBoard .rivalry-highlight')).toHaveCount(4);
   expect(await page.locator('#rivalryTapeGrid .stat').count()).toBeGreaterThan(0);
+  await page.locator('#rivalry-section-jump').selectOption('rivalry-trend');
   await expect(page.locator('#rivalryLeadTrend svg')).toBeVisible();
   await expect(page.locator('#rivalryLeadTrend')).toContainText('.500');
   await expect(page.locator('#rivalryLeadTrend')).toContainText('G1');

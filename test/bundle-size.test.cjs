@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const { collectClosure, measureBundle, normalizeId } = require('../scripts/check_bundle_size.cjs');
+const { collectClosure, findReachableDynamic, measureBundle, normalizeId } = require('../scripts/check_bundle_size.cjs');
 
 function withBundleFixture({ manifest, budgets, files = {} }, callback) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-bundle-'));
@@ -38,6 +38,33 @@ test('static closure deduplicates shared chunks and terminates cycles', () => {
   const root = { id: 'root', imports: ['shared', 'cycle'], bytes: 1, gzipBytes: 1 };
   const byId = new Map([root, shared, cycle].map(chunk => [chunk.id, chunk]));
   assert.deepEqual(collectClosure(byId, ['root']).map(chunk => chunk.id), ['root', 'shared', 'cycle']);
+  shared.dynamicImports = ['runtime'];
+  const runtime = { id: 'runtime', name: 'chart-runtime', file: 'assets/runtime.js', imports: [], dynamicImports: [] };
+  byId.set(runtime.id, runtime);
+  assert.equal(findReachableDynamic(byId, 'root', 'chart-runtime'), 'runtime');
+});
+
+test('settled dynamic lookup traverses a cyclic static feature closure and deduplicates the runtime', () => {
+  withBundleFixture({
+    budgets: {
+      chart_runtime_exact_copies: 1,
+      chart_runtime_required_routes: ['rivalry'],
+      chart_runtime_dynamic_routes: ['rivalry'],
+      required_dynamic_entries: { rivalry: 'src/features/rivalry.ts' },
+      settled_dynamic_entries: { rivalry: ['chart-runtime'] },
+    },
+    manifest: {
+      'index.html': { file: 'assets/index.js', isEntry: true, dynamicImports: ['src/features/rivalry.ts'] },
+      'src/features/rivalry.ts': { file: 'assets/rivalry.js', isDynamicEntry: true, imports: ['_component.js'] },
+      '_component.js': { file: 'assets/component.js', imports: ['_cycle.js'], dynamicImports: ['_chart.js'] },
+      '_cycle.js': { file: 'assets/cycle.js', imports: ['_component.js'], dynamicImports: ['_chart.js'] },
+      '_chart.js': { file: 'assets/chart.js', name: 'chart-runtime' },
+    },
+  }, result => {
+    assert.deepEqual(result.errors, []);
+    assert.equal(result.routes.rivalry.staticChunks.some(chunk => chunk.name === 'chart-runtime'), false);
+    assert.equal(result.routes.rivalry.settledChunks.filter(chunk => chunk.name === 'chart-runtime').length, 1);
+  });
 });
 
 test('route graph excludes shell dynamics and includes only configured settled imports', () => {
@@ -165,6 +192,7 @@ test('missing configured route budgets report the unavailable routes', () => {
   withBundleFixture({
     budgets: {
       route_settled_gzip_max_bytes: { missing: 10 },
+      route_static_gzip_max_bytes: { missing: 10 },
       feature_chunk_gzip_max_bytes_by_route: { missing: 10 },
     },
     manifest: {
@@ -172,6 +200,7 @@ test('missing configured route budgets report the unavailable routes', () => {
     },
   }, result => {
     assert.ok(result.errors.includes('route budget configured for missing route missing'));
+    assert.ok(result.errors.includes('static route budget configured for missing route missing'));
     assert.ok(result.errors.includes('feature chunk budget configured for missing route missing'));
   });
 });

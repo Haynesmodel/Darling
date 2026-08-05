@@ -30,6 +30,15 @@ type LeagueEditionCardInput = {
   sourceLabel: string;
   dataVersion: string;
 };
+type RivalryShareFacts = {
+  teamA: string;
+  teamB: string;
+  scope: string;
+  summary: {
+    overall: { g: number; w: number; l: number; pf: number; pa: number; recordText: string };
+    lastMeeting: { date: string; winner: string; pf: number; pa: number } | null;
+  };
+};
 
 function championshipScores(
   highlights: LeagueEditionCardInput['highlights'],
@@ -172,7 +181,7 @@ export function mountCurrentMatchupCards(
   });
 }
 
-export function mountRivalryCard(host: HTMLElement | null, view: any, canonicalPath: string, dataVersion: string, win: Window) {
+export function mountRivalryCard(host: HTMLElement | null, view: RivalryShareFacts, canonicalPath: string, dataVersion: string, win: Window) {
   if (!host) return null;
   const overall = view.summary.overall;
   if (!overall.g) return null;

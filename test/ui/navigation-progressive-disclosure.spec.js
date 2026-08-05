@@ -266,9 +266,8 @@ test('History focus links reveal their existing targets and unavailable sections
   );
 });
 
-test('Rivalry tolerates missing optional sections and inactive control events', async ({ page }) => {
+test('Rivalry normalizes invalid scope and ignores inactive control events', async ({ page }) => {
   await page.goto('/?tab=pulse&rivalryScope=invalid');
-  await page.locator('#rivalryTrendDisclosure').evaluate(element => element.remove());
   await activateFeature(page, 'rivalry');
   await expect(page.locator('#page-rivalry')).toHaveAttribute('data-feature-state', 'ready');
   await page.locator('#rivalryScopeSelect').selectOption('historic');

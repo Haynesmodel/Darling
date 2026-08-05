@@ -281,7 +281,7 @@ export default defineConfig({
           groups: [
             {
               name: 'chart-runtime',
-              test: /(?:charting-vendor|plot-charts)\.js$/,
+              test: /(?:charting-vendor|plot-charts)\.js$|src\/charting\/(?:chart-runtime-module|chart-vendor)\.ts$/,
               priority: 2,
               minSize: 0,
             },

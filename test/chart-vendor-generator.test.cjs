@@ -106,7 +106,7 @@ test('authored browser imports of the Plot package are rejected', async () => {
     assert.deepEqual(directPlotImports({ root }), ['src/feature.ts', 'src/vendor/feature.ts']);
     assert.throws(() => assertImportBoundary({ root }), /src\/feature\.ts/);
     fs.writeFileSync(source, "import { plot } from '../js/charting/vendor/charting-vendor.js';\n");
-    fs.writeFileSync(nestedVendorSource, "import { barY } from '../../js/charting/vendor/charting-vendor.js';\n");
+    fs.writeFileSync(nestedVendorSource, "import type { PlotOptions } from '@observablehq/plot';\nimport { barY } from '../../js/charting/vendor/charting-vendor.js';\n");
     assert.deepEqual(directPlotImports({ root }), []);
   });
 });

@@ -1,5 +1,31 @@
 # Production JavaScript bundle budgets
 
+## Shareable cards and automated recaps
+
+The final share-card and League Newspaper implementation was remeasured on August 5, 2026 from clean base `697eb411447abb4066f2b944168e5f0b6fd4c26d` to implementation commit `83f0741d2b38946294b02bc54750dd1ba9addbec` in [PR #53](https://github.com/Haynesmodel/Darling/pull/53). Both artifacts used Node 24.18.0, npm 11.18.0, Vite 8.1.4, and `VITE_BASE_PATH=/Darling/`.
+
+| Metric | Base | Implementation | Delta | Enforced ceiling |
+| --- | ---: | ---: | ---: | ---: |
+| Entry gzip | 55,962 | 48,009 | -7,953 | 56,000 |
+| Aggregate JavaScript gzip | 295,829 | 297,868 | +2,039 | 300,000 |
+| Chart-runtime gzip | 95,567 | 95,561 | -6 | 100,000 |
+| Share-card runtime gzip | — | 1,670 | — | Click-loaded only |
+| League Pulse feature gzip | 6,799 | 9,409 | +2,610 | Route-enforced |
+| Current Season feature gzip | 10,137 | 10,235 | +98 | Route-enforced |
+
+| Settled route | Base | Implementation | Delta | Ceiling |
+| --- | ---: | ---: | ---: | ---: |
+| League Pulse | 104,823 | 105,965 | +1,142 | 115,000 |
+| Current Season | 203,254 | 198,362 | -4,892 | 205,000 |
+| Head to Head | 189,300 | 191,922 | +2,622 | 205,000 |
+| Trophy Case | 188,899 | 184,881 | -4,018 | 205,000 |
+| Dynasty Rankings | 190,033 | 188,563 | -1,470 | 205,000 |
+| Draft Spot | 189,852 | 186,688 | -3,164 | 205,000 |
+
+No budget value or production dependency increased. The command palette and share preview are separately lazy-loaded; the bundle checker requires the share runtime to be a dynamic entry absent from every initial and settled route closure. Compact generated validator errors offset the feature fan-out without weakening browser schema validation or Node-side diagnostics.
+
+The committed default card is a 10,620-byte 1200×630 PNG with SHA-256 `c751180ae59a400c401c59f8f9051f6a5ebb9d6ec26ac5a4d1416a87cab51cc5`. Its static raster path converts the shared SVG text into integer-coordinate vector glyphs before Sharp encodes it, avoiding operating-system font substitution while retaining exact byte-for-byte regeneration.
+
 ## Transactions route delta
 
 The July 28, 2026 Transactions change was measured from clean base `2b8ead1b129262b8608e9ccd9613a474e9e1f76e` with Node 24.14.0, npm 11.18.0, Vite 8.1.4, and `VITE_BASE_PATH=/Darling/`.

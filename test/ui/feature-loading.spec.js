@@ -23,7 +23,11 @@ const files = preview
   ? Object.fromEntries(Object.entries(sources).map(([id, source]) => [id, manifest[source].file]))
   : {};
 const chartRuntime = Object.values(manifest).find(entry => entry.name === 'chart-runtime')?.file;
+const commandPalette = manifest['src/components/search/CommandPalette.tsx'];
 const requestPattern = id => preview ? `**/${files[id]}` : `**/${sources[id]}*`;
+const commandPalettePattern = () => preview
+  ? `**/${commandPalette.file}*`
+  : '**/src/components/search/CommandPalette.tsx*';
 
 async function waitForFeature(page, id) {
   const panel = page.locator(`#page-${id}`);
@@ -75,6 +79,63 @@ test('every cold route requests only its feature entry and chart routes share on
   }
 
   expect([...observedChartRuntimeUrls]).toEqual([expect.stringMatching(new RegExp(`${chartRuntime.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`))]);
+});
+
+test('Command Palette implementation and CSS load only after the first open', async ({ page }) => {
+  test.skip(!preview, 'hashed resource-boundary assertions require the production preview build');
+  const resources = recordResources(page);
+  await page.goto('/');
+  await waitForFeature(page, 'pulse');
+  expect(resources.some(resource => resource.endsWith(commandPalette.file))).toBe(false);
+  for (const css of commandPalette.css || []) expect(resources.some(resource => resource.endsWith(css))).toBe(false);
+  const trigger = page.locator('.search-trigger');
+  await trigger.click();
+  await expect(page.getByRole('dialog', { name: 'Search The Darling' })).toBeVisible();
+  expect(resources.filter(resource => resource.endsWith(commandPalette.file))).toHaveLength(1);
+  for (const css of commandPalette.css || []) expect(resources.filter(resource => resource.endsWith(css))).toHaveLength(1);
+  await page.keyboard.press('Escape');
+  await trigger.click();
+  await expect(page.getByRole('dialog', { name: 'Search The Darling' })).toBeVisible();
+  expect(resources.filter(resource => resource.endsWith(commandPalette.file))).toHaveLength(1);
+});
+
+test('Command Palette keyboard movement reaches the first, last, and adjacent results', async ({ page }) => {
+  await page.goto('/');
+  await waitForFeature(page, 'pulse');
+  await page.locator('.search-trigger').click();
+  const dialog = page.getByRole('dialog', { name: 'Search The Darling' });
+  const input = dialog.getByRole('combobox', { name: /Search owners, seasons/ });
+  await input.fill('Joe');
+  const options = dialog.getByRole('option');
+  expect(await options.count()).toBeGreaterThan(1);
+  await input.press('End');
+  await expect(input).toHaveAttribute('aria-activedescendant', `global-search-option-${await options.count() - 1}`);
+  await input.press('Home');
+  await expect(input).toHaveAttribute('aria-activedescendant', 'global-search-option-0');
+  await input.press('ArrowDown');
+  await expect(input).toHaveAttribute('aria-activedescendant', 'global-search-option-1');
+  await input.press('ArrowUp');
+  await expect(input).toHaveAttribute('aria-activedescendant', 'global-search-option-0');
+  await input.press('Enter');
+  await expect(page).toHaveURL(/[?&]tab=owner/);
+});
+
+test('Command Palette reports a failed import and retries without a reload', async ({ page }) => {
+  let attempts = 0;
+  await page.route(commandPalettePattern(), async route => {
+    attempts += 1;
+    if (attempts === 1) await route.abort('failed');
+    else await route.continue();
+  });
+  await page.goto('/');
+  await waitForFeature(page, 'pulse');
+  const trigger = page.locator('.search-trigger');
+  await trigger.click();
+  await expect(page.getByRole('alert')).toHaveText('Search could not be loaded. Try again.');
+  await expect(trigger).toBeEnabled();
+  await trigger.click();
+  await expect(page.getByRole('dialog', { name: 'Search The Darling' })).toBeVisible();
+  expect(attempts).toBeGreaterThanOrEqual(2);
 });
 
 const chartRuntimePattern = () => preview

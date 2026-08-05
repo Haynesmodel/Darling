@@ -113,12 +113,58 @@ export interface PulseYearInReview {
   superlatives: PulseSuperlative[];
 }
 
+export type EditionState = 'complete' | 'pending' | 'partial';
+export type EditionIssueCode =
+  | 'LIVE_GAMES'
+  | 'MISSING_EXPECTED_OWNERS'
+  | 'MISSING_GAMES'
+  | 'DUPLICATE_OWNER'
+  | 'DUPLICATE_PAIR'
+  | 'UNKNOWN_OWNER'
+  | 'INVALID_SCORE'
+  | 'INCOMPLETE_STANDINGS_PREFIX'
+  | 'HONORS_PENDING';
+
+export interface LeagueEdition<TFacts = PulseYearInReview | WeeklyRecapFacts> {
+  id: string;
+  kind: 'weekly' | 'season';
+  season: number;
+  week: number | null;
+  state: EditionState;
+  headline: string;
+  statusLabel: 'Final' | 'Pending' | 'Partial archive';
+  sourceHref: string;
+  sourceLabel: string;
+  dataVersion: string;
+  facts: TFacts | null;
+  highlights: PulseSuperlative[];
+  issue: null | {
+    code: EditionIssueCode;
+    recordedGames?: number;
+    expectedGames?: number;
+    standingsWeek?: number;
+  };
+}
+
+export interface WeeklyRecapFacts {
+  highScore: PulseSuperlative;
+  closestGame: PulseSuperlative;
+  largestMargin: PulseSuperlative;
+  standingsLeader: PulseSuperlative;
+}
+
+export interface LeagueNewspaperModel {
+  editions: LeagueEdition[];
+  defaultEditionId: string | null;
+}
+
 export interface LeaguePulseViewModel {
   state: PulseSeasonState;
   hero: PulseHeroModel;
   matchups: PulseMatchupModel[];
   standings: PulseStandingsSection | null;
   yearInReview: PulseYearInReview | null;
+  newspaper: LeagueNewspaperModel;
   featuredMatchup: PulseFeaturedMatchup | null;
   curse: PulseCurseModel | null;
   record: PulseRecordModel | null;

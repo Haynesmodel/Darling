@@ -122,7 +122,7 @@ export function createSectionDisclosure(input: {
         summary.id ||= `${definition.id}-summary`;
         const stored = state.get(definition.id);
         const requestedOpen = stored ?? Boolean(definition.defaultOpen);
-        const preservesFocusedSection = next.preserveFocusedSection === true
+        const preservesFocusedSection = Boolean(next.preserveFocusedSection)
           && available
           && definition.details.open
           && definition.details.contains(input.doc.activeElement);
@@ -133,7 +133,7 @@ export function createSectionDisclosure(input: {
 
         let bound: BoundSection;
         const onToggle = () => {
-          if (!bound.available) return;
+          if (!bound.available || sections.get(bound.id) !== bound) return;
           if (!bound.details.open && bound.details.contains(input.doc.activeElement)) {
             bound.summary.focus({ preventScroll: true });
           }

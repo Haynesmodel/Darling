@@ -339,6 +339,9 @@ test('asset sync copies source assets into Vite public assets', async () => {
     fs.mkdirSync(path.join(root, 'assets', 'hero'));
     fs.writeFileSync(path.join(root, 'assets', 'hero', 'league-1280.jpg'), 'image\n');
     fs.writeFileSync(path.join(root, 'assets', 'hero', 'source.txt'), 'skip\n');
+    fs.mkdirSync(path.join(root, 'assets', 'share'));
+    fs.writeFileSync(path.join(root, 'assets', 'share', 'darling-default-card.png'), 'card\n');
+    fs.writeFileSync(path.join(root, 'assets', 'share', 'other.png'), 'skip\n');
     fs.writeFileSync(path.join(root, 'assets', '.DS_Store'), 'local\n');
     fs.mkdirSync(path.join(root, 'public', 'assets'), { recursive: true });
     fs.writeFileSync(path.join(root, 'public', 'assets', 'stale.json'), '{}\n');
@@ -352,6 +355,8 @@ test('asset sync copies source assets into Vite public assets', async () => {
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'LeaguePic.jpeg')), false);
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'hero', 'league-1280.jpg')), true);
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'hero', 'source.txt')), false);
+    assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'share', 'darling-default-card.png')), true);
+    assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'share', 'other.png')), false);
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', '.DS_Store')), false);
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'stale.json')), false);
   });
@@ -361,6 +366,16 @@ test('built asset audit requires every manifested deployable asset', async () =>
   await withTempRepo((root) => {
     const assetDir = path.join(root, 'dist', 'assets');
     fs.mkdirSync(path.join(assetDir, 'hero'), { recursive: true });
+    fs.mkdirSync(path.join(assetDir, 'share'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'assets', 'share'), { recursive: true });
+    fs.copyFileSync(
+      path.join(__dirname, '..', 'assets', 'share', 'darling-default-card.png'),
+      path.join(root, 'assets', 'share', 'darling-default-card.png'),
+    );
+    fs.copyFileSync(
+      path.join(__dirname, '..', 'assets', 'share', 'darling-default-card.png'),
+      path.join(assetDir, 'share', 'darling-default-card.png'),
+    );
     const empty = [];
     const descriptor = (assetPath, required) => ({
       path: assetPath,

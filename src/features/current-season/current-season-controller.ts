@@ -22,13 +22,23 @@ import {
 } from '../../data/season-presentation';
 import { latestCompleteSeason, resolveSeasonRecap } from '../../data/season-recap';
 import { registerCurrentSeasonTables } from './current-season-tables';
+import {
+  type ShareCardActionController,
+} from '../../share/share-card-actions';
+import { mountCurrentMatchupCards } from '../../share/share-card-feature-adapters';
 
 export function createFeatureController(): DarlingFeatureController {
   let context: AppContext;
   let state: any = null;
   let activeSignal: AbortSignal | null = null;
   let disclosure: SectionDisclosureController | null = null;
+  let shareActions: ShareCardActionController[] = [];
   const odds = new Map<string, any>();
+
+  const disposeShareActions = () => {
+    shareActions.forEach(action => action.dispose());
+    shareActions = [];
+  };
 
   const seasonMode = (view: any) => {
     const games = [...(context.data.currentSeason?.games || []), ...context.data.leagueGames]
@@ -41,6 +51,7 @@ export function createFeatureController(): DarlingFeatureController {
 
   const draw = () => {
     if (!state || activeSignal?.aborted) return;
+    disposeShareActions();
     const presentation = resolveSeasonPresentation({
       selectedSeason: state.selectedSeason,
       currentSeason: context.data.currentSeason,
@@ -179,7 +190,7 @@ export function createFeatureController(): DarlingFeatureController {
       const controlLabel = control?.closest('label') as HTMLElement | null;
       if (controlLabel) controlLabel.hidden = recapMode || (id === 'currentProjectionSelect' && presentation.phase !== 'regular-season');
     }
-    context.router.update({
+    const canonicalPath = context.router.update({
       tab: 'current',
       selectedCurrentSeason: view.season,
       selectedCurrentWeek: view.week,
@@ -188,6 +199,13 @@ export function createFeatureController(): DarlingFeatureController {
       defaultCurrentView: defaultView,
       selectedCurrentProjection: state.selectedProjectionMode,
     });
+    shareActions = mountCurrentMatchupCards(
+      context.document.getElementById('currentMatchups'),
+      view,
+      canonicalPath,
+      context.data.dataVersion,
+      context.window,
+    );
   };
 
   return {
@@ -242,8 +260,12 @@ export function createFeatureController(): DarlingFeatureController {
       };
       draw();
     },
-    deactivate() { activeSignal = null; },
+    deactivate() {
+      activeSignal = null;
+      disposeShareActions();
+    },
     dispose() {
+      disposeShareActions();
       disclosure?.dispose();
       disclosure = null;
     },

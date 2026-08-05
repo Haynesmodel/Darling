@@ -2,10 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { buildDraftSpotModel } from './draft-spot-model';
 import { draftStateForUrl } from './draft-spot-state';
 import { createSectionDisclosure, type SectionDisclosureController } from '../../app/section-disclosure';
-import type {
-  DraftSpotMountOptions,
-  DraftSpotState,
-  DraftSpotUrlState,
+import {
+  DRAFT_ALL_OWNERS,
+  type DraftSummary,
+  type DraftSpotMountOptions,
+  type DraftSpotState,
+  type DraftSpotUrlState,
+  type DraftSpotViewModel,
 } from './draft-spot-types';
 import type { DraftSpot } from '../../data/generated/asset-types';
 import DraftSpotControls from './DraftSpotControls';
@@ -15,6 +18,15 @@ import DraftZoneComparison from './DraftZoneComparison';
 import DraftOwnerRecommendations from './DraftOwnerRecommendations';
 import DraftOwnerTimeline from './DraftOwnerTimeline';
 import DraftSelectionDetail from './DraftSelectionDetail';
+import { buildUrlFromState } from '../../../js/state-helpers.js';
+import { DRAFT_METRICS, draftMetricValue, draftPositionLabel } from './draft-spot-model';
+import { formatMetric, formatNumber, formatPercent } from './draft-spot-format';
+import {
+  mountShareCardAction,
+  type ShareCardActionController,
+} from '../../share/share-card-actions';
+import { buildFeatureShareCard } from '../../share/share-card-feature-adapters';
+import type { ShareCardBuildResult, ShareCardMetric } from '../../share/share-card-types';
 
 interface Props {
   asset: DraftSpot;
@@ -22,6 +34,133 @@ interface Props {
   dataVersion: string;
   onStateChange?: DraftSpotMountOptions['onStateChange'];
   onReady?: DraftSpotMountOptions['onReady'];
+}
+
+function DraftShareAction({ result }: { result: ShareCardBuildResult | null }) {
+  const host = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!host.current || !result) return;
+    const controller: ShareCardActionController = mountShareCardAction({
+      host: host.current,
+      result,
+      label: 'Share Draft Spot card',
+    });
+    return () => controller.dispose();
+  }, [result]);
+  return <div ref={host} class="share-card-action-host" />;
+}
+
+export function buildDraftShareResult(
+  model: DraftSpotViewModel,
+  dataVersion: string,
+  win: Window | null,
+): ShareCardBuildResult | null {
+  if (!win) return null;
+  const incomplete = (): ShareCardBuildResult => ({
+    ok: false,
+    code: 'INCOMPLETE_DATA',
+    message: 'Card unavailable.',
+  });
+  const validSummary = (summary: DraftSummary | null): summary is DraftSummary => Boolean(
+    summary
+    && Number.isInteger(summary.n)
+    && summary.n > 0
+    && Number.isFinite(summary.avg_finish)
+    && Number.isFinite(summary.playoff_rate),
+  );
+  const title = model.hero.title;
+  const subtitle = model.hero.subtitle;
+  let altText = '';
+  let metrics: ShareCardMetric[];
+
+  if (model.state.mode === 'owner') {
+    const profile = model.ownerProfile;
+    const recommendation = profile?.recommendation;
+    if (
+      model.state.owner === DRAFT_ALL_OWNERS
+      || !profile?.rows.length
+      || !recommendation
+      || recommendation.best_pick.n <= 0
+      || recommendation.best_zone.n <= 0
+      || !Number.isFinite(recommendation.best_pick.avg_finish)
+      || !Number.isFinite(recommendation.best_zone.avg_finish)
+    ) return incomplete();
+    const fallback = recommendation.confidence === 'league-wide fallback';
+    const confidence = fallback
+      ? 'Fallback'
+      : recommendation.confidence;
+    metrics = [
+      { label: 'Owner sample', value: `${profile.rows.length} seasons`, detail: `${model.state.startSeason}–${model.state.endSeason}` },
+      { label: 'Best pick', value: recommendation.best_pick.label, detail: `Finish ${formatNumber(recommendation.best_pick.avg_finish)} · n=${recommendation.best_pick.n}` },
+      { label: 'Best zone', value: recommendation.best_zone.label, detail: `Finish ${formatNumber(recommendation.best_zone.avg_finish)} · n=${recommendation.best_zone.n}` },
+      { label: 'Confidence', value: confidence, detail: fallback ? 'League-wide history' : 'Owner-specific history' },
+    ];
+    altText = `${model.state.owner} Draft Spot profile from ${profile.rows.length} seasons. Best pick: ${recommendation.best_pick.label}. Best zone: ${recommendation.best_zone.label}.`;
+  } else if (model.state.mode === 'pick') {
+    const summary = model.selectedPickSummary;
+    if (!model.state.selectedPick || !validSummary(summary) || summary.draft_pick !== model.state.selectedPick) return incomplete();
+    const pick = draftPositionLabel(summary.draft_pick, model.state.normalize);
+    metrics = [
+      { label: 'Selected pick', value: pick, detail: `${summary.n} owner-seasons` },
+      { label: 'Avg finish', value: formatNumber(summary.avg_finish), detail: `n=${summary.n}` },
+      { label: 'Playoff rate', value: formatPercent(summary.playoff_rate), detail: `${summary.championships} titles` },
+      { label: DRAFT_METRICS[model.state.metric].label, value: formatMetric(draftMetricValue(summary, model.state.metric), model.state.metric), detail: 'Selected pick result' },
+    ];
+    altText = `${pick} across ${summary.n} owner-seasons: average finish ${formatNumber(summary.avg_finish)}, playoff rate ${formatPercent(summary.playoff_rate)}.`;
+  } else if (model.state.mode === 'zone') {
+    const summary = model.selectedZoneSummary;
+    if (!model.state.selectedZone || !validSummary(summary) || summary.zone_key !== model.state.selectedZone || !summary.zone) return incomplete();
+    metrics = [
+      { label: 'Selected zone', value: summary.zone, detail: `${summary.n} owner-seasons` },
+      { label: 'Average pick', value: formatNumber(summary.avg_pick), detail: model.state.normalize === 'percentile' ? '12-team scale' : 'Raw draft slots' },
+      { label: 'Avg finish', value: formatNumber(summary.avg_finish), detail: `Playoffs ${formatPercent(summary.playoff_rate)}` },
+      { label: DRAFT_METRICS[model.state.metric].label, value: formatMetric(draftMetricValue(summary, model.state.metric), model.state.metric), detail: 'Selected zone result' },
+    ];
+    altText = `${summary.zone} Draft Spot across ${summary.n} owner-seasons: average pick ${formatNumber(summary.avg_pick)}, average finish ${formatNumber(summary.avg_finish)}, playoff rate ${formatPercent(summary.playoff_rate)}.`;
+  } else {
+    const bestAverage = model.hero.bestAvgPick;
+    const bestPlayoff = model.hero.bestPlayoffPick;
+    const metricLeader = model.rankedPicks[0] || null;
+    if (!model.baseRows.length || !validSummary(bestAverage) || !validSummary(bestPlayoff) || !validSummary(metricLeader)) return incomplete();
+    metrics = [
+      { label: 'Owner-seasons', value: String(model.baseRows.length), detail: `${model.state.startSeason}–${model.state.endSeason}` },
+      { label: 'Best avg finish', value: draftPositionLabel(bestAverage.draft_pick, model.state.normalize), detail: `Finish ${formatNumber(bestAverage.avg_finish)} · n=${bestAverage.n}` },
+      { label: 'Best playoff path', value: draftPositionLabel(bestPlayoff.draft_pick, model.state.normalize), detail: `${formatPercent(bestPlayoff.playoff_rate)} · n=${bestPlayoff.n}` },
+      { label: 'Metric leader', value: draftPositionLabel(metricLeader.draft_pick, model.state.normalize), detail: `${DRAFT_METRICS[model.state.metric].label}: ${formatMetric(draftMetricValue(metricLeader, model.state.metric), model.state.metric)}` },
+    ];
+    altText = `League Draft Spot analysis across ${model.baseRows.length} owner-seasons. Best average finish: ${draftPositionLabel(bestAverage.draft_pick, model.state.normalize)}. Best playoff path: ${draftPositionLabel(bestPlayoff.draft_pick, model.state.normalize)}.`;
+  }
+  const canonicalPath = buildUrlFromState({
+    pathname: win.location.pathname,
+    tab: 'draft',
+    selectedDraftOwner: model.state.owner,
+    selectedDraftMode: model.state.mode,
+    selectedDraftStartSeason: model.state.startSeason,
+    selectedDraftEndSeason: model.state.endSeason,
+    selectedDraftMetric: model.state.metric,
+    selectedDraftMinSample: model.state.minSample,
+    selectedDraftNormalize: model.state.normalize,
+    selectedDraftPick: model.state.selectedPick,
+    selectedDraftZone: model.state.selectedZone,
+  });
+  return buildFeatureShareCard('draft', {
+    id: [
+      model.state.mode,
+      model.state.owner,
+      model.state.startSeason,
+      model.state.endSeason,
+      model.state.selectedPick || '',
+      model.state.selectedZone || '',
+    ].join('|'),
+    eyebrow: 'Draft Spot Explorer',
+    title,
+    subtitle,
+    metrics,
+    canonicalPath,
+    sourceLabel: 'Draft Spot',
+    dataVersion,
+    altText,
+  }, win);
 }
 
 export default function DraftSpotPage({
@@ -51,6 +190,10 @@ export default function DraftSpotPage({
     model.state.selectedPick || '',
     model.state.selectedZone || '',
   ].join('|');
+  const shareResult = useMemo(
+    () => buildDraftShareResult(model, dataVersion, typeof window === 'undefined' ? null : window),
+    [dataVersion, disclosureSignature, model],
+  );
 
   const update = (requested: Partial<DraftSpotState>) => {
     const next = buildDraftSpotModel(asset, requested, state).state;
@@ -142,6 +285,7 @@ export default function DraftSpotPage({
       <section class="card draft-hero" aria-labelledby="draftSpotTitle">
         <h2 id="draftSpotTitle" class="visually-hidden">Draft Spot Explorer</h2>
         <DraftSpotHero model={model} />
+        <DraftShareAction result={shareResult} />
       </section>
       <div ref={disclosureNav} />
       <details ref={pickDisclosure} id="draftPickDisclosure" class="card feature-disclosure">

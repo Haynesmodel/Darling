@@ -511,7 +511,10 @@ function rivalryHeadlineHtml(view) {
 
   return `
     <div class="rivalry-headline">
-      <div class="rivalry-title">${esc(view.teamA)} vs ${esc(view.teamB)}</div>
+      <div class="rivalry-headline-top">
+        <div class="rivalry-title">${esc(view.teamA)} vs ${esc(view.teamB)}</div>
+        <div id="rivalryShareCard" class="share-card-action-host" data-share-rivalry="1"></div>
+      </div>
       <div class="rivalry-subtitle">${seriesText}</div>
       <div class="rivalry-line">${formatScoreline(overall.pf, overall.pa)} total points</div>
       <div class="rivalry-line">Regular ${esc(view.summary.regular.recordText || '0-0')} | Playoffs ${esc(view.summary.playoffs.recordText || '0-0')} | Saunders ${esc(view.summary.saunders.recordText || '0-0')}</div>

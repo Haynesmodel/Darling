@@ -951,6 +951,7 @@ function dynastyCalculatorHeroHtml(score, opts = {}) {
           <div class="dynasty-kicker">${escapeHtml(label)}</div>
           <h3>${heroTitle}</h3>
           <div class="dynasty-range">${escapeHtml(range)}</div>
+          ${score ? '<div id="dynastyShareCard" class="share-card-action-host" data-share-dynasty="1"></div>' : ''}
         </div>
         <div class="dynasty-score">
           <div class="dynasty-score-rank">${escapeHtml(rankText)}</div>
@@ -1562,7 +1563,7 @@ function buildDynastyViewModel({
   const selectedOwner = owner && owner !== allTeams ? owner : null;
   const selectedScore = mode === 'rolling-3' || mode === 'rolling-5'
     ? null
-    : (selectedOwner ? periodScores.find(row => row.owner === selectedOwner) || periodScores[0] || null : periodScores[0] || null);
+    : (selectedOwner ? periodScores.find(row => row.owner === selectedOwner) || null : periodScores[0] || null);
   const rollingThreeWindows = computeRollingDynastyWindows({
     windowSize: 3,
     seasonProfiles,

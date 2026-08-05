@@ -18,6 +18,8 @@ import type { AppContext } from '../../app/app-types';
 import type { DarlingFeatureController, FeatureActivation, FeatureId } from '../../app/feature-contract';
 import { ALL_TEAMS } from '../../app/feature-utils';
 import { createSectionDisclosure, type SectionDisclosureController } from '../../app/section-disclosure';
+import type { ShareCardActionController } from '../../share/share-card-actions';
+import { mountDynastyCard } from '../../share/share-card-feature-adapters';
 
 export function createFeatureController(): DarlingFeatureController {
   let context: AppContext;
@@ -27,6 +29,7 @@ export function createFeatureController(): DarlingFeatureController {
   let modalOpenerKey: string | null = null;
   let suppressClose = false;
   let disclosure: SectionDisclosureController | null = null;
+  let shareAction: ShareCardActionController | null = null;
 
   const restoreFocus = () => {
     if (!modalOpener && !modalOpenerKey) return;
@@ -65,6 +68,8 @@ export function createFeatureController(): DarlingFeatureController {
 
   const draw = () => {
     if (!active || !state) return;
+    shareAction?.dispose();
+    shareAction = null;
     const view = buildDynastyViewModel({
       leagueGames: context.data.leagueGames,
       seasonSummaries: context.data.seasonSummaries,
@@ -108,7 +113,7 @@ export function createFeatureController(): DarlingFeatureController {
         return details ? [{ id, label, details, available: Boolean(content?.textContent?.trim()), defaultOpen, onVisible }] : [];
       }),
     });
-    context.router.update({
+    const canonicalPath = context.router.update({
       tab: 'dynasty',
       selectedDynastyMode: view.controls.mode,
       selectedDynastyOwner: view.controls.owner,
@@ -117,6 +122,17 @@ export function createFeatureController(): DarlingFeatureController {
       selectedDynastyMinSeasons: view.controls.minSeasons,
       selectedDynastySaunders: view.controls.includeSaundersPenalty,
     });
+    const host = context.document.getElementById('dynastyShareCard');
+    shareAction = mountDynastyCard(
+      host,
+      score,
+      canonicalPath,
+      context.data.dataVersion,
+      context.window,
+      view.controls.mode === 'calculator' && view.controls.owner !== ALL_TEAMS
+        ? view.controls.owner
+        : null,
+    );
   };
 
   return {
@@ -213,9 +229,13 @@ export function createFeatureController(): DarlingFeatureController {
     },
     deactivate(_next: FeatureId) {
       active = false;
+      shareAction?.dispose();
+      shareAction = null;
       closeForNavigation();
     },
     dispose() {
+      shareAction?.dispose();
+      shareAction = null;
       disclosure?.dispose();
       disclosure = null;
     },

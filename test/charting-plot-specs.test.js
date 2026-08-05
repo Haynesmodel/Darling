@@ -44,6 +44,9 @@ test('local chart vendor exposes exactly the approved Plot functions', () => {
   assert.deepEqual(Object.keys(chartVendor).sort(), APPROVED_EXPORTS);
   APPROVED_EXPORTS.forEach(name => assert.equal(typeof chartVendor[name], 'function', name));
   assert.equal('Plot' in chartVendor, false);
+  ['areaY', 'barX', 'barY', 'dot', 'lineY', 'ruleX', 'ruleY', 'text'].forEach(name => {
+    assert.ok(chartVendor[name]([], {}), name);
+  });
 });
 
 test('plot specs are deterministic plain option objects', () => {

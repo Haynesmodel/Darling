@@ -52,3 +52,8 @@ test('deferred chart availability requires activation, connection, and an open d
   host.closest = () => null;
   assert.equal(component.isChartHostAvailable(host, true), true);
 });
+
+test('deferred chart failure guidance names the chart and explains recovery', () => {
+  assert.match(component.chartErrorMessage('Lead Trend'), /Lead Trend chart is unavailable/);
+  assert.match(component.chartErrorMessage('Lead Trend'), /Retry, or reload the page/);
+});

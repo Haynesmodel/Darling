@@ -27,7 +27,7 @@ export function isChartHostAvailable(host: HTMLElement, active: boolean): boolea
   return active && host.isConnected && (!disclosure || disclosure.open);
 }
 
-function errorMessage(name: string): string {
+export function chartErrorMessage(name: string): string {
   return `${name} chart is unavailable. Retry, or reload the page if the browser continues to reuse a failed download.`;
 }
 
@@ -152,7 +152,7 @@ export function DeferredChart({
     {state === 'loading' && <div class="chart-loading" role="status">Loading {name} chart…</div>}
     {state === 'empty' && <div class="chart-empty">{emptyMessage}</div>}
     {state === 'error' && <div class="chart-error" role="status">
-      <span>{errorMessage(name)}</span>
+      <span>{chartErrorMessage(name)}</span>
       <button type="button" class="btn" onClick={() => beginLoadRef.current()}>Retry {name} chart</button>
     </div>}
     <div ref={plotRef} class="chart-render-host" hidden={state !== 'ready'} />

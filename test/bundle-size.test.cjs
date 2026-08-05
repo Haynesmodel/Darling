@@ -165,10 +165,12 @@ test('raw, gzip, aggregate, and route overages report actual and allowed values'
     budgets: {
       entry_chunk_max_bytes: 5,
       entry_chunk_gzip_max_bytes: 5,
+      entry_chunk_gzip_target_bytes: 5,
       non_validator_chunk_max_bytes: 5,
       total_javascript_gzip_max_bytes: 5,
       required_dynamic_entries: { history: 'src/features/history.ts' },
       route_settled_gzip_max_bytes: { history: 5 },
+      route_static_gzip_max_bytes: { history: 5 },
       feature_chunk_gzip_max_bytes_by_route: { history: 5 },
     },
     manifest: {
@@ -182,7 +184,9 @@ test('raw, gzip, aggregate, and route overages report actual and allowed values'
   }, result => {
     assert.ok(result.errors.some(error => /entry chunk \d+ bytes exceeds 5/.test(error)));
     assert.ok(result.errors.some(error => /entry chunk \d+ gzip exceeds 5/.test(error)));
+    assert.ok(result.errors.some(error => /entry chunk \d+ gzip exceeds target 5/.test(error)));
     assert.ok(result.errors.some(error => /history settled route \d+ gzip exceeds 5/.test(error)));
+    assert.ok(result.errors.some(error => /history static route \d+ gzip exceeds 5/.test(error)));
     assert.ok(result.errors.some(error => /history feature chunk \d+ gzip exceeds 5/.test(error)));
     assert.ok(result.errors.some(error => /total JavaScript gzip \d+ bytes exceeds 5/.test(error)));
   });

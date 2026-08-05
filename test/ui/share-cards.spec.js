@@ -37,6 +37,7 @@ test('coverage build exercises the share-card validation failures in authored co
   await page.goto('/');
   expect(await page.evaluate(async () => {
     const { validateShareCardSpec } = await import('/src/share/share-card-spec.ts');
+    const { renderShareCardSvg } = await import('/js/share-card-svg.js');
     const environment = { origin: 'http://127.0.0.1:8000', basePath: '/' };
     const candidate = {
       schemaVersion: 1,
@@ -56,6 +57,33 @@ test('coverage build exercises the share-card validation failures in authored co
       accent: 'red',
       filename: 'darling-coverage-card.png',
     };
+    const glyphCandidate = {
+      ...candidate,
+      metrics: [
+        { label: 'Digits', value: '00000000000', detail: 'Eleven zeroes' },
+        { label: 'Em dash', value: '2014—2025', detail: 'Range' },
+        { label: 'Plus', value: '+123.45', detail: 'Positive result' },
+        { label: 'Mixed', value: 'W0+—', detail: 'Wide glyphs' },
+      ],
+    };
+    const glyphResult = validateShareCardSpec(glyphCandidate, environment);
+    const host = document.createElement('div');
+    host.style.cssText = 'position:absolute;left:-10000px;top:0;visibility:hidden';
+    if (glyphResult.ok) host.innerHTML = renderShareCardSvg(glyphResult.spec);
+    document.body.append(host);
+    const overflow = [...host.querySelectorAll('g')].flatMap(group => {
+      const rect = group.querySelector('rect');
+      if (!rect) return [];
+      const left = Number(rect.getAttribute('x')) + 22;
+      const right = Number(rect.getAttribute('x')) + Number(rect.getAttribute('width')) - 22;
+      return [...group.querySelectorAll('text')].flatMap(node => {
+        const bounds = node.getBBox();
+        return bounds.x < left || bounds.x + bounds.width > right
+          ? [{ text: node.textContent, left: bounds.x, right: bounds.x + bounds.width }]
+          : [];
+      });
+    });
+    host.remove();
     return {
       valid: validateShareCardSpec(candidate, environment).ok,
       unsupported: validateShareCardSpec({ ...candidate, kind: 'unknown' }, environment).code,
@@ -66,6 +94,14 @@ test('coverage build exercises the share-card validation failures in authored co
         ...candidate,
         canonicalUrl: 'https://attacker.example/card',
       }, environment).code,
+      overflowingZeroes: validateShareCardSpec({
+        ...glyphCandidate,
+        metrics: glyphCandidate.metrics.map((metric, index) => (
+          index === 0 ? { ...metric, value: '0'.repeat(13) } : metric
+        )),
+      }, environment).code,
+      glyphCandidate: glyphResult.ok,
+      overflow,
     };
   })).toEqual({
     valid: true,
@@ -74,6 +110,9 @@ test('coverage build exercises the share-card validation failures in authored co
     invalidText: 'INVALID_TEXT',
     invalidAccent: 'INVALID_TEXT',
     invalidUrl: 'INVALID_URL',
+    overflowingZeroes: 'INVALID_TEXT',
+    glyphCandidate: true,
+    overflow: [],
   });
 });
 

@@ -87,7 +87,7 @@ export function buildDraftShareResult(
     ) return incomplete();
     const fallback = recommendation.confidence === 'league-wide fallback';
     const confidence = fallback
-      ? 'League fallback'
+      ? 'Fallback'
       : recommendation.confidence;
     metrics = [
       { label: 'Owner sample', value: `${profile.rows.length} seasons`, detail: `${model.state.startSeason}–${model.state.endSeason}` },
@@ -123,7 +123,7 @@ export function buildDraftShareResult(
     const metricLeader = model.rankedPicks[0] || null;
     if (!model.baseRows.length || !validSummary(bestAverage) || !validSummary(bestPlayoff) || !validSummary(metricLeader)) return incomplete();
     metrics = [
-      { label: 'League sample', value: `${model.baseRows.length} seasons`, detail: `${model.state.startSeason}–${model.state.endSeason}` },
+      { label: 'Owner-seasons', value: String(model.baseRows.length), detail: `${model.state.startSeason}–${model.state.endSeason}` },
       { label: 'Best avg finish', value: draftPositionLabel(bestAverage.draft_pick, model.state.normalize), detail: `Finish ${formatNumber(bestAverage.avg_finish)} · n=${bestAverage.n}` },
       { label: 'Best playoff path', value: draftPositionLabel(bestPlayoff.draft_pick, model.state.normalize), detail: `${formatPercent(bestPlayoff.playoff_rate)} · n=${bestPlayoff.n}` },
       { label: 'Metric leader', value: draftPositionLabel(metricLeader.draft_pick, model.state.normalize), detail: `${DRAFT_METRICS[model.state.metric].label}: ${formatMetric(draftMetricValue(metricLeader, model.state.metric), model.state.metric)}` },

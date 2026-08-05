@@ -19,18 +19,30 @@ const SHARE_CARD_TEXT_STYLES = Object.freeze({
   metric: Object.freeze({ fontSize: 26, fontWeight: 900, letterSpacing: 0 }),
   detail: Object.freeze({ fontSize: 16, fontWeight: 400, letterSpacing: 0 }),
 });
+const SHARE_CARD_WIDTH_SAFETY_FACTOR = 1.03;
 
 /** @typedef {{ fontSize: number, fontWeight: number, letterSpacing: number }} ShareCardTextStyle */
 
+// Conservative system-ui bounds measured at the rendered 400, 800, and 900 weights.
+// Unlisted glyphs consume a full em, and every estimate receives the safety factor above.
 function characterWidthEm(character) {
   if (character === ' ') return 0.34;
-  if (/[MW@%&]/.test(character)) return 1;
-  if (/[mw]/.test(character)) return 0.88;
-  if (/[A-Z]/.test(character)) return 0.72;
-  if (/[ilI1.,:;|'`!]/.test(character)) return 0.34;
-  if (/[frt()\[\]{}]/.test(character)) return 0.44;
-  if (/[0-9a-z]/.test(character)) return 0.58;
-  if (/[-–—/+]/.test(character)) return 0.5;
+  if (/[W@%]/.test(character)) return 1;
+  if (/[M—]/.test(character)) return 0.9;
+  if (character === 'm') return 0.88;
+  if (character === 'w') return 0.82;
+  if (character === '&') return 0.74;
+  if (/[A-Z]/.test(character)) return 0.74;
+  if (/[0-9]/.test(character)) return 0.67;
+  if (/[bdgpq]/.test(character)) return 0.61;
+  if (/[hnuo]/.test(character)) return 0.6;
+  if (/[eackyvx]/.test(character)) return 0.57;
+  if (/[sz]/.test(character)) return 0.54;
+  if (/[iljI.,:;|'`!·‘’]/.test(character)) return 0.35;
+  if (/[frt]/.test(character)) return 0.4;
+  if (/[()\[\]{}]/.test(character)) return 0.44;
+  if (/[–+]/.test(character)) return 0.7;
+  if (/[-/\\]/.test(character)) return 0.46;
   return 1;
 }
 
@@ -40,7 +52,8 @@ function measureShareCardText(value, style = SHARE_CARD_TEXT_STYLES.detail) {
   const weightFactor = Number(style.fontWeight) >= 700 ? 1.04 : 1;
   const glyphWidth = characters.reduce((total, character) => total + characterWidthEm(character), 0)
     * Number(style.fontSize)
-    * weightFactor;
+    * weightFactor
+    * SHARE_CARD_WIDTH_SAFETY_FACTOR;
   return glyphWidth + Math.max(0, characters.length - 1) * Number(style.letterSpacing || 0);
 }
 

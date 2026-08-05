@@ -75,6 +75,19 @@ export function buildLeagueEditionCardResult(
   win: Window,
 ): ShareCardBuildResult | null {
   if (edition.state !== 'complete') return null;
+  const metrics = edition.highlights.slice(0, 4).map(metric => {
+    if (metric.label === 'Closest matchup') {
+      const margin = metric.detail.match(/^([\d.]+)-point margin$/)?.[1];
+      return margin
+        ? { label: metric.label, value: `${margin} points`, detail: metric.value }
+        : metric;
+    }
+    if (metric.label === 'Champion' || metric.label === 'Runner-up') {
+      const score = metric.detail.match(/\d+(?:\.\d+)?[–-]\d+(?:\.\d+)?/)?.[0];
+      return score ? { ...metric, detail: score } : metric;
+    }
+    return metric;
+  });
   return result(edition.kind === 'weekly' ? 'weekly-recap' : 'season-recap', {
     id: edition.id,
     eyebrow: 'The League Newspaper',
@@ -82,11 +95,11 @@ export function buildLeagueEditionCardResult(
       ? `${edition.season} Week ${edition.week} Recap`
       : `${edition.season} Season Recap`,
     subtitle: edition.headline,
-    metrics: edition.highlights.slice(0, 4),
+    metrics,
     canonicalPath: edition.sourceHref,
     sourceLabel: edition.sourceLabel,
     dataVersion: edition.dataVersion,
-    altText: `${edition.headline}. ${edition.highlights.map(item => `${item.label}: ${item.value}, ${item.detail}`).join('. ')}.`,
+    altText: `${edition.headline}. ${metrics.map(item => `${item.label}: ${item.value}, ${item.detail}`).join('. ')}.`,
   }, win);
 }
 
@@ -152,7 +165,11 @@ export function mountRivalryCard(host: HTMLElement | null, view: any, canonicalP
         { label: 'Meetings', value: String(overall.g) },
         { label: view.teamA, value: `${overall.w} wins`, detail: `${Number(overall.pf).toFixed(2)} points` },
         { label: view.teamB, value: `${overall.l} wins`, detail: `${Number(overall.pa).toFixed(2)} points` },
-        { label: 'Last meeting', value: last ? (last.winner === 'Tie' ? 'Tie' : last.winner) : '—', detail: last ? `${Number(last.pf).toFixed(2)}–${Number(last.pa).toFixed(2)} · ${last.date}` : undefined },
+        {
+          label: last ? `Last · ${last.date}` : 'Last meeting',
+          value: last ? (last.winner === 'Tie' ? 'Tie' : last.winner) : '—',
+          detail: last ? `${Number(last.pf).toFixed(2)}–${Number(last.pa).toFixed(2)}` : undefined,
+        },
       ],
       canonicalPath,
       sourceLabel: 'Head to Head',
@@ -166,6 +183,8 @@ export function mountTrophyCard(host: HTMLElement | null, view: any, canonicalPa
   if (!host || !view.owner) return null;
   const hardware = new Map((view.hardwareShelf || []).map((item: any) => [String(item.label), Number(item.count) || 0]));
   const rank = String(view.hero?.rankContext || '').split('|')[0].trim();
+  const careerRecord = String(view.hero?.record || '—');
+  const recordParts = careerRecord.match(/^(\d+-\d+(?:-\d+)?)\s+\(([\d.]+%)\)$/);
   return mountShareCardAction({
     host,
     label: `Share ${view.owner} trophy card`,
@@ -175,7 +194,11 @@ export function mountTrophyCard(host: HTMLElement | null, view: any, canonicalPa
       title: view.hero?.title || view.owner,
       subtitle: view.hero?.identityLabel || view.identity?.label || 'Career profile',
       metrics: [
-        { label: 'Career record', value: view.hero?.record || '—' },
+        {
+          label: 'Career record',
+          value: recordParts?.[1] || careerRecord,
+          detail: recordParts ? `${recordParts[2]} wins` : undefined,
+        },
         { label: 'League rank', value: rank || '—' },
         { label: 'Darlings', value: String(hardware.get('Darlings') || 0) },
         { label: 'Saunders titles', value: String(hardware.get('Saunders titles') || 0) },

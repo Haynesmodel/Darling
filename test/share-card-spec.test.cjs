@@ -84,7 +84,7 @@ test('layout-aware text and metric boundaries return stable error codes', () => 
   const exact = candidate({
     id: 'i'.repeat(96),
     eyebrow: 'e'.repeat(48),
-    title: `${'t'.repeat(32)} ${'u'.repeat(32)}`,
+    title: `${'t'.repeat(32)} ${'u'.repeat(30)}`,
     subtitle: `${'s'.repeat(74)} ${'u'.repeat(65)}`,
     sourceLabel: 'l'.repeat(48),
     dataVersion: 'd'.repeat(96),
@@ -92,7 +92,7 @@ test('layout-aware text and metric boundaries return stable error codes', () => 
     metrics: Array.from({ length: 4 }, (_, index) => ({
       label: `${index}`.padEnd(26, 'l'),
       value: `${index}`.padEnd(13, 'v'),
-      detail: `${index}`.padEnd(22, 'd'),
+      detail: `${index}`.padEnd(20, 'd'),
     })),
   });
   assert.equal(share.validateShareCardSpec(exact, environment).ok, true);
@@ -112,6 +112,14 @@ test('layout-aware text and metric boundaries return stable error codes', () => 
     { label: 'Gamma', value: '3', detail: 'Final' },
     { label: 'Delta', value: '4', detail: 'Final' },
   ] }), environment).code, 'INVALID_TEXT');
+  for (const value of ['0'.repeat(13), '—'.repeat(10), '+'.repeat(13)]) {
+    assert.equal(share.validateShareCardSpec(candidate({ metrics: [
+      { label: 'Alpha', value, detail: 'Final' },
+      { label: 'Beta', value: '2', detail: 'Final' },
+      { label: 'Gamma', value: '3', detail: 'Final' },
+      { label: 'Delta', value: '4', detail: 'Final' },
+    ] }), environment).code, 'INVALID_TEXT', value);
+  }
   assert.equal(share.validateShareCardSpec(candidate({ title: 'bad\ntext' }), environment).code, 'INVALID_TEXT');
   assert.equal(share.validateShareCardSpec(candidate({ metrics: exact.metrics.concat({ label: 'x', value: 'y' }) }), environment).code, 'TOO_MANY_METRICS');
   assert.equal(share.validateShareCardSpec(candidate({ metrics: [{ label: 'x', value: 'y' }] }), environment).code, 'INCOMPLETE_DATA');

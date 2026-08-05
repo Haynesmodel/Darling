@@ -121,7 +121,7 @@ test('Draft share cards describe the active league, owner, pick, and zone analys
     {
       mode: 'league',
       view: model.buildDraftSpotModel(asset),
-      labels: ['League sample', 'Best avg finish', 'Best playoff path', 'Metric leader'],
+      labels: ['Owner-seasons', 'Best avg finish', 'Best playoff path', 'Metric leader'],
     },
     {
       mode: 'owner',
@@ -144,7 +144,16 @@ test('Draft share cards describe the active league, owner, pick, and zone analys
     assert.equal(result.ok, true, expectedMode);
     assert.deepEqual(result.spec.metrics.map(metric => metric.label), labels, expectedMode);
     assert.match(result.spec.id, new RegExp(`^draft:${expectedMode}\\|`), expectedMode);
-    if (expectedMode === 'league') assert.doesNotMatch(result.spec.canonicalUrl, /draftMode=/);
+    if (expectedMode === 'league') {
+      assert.doesNotMatch(result.spec.canonicalUrl, /draftMode=/);
+      assert.equal(view.baseRows.length, 92);
+      assert.equal(new Set(view.baseRows.map(row => row.season)).size, 9);
+      assert.deepEqual(result.spec.metrics[0], {
+        label: 'Owner-seasons',
+        value: '92',
+        detail: '2017–2025',
+      });
+    }
     else assert.match(result.spec.canonicalUrl, new RegExp(`draftMode=${expectedMode}`), expectedMode);
   }
   const fallback = page.buildDraftShareResult(model.buildDraftSpotModel(asset, {
@@ -156,7 +165,7 @@ test('Draft share cards describe the active league, owner, pick, and zone analys
   assert.equal(fallback.ok, true);
   assert.deepEqual(fallback.spec.metrics.find(metric => metric.label === 'Confidence'), {
     label: 'Confidence',
-    value: 'League fallback',
+    value: 'Fallback',
     detail: 'League-wide history',
   });
 });

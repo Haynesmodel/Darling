@@ -103,6 +103,10 @@ test('Rivalry stays Plot-free when a far disclosure merely opens and loads once 
   await page.locator('#rivalryLeadPlot').scrollIntoViewIfNeeded();
   await expect.poll(() => resources.filter(resource => resource.endsWith(chartRuntime)).length).toBe(1);
   await expect(page.locator('#rivalryLeadPlot')).toHaveAttribute('data-chart-state', 'ready');
+  await page.locator('#rivalryTeamB').selectOption('Zook');
+  await page.locator('#rivalry-section-jump').selectOption('rivalry-trend');
+  await expect(page.locator('#rivalryLeadPlot')).toHaveAttribute('data-chart-state', 'ready');
+  expect(resources.filter(resource => resource.endsWith(chartRuntime))).toHaveLength(1);
 });
 
 test('Command Palette implementation and CSS load only after the first open', async ({ page }) => {

@@ -102,6 +102,11 @@ function toPlotOptions(spec: RuntimeSpec): PlotOptions {
   return { ...options, marks: marks.map(plotMark) } as unknown as PlotOptions;
 }
 
+function normalizePlotAccessibility<T extends Element>(svg: T): T {
+  svg.querySelectorAll?.('g[aria-label]:not([role])').forEach(group => group.setAttribute('role', 'group'));
+  return svg;
+}
+
 function renderSpec(host: unknown, spec: RuntimeSpec, opts: RenderOptions = {}): Element | null {
   if (!isDomHost(host)) return null;
   const rows = spec.rows || [];
@@ -110,7 +115,7 @@ function renderSpec(host: unknown, spec: RuntimeSpec, opts: RenderOptions = {}):
     return null;
   }
   try {
-    return mountChart(host, plot(toPlotOptions(spec)), {
+    return mountChart(host, normalizePlotAccessibility(plot(toPlotOptions(spec))), {
       ariaLabel: opts.ariaLabel || spec.ariaLabel,
       className: opts.className,
     });
@@ -196,7 +201,7 @@ function draftSpec(request: Extract<ChartRequest, { kind: 'draft-picks' | 'draft
 }
 
 function renderRequestSpec(host: HTMLElement, spec: RuntimeSpec, className: string): void {
-  const svg = plot(toPlotOptions(spec));
+  const svg = normalizePlotAccessibility(plot(toPlotOptions(spec)));
   svg.classList.add(className);
   svg.setAttribute('aria-label', spec.ariaLabel || 'Chart');
   svg.setAttribute('role', 'img');

@@ -13,6 +13,20 @@ test('data freshness disclosure uses native keyboard activation', async ({ page 
   await expect(details).not.toHaveAttribute('open', '');
 });
 
+test('Rivalry manual chart fallback is keyboard reachable and does not move focus', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'IntersectionObserver', { configurable: true, value: undefined });
+  });
+  await page.goto('/?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel');
+  await page.locator('#rivalry-section-jump').selectOption('rivalry-trend');
+  const load = page.getByRole('button', { name: 'Load Lead Trend chart' });
+  await load.focus();
+  await expect(load).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#rivalryLeadPlot')).toHaveAttribute('data-chart-state', 'ready');
+  await expect(page.locator('#rivalryLeadPlot svg[role="img"]')).toBeVisible();
+});
+
 test('primary navigation uses native link and disclosure keyboard order', async ({ page }) => {
   await page.goto('/');
   await page.waitForLoadState('networkidle');

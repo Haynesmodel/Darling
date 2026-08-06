@@ -72,6 +72,28 @@ test('Rivalry cumulative lead chart redraws for a new opponent', async ({ page }
   await expectNoPageOverflow(page);
 });
 
+test('Rivalry preserves a ready chart across an equal-signature parent rerender', async ({ page }) => {
+  await page.goto('/?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel');
+  await page.locator('#rivalry-section-jump').selectOption('rivalry-trend');
+  await assertChart(page, '#rivalryLeadPlot', /Series lead over time relative to \.500/);
+  await page.locator('#rivalryLeadPlot svg').evaluate(svg => {
+    const renderHost = svg.parentElement;
+    const originalReplaceChildren = renderHost.replaceChildren;
+    window.__equalSignatureChart = { svg, renderCalls: 0 };
+    renderHost.replaceChildren = function replaceChildren(...nodes) {
+      window.__equalSignatureChart.renderCalls += 1;
+      return originalReplaceChildren.apply(this, nodes);
+    };
+  });
+
+  await page.locator('#rivalryScopeSelect').selectOption('allTime');
+  await expect(page.locator('#rivalryLeadPlot')).toHaveAttribute('data-chart-state', 'ready');
+  expect(await page.locator('#rivalryLeadPlot svg').evaluate(svg => ({
+    sameNode: svg === window.__equalSignatureChart.svg,
+    renderCalls: window.__equalSignatureChart.renderCalls,
+  }))).toEqual({ sameNode: true, renderCalls: 0 });
+});
+
 test('Rivalry explicit Load button works without IntersectionObserver', async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(window, 'IntersectionObserver', { configurable: true, value: undefined });

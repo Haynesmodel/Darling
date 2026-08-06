@@ -38,19 +38,28 @@ test('strict-island policy permits the documented type-only vendor facade', () =
   assert.equal(normalize('src\\charting\\chart-vendor.ts'), 'src/charting/chart-vendor.ts');
 });
 
-test('strict-island repository checker enforces manifest membership', () => {
+test('strict-island repository checker enforces parsed TypeScript project membership for ts and tsx', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-strict-'));
   try {
     fs.mkdirSync(path.join(root, 'scripts', 'data'), { recursive: true });
     fs.mkdirSync(path.join(root, 'src', 'island'), { recursive: true });
     fs.writeFileSync(path.join(root, 'src', 'island', 'safe.ts'), 'export const safe: string = "yes";\n');
+    fs.writeFileSync(path.join(root, 'src', 'island', 'view.tsx'), 'export const view = <div>safe</div>;\n');
     fs.writeFileSync(path.join(root, 'scripts', 'data', 'strict-islands.json'), JSON.stringify({
       paths: ['src/island'],
       direct_plot_vendor_import_exceptions: [],
     }));
-    fs.writeFileSync(path.join(root, 'tsconfig.strict.json'), JSON.stringify({ include: ['src/other/**/*.ts'] }));
-    assert.deepEqual(checkStrictIslands(root), ['src/island is missing from tsconfig.strict.json include']);
-    fs.writeFileSync(path.join(root, 'tsconfig.strict.json'), JSON.stringify({ include: ['src/island/**/*.ts'] }));
+    fs.writeFileSync(path.join(root, 'tsconfig.strict.json'), JSON.stringify({
+      compilerOptions: { jsx: 'preserve' },
+      include: ['src/island/**/*.tsx'],
+    }));
+    assert.deepEqual(checkStrictIslands(root), [
+      'src/island/safe.ts is missing from the tsconfig.strict.json project',
+    ]);
+    fs.writeFileSync(path.join(root, 'tsconfig.strict.json'), JSON.stringify({
+      compilerOptions: { jsx: 'preserve' },
+      include: ['src/island/**/*.ts', 'src/island/**/*.tsx'],
+    }));
     assert.deepEqual(checkStrictIslands(root), []);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });

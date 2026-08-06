@@ -44,6 +44,8 @@ export function DeferredChart({
   const plotRef = useRef<HTMLDivElement>(null);
   const generationRef = useRef(0);
   const beginLoadRef = useRef<() => void>(() => undefined);
+  const requestRef = useRef<ChartRequest | null>(request);
+  requestRef.current = request;
   const stateRef = useRef<ChartState>(request && chartRequestHasData(request) ? 'idle' : 'empty');
   const [state, setStateValue] = useState<ChartState>(stateRef.current);
 
@@ -57,7 +59,8 @@ export function DeferredChart({
     const plotHost = plotRef.current;
     if (!host || !plotHost) return undefined;
     const disclosure = disclosureFor(host);
-    const hasData = Boolean(request && chartRequestHasData(request));
+    const lifecycleRequest = requestRef.current;
+    const hasData = Boolean(lifecycleRequest && chartRequestHasData(lifecycleRequest));
     let observer: IntersectionObserver | null = null;
     let disposed = false;
     let inFlight = false;
@@ -66,7 +69,7 @@ export function DeferredChart({
     const current = (generation: number) => (
       !disposed
       && generationRef.current === generation
-      && request !== null
+      && requestRef.current !== null
       && isChartHostAvailable(host, active)
     );
     const invalidate = () => {
@@ -75,7 +78,7 @@ export function DeferredChart({
       clearPlot();
     };
     const beginLoad = () => {
-      if (!request || !hasData || inFlight || stateRef.current === 'ready') return;
+      if (!requestRef.current || !hasData || inFlight || stateRef.current === 'ready') return;
       if (!isChartHostAvailable(host, active)) return;
       inFlight = true;
       observer?.disconnect();
@@ -83,8 +86,10 @@ export function DeferredChart({
       setState('loading');
       void loadChartRuntime().then(runtime => {
         if (!current(generation)) return;
+        const latestRequest = requestRef.current;
+        if (!latestRequest) return;
         try {
-          runtime.renderChart(plotHost, request);
+          runtime.renderChart(plotHost, latestRequest);
         } catch {
           if (!current(generation)) return;
           clearPlot();
@@ -110,7 +115,7 @@ export function DeferredChart({
     const observe = () => {
       observer?.disconnect();
       observer = null;
-      if (!request || !hasData || !isChartHostAvailable(host, active) || typeof IntersectionObserver !== 'function') return;
+      if (!requestRef.current || !hasData || !isChartHostAvailable(host, active) || typeof IntersectionObserver !== 'function') return;
       observer = new IntersectionObserver(entries => {
         if (entries.some(entry => entry.isIntersecting)) beginLoad();
       }, CHART_INTERSECTION_OPTIONS);
@@ -138,7 +143,7 @@ export function DeferredChart({
       disclosure?.removeEventListener('toggle', onToggle);
       invalidate();
     };
-  }, [active, request, signature]);
+  }, [active, signature]);
 
   return <div
     id={id}

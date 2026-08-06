@@ -6,12 +6,12 @@ The first migration slice was measured from clean base `de9f11d42cc79e31f9cc3d5a
 
 | Metric | Base | PR A | Delta | Target / maximum |
 | --- | ---: | ---: | ---: | ---: |
-| Entry gzip | 48,009 | 48,022 | +13 | 48,250 / 56,000 |
-| Aggregate JavaScript gzip | 297,868 | 299,567 | +1,699 | final 297,868 / 300,000 |
+| Entry gzip | 48,009 | 48,025 | +16 | 48,250 / 56,000 |
+| Aggregate JavaScript gzip | 297,868 | 299,628 | +1,760 | final 297,868 / 300,000 |
 | Chart-runtime gzip | 95,561 | 96,200 | +639 | 97,000 / 100,000 |
-| Head to Head feature gzip | 7,100 | 8,186 | +1,086 | 50,000 maximum |
-| Head to Head static route gzip | 191,922 | 88,499 | -103,423 | 115,000 maximum |
-| Head to Head settled route gzip | 191,922 | 184,699 | -7,223 | 205,000 maximum |
+| Head to Head feature gzip | 7,100 | 8,210 | +1,110 | 50,000 maximum |
+| Head to Head static route gzip | 191,922 | 88,530 | -103,392 | 115,000 maximum |
+| Head to Head settled route gzip | 191,922 | 184,730 | -7,192 | 205,000 maximum |
 
 PR A deliberately enforces only the initiative's hard aggregate maximum; the 297,868 final target applies after the remaining paired legacy deletions. Authored chart data, theme, specification, runtime, and rendering helpers now live in the strict `src/charting/` island; only the generated vendor remains under `js/charting/`. The Head to Head static closure no longer contains Plot. Its settled closure discovers `chart-runtime` through the feature's recursive static closure and the shared loader, with cycle-safe traversal and shared-chunk deduplication.
 

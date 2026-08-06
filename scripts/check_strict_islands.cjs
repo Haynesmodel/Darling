@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 const fs = require('node:fs');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 const { parse } = require('@babel/parser');
 
 const normalize = value => String(value || '').replaceAll('\\', '/');
@@ -69,17 +70,26 @@ function checkStrictIslands(root = process.cwd()) {
   const manifestPath = path.join(root, 'scripts/data/strict-islands.json');
   const tsconfigPath = path.join(root, 'tsconfig.strict.json');
   const config = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-  const tsconfig = JSON.parse(fs.readFileSync(tsconfigPath, 'utf8'));
-  const includes = (tsconfig.include || []).map(normalize);
   const failures = [];
-  for (const entry of config.paths) {
-    const normalized = normalize(entry);
-    if (!includes.some(include => include.startsWith(`${normalized}/`) || include === normalized)) {
-      failures.push(`${normalized} is missing from tsconfig.strict.json include`);
-    }
+  const typescriptRoot = path.dirname(require.resolve('typescript/package.json'));
+  const result = spawnSync(process.execPath, [
+    path.join(typescriptRoot, 'bin', 'tsc'),
+    '-p',
+    tsconfigPath,
+    '--listFilesOnly',
+    '--pretty',
+    'false',
+  ], { cwd: root, encoding: 'utf8' });
+  if (result.status !== 0) {
+    failures.push(`tsconfig.strict.json: ${(result.stderr || result.stdout || result.error?.message || 'TypeScript project resolution failed').trim()}`);
+    return failures;
   }
+  const strictFiles = new Set(result.stdout.split(/\r?\n/).filter(Boolean).map(filename => path.resolve(filename)));
   for (const filename of sourceFiles(root, config.paths)) {
     const relative = normalize(path.relative(root, filename));
+    if (!strictFiles.has(path.resolve(filename))) {
+      failures.push(`${relative} is missing from the tsconfig.strict.json project`);
+    }
     failures.push(...checkSource(relative, fs.readFileSync(filename, 'utf8'), config));
   }
   return failures;
@@ -94,4 +104,4 @@ if (require.main === module) {
   console.log('Strict-island policy checks passed.');
 }
 
-module.exports = { checkSource, checkStrictIslands, normalize };
+module.exports = { checkSource, checkStrictIslands, normalize, sourceFiles };

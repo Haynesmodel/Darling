@@ -18,7 +18,7 @@ function GauntletHistogram({ result, teamSeasonA, teamSeasonB, active }: {
   const mountRef = useRef<HTMLDivElement>(null);
   const [DeferredChart, setDeferredChart] = useState<DeferredChartComponent | null>(null);
   const payload = gauntletHistogramRows(result, teamSeasonA, teamSeasonB);
-  const signature = [teamSeasonA?.owner || '', teamSeasonA?.season || '', teamSeasonB?.owner || '', teamSeasonB?.season || '', payload.rows.length, payload.maxCount].join('|');
+  const signature = [teamSeasonA?.owner || '', teamSeasonA?.season || '', teamSeasonB?.owner || '', teamSeasonB?.season || '', payload.rows.length, payload.maxCount, payload.domain.join(',')].join('|');
   const loadDeferredChart = () => {
     if (DeferredChart) return;
     void import('../../components/charts/DeferredChart').then(module => {

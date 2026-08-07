@@ -9,12 +9,10 @@ export interface GauntletHistogramPayload {
   maxCount: number;
 }
 
-function histogramBins(values: readonly number[], options: { min?: number; max?: number; bins?: number } = {}): HistogramBin[] {
+function histogramBins(values: readonly number[], min: number, max: number): HistogramBin[] {
   const clean = values.filter(Number.isFinite);
   if (!clean.length) return [];
-  const count = Math.max(1, Math.min(50, Math.floor(Number.isFinite(options.bins) ? Number(options.bins) : DEFAULT_HISTOGRAM_BINS)));
-  const min = Number.isFinite(options.min) ? Number(options.min) : Math.min(...clean);
-  const max = Number.isFinite(options.max) ? Number(options.max) : Math.max(...clean);
+  const count = DEFAULT_HISTOGRAM_BINS;
   if (min === max) return [{ start: min - 0.5, end: max + 0.5, count: clean.length }];
   const width = (max - min) / count;
   const bins = Array.from({ length: count }, (_, index) => ({ start: min + index * width, end: index === count - 1 ? max : min + (index + 1) * width, count: 0 }));
@@ -31,7 +29,7 @@ export function gauntletHistogramRows(result: HistogramResultInput | null, teamS
   const min = Math.min(...combined);
   const max = Math.max(...combined);
   const teams = [{ teamSeason: teamSeasonA, scores: scoresA }, { teamSeason: teamSeasonB, scores: scoresB }];
-  const rows = teams.flatMap(team => histogramBins(team.scores, { bins: DEFAULT_HISTOGRAM_BINS, min, max }).map(bin => ({
+  const rows = teams.flatMap(team => histogramBins(team.scores, min, max).map(bin => ({
     label: `${team.teamSeason.owner} ${team.teamSeason.season}`,
     center: (bin.start + bin.end) / 2,
     count: bin.count,

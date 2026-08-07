@@ -48,7 +48,6 @@ export function DeferredChart({
   requestRef.current = request;
   const stateRef = useRef<ChartState>(request && chartRequestHasData(request) ? 'idle' : 'empty');
   const [state, setStateValue] = useState<ChartState>(stateRef.current);
-  const [disclosureOpen, setDisclosureOpen] = useState(true);
 
   const setState = (next: ChartState) => {
     stateRef.current = next;
@@ -62,7 +61,6 @@ export function DeferredChart({
     const disclosure = disclosureFor(host);
     const lifecycleRequest = requestRef.current;
     const hasData = Boolean(lifecycleRequest && chartRequestHasData(lifecycleRequest));
-    setDisclosureOpen(Boolean(active && (!disclosure || disclosure.open)));
     let observer: IntersectionObserver | null = null;
     let disposed = false;
     let inFlight = false;
@@ -125,13 +123,11 @@ export function DeferredChart({
     };
     const onToggle = () => {
       if (disclosure && !disclosure.open) {
-        setDisclosureOpen(false);
         observer?.disconnect();
         invalidate();
         setState(hasData ? 'idle' : 'empty');
         return;
       }
-      setDisclosureOpen(Boolean(active));
       observe();
     };
 
@@ -153,7 +149,7 @@ export function DeferredChart({
     id={id}
     ref={hostRef}
     class={['chart-host', className].filter(Boolean).join(' ')}
-    data-chart-state={active && disclosureOpen ? state : undefined}
+    data-chart-state={state}
   >
     {state === 'idle' && <button type="button" class="btn chart-load-button" onClick={() => beginLoadRef.current()}>
       Load {name} chart

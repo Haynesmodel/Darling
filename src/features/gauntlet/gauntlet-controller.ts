@@ -1,5 +1,4 @@
 import './gauntlet.entry.css';
-import { mountGauntletHistogram } from './GauntletHistogramMount';
 import { teamSeasonId } from '../../../js/gauntlet-data.js';
 import { headToHeadContext } from '../../../js/shared/head-to-head-context.js';
 import { buildGauntletControls, resolveGauntletInitialState } from '../../../js/gauntlet-controls.js';
@@ -69,8 +68,11 @@ export function createFeatureController(): DarlingFeatureController {
     renderGauntlet(rendered, { doc: context.document, renderHistogramChart: false });
     const sections = [
       ['gauntlet-matchup', 'Matchup', 'gauntletMatchupDisclosure', true, undefined],
-      ['gauntlet-distribution', 'Score Distribution', 'gauntletHistogramDisclosure', false, () => {
-        histogramDisposer = mountGauntletHistogram(context.document.getElementById('gauntletHistogramPlot'), result, a, b, active);
+      ['gauntlet-distribution', 'Score Distribution', 'gauntletHistogramDisclosure', false, async () => {
+        const generation = histogramGeneration;
+        const adapter = await import('./GauntletHistogramMount');
+        if (!active || generation !== histogramGeneration) return;
+        histogramDisposer = adapter.mountGauntletHistogram(context.document.getElementById('gauntletHistogramPlot'), result, a, b, active);
       }],
       ['gauntlet-stats', 'Key Stats', 'gauntletStatsDisclosure', false, undefined],
       ['gauntlet-context', 'Head to Head Context', 'gauntletContextDisclosure', false, undefined],

@@ -1,50 +1,57 @@
 import { h, render } from 'preact';
-import { useEffect, useRef, useState } from 'preact/hooks';
-import type { HistogramResultInput, HistogramTeamSeasonInput } from '../../charting/chart-data';
+import { useEffect, useRef } from 'preact/hooks';
+import { gauntletHistogramRows, type HistogramResultInput, type HistogramTeamSeasonInput } from '../../charting/chart-data';
+import { DeferredChart } from '../../components/charts/DeferredChart';
 
-function GauntletHistogram({ result, teamSeasonA, teamSeasonB, active }: { result: HistogramResultInput | null; teamSeasonA: HistogramTeamSeasonInput | null; teamSeasonB: HistogramTeamSeasonInput | null; active: boolean }) {
-  const host = useRef<HTMLDivElement>(null);
-  const [state, setState] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading');
+function GauntletHistogram({
+  result,
+  teamSeasonA,
+  teamSeasonB,
+  active,
+}: {
+  result: HistogramResultInput | null;
+  teamSeasonA: HistogramTeamSeasonInput | null;
+  teamSeasonB: HistogramTeamSeasonInput | null;
+  active: boolean;
+}) {
+  const mountRef = useRef<HTMLDivElement>(null);
+  const payload = gauntletHistogramRows(result, teamSeasonA, teamSeasonB);
+  const signature = [
+    teamSeasonA?.owner || '',
+    teamSeasonA?.season || '',
+    teamSeasonB?.owner || '',
+    teamSeasonB?.season || '',
+    payload.rows.length,
+    payload.maxCount,
+    payload.domain.join(','),
+  ].join('|');
+
   useEffect(() => {
-    const inner = host.current?.parentElement;
-    if (inner) inner.dataset.chartState = state;
-    const outer = inner?.parentElement;
-    if (outer) outer.dataset.chartState = state;
-  }, [state]);
-  useEffect(() => {
-    let current = true;
-    const details = host.current?.closest('details');
-    const onToggle = () => {
-      if (details && !details.open) {
-        current = false;
-        host.current?.replaceChildren();
-        setState('empty');
-      }
+    const mount = mountRef.current;
+    const outer = mount?.parentElement;
+    const chartHost = mount?.querySelector<HTMLElement>('[data-chart-state]');
+    if (!outer || !chartHost) return undefined;
+    const syncState = () => {
+      const state = chartHost.dataset.chartState;
+      if (state) outer.dataset.chartState = state;
     };
-    details?.addEventListener('toggle', onToggle);
-    if (!active || !result || !teamSeasonA || !teamSeasonB) {
-      setState('empty');
-      return () => { current = false; details?.removeEventListener('toggle', onToggle); };
-    }
-    void import('../../charting/plot-charts.ts').then(({ renderGauntletHistogramPlot }) => {
-      if (!current || !host.current) return;
-      setState('ready');
-      const rendered = renderGauntletHistogramPlot(host.current, result, teamSeasonA, teamSeasonB);
-      if (!rendered) setState('empty');
-    }).catch(() => {
-      if (current) setState('error');
-    });
-    return () => {
-      current = false;
-      details?.removeEventListener('toggle', onToggle);
-      host.current?.replaceChildren();
-    };
-  }, [active, result, teamSeasonA, teamSeasonB]);
-  return <div class="chart-host gauntlet-histogram-host" data-chart-state={state}>
-    {state === 'loading' && <div class="chart-loading" role="status">Loading Score Distribution chart…</div>}
-    {state === 'empty' && <div class="chart-empty">No simulation data available.</div>}
-    {state === 'error' && <div class="chart-error" role="status">Score Distribution chart is unavailable.</div>}
-    <div ref={host} class="chart-render-host" hidden={state !== 'ready'} />
+    syncState();
+    const observer = typeof MutationObserver === 'function'
+      ? new MutationObserver(syncState)
+      : null;
+    observer?.observe(chartHost, { attributes: true, attributeFilter: ['data-chart-state'] });
+    return () => observer?.disconnect();
+  }, [signature, active]);
+
+  return <div ref={mountRef} class="gauntlet-histogram-mount">
+    <DeferredChart
+      class="gauntlet-histogram-inner"
+      name="Score Distribution"
+      signature={signature}
+      request={{ kind: 'gauntlet-histogram', data: payload }}
+      active={active}
+      emptyMessage="No simulation data available."
+    />
   </div>;
 }
 
@@ -56,9 +63,11 @@ export function mountGauntletHistogram(
   active: boolean,
 ): () => void {
   if (!host) return () => undefined;
-  host.dataset.chartState = 'loading';
   render(h(GauntletHistogram, {
-    result, teamSeasonA, teamSeasonB, active,
+    result,
+    teamSeasonA,
+    teamSeasonB,
+    active,
   }), host);
   return () => render(null, host);
 }

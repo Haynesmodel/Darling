@@ -1,6 +1,15 @@
+import { existsSync, readFileSync } from 'node:fs';
 import { expect, test } from './coverage-fixture.js';
 import { createSnapshotFixture } from './snapshot-fixture.js';
 import { regularSeason2026 } from './season-phase-fixtures.js';
+import { activateFeature } from './navigation-helpers.js';
+
+const productionChartRuntimeAsset = (() => {
+  const manifestPath = new URL('../../dist/.vite/manifest.json', import.meta.url);
+  if (!existsSync(manifestPath)) return null;
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  return Object.values(manifest).find(entry => entry.name === 'chart-runtime')?.file ?? null;
+})();
 
 async function installLiveCurrent(page) {
   const fixture = createSnapshotFixture({
@@ -116,6 +125,30 @@ test('Trophy career chart redraws for a new owner', async ({ page }) => {
   await page.locator('#trophy-section-jump').selectOption('trophy-career');
   await assertChart(page, '#trophyCareerPlot', /Season finish trend/);
   await expectNoPageOverflow(page);
+});
+
+test('Trophy deactivation invalidates an in-flight career chart', async ({ page }) => {
+  let releaseRuntime;
+  let runtimeRequested = false;
+  await page.route('**/*', async route => {
+    const url = new URL(route.request().url());
+    const isDevRuntime = url.pathname.endsWith('/src/charting/plot-charts.ts');
+    const isProductionRuntime = productionChartRuntimeAsset && url.pathname.endsWith(`/${productionChartRuntimeAsset}`);
+    if (!isDevRuntime && !isProductionRuntime) {
+      await route.continue();
+      return;
+    }
+    runtimeRequested = true;
+    await new Promise(resolve => { releaseRuntime = resolve; });
+    await route.continue();
+  });
+  await page.goto('/?tab=trophy&trophyOwner=Joe');
+  await page.locator('#trophy-section-jump').selectOption('trophy-career');
+  await expect.poll(() => runtimeRequested).toBe(true);
+  await activateFeature(page, 'pulse');
+  releaseRuntime();
+  await expect(page.locator('#trophyCareerPlot svg')).toHaveCount(0);
+  await expect(page.locator('#trophyCareerPlot')).toHaveAttribute('data-chart-state', 'idle');
 });
 
 test('Dynasty trend chart toggle changes marks without duplicating SVG', async ({ page }) => {

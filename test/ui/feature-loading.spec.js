@@ -56,7 +56,7 @@ test('every cold route requests only its feature entry and chart routes share on
     draft: '/?tab=draft',
     gauntlet: '/?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019',
   };
-  const coldRuntimeRoutes = new Set(['current', 'trophy', 'dynasty', 'draft', 'gauntlet']);
+  const coldRuntimeRoutes = new Set(['current', 'dynasty', 'draft', 'gauntlet']);
   const observedChartRuntimeUrls = new Set();
 
   for (const [id, url] of Object.entries(routes)) {
@@ -220,7 +220,7 @@ test('Draft contains a failed chart-runtime request without disabling its contro
   await page.goto('/?tab=draft');
   await waitForFeature(page, 'draft');
   await expect(page.locator('.draft-pick-chart')).toHaveAttribute('data-chart-state', 'error');
-  await expect(page.locator('.draft-zone-chart')).not.toHaveAttribute('data-chart-state');
+  await expect(page.locator('.draft-zone-chart')).toHaveAttribute('data-chart-state', 'idle');
   await page.locator('#draft-section-jump').selectOption('draft-zones');
   await expect(page.locator('.draft-zone-chart')).toHaveAttribute('data-chart-state', 'error');
   await expect(page.locator('.draft-pick-chart .chart-error')).toHaveAttribute('role', 'status');

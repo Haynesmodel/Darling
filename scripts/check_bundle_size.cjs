@@ -21,14 +21,28 @@ function collectClosure(byId, startIds) {
 }
 
 function findReachableDynamic(byId, startId, token) {
-  for (const chunk of collectClosure(byId, [startId])) {
-    const dynamicId = (chunk.dynamicImports || []).find(id => {
-      const target = byId.get(id);
-      return normalizeId(id) === normalizeId(token) || (target && matchesToken(target, token));
-    });
-    if (dynamicId) return dynamicId;
-  }
-  return null;
+  const visited = new Set();
+  const visitStatic = id => {
+    if (visited.has(`static:${id}`)) return null;
+    if (normalizeId(id) === 'index.html') return null;
+    visited.add(`static:${id}`);
+    const chunk = byId.get(id);
+    if (!chunk) return null;
+    for (const importId of chunk.imports || []) {
+      const nested = visitStatic(importId);
+      if (nested) return nested;
+    }
+    for (const dynamicId of chunk.dynamicImports || []) {
+      const target = byId.get(dynamicId);
+      if (normalizeId(dynamicId) === normalizeId(token) || (target && matchesToken(target, token))) return dynamicId;
+      if (!target) continue;
+      if (collectClosure(byId, [dynamicId]).some(candidate => matchesToken(candidate, token))) return dynamicId;
+      const nested = visitStatic(dynamicId);
+      if (nested) return dynamicId;
+    }
+    return null;
+  };
+  return visitStatic(startId);
 }
 
 function routeMeasurement(staticChunks, settledChunks) {
@@ -116,11 +130,10 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
     // and `dynamicImports` when a route's chart adapter loads it on disclosure.
     // Treat that chart runtime as dynamic for the cold route; it is still added
     // to the settled closure through the configured dynamic entry below.
-    const coldChunks = staticChunks.filter(chunk => !(
-      chartRuntime
-      && chunk.id === chartRuntime.id
-      && (featureChunk.dynamicImports || []).includes(chunk.id)
-    ));
+    const dynamicRouteChunks = new Set((limits.chart_runtime_dynamic_routes || []).includes(routeName)
+      ? (featureChunk.dynamicImports || []).flatMap(dynamicId => collectClosure(byId, [dynamicId]).map(chunk => chunk.id))
+      : []);
+    const coldChunks = staticChunks.filter(chunk => !(chartRuntime && chunk.id === chartRuntime.id && dynamicRouteChunks.has(chunk.id)));
     routes[routeName] = routeMeasurement(coldChunks, collectClosure(byId, settledRoots));
   }
 

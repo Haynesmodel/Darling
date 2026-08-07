@@ -30,9 +30,22 @@ export function TrophyPage({ view, owners, onOwnerChange, active, availableSecti
     madePlayoffs: Number(row.finish) <= row.playoffCutoff,
     champion: row.tier === 'champion',
     saunders: row.tier === 'saunders',
-    tier: (row.tier === 'champion' || row.tier === 'saunders' || row.tier === 'playoff' || row.tier === 'miss' ? row.tier : 'miss') as 'champion' | 'playoff' | 'saunders' | 'miss',
+    tier: (row.tier === 'champion'
+      ? 'champion'
+      : row.tier === 'saunders'
+        ? 'saunders'
+        : Number(row.finish) <= row.playoffCutoff ? 'playoff' : 'miss') as 'champion' | 'playoff' | 'saunders' | 'miss',
     title: row.title,
   }));
+  const rankLabels: Record<string, string> = {
+    championships: 'Championships',
+    avgFinish: 'Average Finish',
+    regularTitles: 'Regular Titles',
+    playoffWins: 'Playoff Wins',
+    weeklyCrowns: 'Weekly Crowns',
+    sub70Games: 'Sub-70 Games',
+    saundersPain: 'Saunders Pain',
+  };
   return <>
     <div class="trophy-toolbar">
       <TrophyControls owners={owners} selectedOwner={view.owner} onChange={onOwnerChange} />
@@ -53,10 +66,10 @@ export function TrophyPage({ view, owners, onOwnerChange, active, availableSecti
       <div id="trophyHardwareShelf" class="trophy-shelf">{view.hardwareShelf.map(item => <article class={`trophy-hardware-card ${item.tone}`} key={item.label}><div class="trophy-card-top"><div class="trophy-card-title"><div class="trophy-year-chip">{item.label}</div></div><div class="trophy-card-rank">{Number.isFinite(item.rank) ? `#${item.rank}` : '—'}</div></div><div class="trophy-card-value">{item.count}</div><div class="trophy-card-years">{item.years.length ? item.years.join(', ') : '—'}</div></article>)}</div>
     </Disclosure>}
     {available('trophyRankDisclosure') && <Disclosure id="trophyRankDisclosure" title="League Rank">
-      <div id="trophyRankStrip" class="trophy-rank-strip">{['championships', 'avgFinish', 'regularTitles', 'playoffWins', 'weeklyCrowns', 'sub70Games', 'saundersPain'].map(metric => { const row = view.leagueRanks.byOwner.get(view.owner)?.[metric]; return <div class="trophy-rank-pill" key={metric}><div class="trophy-rank-pill-label">{metric}</div><div class="trophy-rank-pill-value">{Number.isFinite(row?.rank) ? `#${row?.rank}` : '—'}</div><div class="trophy-rank-pill-sub">{Number.isFinite(row?.value) ? row?.value : '—'}</div></div>; })}</div>
+      <div id="trophyRankStrip" class="trophy-rank-strip">{Object.keys(rankLabels).map(metric => { const row = view.leagueRanks.byOwner.get(view.owner)?.[metric]; return <div class="trophy-rank-pill" key={metric}><div class="trophy-rank-pill-label">{rankLabels[metric]}</div><div class="trophy-rank-pill-value">{Number.isFinite(row?.rank) ? `#${row?.rank}` : '—'}</div><div class="trophy-rank-pill-sub">{Number.isFinite(row?.value) ? row?.value : '—'}</div></div>; })}</div>
     </Disclosure>}
     {available('trophyCareerDisclosure') && <Disclosure id="trophyCareerDisclosure" title="Career Shape">
-      <div id="trophyCareerShape" class="trophy-career-shape"><div class="trophy-career-chart chart-shell"><div class="trophy-career-header"><div><div class="trophy-career-title">Season finish trend</div><div class="trophy-career-subtitle">Lower is better. Playoff cutoff is 6th, except 2014 when it was 4th.</div></div></div><DeferredChart id="trophyCareerPlot" class="trophy-career-host" name="Career Shape" signature={`${view.owner}|${careerRows.map(row => `${row.season}:${row.finish}`).join(',')}`} request={{ kind: 'trophy-career', data: { rows: careerRows } }} active={active} emptyMessage="No seasons recorded." /></div><div class="trophy-career-summary">{view.careerShape.summary}</div></div>
+      <div id="trophyCareerShape" class="trophy-career-shape"><div class="trophy-career-chart chart-shell"><div class="trophy-career-header"><div><div class="trophy-career-title">Season finish trend</div><div class="trophy-career-subtitle">Lower is better. Playoff cutoff is 6th, except 2014 when it was 4th.</div></div><div class="trophy-career-legend"><span><span class="legend-swatch champion" /> Champion</span><span><span class="legend-swatch playoff" /> Playoff finish</span><span><span class="legend-swatch saunders" /> Saunders</span><span><span class="legend-swatch miss" /> Missed playoffs</span></div></div><DeferredChart id="trophyCareerPlot" class="trophy-career-host" name="Career Shape" signature={`${view.owner}|${careerRows.map(row => `${row.season}:${row.finish}`).join(',')}`} request={{ kind: 'trophy-career', data: { rows: careerRows } }} active={active} emptyMessage="No seasons recorded." /><ol class="chart-fallback trophy-career-fallback" aria-label="Season finish values">{careerRows.map(row => <li key={row.season}><span>{row.season}</span><strong>{row.finishLabel}</strong><span>{row.tier === 'champion' ? 'Champion' : row.tier === 'saunders' ? 'Saunders' : row.madePlayoffs ? 'Playoff finish' : 'Missed playoffs'} · {view.careerShape.rows.find(candidate => candidate.season === row.season)?.record || '—'}</span></li>)}</ol></div><div class="trophy-career-summary">{view.careerShape.summary}{careerRows.some(row => row.season === 2014) ? ' 2014 used a top-4 playoff cutoff.' : ''}</div></div>
     </Disclosure>}
     {available('trophyMomentsDisclosure') && <Disclosure id="trophyMomentsDisclosure" title="Highlights and Low Points">
       <section class="feature-section-content trophy-split"><div><h3>Highlights</h3><div id="trophyAchievementList"><List items={view.achievements} empty="No highlights yet." tone="gold" /></div></div><div><h3>Low Points</h3><div id="trophyScarList"><List items={view.scars} empty="No low points yet." tone="scar" /></div></div></section>

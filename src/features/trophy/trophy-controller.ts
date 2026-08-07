@@ -5,11 +5,9 @@ import type { DarlingFeatureController, FeatureActivation } from '../../app/feat
 import { createSectionDisclosure, type SectionDisclosureController } from '../../app/section-disclosure';
 import type { ShareCardActionController } from '../../share/share-card-actions';
 import { mountTrophyCard } from '../../share/share-card-feature-adapters';
-import { loadChartRuntime } from '../../charting/load-chart-runtime';
 import { TrophyPage } from './TrophyPage';
 import { buildTrophyCaseViewModel } from './trophy-model';
 import { registerTrophyTables } from './trophy-tables';
-import type { TrophyViewModel } from './trophy-types';
 
 function availableOwners(context: AppContext): string[] {
   return [...new Set([
@@ -30,26 +28,28 @@ export function createFeatureController(): DarlingFeatureController {
   let shareAction: ShareCardActionController | null = null;
 
   const isActive = () => Boolean(activeSignal && !activeSignal.aborted);
-  const renderCurrent = () => {
-    if (!root || !selectedOwner || !isActive()) return;
+  const renderCurrent = (allowInactive = false) => {
+    const active = isActive();
+    if (!root || !selectedOwner || (!active && !allowInactive)) return;
     const view = buildTrophyCaseViewModel(selectedOwner, {
       leagueGames: context.data.leagueGames,
       seasonSummaries: context.data.seasonSummaries,
       weeklyAwards: context.data.derivedStats?.weekly_awards || context.selectors.weeklyAwards(),
       seasonAggregates: context.selectors.seasonAggregates(),
       ownerCareers: context.data.derivedStats?.owner_careers || null,
-    }) as unknown as TrophyViewModel;
+    });
     render(h(TrophyPage, {
       view,
       owners,
       availableSections,
-      active: isActive(),
+      active,
       onOwnerChange(owner: string) {
         if (!isActive() || !owners.includes(owner)) return;
         selectedOwner = owner;
         renderCurrent();
       },
     }), root);
+    if (!active) return;
     if (!disclosure) {
       const mount = context.document.getElementById('trophySectionNav');
       if (mount) disclosure = createSectionDisclosure({ doc: context.document, mount, featureId: 'trophy', featureLabel: 'Trophy Case' });
@@ -100,7 +100,6 @@ export function createFeatureController(): DarlingFeatureController {
     activate(input: FeatureActivation) {
       activeSignal = input.signal;
       if (input.signal.aborted) return;
-      void loadChartRuntime();
       const retained = input.reason === 'tab' && initialized ? selectedOwner : null;
       selectedOwner = input.route.trophyOwner || input.route.team || retained || context.ownerPreference.getSnapshot().owner || owners[0] || '';
       if (!owners.includes(selectedOwner)) selectedOwner = owners[0] || '';
@@ -109,6 +108,7 @@ export function createFeatureController(): DarlingFeatureController {
     },
     deactivate() {
       activeSignal = null;
+      renderCurrent(true);
       shareAction?.dispose();
       shareAction = null;
     },

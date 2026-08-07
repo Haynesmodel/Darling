@@ -122,19 +122,22 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
     const settledRoots = [...roots];
     const requestedDynamics = limits.settled_dynamic_entries?.[routeName] || [];
     for (const token of requestedDynamics) {
-      const dynamicId = findReachableDynamic(byId, featureChunk.id, token);
-      if (!dynamicId) errors.push(`settled route ${routeName} cannot resolve configured dynamic import ${token}`);
-      else settledRoots.push(dynamicId);
+      let cursor = featureChunk.id;
+      let resolved = false;
+      const visited = new Set();
+      while (!visited.has(cursor)) {
+        visited.add(cursor);
+        const dynamicId = findReachableDynamic(byId, cursor, token);
+        if (!dynamicId) break;
+        settledRoots.push(dynamicId);
+        resolved = true;
+        const target = byId.get(dynamicId);
+        if (normalizeId(dynamicId) === normalizeId(token) || (target && matchesToken(target, token))) break;
+        cursor = dynamicId;
+      }
+      if (!resolved) errors.push(`settled route ${routeName} cannot resolve configured dynamic import ${token}`);
     }
-    // Rollup may list a shared chunk in both `imports` (module-preload metadata)
-    // and `dynamicImports` when a route's chart adapter loads it on disclosure.
-    // Treat that chart runtime as dynamic for the cold route; it is still added
-    // to the settled closure through the configured dynamic entry below.
-    const dynamicRouteChunks = new Set((limits.chart_runtime_dynamic_routes || []).includes(routeName)
-      ? (featureChunk.dynamicImports || []).flatMap(dynamicId => collectClosure(byId, [dynamicId]).map(chunk => chunk.id))
-      : []);
-    const coldChunks = staticChunks.filter(chunk => !(chartRuntime && chunk.id === chartRuntime.id && dynamicRouteChunks.has(chunk.id)));
-    routes[routeName] = routeMeasurement(coldChunks, collectClosure(byId, settledRoots));
+    routes[routeName] = routeMeasurement(staticChunks, collectClosure(byId, settledRoots));
   }
 
   const totalGzipBytes = gzipFor(chunks);

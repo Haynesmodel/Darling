@@ -86,7 +86,7 @@ function gauntletHistogramSvg(result, teamSeasonA, teamSeasonB) {
         <span class="gauntlet-histogram-note">Overlaid score frequencies by simulation bin</span>
       </div>
       <div class="gauntlet-histogram-panel chart-shell">
-        <div id="gauntletHistogramPlot" class="chart-host gauntlet-histogram-host" aria-label="Overlaid score distribution histogram for ${escapeHtml(teamSeasonA.owner)} and ${escapeHtml(teamSeasonB.owner)}"></div>
+        <div id="gauntletHistogramPlot" class="chart-host gauntlet-histogram-host" data-chart-state="idle" aria-label="Overlaid score distribution histogram for ${escapeHtml(teamSeasonA.owner)} and ${escapeHtml(teamSeasonB.owner)}"></div>
         <div class="gauntlet-histogram-foot chart-fallback">
           <span><strong>${escapeHtml(teamSeasonA.owner)}</strong> min ${nfmt(teamSeasonA.min, 1)} · mean ${nfmt(teamSeasonA.mean, 1)} · max ${nfmt(teamSeasonA.max, 1)}</span>
           <span><strong>${escapeHtml(teamSeasonB.owner)}</strong> min ${nfmt(teamSeasonB.min, 1)} · mean ${nfmt(teamSeasonB.mean, 1)} · max ${nfmt(teamSeasonB.max, 1)}</span>

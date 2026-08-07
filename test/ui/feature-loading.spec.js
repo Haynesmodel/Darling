@@ -56,7 +56,7 @@ test('every cold route requests only its feature entry and chart routes share on
     draft: '/?tab=draft',
     gauntlet: '/?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019',
   };
-  const coldRuntimeRoutes = new Set(['current', 'dynasty', 'draft', 'gauntlet']);
+  const coldRuntimeRoutes = new Set(['current', 'dynasty', 'draft']);
   const observedChartRuntimeUrls = new Set();
 
   for (const [id, url] of Object.entries(routes)) {

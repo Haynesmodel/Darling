@@ -46,6 +46,10 @@ export function TrophyPage({ view, owners, onOwnerChange, active, availableSecti
     sub70Games: 'Sub-70 Games',
     saundersPain: 'Saunders Pain',
   };
+  const rankValue = (metric: string, value: number | null | undefined) => {
+    if (!Number.isFinite(value)) return '—';
+    return metric === 'avgFinish' ? Number(value).toFixed(1) : value;
+  };
   return <>
     <div class="trophy-toolbar">
       <TrophyControls owners={owners} selectedOwner={view.owner} onChange={onOwnerChange} />
@@ -56,17 +60,17 @@ export function TrophyPage({ view, owners, onOwnerChange, active, availableSecti
         <div id="trophyShareCard" class="share-card-action-host" data-share-trophy="1" />
       </div>
       <p class="trophy-hero-summary">{view.hero.summary}</p>
-      {view.hero.highlights.length > 0 && <div class="trophy-chip-row">{view.hero.highlights.map(item => <span class="trophy-chip" key={item.label}><span>{item.value} {item.label}</span><strong>{item.rankText}</strong></span>)}</div>}
+      {view.hero.highlights.length > 0 && <div class="trophy-chip-row">{view.hero.highlights.map(item => <span class="trophy-chip" key={item.label}>{item.icon && <img class="trophy-chip-icon" src={item.icon} alt="" aria-hidden="true" />}<span>{item.value} {item.label}</span><strong>{item.rankText}</strong></span>)}</div>}
       <div class="trophy-hero-record">{view.hero.record}</div>
       <div class="trophy-hero-rank">{view.hero.rankContext}</div>
       <div class="trophy-hero-split"><div><strong>Best:</strong> {view.hero.best}</div><div><strong>Worst:</strong> {view.hero.worst}</div></div>
     </section>
     {available('trophySectionNav') && <div id="trophySectionNav" />}
     {available('trophyHardwareDisclosure') && <Disclosure id="trophyHardwareDisclosure" title="Hardware Shelf" open>
-      <div id="trophyHardwareShelf" class="trophy-shelf">{view.hardwareShelf.map(item => <article class={`trophy-hardware-card ${item.tone}`} key={item.label}><div class="trophy-card-top"><div class="trophy-card-title"><div class="trophy-year-chip">{item.label}</div></div><div class="trophy-card-rank">{Number.isFinite(item.rank) ? `#${item.rank}` : '—'}</div></div><div class="trophy-card-value">{item.count}</div><div class="trophy-card-years">{item.years.length ? item.years.join(', ') : '—'}</div></article>)}</div>
+      <div id="trophyHardwareShelf" class="trophy-shelf">{view.hardwareShelf.map(item => <article class={`trophy-hardware-card ${item.tone}`} key={item.label}><div class="trophy-card-top">{item.icon && <img class="trophy-card-art" src={item.icon} alt="" aria-hidden="true" />}<div class="trophy-card-title"><div class="trophy-year-chip">{item.label}</div></div><div class="trophy-card-rank">{Number.isFinite(item.rank) ? `#${item.rank}` : '—'}</div></div><div class="trophy-card-value">{item.count}</div><div class="trophy-card-years">{item.years.length ? item.years.join(', ') : '—'}</div></article>)}</div>
     </Disclosure>}
     {available('trophyRankDisclosure') && <Disclosure id="trophyRankDisclosure" title="League Rank">
-      <div id="trophyRankStrip" class="trophy-rank-strip">{Object.keys(rankLabels).map(metric => { const row = view.leagueRanks.byOwner.get(view.owner)?.[metric]; return <div class="trophy-rank-pill" key={metric}><div class="trophy-rank-pill-label">{rankLabels[metric]}</div><div class="trophy-rank-pill-value">{Number.isFinite(row?.rank) ? `#${row?.rank}` : '—'}</div><div class="trophy-rank-pill-sub">{Number.isFinite(row?.value) ? row?.value : '—'}</div></div>; })}</div>
+      <div id="trophyRankStrip" class="trophy-rank-strip">{Object.keys(rankLabels).map(metric => { const row = view.leagueRanks.byOwner.get(view.owner)?.[metric]; return <div class="trophy-rank-pill" key={metric}><div class="trophy-rank-pill-label">{rankLabels[metric]}</div><div class="trophy-rank-pill-value">{Number.isFinite(row?.rank) ? `#${row?.rank}` : '—'}</div><div class="trophy-rank-pill-sub">{rankValue(metric, row?.value)}</div></div>; })}</div>
     </Disclosure>}
     {available('trophyCareerDisclosure') && <Disclosure id="trophyCareerDisclosure" title="Career Shape">
       <div id="trophyCareerShape" class="trophy-career-shape"><div class="trophy-career-chart chart-shell"><div class="trophy-career-header"><div><div class="trophy-career-title">Season finish trend</div><div class="trophy-career-subtitle">Lower is better. Playoff cutoff is 6th, except 2014 when it was 4th.</div></div><div class="trophy-career-legend"><span><span class="legend-swatch champion" /> Champion</span><span><span class="legend-swatch playoff" /> Playoff finish</span><span><span class="legend-swatch saunders" /> Saunders</span><span><span class="legend-swatch miss" /> Missed playoffs</span></div></div><DeferredChart id="trophyCareerPlot" class="trophy-career-host" name="Career Shape" signature={`${view.owner}|${careerRows.map(row => `${row.season}:${row.finish}`).join(',')}`} request={{ kind: 'trophy-career', data: { rows: careerRows } }} active={active} emptyMessage="No seasons recorded." /><ol class="chart-fallback trophy-career-fallback" aria-label="Season finish values">{careerRows.map(row => <li key={row.season}><span>{row.season}</span><strong>{row.finishLabel}</strong><span>{row.tier === 'champion' ? 'Champion' : row.tier === 'saunders' ? 'Saunders' : row.madePlayoffs ? 'Playoff finish' : 'Missed playoffs'} · {view.careerShape.rows.find(candidate => candidate.season === row.season)?.record || '—'}</span></li>)}</ol></div><div class="trophy-career-summary">{view.careerShape.summary}{careerRows.some(row => row.season === 2014) ? ' 2014 used a top-4 playoff cutoff.' : ''}</div></div>

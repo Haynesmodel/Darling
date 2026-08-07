@@ -78,8 +78,9 @@ test('settled dynamic lookup follows an adapter before its shared chart runtime'
     },
     manifest: {
       'index.html': { file: 'assets/index.js', isEntry: true, dynamicImports: ['src/features/gauntlet.ts'] },
-      'src/features/gauntlet.ts': { file: 'assets/gauntlet.js', isDynamicEntry: true, imports: ['_shared.js', '_chart.js'], dynamicImports: ['src/features/gauntlet-adapter.tsx'] },
-      'src/features/gauntlet-adapter.tsx': { file: 'assets/adapter.js', isDynamicEntry: true, imports: ['_chart.js'] },
+      'src/features/gauntlet.ts': { file: 'assets/gauntlet.js', isDynamicEntry: true, imports: ['_shared.js'], dynamicImports: ['src/features/gauntlet-adapter.tsx'] },
+      'src/features/gauntlet-adapter.tsx': { file: 'assets/adapter.js', isDynamicEntry: true, dynamicImports: ['_deferred.js'] },
+      '_deferred.js': { file: 'assets/deferred.js', dynamicImports: ['_chart.js'] },
       '_shared.js': { file: 'assets/shared.js' },
       '_chart.js': { file: 'assets/chart.js', name: 'chart-runtime' },
     },

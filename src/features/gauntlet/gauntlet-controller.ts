@@ -70,9 +70,11 @@ export function createFeatureController(): DarlingFeatureController {
       ['gauntlet-matchup', 'Matchup', 'gauntletMatchupDisclosure', true, undefined],
       ['gauntlet-distribution', 'Score Distribution', 'gauntletHistogramDisclosure', false, async () => {
         const generation = histogramGeneration;
+        const details = context.document.getElementById('gauntletHistogramDisclosure') as HTMLDetailsElement | null;
         const adapter = await import('./GauntletHistogramMount');
-        if (!active || generation !== histogramGeneration) return;
-        histogramDisposer = adapter.mountGauntletHistogram(context.document.getElementById('gauntletHistogramPlot'), result, a, b, active);
+        const host = context.document.getElementById('gauntletHistogramPlot');
+        if (!active || generation !== histogramGeneration || !details?.open || !details.isConnected || !host?.isConnected) return;
+        histogramDisposer = adapter.mountGauntletHistogram(host, result, a, b, active);
       }],
       ['gauntlet-stats', 'Key Stats', 'gauntletStatsDisclosure', false, undefined],
       ['gauntlet-context', 'Head to Head Context', 'gauntletContextDisclosure', false, undefined],

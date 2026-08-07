@@ -80,7 +80,10 @@
       "gauntlet": 205000
     },
     "route_static_gzip_max_bytes": {
-      "rivalry": 115000
+      "rivalry": 115000,
+      "trophy": 115000,
+      "draft-spot": 115000,
+      "gauntlet": 115000
     }
   }
 }

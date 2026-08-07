@@ -853,6 +853,9 @@ test('gauntlet mobile layout stacks the matchup and keeps the histogram visible'
   const narrative = page.locator('#gauntletNarrative');
 
   await expect(matchup).toBeVisible();
+  await expect(histogram.locator('svg')).toHaveCount(0);
+  await expect(page.locator('#gauntletHistogramPlot')).toHaveAttribute('data-chart-state', 'idle');
+  await page.locator('#gauntlet-section-jump').selectOption('gauntlet-distribution');
   await expect(histogram.locator('svg')).toHaveCount(1);
   await expect(histogram.locator('svg').first()).toBeVisible();
   await expect(narrative).toBeVisible();

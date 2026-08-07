@@ -76,6 +76,7 @@ export function createFeatureController(): DarlingFeatureController {
     },
     deactivate() {
       activeSignal = null;
+      unmountDraftSpot();
     },
     dispose() {
       unmountDraftSpot();

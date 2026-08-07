@@ -1,4 +1,4 @@
-import { histogramBins } from '../../js/gauntlet-simulator.js';
+import { histogramBins } from '../../js/gauntlet-histogram.js';
 import type {
   CurrentOddsMovementChartRow,
   CurrentProjectedStandingsChartRow,

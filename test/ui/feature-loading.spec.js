@@ -328,6 +328,24 @@ test('Gauntlet reports and recovers from a DeferredChart import failure', async 
   expect(attempts).toBeGreaterThanOrEqual(2);
 });
 
+test('Gauntlet ignores a DeferredChart failure after the disclosure closes', async ({ page }) => {
+  test.skip(!preview, 'hashed resource-boundary assertions require the production preview build');
+  const deferredChartPattern = gauntletDeferredChartPattern();
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  await page.route(deferredChartPattern, async route => {
+    await gate;
+    await route.abort('failed');
+  });
+  await page.goto('/?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019');
+  await waitForFeature(page, 'gauntlet');
+  await page.locator('#gauntlet-section-jump').selectOption('gauntlet-distribution');
+  await expect(page.locator('#gauntletHistogramPlot')).toHaveAttribute('data-chart-state', 'loading');
+  await page.locator('#gauntletHistogramDisclosure').evaluate(details => details.removeAttribute('open'));
+  release();
+  await expect(page.locator('#gauntletHistogramPlot')).not.toHaveAttribute('data-chart-state', 'error');
+});
+
 test('Gauntlet histogram adapter handles a missing host and empty payload', async ({ page }) => {
   test.skip(preview, 'the authored adapter module is served only by Vite development mode');
   await page.goto('/');

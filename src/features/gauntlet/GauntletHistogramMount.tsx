@@ -29,7 +29,7 @@ function GauntletHistogram({ result, teamSeasonA, teamSeasonB, active }: {
   useEffect(() => {
     const outer = mountRef.current?.parentElement;
     if (!DeferredChart) {
-      if (outer) outer.dataset.chartState = 'idle';
+      if (outer) outer.dataset.chartState = payload.rows.length ? 'idle' : 'empty';
       return undefined;
     }
     const chartHost = mountRef.current?.querySelector<HTMLElement>('[data-chart-state]');
@@ -40,7 +40,7 @@ function GauntletHistogram({ result, teamSeasonA, teamSeasonB, active }: {
     observer?.observe(chartHost, { attributes: true, attributeFilter: ['data-chart-state'] });
     return () => observer?.disconnect();
   }, [signature, active, DeferredChart]);
-  return <div ref={mountRef} class="gauntlet-histogram-mount">
+  return <div ref={mountRef} class="gauntlet-histogram-mount" data-chart-state={DeferredChart ? undefined : payload.rows.length ? 'idle' : 'empty'}>
     {DeferredChart ? h(DeferredChart, { class: 'gauntlet-histogram-inner', name: 'Score Distribution', signature, request: { kind: 'gauntlet-histogram', data: payload } as unknown as DeferredChartProps['request'], active })
       : <button type="button" class="btn chart-load-button" onClick={loadDeferredChart}>Load Score Distribution chart</button>}
   </div>;

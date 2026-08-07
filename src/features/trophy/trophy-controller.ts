@@ -5,6 +5,7 @@ import type { DarlingFeatureController, FeatureActivation } from '../../app/feat
 import { createSectionDisclosure, type SectionDisclosureController } from '../../app/section-disclosure';
 import type { ShareCardActionController } from '../../share/share-card-actions';
 import { mountTrophyCard } from '../../share/share-card-feature-adapters';
+import { loadChartRuntime } from '../../charting/load-chart-runtime';
 import { TrophyPage } from './TrophyPage';
 import { buildTrophyCaseViewModel } from './trophy-model';
 import { registerTrophyTables } from './trophy-tables';
@@ -99,6 +100,7 @@ export function createFeatureController(): DarlingFeatureController {
     activate(input: FeatureActivation) {
       activeSignal = input.signal;
       if (input.signal.aborted) return;
+      void loadChartRuntime();
       const retained = input.reason === 'tab' && initialized ? selectedOwner : null;
       selectedOwner = input.route.trophyOwner || input.route.team || retained || context.ownerPreference.getSnapshot().owner || owners[0] || '';
       if (!owners.includes(selectedOwner)) selectedOwner = owners[0] || '';

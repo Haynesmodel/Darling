@@ -113,6 +113,23 @@ test('Rivalry stays Plot-free when a far disclosure merely opens and loads once 
   expect(resources.filter(resource => resource.endsWith(chartRuntime))).toHaveLength(1);
 });
 
+test('Gauntlet stays Plot-free when a far disclosure opens below the fold', async ({ page }) => {
+  test.skip(!preview, 'hashed resource-boundary assertions require the production preview build');
+  const resources = recordResources(page);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019');
+  await waitForFeature(page, 'gauntlet');
+  await page.locator('#gauntletHistogramDisclosure').evaluate(details => {
+    details.style.marginTop = '3000px';
+  });
+  await page.locator('#gauntlet-section-jump').selectOption('gauntlet-distribution');
+  await expect(page.getByRole('button', { name: 'Load Score Distribution chart' })).toBeVisible();
+  await expect.poll(() => resources.some(resource => resource.endsWith(chartRuntime))).toBe(false);
+  await page.locator('#gauntletHistogramPlot').scrollIntoViewIfNeeded();
+  await expect.poll(() => resources.filter(resource => resource.endsWith(chartRuntime)).length).toBe(1);
+  await expect(page.locator('#gauntletHistogramPlot')).toHaveAttribute('data-chart-state', 'ready');
+});
+
 test('Command Palette implementation and CSS load only after the first open', async ({ page }) => {
   test.skip(!preview, 'hashed resource-boundary assertions require the production preview build');
   const resources = recordResources(page);

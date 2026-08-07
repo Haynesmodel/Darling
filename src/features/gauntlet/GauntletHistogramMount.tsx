@@ -1,11 +1,15 @@
-import { h, render } from 'preact';
-import { useEffect, useRef } from 'preact/hooks';
-import { DeferredChart } from '../../components/charts/DeferredChart';
+import { h, render, type VNode } from 'preact';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import type { DeferredChartProps } from '../../components/charts/DeferredChart';
 import {
   gauntletHistogramRows,
   type HistogramResultInput,
   type HistogramTeamSeasonInput,
-} from '../../charting/gauntlet-histogram-data';
+} from './gauntlet-histogram-data';
+
+type DeferredChartComponent = (props: DeferredChartProps) => VNode | null;
+
+const CHART_IMPORT_ERROR = 'Score Distribution chart is unavailable. Retry, or reload the page if the browser continues to reuse a failed download.';
 
 function GauntletHistogram({
   result,
@@ -19,6 +23,8 @@ function GauntletHistogram({
   active: boolean;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
+  const [DeferredChart, setDeferredChart] = useState<DeferredChartComponent | null>(null);
+  const [chartImportError, setChartImportError] = useState(false);
   const payload = gauntletHistogramRows(result, teamSeasonA, teamSeasonB);
   const signature = [
     teamSeasonA?.owner || '',
@@ -30,8 +36,24 @@ function GauntletHistogram({
     payload.domain.join(','),
   ].join('|');
 
+  const loadDeferredChart = () => {
+    if (DeferredChart) return;
+    setChartImportError(false);
+    void import('../../components/charts/DeferredChart').then(module => {
+      setDeferredChart(() => module.DeferredChart as DeferredChartComponent);
+    }).catch(() => setChartImportError(true));
+  };
+
+  useEffect(() => {
+    loadDeferredChart();
+  }, []);
+
   useEffect(() => {
     const outer = mountRef.current?.parentElement;
+    if (!DeferredChart) {
+      if (outer) outer.dataset.chartState = chartImportError ? 'error' : 'idle';
+      return undefined;
+    }
     const chartHost = mountRef.current?.querySelector<HTMLElement>('[data-chart-state]');
     if (!outer || !chartHost) return undefined;
     const syncState = () => {
@@ -44,17 +66,21 @@ function GauntletHistogram({
       : null;
     observer?.observe(chartHost, { attributes: true, attributeFilter: ['data-chart-state'] });
     return () => observer?.disconnect();
-  }, [signature, active]);
+  }, [signature, active, DeferredChart, chartImportError]);
 
   return <div ref={mountRef} class="gauntlet-histogram-mount">
-    <DeferredChart
-      class="gauntlet-histogram-inner"
-      name="Score Distribution"
-      signature={signature}
-      request={{ kind: 'gauntlet-histogram', data: payload }}
-      active={active}
-      emptyMessage="No simulation data available."
-    />
+    {DeferredChart
+      ? h(DeferredChart, {
+        class: 'gauntlet-histogram-inner',
+        name: 'Score Distribution',
+        signature,
+        request: { kind: 'gauntlet-histogram', data: payload },
+        active,
+        emptyMessage: 'No simulation data available.',
+      })
+      : chartImportError
+        ? <div class="chart-error" role="status"><span>{CHART_IMPORT_ERROR}</span><button type="button" class="btn" onClick={loadDeferredChart}>Retry Score Distribution chart</button></div>
+        : <button type="button" class="btn chart-load-button" onClick={loadDeferredChart}>Load Score Distribution chart</button>}
   </div>;
 }
 

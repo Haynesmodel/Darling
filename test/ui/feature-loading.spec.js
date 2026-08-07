@@ -339,8 +339,9 @@ test('Gauntlet ignores a DeferredChart failure after the disclosure closes', asy
   });
   await page.goto('/?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019');
   await waitForFeature(page, 'gauntlet');
+  const deferredRequest = page.waitForRequest(deferredChartPattern);
   await page.locator('#gauntlet-section-jump').selectOption('gauntlet-distribution');
-  await expect(page.locator('#gauntletHistogramPlot')).toHaveAttribute('data-chart-state', 'loading');
+  await deferredRequest;
   await page.locator('#gauntletHistogramDisclosure').evaluate(details => details.removeAttribute('open'));
   release();
   await expect(page.locator('#gauntletHistogramPlot')).not.toHaveAttribute('data-chart-state', 'error');

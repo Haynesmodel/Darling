@@ -9,14 +9,7 @@ import {
 
 type DeferredChartComponent = (props: DeferredChartProps) => VNode | null;
 
-const CHART_IMPORT_ERROR = 'Score Distribution chart is unavailable. Retry, or reload the page if the browser continues to reuse a failed download.';
-
-function GauntletHistogram({
-  result,
-  teamSeasonA,
-  teamSeasonB,
-  active,
-}: {
+function GauntletHistogram({ result, teamSeasonA, teamSeasonB, active }: {
   result: HistogramResultInput | null;
   teamSeasonA: HistogramTeamSeasonInput | null;
   teamSeasonB: HistogramTeamSeasonInput | null;
@@ -24,73 +17,36 @@ function GauntletHistogram({
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [DeferredChart, setDeferredChart] = useState<DeferredChartComponent | null>(null);
-  const [chartImportError, setChartImportError] = useState(false);
   const payload = gauntletHistogramRows(result, teamSeasonA, teamSeasonB);
-  const signature = [
-    teamSeasonA?.owner || '',
-    teamSeasonA?.season || '',
-    teamSeasonB?.owner || '',
-    teamSeasonB?.season || '',
-    payload.rows.length,
-    payload.maxCount,
-    payload.domain.join(','),
-  ].join('|');
-
+  const signature = [teamSeasonA?.owner || '', teamSeasonA?.season || '', teamSeasonB?.owner || '', teamSeasonB?.season || '', payload.rows.length, payload.maxCount, payload.domain.join(',')].join('|');
   const loadDeferredChart = () => {
     if (DeferredChart) return;
-    setChartImportError(false);
     void import('../../components/charts/DeferredChart').then(module => {
       setDeferredChart(() => module.DeferredChart as DeferredChartComponent);
-    }).catch(() => setChartImportError(true));
+    }).catch(() => undefined);
   };
-
-  useEffect(() => {
-    loadDeferredChart();
-  }, []);
-
+  useEffect(() => { loadDeferredChart(); }, []);
   useEffect(() => {
     const outer = mountRef.current?.parentElement;
     if (!DeferredChart) {
-      if (outer) outer.dataset.chartState = chartImportError ? 'error' : 'idle';
+      if (outer) outer.dataset.chartState = 'idle';
       return undefined;
     }
     const chartHost = mountRef.current?.querySelector<HTMLElement>('[data-chart-state]');
     if (!outer || !chartHost) return undefined;
-    const syncState = () => {
-      const state = chartHost.dataset.chartState;
-      if (state) outer.dataset.chartState = state;
-    };
+    const syncState = () => { const state = chartHost.dataset.chartState; if (state) outer.dataset.chartState = state; };
     syncState();
-    const observer = typeof MutationObserver === 'function'
-      ? new MutationObserver(syncState)
-      : null;
+    const observer = typeof MutationObserver === 'function' ? new MutationObserver(syncState) : null;
     observer?.observe(chartHost, { attributes: true, attributeFilter: ['data-chart-state'] });
     return () => observer?.disconnect();
-  }, [signature, active, DeferredChart, chartImportError]);
-
+  }, [signature, active, DeferredChart]);
   return <div ref={mountRef} class="gauntlet-histogram-mount">
-    {DeferredChart
-      ? h(DeferredChart, {
-        class: 'gauntlet-histogram-inner',
-        name: 'Score Distribution',
-        signature,
-        request: { kind: 'gauntlet-histogram', data: payload },
-        active,
-        emptyMessage: 'No simulation data available.',
-      })
-      : chartImportError
-        ? <div class="chart-error" role="status"><span>{CHART_IMPORT_ERROR}</span><button type="button" class="btn" onClick={loadDeferredChart}>Retry Score Distribution chart</button></div>
-        : <button type="button" class="btn chart-load-button" onClick={loadDeferredChart}>Load Score Distribution chart</button>}
+    {DeferredChart ? h(DeferredChart, { class: 'gauntlet-histogram-inner', name: 'Score Distribution', signature, request: { kind: 'gauntlet-histogram', data: payload } as unknown as DeferredChartProps['request'], active, emptyMessage: 'No simulation data available.' })
+      : <button type="button" class="btn chart-load-button" onClick={loadDeferredChart}>Load Score Distribution chart</button>}
   </div>;
 }
 
-export function mountGauntletHistogram(
-  host: HTMLElement | null,
-  result: HistogramResultInput | null,
-  teamSeasonA: HistogramTeamSeasonInput | null,
-  teamSeasonB: HistogramTeamSeasonInput | null,
-  active: boolean,
-): () => void {
+export function mountGauntletHistogram(host: HTMLElement | null, result: HistogramResultInput | null, teamSeasonA: HistogramTeamSeasonInput | null, teamSeasonB: HistogramTeamSeasonInput | null, active: boolean): () => void {
   if (!host) return () => undefined;
   render(h(GauntletHistogram, { result, teamSeasonA, teamSeasonB, active }), host);
   return () => render(null, host);

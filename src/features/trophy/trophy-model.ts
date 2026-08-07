@@ -149,80 +149,13 @@ function svgDataUri(svg: string): string {
 }
 
 function hardwareArt(kind: string): string {
-  const icons: Record<string, string> = {
-    trophy: svgDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-hidden="true">
-        <defs>
-          <linearGradient id="g" x1="0" x2="1">
-            <stop offset="0%" stop-color="#fde68a"/>
-            <stop offset="100%" stop-color="#f59e0b"/>
-          </linearGradient>
-        </defs>
-        <rect width="64" height="64" rx="14" fill="#fff7ed"/>
-        <path d="M22 12h20v6h8c0 9-5 16-13 18v6h6v6H21v-6h6v-6c-8-2-13-9-13-18h8v-6zm-2 10c0 5 3 9 8 11v-11h-8zm24 0v11c5-2 8-6 8-11h-8z" fill="url(#g)"/>
-      </svg>
-    `),
-    medal: svgDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-hidden="true">
-        <rect width="64" height="64" rx="14" fill="#eff6ff"/>
-        <path d="M22 8h8l6 12-8 8-6-20zm20 0h-8l-6 12 8 8 6-20z" fill="#2563eb"/>
-        <circle cx="32" cy="36" r="16" fill="#bfdbfe" stroke="#2563eb" stroke-width="4"/>
-        <path d="M32 24l3.5 7.1 7.8 1.1-5.6 5.5 1.3 7.7L32 41.8 25 45.4l1.3-7.7-5.6-5.5 7.8-1.1z" fill="#1d4ed8"/>
-      </svg>
-    `),
-    bagel: svgDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-hidden="true">
-        <rect width="64" height="64" rx="14" fill="#fff7ed"/>
-        <path d="M32 14c10 0 18 8 18 18s-8 18-18 18-18-8-18-18 8-18 18-18zm0 8a10 10 0 100 20 10 10 0 000-20z" fill="#c08457"/>
-        <path d="M21 32c0-6 4-11 11-11 6 0 11 5 11 11s-5 11-11 11c-7 0-11-5-11-11z" fill="#f7cfa7"/>
-        <circle cx="32" cy="32" r="4" fill="#f8fafc"/>
-      </svg>
-    `),
-    warning: svgDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-hidden="true">
-        <rect width="64" height="64" rx="14" fill="#fef2f2"/>
-        <path d="M32 10 56 52H8L32 10z" fill="#ef4444"/>
-        <rect x="29" y="24" width="6" height="16" rx="3" fill="#fff"/>
-        <circle cx="32" cy="46" r="3" fill="#fff"/>
-      </svg>
-    `),
-    football: svgDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-hidden="true">
-        <rect width="64" height="64" rx="14" fill="#f1f5f9"/>
-        <ellipse cx="32" cy="32" rx="18" ry="12" fill="#6b3f1d"/>
-        <path d="M22 32h20M30 26v12M34 26v12" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-      </svg>
-    `),
-    beachChair: svgDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-hidden="true">
-        <rect width="64" height="64" rx="14" fill="#f0f9ff"/>
-        <circle cx="48" cy="18" r="7" fill="#fbbf24"/>
-        <path d="M15 45 31 22l6 3-10 20z" fill="#fb7185"/>
-        <path d="M26 26h14l5 18H20z" fill="#93c5fd"/>
-        <path d="M18 50h28M24 33l9 5M29 26l5 7" stroke="#1d4ed8" stroke-width="3" stroke-linecap="round"/>
-      </svg>
-    `),
-    joker: svgDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-hidden="true">
-        <rect width="64" height="64" rx="14" fill="#eef2ff"/>
-        <rect x="20" y="13" width="22" height="32" rx="5" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
-        <rect x="28" y="9" width="22" height="34" rx="5" fill="#fff" stroke="#0f172a" stroke-width="2.5"/>
-        <path d="M36 16c3-4 7-4 10 0 3 4 0 8-3 10 2 2 3 5 1 8-2 3-5 4-8 3" fill="none" stroke="#2563eb" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M32 42c4-7 11-10 18-9" fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/>
-        <path d="M42 18l1.8 3.8 4.2.6-3 3 0.7 4.2-3.7-2-3.7 2 0.7-4.2-3-3 4.2-.6z" fill="#ef4444"/>
-        <path d="M35 28l2.6 2.1-1.1 3.1h-3l-1.1-3.1z" fill="#1d4ed8"/>
-      </svg>
-    `),
-    turd: svgDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-hidden="true">
-        <rect width="64" height="64" rx="14" fill="#fff7ed"/>
-        <path d="M20 46c-4-10 4-17 12-17 2-8 16-10 20 0 4 3 6 7 6 11 0 7-6 14-18 14H28c-4 0-7-3-8-8z" fill="#8b5a2b"/>
-        <path d="M24 38c4-4 10-4 14 0 4-4 8-4 12 0" fill="none" stroke="#d6a066" stroke-width="4" stroke-linecap="round"/>
-        <circle cx="44" cy="27" r="4" fill="#c08457"/>
-      </svg>
-    `),
+  const glyphs: Record<string, string> = {
+    trophy: '🏆', medal: '🏅', bagel: '🥯', warning: '⚠️', football: '🏈',
+    beachChair: '🏖️', joker: '🃏', turd: '💩',
   };
-  return icons[kind] || '';
+  const glyph = glyphs[kind];
+  if (!glyph) return '';
+  return svgDataUri(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#fff7ed"/><text x="32" y="45" text-anchor="middle" font-size="36">${glyph}</text></svg>`);
 }
 
 function ownerMetricRow(leagueRanks: AnyRecord, owner: string, metricKey: string): AnyRecord | null {

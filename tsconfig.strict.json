@@ -11,7 +11,9 @@
     "src/components/charts/**/*.ts",
     "src/components/charts/**/*.tsx",
     "src/features/rivalry/**/*.ts",
-    "src/features/rivalry/**/*.tsx"
+    "src/features/rivalry/**/*.tsx",
+    "src/features/trophy/**/*.ts",
+    "src/features/trophy/**/*.tsx"
   ],
   "exclude": ["node_modules", "dist", "public"]
 }

@@ -172,7 +172,6 @@ export default function DraftSpotPage({
 }: Props) {
   const initial = useMemo(() => buildDraftSpotModel(asset, requestedState), [asset, requestedState]);
   const [state, setState] = useState(initial.state);
-  const [visibleCharts, setVisibleCharts] = useState<Set<string>>(() => new Set());
   const model = useMemo(() => buildDraftSpotModel(asset, state, state), [asset, state]);
   const disclosure = useRef<SectionDisclosureController | null>(null);
   const disclosureNav = useRef<HTMLDivElement>(null);
@@ -231,13 +230,9 @@ export default function DraftSpotPage({
       defaults.add('draft-zones');
       defaults.add('draft-selection');
     }
-    setVisibleCharts(new Set());
-    const revealChart = (id: string) => {
-      setVisibleCharts(current => current.has(id) ? current : new Set([...current, id]));
-    };
     const definitions = [
-      { id: 'draft-picks', label: 'Pick Board', details: pickDisclosure.current, available: model.pickSummary.length > 0, onVisible: () => revealChart('draft-picks') },
-      { id: 'draft-zones', label: 'Zone Comparison', details: zoneDisclosure.current, available: model.zoneSummary.length > 0, onVisible: () => revealChart('draft-zones') },
+      { id: 'draft-picks', label: 'Pick Board', details: pickDisclosure.current, available: model.pickSummary.length > 0 },
+      { id: 'draft-zones', label: 'Zone Comparison', details: zoneDisclosure.current, available: model.zoneSummary.length > 0 },
       { id: 'draft-owner-recommendations', label: 'Owner Recommendations', details: recommendationsDisclosure.current, available: model.ownerRecommendations.length > 0 || Boolean(model.ownerProfile) },
       { id: 'draft-owner-timeline', label: 'Owner Timeline', details: timelineDisclosure.current, available: model.baseRows.length > 0 },
       { id: 'draft-selection', label: 'Selection Detail', details: selectionDisclosure.current, available: Boolean(model.selectedPickSummary || model.selectedZoneSummary) },
@@ -291,14 +286,14 @@ export default function DraftSpotPage({
       <details ref={pickDisclosure} id="draftPickDisclosure" class="card feature-disclosure">
         <summary>Pick Board</summary>
         <section class="feature-section-content" aria-label="Draft pick comparison">
-          <DraftPickBoard model={model} onChange={update} chartActive={visibleCharts.has('draft-picks')} />
+          <DraftPickBoard model={model} onChange={update} />
         </section>
       </details>
       <details ref={zoneDisclosure} id="draftZoneDisclosure" class="card feature-disclosure">
         <summary>Zone Comparison</summary>
         <section class="feature-section-content" aria-labelledby="draftZoneHeading">
           <h3 id="draftZoneHeading" class="visually-hidden">Zone Comparison</h3>
-          <DraftZoneComparison model={model} onChange={update} chartActive={visibleCharts.has('draft-zones')} />
+          <DraftZoneComparison model={model} onChange={update} />
         </section>
       </details>
       <details ref={recommendationsDisclosure} id="draftOwnerRecommendationsDisclosure" class="card feature-disclosure">

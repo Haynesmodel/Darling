@@ -1,4 +1,5 @@
 import './gauntlet.entry.css';
+import { mountGauntletHistogram } from './GauntletHistogramMount';
 import { teamSeasonId } from '../../../js/gauntlet-data.js';
 import { headToHeadContext } from '../../../js/shared/head-to-head-context.js';
 import { buildGauntletControls, resolveGauntletInitialState } from '../../../js/gauntlet-controls.js';
@@ -13,6 +14,9 @@ export function createFeatureController(): DarlingFeatureController {
   let state: any = null;
   let active = false;
   let disclosure: SectionDisclosureController | null = null;
+  let histogramDisposer: (() => void) | null = null;
+  let histogramGeneration = 0;
+
 
   const copyText = (a: any, b: any, result: any, h2h: any) => {
     if (!a || !b || !result) return '';
@@ -33,6 +37,9 @@ export function createFeatureController(): DarlingFeatureController {
 
   const draw = () => {
     if (!active || !state) return;
+    histogramDisposer?.();
+    histogramDisposer = null;
+    histogramGeneration += 1;
     const seasons = context.selectors.teamSeasons(state.selectedIncludePostseason) as any[];
     const a = seasons.find(item => item.id === teamSeasonId(state.selectedOwnerA, state.selectedSeasonA)) || null;
     const b = seasons.find(item => item.id === teamSeasonId(state.selectedOwnerB, state.selectedSeasonB)) || null;
@@ -62,7 +69,9 @@ export function createFeatureController(): DarlingFeatureController {
     renderGauntlet(rendered, { doc: context.document, renderHistogramChart: false });
     const sections = [
       ['gauntlet-matchup', 'Matchup', 'gauntletMatchupDisclosure', true, undefined],
-      ['gauntlet-distribution', 'Score Distribution', 'gauntletHistogramDisclosure', false, () => renderGauntlet(rendered, { doc: context.document, sections: ['histogram'] })],
+      ['gauntlet-distribution', 'Score Distribution', 'gauntletHistogramDisclosure', false, () => {
+        histogramDisposer = mountGauntletHistogram(context.document.getElementById('gauntletHistogramPlot'), result, a, b, active);
+      }],
       ['gauntlet-stats', 'Key Stats', 'gauntletStatsDisclosure', false, undefined],
       ['gauntlet-context', 'Head to Head Context', 'gauntletContextDisclosure', false, undefined],
       ['gauntlet-copy', 'Narrative and Copy', 'gauntletCopyDisclosure', true, undefined],
@@ -135,8 +144,16 @@ export function createFeatureController(): DarlingFeatureController {
       state = buildGauntletControls({ doc: context.document, teamSeasons: context.selectors.teamSeasons() as any[], selectedState: state, onChange: change });
       draw();
     },
-    deactivate() { active = false; },
+    deactivate() {
+      active = false;
+      histogramDisposer?.();
+      histogramDisposer = null;
+      histogramGeneration += 1;
+    },
     dispose() {
+      histogramDisposer?.();
+      histogramDisposer = null;
+      histogramGeneration += 1;
       disclosure?.dispose();
       disclosure = null;
     },

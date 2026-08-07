@@ -294,42 +294,14 @@
 
     <section id="page-trophy" class="page" aria-labelledby="page-trophy-title" hidden>
       <h2 id="page-trophy-title" class="visually-hidden">Trophy Case</h2>
-      <div class="trophy-toolbar">
-        <select id="trophyOwnerSelect" aria-label="Trophy case owner"></select>
+      <div id="trophyRoot">
+        <div id="trophySectionNav"></div>
+        <details id="trophyHardwareDisclosure" class="card feature-disclosure"><summary>Hardware Shelf</summary><section class="feature-section-content"></section></details>
+        <details id="trophyRankDisclosure" class="card feature-disclosure"><summary>League Rank</summary><section class="feature-section-content"></section></details>
+        <details id="trophyCareerDisclosure" class="card feature-disclosure"><summary>Career Shape</summary><section class="feature-section-content"></section></details>
+        <details id="trophyMomentsDisclosure" class="card feature-disclosure"><summary>Highlights and Low Points</summary><section class="feature-section-content"></section></details>
+        <details id="trophyLedgerDisclosure" class="card feature-disclosure"><summary>Season Ledger</summary><section class="feature-section-content"></section></details>
       </div>
-
-      <section id="trophyHero" class="trophy-hero"></section>
-
-      <div id="trophySectionNav"></div>
-      <details id="trophyHardwareDisclosure" class="card feature-disclosure">
-        <summary>Hardware Shelf</summary>
-        <section class="feature-section-content"><div id="trophyHardwareShelf" class="trophy-shelf"></div></section>
-      </details>
-      <details id="trophyRankDisclosure" class="card feature-disclosure">
-        <summary>League Rank</summary>
-        <section class="feature-section-content"><div id="trophyRankStrip" class="trophy-rank-strip"></div></section>
-      </details>
-      <details id="trophyCareerDisclosure" class="card feature-disclosure">
-        <summary>Career Shape</summary>
-        <section class="feature-section-content"><div id="trophyCareerShape" class="trophy-career-shape"></div></section>
-      </details>
-      <details id="trophyMomentsDisclosure" class="card feature-disclosure">
-        <summary>Highlights and Low Points</summary>
-        <section class="feature-section-content trophy-split">
-          <div>
-            <h3>Highlights</h3>
-            <div id="trophyAchievementList"></div>
-          </div>
-          <div>
-            <h3>Low Points</h3>
-            <div id="trophyScarList"></div>
-          </div>
-        </section>
-      </details>
-      <details id="trophyLedgerDisclosure" class="card feature-disclosure">
-        <summary>Season Ledger</summary>
-        <section class="feature-section-content"><div id="trophySeasonTableRoot" class="trophy-ledger"></div></section>
-      </details>
     </section>
 
     <section id="page-dynasty" class="page" aria-labelledby="page-dynasty-title" hidden>

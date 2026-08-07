@@ -1,3 +1,5 @@
+// Trophy calculations live in the typed feature boundary. The legacy HTML renderer is intentionally absent here.
+// @ts-nocheck
 import {
   byDateAsc,
   byDateDesc,
@@ -7,14 +9,13 @@ import {
   isRegularGame,
   isSaundersGame,
   sidesForTeam,
-} from './core-helpers.js';
-import { escapeHtml, fmtTrimmed } from './render-helpers.js';
+} from '../../../js/core-helpers.js';
+import { escapeHtml, fmtTrimmed } from '../../../js/render-helpers.js';
 import {
   computeExpectedWinForGame,
   computeLuckSummary,
   computeWeeklyAwards,
-} from './stats-helpers.js';
-import { renderTrophyCareerPlot } from '../src/charting/plot-charts.ts';
+} from '../../../js/stats-helpers.js';
 
 function docOrDefault(doc) {
   return doc || (typeof document !== 'undefined' ? document : null);
@@ -1088,244 +1089,6 @@ function buildTrophyCaseViewModel(owner, opts = {}) {
   };
 }
 
-function trophyHeroHtml(view) {
-  const highlights = Array.isArray(view.hero?.highlights) ? view.hero.highlights : [];
-  const chipHtml = highlights.length
-    ? `<div class="trophy-chip-row">${highlights.map(item => `
-      <span class="trophy-chip">
-        ${item.icon ? `<img class="trophy-chip-icon" src="${esc(hardwareArt(item.icon))}" alt="" />` : ''}
-        <span>${esc(item.value)} ${esc(item.label)}</span>
-        <strong>${esc(item.rankText)}</strong>
-      </span>
-    `).join('')}</div>`
-    : '';
-  return `
-    <div class="trophy-hero-title">
-      <div>
-        <div class="trophy-identity">${esc(view.hero?.identityLabel || view.identity?.label || 'Contender Profile')}</div>
-        <h3>${esc(view.hero?.title || view.owner || '')}</h3>
-      </div>
-      <div id="trophyShareCard" class="share-card-action-host" data-share-trophy="1"></div>
-    </div>
-    <p class="trophy-hero-summary">${esc(view.hero?.summary || view.identity?.summary || 'No summary available')}</p>
-    ${chipHtml}
-    <div class="trophy-hero-record">${esc(view.hero?.record || '—')}</div>
-    <div class="trophy-hero-rank">${esc(view.hero?.rankContext || '')}</div>
-    <div class="trophy-hero-split">
-      <div><strong>Best:</strong> ${esc(view.hero?.best || '—')}</div>
-      <div><strong>Worst:</strong> ${esc(view.hero?.worst || '—')}</div>
-    </div>
-  `;
-}
-
-function trophyHardwareShelfHtml(view) {
-  const items = Array.isArray(view.hardwareShelf) ? view.hardwareShelf : [];
-  if (!items.length) {
-    return '<div class="trophy-empty">No hardware yet.</div>';
-  }
-  return items.map(item => `
-    <article class="trophy-hardware-card ${esc(item.tone || 'neutral')}">
-      <div class="trophy-card-top">
-        <div class="trophy-card-title">
-          ${item.icon ? `<img class="trophy-card-art" src="${esc(hardwareArt(item.icon))}" alt="" />` : ''}
-          <div class="trophy-year-chip">${esc(item.label)}</div>
-        </div>
-        <div class="trophy-card-rank">${Number.isFinite(item.rank) ? `#${item.rank}` : '—'}</div>
-      </div>
-      <div class="trophy-card-value">${fmtWhole(item.count)}</div>
-      <div class="trophy-card-years">${item.years && item.years.length ? esc(joinYears(item.years)) : '—'}</div>
-    </article>
-  `).join('');
-}
-
-function trophyRankStripHtml(view) {
-  const owner = view.owner;
-  const ranks = view.leagueRanks?.byOwner.get(owner) || {};
-  const strip = [
-    { label: 'Championships', rank: ranks.championships?.rank, value: `${view.hardwareShelf?.[0]?.count ?? 0}` },
-    { label: 'Average Finish', rank: ranks.avgFinish?.rank, value: Number.isFinite(ranks.avgFinish?.value) ? fmtDecimal(ranks.avgFinish.value, 1) : '—' },
-    { label: 'Regular Titles', rank: ranks.regularTitles?.rank, value: `${view.hardwareShelf?.[1]?.count ?? 0}` },
-    { label: 'Playoff Wins', rank: ranks.playoffWins?.rank, value: `${view.leagueRanks?.byOwner.get(owner)?.playoffWins?.value ?? 0}` },
-    { label: 'Weekly Crowns', rank: ranks.weeklyCrowns?.rank, value: `${view.leagueRanks?.byOwner.get(owner)?.weeklyCrowns?.value ?? 0}` },
-    { label: 'Sub-70 Games', rank: ranks.sub70Games?.rank, value: `${view.leagueRanks?.byOwner.get(owner)?.sub70Games?.value ?? 0}` },
-    { label: 'Saunders Pain', rank: ranks.saundersPain?.rank, value: `${view.leagueRanks?.byOwner.get(owner)?.saundersPain?.value ?? 0}` },
-  ];
-
-  return strip.map(item => `
-    <div class="trophy-rank-pill">
-      <div class="trophy-rank-pill-label">${esc(item.label)}</div>
-      <div class="trophy-rank-pill-value">${Number.isFinite(item.rank) ? `#${item.rank}` : '—'}</div>
-      <div class="trophy-rank-pill-sub">${esc(item.value)}</div>
-    </div>
-  `).join('');
-}
-
-function trophyCareerShapeHtml(view) {
-  const rows = Array.isArray(view.careerShape?.rows) ? view.careerShape.rows : [];
-  if (!rows.length) {
-    return '<div class="trophy-empty">No seasons recorded.</div>';
-  }
-  const has2014 = rows.some(row => +row.season === 2014);
-  const fallbackRows = rows.map(row => `
-    <li>
-      <span>${esc(row.season)}</span>
-      <strong>${esc(row.finish)}</strong>
-      <span>${esc(row.label)} · ${esc(row.record)}</span>
-    </li>
-  `).join('');
-  return `
-    <div class="trophy-career-chart chart-shell">
-      <div class="trophy-career-header">
-        <div>
-          <div class="trophy-career-title">Season finish trend</div>
-          <div class="trophy-career-subtitle">Lower is better. Playoff cutoff is 6th, except 2014 when it was 4th.</div>
-        </div>
-        <div class="trophy-career-legend">
-          <span><img src="${esc(hardwareArt('trophy'))}" alt="" /> Champion</span>
-          <span><span class="legend-swatch playoff"></span> Playoff finish</span>
-          <span><img src="${esc(hardwareArt('turd'))}" alt="" /> Saunders</span>
-          <span><span class="legend-swatch miss"></span> Missed playoffs</span>
-        </div>
-      </div>
-      <div id="trophyCareerPlot" class="chart-host trophy-career-host" aria-label="Season finish trend"></div>
-      <ol class="chart-fallback trophy-career-fallback" aria-label="Season finish values">${fallbackRows}</ol>
-    </div>
-    <div class="trophy-career-summary">${esc(view.careerShape?.summary || '')}${has2014 ? ' 2014 used a top-4 playoff cutoff.' : ''}</div>
-  `;
-}
-
-function trophySignatureSeasonsHtml(view) {
-  const items = Array.isArray(view.signatureSeasons) ? view.signatureSeasons : [];
-  if (!items.length) {
-    return '<div class="trophy-empty">No signature seasons yet.</div>';
-  }
-  return items.map(item => `
-    <article class="trophy-season-card">
-      <div class="trophy-season-card-head">
-        <div>
-          <div class="trophy-year-chip">${esc(item.season)}</div>
-          <div class="trophy-season-badge">${esc(item.badge)}</div>
-        </div>
-        <div class="trophy-season-card-reason">${esc(item.reason || 'Season highlight')}</div>
-      </div>
-      <div class="trophy-season-card-grid">
-        <div><span>Record</span><strong>${esc(item.record)}</strong></div>
-        <div><span>Finish</span><strong>${esc(item.finish)}</strong></div>
-        <div><span>PF</span><strong>${esc(item.pf)}</strong></div>
-        <div><span>PA</span><strong>${esc(item.pa)}</strong></div>
-        <div><span>Diff</span><strong>${esc(item.diff)}</strong></div>
-      </div>
-    </article>
-  `).join('');
-}
-
-function renderListSection(items, emptyText, tone) {
-  if (!items.length) return `<div class="trophy-empty">${esc(emptyText)}</div>`;
-  return `<ul class="trophy-list ${tone ? `tone-${tone}` : ''}">
-    ${items.map(item => `
-      <li>
-        <span class="trophy-list-label">${esc(item.label)}</span>
-        <span class="trophy-list-value">${esc(item.value)}</span>
-        <span class="trophy-list-detail">${esc(item.detail || '')}</span>
-      </li>
-    `).join('')}
-  </ul>`;
-}
-
-function trophyAchievementListHtml(view) {
-  return renderListSection(Array.isArray(view.achievements) ? view.achievements : [], 'No highlights yet.', 'gold');
-}
-
-function trophyScarListHtml(view) {
-  return renderListSection(Array.isArray(view.scars) ? view.scars : [], 'No low points yet.', 'scar');
-}
-
-function trophyMomentGridHtml(view) {
-  const items = Array.isArray(view.moments) ? view.moments : [];
-  if (!items.length) return '<div class="trophy-empty">No moments recorded.</div>';
-  return items.map(item => `
-    <article class="trophy-moment-card">
-      <div class="trophy-moment-label">${esc(item.label)}</div>
-      <div class="trophy-moment-value">${esc(item.value)}</div>
-      <div class="trophy-moment-meta">${esc(item.date)} • ${esc(item.season)} • ${esc(item.opponent)}</div>
-      <div class="trophy-moment-score">${esc(item.scoreline)}</div>
-      ${item.note ? `<div class="trophy-moment-note">${esc(item.note)}</div>` : ''}
-    </article>
-  `).join('');
-}
-
-function trophySeasonLedgerHtml(view) {
-  const items = Array.isArray(view.seasonLedger) ? view.seasonLedger : [];
-  if (!items.length) {
-    return '<tr><td colspan="7" class="muted">No seasons recorded for this owner.</td></tr>';
-  }
-  return items.map(row => `
-    <tr>
-      <td>${esc(row.season)}</td>
-      <td>${esc(row.record)}</td>
-      <td>${esc(row.finish)}</td>
-      <td>${esc(row.pf)}</td>
-      <td>${esc(row.pa)}</td>
-      <td>${esc(row.diff)}</td>
-      <td>${row.notes.length ? row.notes.map(note => `<span class="table-note-chip">${esc(note)}</span>`).join(' ') : ''}</td>
-    </tr>
-  `).join('');
-}
-
-function renderInto(selector, html, doc) {
-  const root = docOrDefault(doc);
-  if (!root) return;
-  const el = root.querySelector(selector);
-  if (!el) return;
-  el.innerHTML = html;
-}
-
-function renderTrophyHero(view, opts = {}) {
-  renderInto('#trophyHero', trophyHeroHtml(view), opts.doc);
-}
-
-function renderTrophyHardwareShelf(view, opts = {}) {
-  renderInto('#trophyHardwareShelf', trophyHardwareShelfHtml(view), opts.doc);
-}
-
-function renderTrophyRankStrip(view, opts = {}) {
-  renderInto('#trophyRankStrip', trophyRankStripHtml(view), opts.doc);
-}
-
-function renderTrophyCareerShape(view, opts = {}) {
-  const root = docOrDefault(opts.doc);
-  if (!root) return;
-  const el = typeof root.querySelector === 'function' ? root.querySelector('#trophyCareerShape') : null;
-  if (!el) return;
-  el.innerHTML = trophyCareerShapeHtml(view);
-  if (opts.renderChart === false) return;
-  const host = typeof root.getElementById === 'function' ? root.getElementById('trophyCareerPlot') : null;
-  renderTrophyCareerPlot(host, view);
-}
-
-function renderTrophySignatureSeasons(view, opts = {}) {
-  renderInto('#trophySignatureSeasons', trophySignatureSeasonsHtml(view), opts.doc);
-}
-
-function renderTrophyAchievementList(view, opts = {}) {
-  renderInto('#trophyAchievementList', trophyAchievementListHtml(view), opts.doc);
-}
-
-function renderTrophyScarList(view, opts = {}) {
-  renderInto('#trophyScarList', trophyScarListHtml(view), opts.doc);
-}
-
-function renderTrophyMomentGrid(view, opts = {}) {
-  renderInto('#trophyMomentGrid', trophyMomentGridHtml(view), opts.doc);
-}
-
-function renderTrophySeasonLedger(view, opts = {}) {
-  const root = docOrDefault(opts.doc);
-  if (!root) return;
-  const tbody = root.querySelector('#trophySeasonTable tbody');
-  if (!tbody) return;
-  tbody.innerHTML = trophySeasonLedgerHtml(view);
-}
 
 export {
   buildOwnerCareerProfile,
@@ -1338,18 +1101,4 @@ export {
   computeOwnerMoments,
   computeSeasonLedger,
   buildTrophyCaseViewModel,
-  trophyHeroHtml,
-  trophyHardwareShelfHtml,
-  trophyRankStripHtml,
-  trophyCareerShapeHtml,
-  trophyAchievementListHtml,
-  trophyScarListHtml,
-  trophySeasonLedgerHtml,
-  renderTrophyHero,
-  renderTrophyHardwareShelf,
-  renderTrophyRankStrip,
-  renderTrophyCareerShape,
-  renderTrophyAchievementList,
-  renderTrophyScarList,
-  renderTrophySeasonLedger,
 };

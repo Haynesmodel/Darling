@@ -1,8 +1,8 @@
-import { useEffect, useRef } from 'preact/hooks';
+import { useRef } from 'preact/hooks';
+import { DeferredChart } from '../../components/charts/DeferredChart';
 import { DRAFT_METRICS, draftMetricValue, draftPositionLabel } from './draft-spot-model';
 import { draftSummaryContext, formatMetric, formatNumber, formatPercent } from './draft-spot-format';
 import type { DraftSpotState, DraftSpotViewModel, DraftSummary } from './draft-spot-types';
-import { renderDraftChartError } from './draft-chart-error';
 
 function chartRows(model: DraftSpotViewModel) {
   return model.pickSummary.map(summary => ({
@@ -10,41 +10,6 @@ function chartRows(model: DraftSpotViewModel) {
     value: draftMetricValue(summary, model.state.metric),
     title: `${draftPositionLabel(summary.draft_pick, model.state.normalize)}: ${formatMetric(draftMetricValue(summary, model.state.metric), model.state.metric)}, n=${summary.n}`,
   }));
-}
-
-function usePickChart(model: DraftSpotViewModel, host: { current: HTMLDivElement | null }, enabled: boolean) {
-  useEffect(() => {
-    if (!enabled) {
-      host.current?.replaceChildren();
-      if (host.current) delete host.current.dataset.chartState;
-      return;
-    }
-    let active = true;
-    void import('../../../js/charting/vendor/charting-vendor.js').then(({ plot, barY }) => {
-      if (!active || !host.current) return;
-      const rows = chartRows(model);
-      const svg = plot({
-        height: 240,
-        marginLeft: 48,
-        x: { label: model.state.normalize === 'percentile' ? 'Normalized draft slot (12-team scale)' : 'Draft pick' },
-        y: { label: DRAFT_METRICS[model.state.metric].label },
-        marks: [
-          barY(rows, { x: 'pick', y: 'value', fill: 'var(--accent-primary)', title: 'title' }),
-        ],
-      });
-      svg.setAttribute('aria-label', `${model.state.normalize === 'percentile' ? 'Normalized draft slot' : 'Draft pick'} comparison by ${DRAFT_METRICS[model.state.metric].label}`);
-      svg.setAttribute('role', 'img');
-      host.current.replaceChildren(svg);
-      host.current.dataset.chartState = 'ready';
-    }).catch(error => {
-      if (active && host.current) renderDraftChartError(host.current, error);
-    });
-    return () => {
-      active = false;
-      host.current?.replaceChildren();
-      if (host.current) delete host.current.dataset.chartState;
-    };
-  }, [enabled, model.state.metric, model.state.normalize, model.pickSummary]);
 }
 
 function nearestSpatialButton(
@@ -71,13 +36,11 @@ function nearestSpatialButton(
 interface Props {
   model: DraftSpotViewModel;
   onChange: (state: Partial<DraftSpotState>) => void;
-  chartActive: boolean;
 }
 
-export default function DraftPickBoard({ model, onChange, chartActive }: Props) {
-  const chartHost = useRef<HTMLDivElement>(null);
+export default function DraftPickBoard({ model, onChange }: Props) {
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  usePickChart(model, chartHost, chartActive);
+  const rows = chartRows(model).map(row => ({ label: row.pick, value: row.value, title: row.title }));
   const summaryByPick = new Map(model.pickSummary.map(summary => [summary.draft_pick, summary]));
   const maxPick = Math.max(12, ...model.picks);
   const availableButtons = () => buttonRefs.current.filter(
@@ -114,7 +77,17 @@ export default function DraftPickBoard({ model, onChange, chartActive }: Props) 
         <h3>Pick Board</h3>
         <div class="muted">{DRAFT_METRICS[model.state.metric].label} with visible sample sizes. {model.state.normalize === 'percentile' ? 'Slots use a normalized 12-team scale. ' : ''}Arrow keys move through available positions.</div>
       </div>
-      <div ref={chartHost} class="chart-host draft-pick-chart" />
+      <DeferredChart
+        class="draft-pick-chart"
+        name="Pick Board"
+        signature={`${model.state.metric}|${model.state.normalize}|${rows.map(row => `${row.label}:${row.value}`).join(',')}`}
+        request={{ kind: 'draft-picks', data: {
+          rows,
+          xLabel: model.state.normalize === 'percentile' ? 'Normalized draft slot (12-team scale)' : 'Draft pick',
+          yLabel: DRAFT_METRICS[model.state.metric].label,
+          ariaLabel: `${model.state.normalize === 'percentile' ? 'Normalized draft slot' : 'Draft pick'} comparison by ${DRAFT_METRICS[model.state.metric].label}`,
+        } }}
+      />
       <div class="draft-pick-board" role="group" aria-label="Draft picks">
         {Array.from({ length: maxPick }, (_, index) => index + 1).map(pick => {
           const summary = summaryByPick.get(pick);

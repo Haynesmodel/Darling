@@ -112,7 +112,16 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
       if (!dynamicId) errors.push(`settled route ${routeName} cannot resolve configured dynamic import ${token}`);
       else settledRoots.push(dynamicId);
     }
-    routes[routeName] = routeMeasurement(staticChunks, collectClosure(byId, settledRoots));
+    // Rollup may list a shared chunk in both `imports` (module-preload metadata)
+    // and `dynamicImports` when a route's chart adapter loads it on disclosure.
+    // Treat that chart runtime as dynamic for the cold route; it is still added
+    // to the settled closure through the configured dynamic entry below.
+    const coldChunks = staticChunks.filter(chunk => !(
+      chartRuntime
+      && chunk.id === chartRuntime.id
+      && (featureChunk.dynamicImports || []).includes(chunk.id)
+    ));
+    routes[routeName] = routeMeasurement(coldChunks, collectClosure(byId, settledRoots));
   }
 
   const totalGzipBytes = gzipFor(chunks);

@@ -1,6 +1,5 @@
 import { escapeHtml, fmtTrimmed, nfmt } from './render-helpers.js';
 import { DEFAULT_BLOWOUT_MARGIN, DEFAULT_CLOSE_GAME_MARGIN } from './gauntlet-simulator.js';
-import { renderGauntletHistogramPlot } from '../src/charting/plot-charts.ts';
 
 function fmtSigned(value, digits = 1) {
   const rounded = Number.isFinite(value) ? value.toFixed(digits) : '0.0';
@@ -229,8 +228,8 @@ function renderGauntlet(view, opts = {}) {
   if (probability && includes('matchup')) probability.innerHTML = gauntletProbabilityHtml(view.result, view.teamSeasonA, view.teamSeasonB);
   if (histogram && includes('histogram')) {
     histogram.innerHTML = gauntletHistogramSvg(view.result, view.teamSeasonA, view.teamSeasonB);
-    const host = typeof root.getElementById === 'function' ? root.getElementById('gauntletHistogramPlot') : null;
-    if (renderHistogramChart) renderGauntletHistogramPlot(host, view.result, view.teamSeasonA, view.teamSeasonB);
+    // Histogram ownership lives in the Preact mount adapter. This renderer only
+    // restores the stable host shell used by the disclosure.
   }
   if (stats && includes('stats')) stats.innerHTML = gauntletStatsTableHtml(view.result, view.teamSeasonA, view.teamSeasonB);
   if (context && includes('context')) context.innerHTML = gauntletHeadToHeadHtml(view.context);

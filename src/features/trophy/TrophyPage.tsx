@@ -1,5 +1,6 @@
 import { DeferredChart } from '../../components/charts/DeferredChart';
 import { TrophyControls } from './TrophyControls';
+import { hardwareArt } from './trophy-model';
 import type { TrophyPageProps } from './trophy-types';
 
 function Disclosure({ id, title, children, open = false }: { id: string; title: string; children: preact.ComponentChildren; open?: boolean }) {
@@ -60,14 +61,14 @@ export function TrophyPage({ view, owners, onOwnerChange, active, availableSecti
         <div id="trophyShareCard" class="share-card-action-host" data-share-trophy="1" />
       </div>
       <p class="trophy-hero-summary">{view.hero.summary}</p>
-      {view.hero.highlights.length > 0 && <div class="trophy-chip-row">{view.hero.highlights.map(item => <span class="trophy-chip" key={item.label}>{item.icon && <img class="trophy-chip-icon" src={item.icon} alt="" aria-hidden="true" />}<span>{item.value} {item.label}</span><strong>{item.rankText}</strong></span>)}</div>}
+      {view.hero.highlights.length > 0 && <div class="trophy-chip-row">{view.hero.highlights.map(item => <span class="trophy-chip" key={item.label}>{item.icon && <img class="trophy-chip-icon" src={hardwareArt(item.icon)} alt="" aria-hidden="true" />}<span>{item.value} {item.label}</span><strong>{item.rankText}</strong></span>)}</div>}
       <div class="trophy-hero-record">{view.hero.record}</div>
       <div class="trophy-hero-rank">{view.hero.rankContext}</div>
       <div class="trophy-hero-split"><div><strong>Best:</strong> {view.hero.best}</div><div><strong>Worst:</strong> {view.hero.worst}</div></div>
     </section>
     {available('trophySectionNav') && <div id="trophySectionNav" />}
     {available('trophyHardwareDisclosure') && <Disclosure id="trophyHardwareDisclosure" title="Hardware Shelf" open>
-      <div id="trophyHardwareShelf" class="trophy-shelf">{view.hardwareShelf.map(item => <article class={`trophy-hardware-card ${item.tone}`} key={item.label}><div class="trophy-card-top">{item.icon && <img class="trophy-card-art" src={item.icon} alt="" aria-hidden="true" />}<div class="trophy-card-title"><div class="trophy-year-chip">{item.label}</div></div><div class="trophy-card-rank">{Number.isFinite(item.rank) ? `#${item.rank}` : '—'}</div></div><div class="trophy-card-value">{item.count}</div><div class="trophy-card-years">{item.years.length ? item.years.join(', ') : '—'}</div></article>)}</div>
+      <div id="trophyHardwareShelf" class="trophy-shelf">{view.hardwareShelf.map(item => <article class={`trophy-hardware-card ${item.tone}`} key={item.label}><div class="trophy-card-top">{item.icon && <img class="trophy-card-art" src={hardwareArt(item.icon)} alt="" aria-hidden="true" />}<div class="trophy-card-title"><div class="trophy-year-chip">{item.label}</div></div><div class="trophy-card-rank">{Number.isFinite(item.rank) ? `#${item.rank}` : '—'}</div></div><div class="trophy-card-value">{item.count}</div><div class="trophy-card-years">{item.years.length ? item.years.join(', ') : '—'}</div></article>)}</div>
     </Disclosure>}
     {available('trophyRankDisclosure') && <Disclosure id="trophyRankDisclosure" title="League Rank">
       <div id="trophyRankStrip" class="trophy-rank-strip">{Object.keys(rankLabels).map(metric => { const row = view.leagueRanks.byOwner.get(view.owner)?.[metric]; return <div class="trophy-rank-pill" key={metric}><div class="trophy-rank-pill-label">{rankLabels[metric]}</div><div class="trophy-rank-pill-value">{Number.isFinite(row?.rank) ? `#${row?.rank}` : '—'}</div><div class="trophy-rank-pill-sub">{rankValue(metric, row?.value)}</div></div>; })}</div>

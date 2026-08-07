@@ -1111,5 +1111,6 @@ export {
   achievementAndScarItems as computeAchievementAndScarLists,
   computeOwnerMoments,
   computeSeasonLedger,
+  hardwareArt,
   buildTrophyCaseViewModel,
 };

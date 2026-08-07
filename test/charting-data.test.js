@@ -9,7 +9,7 @@ import {
   gauntletHistogramRows,
   rivalryLeadRows,
   trophyCareerRows,
-} from '../js/charting/chart-data.js';
+} from '../src/charting/chart-data.ts';
 
 test('dynastyTrendRows flattens visible owner series and honors hidden owners', () => {
   const rows = dynastyTrendRows({

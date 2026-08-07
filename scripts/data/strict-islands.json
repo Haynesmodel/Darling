@@ -1,0 +1,10 @@
+{
+  "paths": [
+    "src/charting",
+    "src/components/charts",
+    "src/features/rivalry"
+  ],
+  "direct_plot_vendor_import_exceptions": [
+    "src/charting/chart-vendor.ts"
+  ]
+}

@@ -2,6 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const esbuild = require('esbuild');
+const { parse } = require('@babel/parser');
 
 const repoRoot = path.resolve(__dirname, '..');
 const DEFAULT_OUTFILE = path.join(repoRoot, 'js/charting/vendor/charting-vendor.js');
@@ -54,6 +55,69 @@ async function generateVendor(options = {}) {
   return Buffer.from(output.contents);
 }
 
+function isPlotModule(value) {
+  return /^@observablehq\/plot(?:[/?#]|$)/.test(String(value || ''));
+}
+
+function literalModule(node) {
+  if (node?.type === 'StringLiteral') return node.value;
+  if (node?.type === 'TemplateLiteral' && node.expressions.length === 0) {
+    return node.quasis[0]?.value?.cooked || '';
+  }
+  return '';
+}
+
+function declarationIsTypeOnly(node, kind) {
+  if (node[kind] === 'type') return true;
+  return node.specifiers?.length > 0 && node.specifiers.every(specifier => specifier[kind] === 'type');
+}
+
+function containsRuntimePlotImport(contents, filename) {
+  const ast = parse(contents, {
+    sourceType: 'unambiguous',
+    sourceFilename: filename,
+    plugins: ['typescript', 'jsx'],
+  });
+  let found = false;
+  const visit = node => {
+    if (found || !node || typeof node !== 'object') return;
+    if (node.type === 'ImportDeclaration'
+      && isPlotModule(node.source?.value)
+      && !declarationIsTypeOnly(node, 'importKind')) {
+      found = true;
+      return;
+    }
+    if ((node.type === 'ExportNamedDeclaration' || node.type === 'ExportAllDeclaration')
+      && isPlotModule(node.source?.value)
+      && !declarationIsTypeOnly(node, 'exportKind')) {
+      found = true;
+      return;
+    }
+    if (node.type === 'ImportExpression' && isPlotModule(literalModule(node.source))) {
+      found = true;
+      return;
+    }
+    if (node.type === 'CallExpression'
+      && (node.callee?.type === 'Import' || (node.callee?.type === 'Identifier' && node.callee.name === 'require'))
+      && isPlotModule(literalModule(node.arguments?.[0]))) {
+      found = true;
+      return;
+    }
+    if (node.type === 'TSImportEqualsDeclaration'
+      && node.importKind !== 'type'
+      && isPlotModule(literalModule(node.moduleReference?.expression))) {
+      found = true;
+      return;
+    }
+    Object.values(node).forEach(value => {
+      if (Array.isArray(value)) value.forEach(visit);
+      else if (value && typeof value === 'object') visit(value);
+    });
+  };
+  visit(ast.program);
+  return found;
+}
+
 function directPlotImports({
   root = repoRoot,
   sourceRoots = ['js', 'src'],
@@ -70,7 +134,7 @@ function directPlotImports({
     }
     if (!/\.(?:[cm]?js|tsx?)$/.test(target)) return;
     const contents = fsImpl.readFileSync(target, 'utf8');
-    if (/['"`]@observablehq\/plot(?:[/?#][^'"`]*)?['"`]/.test(contents)) {
+    if (containsRuntimePlotImport(contents, target)) {
       matches.push(path.relative(root, target));
     }
   };
@@ -151,6 +215,7 @@ module.exports = {
   assertImportBoundary,
   checkVendor,
   compareVendor,
+  containsRuntimePlotImport,
   createBuildOptions,
   directPlotImports,
   generateVendor,

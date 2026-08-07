@@ -1,5 +1,22 @@
 # Production JavaScript bundle budgets
 
+## Deferred charts and strict Preact migration — PR A
+
+The first migration slice was measured from clean base `de9f11d42cc79e31f9cc3d5a8a80dfc3a33b451c` with Node 24.18.0, npm 11.18.0, Vite 8.1.4, gzip level 9, and `VITE_BASE_PATH=/Darling/`. The implementation SHA and exact CI run are recorded in the pull request because documentation-only commits do not change the production graph.
+
+| Metric | Base | PR A | Delta | Target / maximum |
+| --- | ---: | ---: | ---: | ---: |
+| Entry gzip | 48,009 | 48,025 | +16 | 48,250 / 56,000 |
+| Aggregate JavaScript gzip | 297,868 | 299,628 | +1,760 | final 297,868 / 300,000 |
+| Chart-runtime gzip | 95,561 | 96,200 | +639 | 97,000 / 100,000 |
+| Head to Head feature gzip | 7,100 | 8,210 | +1,110 | 50,000 maximum |
+| Head to Head static route gzip | 191,922 | 88,530 | -103,392 | 115,000 maximum |
+| Head to Head settled route gzip | 191,922 | 184,730 | -7,192 | 205,000 maximum |
+
+PR A deliberately enforces only the initiative's hard aggregate maximum; the 297,868 final target applies after the remaining paired legacy deletions. Authored chart data, theme, specification, runtime, and rendering helpers now live in the strict `src/charting/` island; only the generated vendor remains under `js/charting/`. The Head to Head static closure no longer contains Plot. Its settled closure discovers `chart-runtime` through the feature's recursive static closure and the shared loader, with cycle-safe traversal and shared-chunk deduplication.
+
+The network contract is: a cold Head to Head route has zero `chart-runtime` responses; opening a far-away Lead Trend disclosure still has zero; entering the 600-pixel expanded viewport or activating `Load Lead Trend chart` produces exactly one successful response. Later charts use the cached module promise. A failed import clears the application promise for Retry, while reload remains the recovery path if the browser module map retains a failed fetch.
+
 ## Shareable cards and automated recaps
 
 The final share-card and League Newspaper implementation was remeasured on August 5, 2026 from clean base `697eb411447abb4066f2b944168e5f0b6fd4c26d` to implementation commit `83f0741d2b38946294b02bc54750dd1ba9addbec` in [PR #53](https://github.com/Haynesmodel/Darling/pull/53). Both artifacts used Node 24.18.0, npm 11.18.0, Vite 8.1.4, and `VITE_BASE_PATH=/Darling/`.
@@ -113,7 +130,7 @@ The shared disclosure controller is emitted once as a 1,039-byte gzip chunk and 
 
 ## Route closures
 
-Static closures count the production entry, selected feature, verified data loader, validators, and recursive static imports exactly once. Settled closures additionally count eligible selected dynamics: Current Season odds for an active regular-season command/standings view and Draft Spot charts. The checker deliberately does not follow every dynamic feature import from `index.html`.
+Static closures count the production entry, selected feature, verified data loader, validators, and recursive static imports exactly once. Settled closures additionally count configured eligible dynamics: Current Season odds for an active regular-season command/standings view, the deferred Head to Head runtime, and Draft Spot charts. Dynamic lookup traverses the feature's complete static closure, not only the feature entry's direct imports. The checker deliberately does not follow every dynamic feature import from `index.html`.
 
 | Route | Before static | Before settled | After static | After settled | Settled ceiling |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -132,20 +149,20 @@ The manifest contains exactly one named `chart-runtime`. Current Season, Head to
 
 `scripts/data/bundle-budget.json` and `npm run check:bundle` enforce:
 
-- aggregate JavaScript targeting 298,000 gzip and at or below the 300,000 hard ceiling;
-- entry at or below 190,000 raw and 56,000 gzip;
-- chart-runtime at or below 305,000 raw and 100,000 gzip;
+- aggregate JavaScript targeting 297,868 gzip after the final migration slice and at or below the 300,000 hard ceiling throughout;
+- entry targeting 48,250 gzip and at or below 190,000 raw and 56,000 gzip;
+- chart-runtime targeting 97,000 gzip and at or below 305,000 raw and 100,000 gzip;
 - every non-validator chunk at or below 320,000 raw;
 - League Pulse, Owner Hub, and History settled closures at or below 115,000 gzip;
 - Transactions settled closure at or below 120,000 gzip and its feature entry at or below 18,000 gzip;
 - every settled chart route at or below 205,000 gzip;
 - exactly one named chart-runtime and one Plot/vendor copy;
 - Plot exclusion from the entry, League Pulse, Owner Hub, Transactions, and History;
-- a dynamic, not static, Plot dependency for Draft Spot;
+- a dynamic, not static, Plot dependency for Head to Head and Draft Spot;
 - one shared runtime in every chart route;
 - dynamic manifest entries for all ten feature destinations and `load-league-assets`.
 
-`node scripts/check_bundle_size.cjs --json` emits stable static and settled fields for every route. The human report prints the same route table plus chunk and runtime measurements. Synthetic graph tests cover cycles, shared-chunk deduplication, selected dynamics, missing/duplicate/leaked runtimes, separator normalization, and budget diagnostics.
+`node scripts/check_bundle_size.cjs --json` emits stable static and settled fields for every route. The human report prints the same route table plus chunk and runtime measurements. Synthetic graph tests cover cycles, nested dynamic lookup, shared-chunk deduplication, selected dynamics, missing/duplicate/leaked runtimes, separator normalization, and static/settled/aggregate budget diagnostics.
 
 ## Generated vendor workflow
 

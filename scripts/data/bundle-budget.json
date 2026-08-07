@@ -26,16 +26,18 @@
   "budgets": {
     "entry_chunk_max_bytes": 190000,
     "entry_chunk_gzip_max_bytes": 56000,
-    "total_javascript_gzip_target_bytes": 298000,
+    "entry_chunk_gzip_target_bytes": 48250,
+    "total_javascript_gzip_target_bytes": 297868,
     "total_javascript_gzip_max_bytes": 300000,
     "feature_chunk_gzip_max_bytes": 50000,
     "non_validator_chunk_max_bytes": 320000,
     "chart_runtime_max_bytes": 305000,
     "chart_runtime_gzip_max_bytes": 100000,
+    "chart_runtime_gzip_target_bytes": 97000,
     "chart_runtime_exact_copies": 1,
     "chart_runtime_excluded_routes": ["league-pulse", "owner-hub", "transactions", "history"],
     "chart_runtime_required_routes": ["current-season", "rivalry", "trophy", "dynasty", "draft-spot", "gauntlet"],
-    "chart_runtime_dynamic_routes": ["draft-spot"],
+    "chart_runtime_dynamic_routes": ["rivalry", "draft-spot"],
     "plot_vendor_max_copies": 1,
     "require_data_runtime_chunk": true,
     "forbidden_initial_modules": ["src/features/", "history-controller.js", "plot-charts", "charting-vendor"],
@@ -57,6 +59,7 @@
     },
     "settled_dynamic_entries": {
       "current-season": ["current-season-odds"],
+      "rivalry": ["chart-runtime"],
       "draft-spot": ["chart-runtime"]
     },
     "feature_chunk_gzip_max_bytes_by_route": {
@@ -73,6 +76,9 @@
       "dynasty": 205000,
       "draft-spot": 205000,
       "gauntlet": 205000
+    },
+    "route_static_gzip_max_bytes": {
+      "rivalry": 115000
     }
   }
 }

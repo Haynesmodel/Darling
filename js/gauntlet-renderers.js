@@ -1,6 +1,6 @@
 import { escapeHtml, fmtTrimmed, nfmt } from './render-helpers.js';
 import { DEFAULT_BLOWOUT_MARGIN, DEFAULT_CLOSE_GAME_MARGIN } from './gauntlet-simulator.js';
-import { renderGauntletHistogramPlot } from './charting/plot-charts.js';
+import { renderGauntletHistogramPlot } from '../src/charting/plot-charts.ts';
 
 function fmtSigned(value, digits = 1) {
   const rounded = Number.isFinite(value) ? value.toFixed(digits) : '0.0';

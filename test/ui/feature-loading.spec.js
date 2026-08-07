@@ -56,7 +56,7 @@ test('every cold route requests only its feature entry and chart routes share on
     draft: '/?tab=draft',
     gauntlet: '/?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019',
   };
-  const chartRoutes = new Set(['current', 'rivalry', 'trophy', 'dynasty', 'draft', 'gauntlet']);
+  const coldRuntimeRoutes = new Set(['current', 'trophy', 'dynasty', 'draft', 'gauntlet']);
   const observedChartRuntimeUrls = new Set();
 
   for (const [id, url] of Object.entries(routes)) {
@@ -69,8 +69,14 @@ test('every cold route requests only its feature entry and chart routes share on
     for (const otherId of Object.keys(files).filter(candidate => candidate !== id)) {
       expect(resources.some(resource => resource.endsWith(files[otherId])), `${otherId} leaked into ${id}`).toBe(false);
     }
-    if (chartRoutes.has(id)) {
+    if (coldRuntimeRoutes.has(id)) {
       await expect.poll(() => resources.some(resource => resource.endsWith(chartRuntime))).toBe(true);
+      resources.filter(resource => resource.endsWith(chartRuntime)).forEach(resource => observedChartRuntimeUrls.add(resource));
+    } else if (id === 'rivalry') {
+      expect(resources.some(resource => resource.endsWith(chartRuntime)), `${id} loaded chart-runtime before eligibility`).toBe(false);
+      await page.locator('#rivalry-section-jump').selectOption('rivalry-trend');
+      await expect.poll(() => resources.filter(resource => resource.endsWith(chartRuntime)).length).toBe(1);
+      await expect(page.locator('#rivalryLeadPlot')).toHaveAttribute('data-chart-state', 'ready');
       resources.filter(resource => resource.endsWith(chartRuntime)).forEach(resource => observedChartRuntimeUrls.add(resource));
     } else {
       expect(resources.some(resource => resource.endsWith(chartRuntime)), `${id} loaded chart-runtime`).toBe(false);
@@ -79,6 +85,28 @@ test('every cold route requests only its feature entry and chart routes share on
   }
 
   expect([...observedChartRuntimeUrls]).toEqual([expect.stringMatching(new RegExp(`${chartRuntime.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`))]);
+});
+
+test('Rivalry stays Plot-free when a far disclosure merely opens and loads once near the viewport', async ({ page }) => {
+  test.skip(!preview, 'hashed resource-boundary assertions require the production preview build');
+  const resources = recordResources(page);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel');
+  await waitForFeature(page, 'rivalry');
+  await page.locator('#rivalryTrendDisclosure').evaluate(details => {
+    details.style.marginTop = '2400px';
+    details.open = true;
+  });
+  await expect(page.getByRole('button', { name: 'Load Lead Trend chart' })).toBeVisible();
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  expect(resources.some(resource => resource.endsWith(chartRuntime))).toBe(false);
+  await page.locator('#rivalryLeadPlot').scrollIntoViewIfNeeded();
+  await expect.poll(() => resources.filter(resource => resource.endsWith(chartRuntime)).length).toBe(1);
+  await expect(page.locator('#rivalryLeadPlot')).toHaveAttribute('data-chart-state', 'ready');
+  await page.locator('#rivalryTeamB').selectOption('Zook');
+  await page.locator('#rivalry-section-jump').selectOption('rivalry-trend');
+  await expect(page.locator('#rivalryLeadPlot')).toHaveAttribute('data-chart-state', 'ready');
+  expect(resources.filter(resource => resource.endsWith(chartRuntime))).toHaveLength(1);
 });
 
 test('Command Palette implementation and CSS load only after the first open', async ({ page }) => {
@@ -141,6 +169,48 @@ test('Command Palette reports a failed import and retries without a reload', asy
 const chartRuntimePattern = () => preview
   ? `**/${chartRuntime}`
   : '**/js/charting/vendor/charting-vendor.js*';
+
+test('Rivalry contains a chart-runtime failure and recovers after reload', async ({ page }) => {
+  const runtimePattern = chartRuntimePattern();
+  const pageErrors = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+  await page.route(runtimePattern, route => route.abort('failed'));
+  await page.goto('/?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel');
+  await waitForFeature(page, 'rivalry');
+  await page.locator('#rivalry-section-jump').selectOption('rivalry-trend');
+  await expect(page.locator('#rivalryLeadPlot')).toHaveAttribute('data-chart-state', 'error');
+  await expect(page.getByRole('button', { name: 'Retry Lead Trend chart' })).toBeVisible();
+  await expect(page.locator('.rivalry-trend-fallback')).toBeVisible();
+  await expect(page.locator('#rivalryTeamA')).toBeEnabled();
+  await page.locator('#rivalry-section-jump').selectOption('rivalry-games');
+  await expect(page.locator('#rivalryGameTable')).toBeVisible();
+  expect(pageErrors).toEqual([]);
+  await page.unroute(runtimePattern);
+  await page.reload();
+  await waitForFeature(page, 'rivalry');
+  await page.locator('#rivalry-section-jump').selectOption('rivalry-trend');
+  await expect(page.locator('#rivalryLeadPlot svg[role="img"]')).toBeVisible();
+});
+
+test('closing Rivalry during a delayed runtime load prevents stale chart DOM', async ({ page }) => {
+  const runtimePattern = chartRuntimePattern();
+  let release = null;
+  let requestSeen = false;
+  await page.route(runtimePattern, async route => {
+    requestSeen = true;
+    await new Promise(resolve => { release = resolve; });
+    await route.continue();
+  });
+  await page.goto('/?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel');
+  await waitForFeature(page, 'rivalry');
+  await page.locator('#rivalry-section-jump').selectOption('rivalry-trend');
+  await expect.poll(() => requestSeen).toBe(true);
+  await page.locator('#rivalryTrendDisclosure > summary').click();
+  release();
+  await expect(page.locator('#rivalryTrendDisclosure')).not.toHaveAttribute('open', '');
+  await expect(page.locator('#rivalryLeadPlot')).toHaveAttribute('data-chart-state', 'idle');
+  await expect(page.locator('#rivalryLeadPlot svg')).toHaveCount(0);
+});
 
 test('Draft contains a failed chart-runtime request without disabling its controls', async ({ page }) => {
   const runtimePattern = chartRuntimePattern();

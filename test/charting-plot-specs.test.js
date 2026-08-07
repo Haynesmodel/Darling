@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import * as chartVendor from '../js/charting/vendor/charting-vendor.js';
+import * as chartVendor from '../src/charting/chart-vendor.ts';
 import {
   currentOddsMovementPlotOptions,
   currentProjectedSeedPlotOptions,
@@ -10,7 +10,7 @@ import {
   gauntletHistogramPlotOptions,
   rivalryLeadPlotOptions,
   trophyCareerPlotOptions,
-} from '../js/charting/plot-specs.js';
+} from '../src/charting/plot-specs.ts';
 import {
   renderCurrentOddsMovementPlot,
   renderCurrentProjectedStandingsPlot,
@@ -19,13 +19,14 @@ import {
   renderGauntletHistogramPlot,
   renderRivalryLeadPlot,
   renderTrophyCareerPlot,
-} from '../js/charting/plot-charts.js';
+} from '../src/charting/plot-charts.ts';
 import {
   clearChart,
   mountChart,
   renderChartEmpty,
   renderChartError,
-} from '../js/charting/chart-runtime.js';
+} from '../src/charting/chart-runtime.ts';
+import { CHART_COLORS, chartFont, chartTheme, ownerColorScale } from '../src/charting/chart-theme.ts';
 
 const APPROVED_EXPORTS = [
   'areaY',
@@ -43,6 +44,9 @@ test('local chart vendor exposes exactly the approved Plot functions', () => {
   assert.deepEqual(Object.keys(chartVendor).sort(), APPROVED_EXPORTS);
   APPROVED_EXPORTS.forEach(name => assert.equal(typeof chartVendor[name], 'function', name));
   assert.equal('Plot' in chartVendor, false);
+  ['areaY', 'barX', 'barY', 'dot', 'lineY', 'ruleX', 'ruleY', 'text'].forEach(name => {
+    assert.ok(chartVendor[name]([], {}), name);
+  });
 });
 
 test('plot specs are deterministic plain option objects', () => {
@@ -53,6 +57,7 @@ test('plot specs are deterministic plain option objects', () => {
   const dynasty = dynastyTrendPlotOptions(dynastyRows, { seasonList: [2024, 2025], minScore: 0, maxScore: 14 });
   assert.equal(dynasty.marks[1].type, 'lineY');
   assert.deepEqual(dynasty.x.domain, [2024, 2025]);
+  assert.equal(dynasty.marks[1].stroke('Joe'), '#2563eb');
 
   const gauntlet = gauntletHistogramPlotOptions({
     rows: [{ label: 'Joe 2025', center: 100, count: 2, title: 'bin' }],
@@ -61,22 +66,59 @@ test('plot specs are deterministic plain option objects', () => {
     maxCount: 2,
   });
   assert.equal(gauntlet.marks.some(mark => mark.type === 'ruleX'), true);
+  assert.equal(gauntlet.marks[0].fill('Joe 2025'), CHART_COLORS.blue);
+  assert.equal(gauntlet.marks[0].fill('Missing'), CHART_COLORS.slate);
 
   const trophy = trophyCareerPlotOptions([{ season: 2024, finish: 1, finishLabel: '1', tier: 'champion', title: 'champ' }]);
   assert.equal(trophy.y.domain[1], 1);
+  assert.equal(trophy.marks[2].fill({ tier: 'champion' }), CHART_COLORS.amber);
+  assert.equal(trophy.marks[2].fill({ tier: 'miss' }), CHART_COLORS.red);
 
   const rivalry = rivalryLeadPlotOptions([{ index: 1, lead: 1, result: 'W', title: 'lead' }], { teamA: 'Joe', teamB: 'Joel' });
   assert.deepEqual(rivalry.y.domain, [-1, 1]);
+  assert.equal(rivalry.marks[2].fill({ result: 'W' }), CHART_COLORS.green);
+  assert.equal(rivalry.marks[2].fill({ result: 'L' }), CHART_COLORS.red);
+  assert.equal(rivalry.marks[2].fill({ result: 'T' }), CHART_COLORS.slate);
 
   const movement = currentSeedMovementPlotOptions([{ owner: 'Joe', seedChange: 2, projectedSeed: 1, title: 'move' }]);
   assert.equal(movement.marks[1].type, 'barX');
   assert.equal(movement.marks[2].dx, 10);
+  assert.equal(movement.marks[1].fill({ isSelected: true, seedChange: 0 }), CHART_COLORS.violet);
+  assert.equal(movement.marks[1].fill({ isSelected: false, seedChange: -1 }), CHART_COLORS.red);
+  assert.equal(movement.marks[2].text({ projectedSeed: 1 }), '1');
 
   const projection = currentProjectedSeedPlotOptions([{ owner: 'Joe', projectedRank: 1, projectedRecord: '9-5', title: 'seed' }]);
   assert.equal(projection.marks[0].type, 'dot');
+  assert.equal(projection.marks[0].fill({ isSelected: false }), CHART_COLORS.blue);
 
   const odds = currentOddsMovementPlotOptions([{ owner: 'Joe', playoffChange: 25, title: 'odds' }]);
   assert.equal(odds.marks[1].type, 'barX');
+  assert.equal(odds.marks[1].fill({ isSelected: false, playoffChange: 25 }), CHART_COLORS.green);
+  assert.equal(odds.marks[1].fill({ isSelected: false, playoffChange: 0 }), CHART_COLORS.slate);
+});
+
+test('chart theme reads CSS variables and keeps deterministic owner colors', () => {
+  const previous = globalThis.getComputedStyle;
+  globalThis.getComputedStyle = element => ({
+    fontFamily: element.kind === 'body' ? 'Test Sans' : '',
+    getPropertyValue(name) {
+      return name === '--text' ? ' rgb(1, 2, 3) ' : '';
+    },
+  });
+  try {
+    const doc = { documentElement: { kind: 'root' }, body: { kind: 'body' } };
+    assert.equal(chartFont(doc), 'Test Sans');
+    const theme = chartTheme({ doc });
+    assert.equal(theme.color, 'rgb(1, 2, 3)');
+    assert.equal(theme.muted, CHART_COLORS.muted);
+    const colors = ownerColorScale(['Joel', 'Joe', 'Joe'], new Map([['Joe', '#abcdef']]));
+    assert.equal(colors('Joe'), '#abcdef');
+    assert.equal(colors('Joel'), CHART_COLORS.amber);
+    assert.equal(colors('Unknown'), colors('Unknown'));
+  } finally {
+    if (previous) globalThis.getComputedStyle = previous;
+    else delete globalThis.getComputedStyle;
+  }
 });
 
 function createChartHost() {

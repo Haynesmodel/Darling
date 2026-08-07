@@ -17,7 +17,7 @@ import {
   renderCurrentOddsMovementPlot,
   renderCurrentProjectedStandingsPlot,
   renderCurrentSeedMovementPlot,
-} from './charting/plot-charts.js';
+} from '../src/charting/plot-charts.ts';
 
 function docOrDefault(doc) {
   return doc || (typeof document !== 'undefined' ? document : null);

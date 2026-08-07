@@ -1,4 +1,4 @@
-const CHART_COLORS = {
+export const CHART_COLORS = Object.freeze({
   blue: '#2563eb',
   amber: '#f59e0b',
   green: '#16a34a',
@@ -15,9 +15,9 @@ const CHART_COLORS = {
   muted: '#6b7280',
   text: '#111827',
   panel: '#ffffff',
-};
+});
 
-const OWNER_COLORS = [
+export const OWNER_COLORS = Object.freeze([
   CHART_COLORS.blue,
   CHART_COLORS.amber,
   '#10b981',
@@ -30,16 +30,19 @@ const OWNER_COLORS = [
   '#14b8a6',
   '#7c3aed',
   '#dc2626',
-];
+]);
 
-function cssVar(name, fallback, doc = null) {
-  const root = doc || (typeof document !== 'undefined' ? document : null);
-  if (!root?.documentElement || typeof getComputedStyle !== 'function') return fallback;
-  const value = getComputedStyle(root.documentElement).getPropertyValue(name).trim();
-  return value || fallback;
+export interface ChartThemeOptions {
+  doc?: Document | null;
 }
 
-function chartFont(doc = null) {
+function cssVar(name: string, fallback: string, doc: Document | null = null): string {
+  const root = doc || (typeof document !== 'undefined' ? document : null);
+  if (!root?.documentElement || typeof getComputedStyle !== 'function') return fallback;
+  return getComputedStyle(root.documentElement).getPropertyValue(name).trim() || fallback;
+}
+
+export function chartFont(doc: Document | null = null): string {
   const root = doc || (typeof document !== 'undefined' ? document : null);
   if (!root?.body || typeof getComputedStyle !== 'function') {
     return 'system-ui, -apple-system, Segoe UI, Roboto, Inter, Ubuntu, Helvetica Neue, Arial, sans-serif';
@@ -47,7 +50,7 @@ function chartFont(doc = null) {
   return getComputedStyle(root.body).fontFamily;
 }
 
-function chartTheme(opts = {}) {
+export function chartTheme(opts: ChartThemeOptions = {}) {
   const doc = opts.doc || null;
   return {
     fontFamily: chartFont(doc),
@@ -64,29 +67,23 @@ function chartTheme(opts = {}) {
   };
 }
 
-function hashString(value) {
-  const text = String(value || '');
+function hashString(value: string): number {
   let hash = 0;
-  for (let index = 0; index < text.length; index += 1) {
-    hash = ((hash << 5) - hash) + text.charCodeAt(index);
+  for (let index = 0; index < value.length; index += 1) {
+    hash = ((hash << 5) - hash) + value.charCodeAt(index);
     hash |= 0;
   }
   return Math.abs(hash);
 }
 
-function ownerColorScale(owners = [], overrides = new Map()) {
-  const order = [...new Set((owners || []).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b)));
-  const colorByOwner = new Map();
+export function ownerColorScale(
+  owners: readonly string[] = [],
+  overrides: ReadonlyMap<string, string> = new Map(),
+): (owner: string) => string {
+  const order = [...new Set(owners.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const colorByOwner = new Map<string, string>();
   order.forEach((owner, index) => {
-    colorByOwner.set(owner, overrides.get(owner) || OWNER_COLORS[index % OWNER_COLORS.length]);
+    colorByOwner.set(owner, overrides.get(owner) || OWNER_COLORS[index % OWNER_COLORS.length] || CHART_COLORS.blue);
   });
-  return owner => colorByOwner.get(owner) || OWNER_COLORS[hashString(owner) % OWNER_COLORS.length];
+  return owner => colorByOwner.get(owner) || OWNER_COLORS[hashString(owner) % OWNER_COLORS.length] || CHART_COLORS.blue;
 }
-
-export {
-  CHART_COLORS,
-  OWNER_COLORS,
-  chartFont,
-  chartTheme,
-  ownerColorScale,
-};

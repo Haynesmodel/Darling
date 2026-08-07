@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { expect, test } from './coverage-fixture.js';
 import { expectNoViolations } from './accessibility-helpers.js';
 import { createSnapshotFixture } from './snapshot-fixture.js';
@@ -13,6 +15,10 @@ const pages = [
   ['draft', 'Draft Spot'],
   ['gauntlet', 'Historical Matchup'],
 ];
+const preview = process.env.PLAYWRIGHT_SERVER === 'preview';
+const manifest = preview ? JSON.parse(fs.readFileSync(path.join(process.cwd(), 'dist/.vite/manifest.json'), 'utf8')) : {};
+const chartRuntime = Object.values(manifest).find(entry => entry.name === 'chart-runtime')?.file;
+const chartRuntimePattern = preview ? `**/${chartRuntime}` : '**/js/charting/vendor/charting-vendor.js*';
 
 for (const theme of ['light', 'dark']) {
   test.describe(`${theme} theme`, () => {
@@ -70,6 +76,23 @@ test('command palette has no automated violations', async ({ page }) => {
   await page.locator('.search-trigger').click();
   await expect(page.getByRole('dialog', { name: 'Search The Darling' })).toBeVisible();
   await expectNoViolations(page, '#global-search-dialog');
+});
+
+test('Rivalry ready chart state has no automated violations or 320px overflow', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 720 });
+  await page.goto('/?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel');
+  await page.locator('#rivalry-section-jump').selectOption('rivalry-trend');
+  await expect(page.locator('#rivalryLeadPlot')).toHaveAttribute('data-chart-state', 'ready');
+  await expectNoViolations(page, '#page-rivalry');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+});
+
+test('Rivalry chart error state has no automated violations', async ({ page }) => {
+  await page.route(chartRuntimePattern, route => route.abort('failed'));
+  await page.goto('/?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel');
+  await page.locator('#rivalry-section-jump').selectOption('rivalry-trend');
+  await expect(page.locator('#rivalryLeadPlot')).toHaveAttribute('data-chart-state', 'error');
+  await expectNoViolations(page, '#page-rivalry');
 });
 
 for (const theme of ['light', 'dark']) {

@@ -185,3 +185,18 @@ test('WEBKIT-06 preserves the responsive shell and skip target', async ({ page }
   await expect(page.locator('.data-freshness summary')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
+
+test('WEBKIT-08 loads the Rivalry chart through the no-observer keyboard fallback', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'IntersectionObserver', { configurable: true, value: undefined });
+  });
+  await page.setViewportSize({ width: 320, height: 720 });
+  await page.goto('/?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel');
+  await page.locator('#rivalry-section-jump').selectOption('rivalry-trend');
+  const load = page.getByRole('button', { name: 'Load Lead Trend chart' });
+  await load.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#rivalryLeadPlot')).toHaveAttribute('data-chart-state', 'ready');
+  await expect(page.locator('#rivalryLeadPlot svg[role="img"]')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+});

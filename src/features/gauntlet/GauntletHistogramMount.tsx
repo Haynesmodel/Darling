@@ -1,7 +1,6 @@
 import { h, render, type VNode } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { DeferredChartProps } from '../../components/charts/DeferredChart';
-import type { ChartRequest } from '../../charting/chart-types';
 import {
   gauntletHistogramRows,
   type HistogramResultInput,
@@ -15,7 +14,7 @@ function GauntletHistogram({ result, teamSeasonA, teamSeasonB, active, onError }
   teamSeasonA: HistogramTeamSeasonInput | null;
   teamSeasonB: HistogramTeamSeasonInput | null;
   active: boolean;
-  onError?: () => void;
+  onError: () => void;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [DeferredChart, setDeferredChart] = useState<DeferredChartComponent | null>(null);
@@ -25,9 +24,8 @@ function GauntletHistogram({ result, teamSeasonA, teamSeasonB, active, onError }
     if (DeferredChart) return;
     void import('../../components/charts/DeferredChart').then(module => {
       setDeferredChart(() => module.DeferredChart as DeferredChartComponent);
-    }).catch(() => onError?.());
+    }).catch(onError);
   };
-  const request: Extract<ChartRequest, { kind: 'gauntlet-histogram' }> = { kind: 'gauntlet-histogram', data: payload };
   useEffect(() => { loadDeferredChart(); }, []);
   useEffect(() => {
     const outer = mountRef.current?.parentElement;
@@ -44,12 +42,12 @@ function GauntletHistogram({ result, teamSeasonA, teamSeasonB, active, onError }
     return () => observer?.disconnect();
   }, [signature, active, DeferredChart]);
   return <div ref={mountRef} class="gauntlet-histogram-mount" data-chart-state={DeferredChart ? undefined : payload.rows.length ? 'idle' : 'empty'}>
-    {DeferredChart ? h(DeferredChart, { class: 'gauntlet-histogram-inner', name: 'Score Distribution', signature, request, active })
-      : <button type="button" class="btn chart-load-button" onClick={loadDeferredChart}>Load Score Distribution chart</button>}
+    {DeferredChart ? h(DeferredChart, { class: 'gauntlet-histogram-inner', name: 'Score Distribution', signature, request: { kind: 'gauntlet-histogram' as const, data: payload }, active })
+      : null}
   </div>;
 }
 
-export function mountGauntletHistogram(host: HTMLElement | null, result: HistogramResultInput | null, teamSeasonA: HistogramTeamSeasonInput | null, teamSeasonB: HistogramTeamSeasonInput | null, active: boolean, onError?: () => void): () => void {
+export function mountGauntletHistogram(host: HTMLElement | null, result: HistogramResultInput | null, teamSeasonA: HistogramTeamSeasonInput | null, teamSeasonB: HistogramTeamSeasonInput | null, active: boolean, onError: () => void): () => void {
   if (!host) return () => undefined;
   render(h(GauntletHistogram, { result, teamSeasonA, teamSeasonB, active, onError }), host);
   return () => render(null, host);

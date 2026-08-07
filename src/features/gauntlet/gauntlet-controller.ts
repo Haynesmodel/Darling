@@ -8,7 +8,7 @@ import type { AppContext } from '../../app/app-types';
 import type { DarlingFeatureController, FeatureActivation } from '../../app/feature-contract';
 import { createSectionDisclosure, type SectionDisclosureController } from '../../app/section-disclosure';
 
-const HISTOGRAM_ERROR_MESSAGE = 'Score Distribution chart is unavailable. Retry, or reload the page if the browser continues to reuse a failed download.';
+const HISTOGRAM_ERROR_MESSAGE = 'Score Distribution chart unavailable. Reload to retry.';
 
 function resetHistogramHost(host: HTMLElement | null): void {
   if (!host) return;
@@ -118,11 +118,7 @@ export function createFeatureController(): DarlingFeatureController {
           if (host.isConnected && context.document.getElementById('gauntletHistogramPlot') === host) resetHistogramHost(host);
           return;
         }
-        histogramDisposer = adapter.mountGauntletHistogram(host, result, a, b, active, () => {
-          if (!current()) return;
-          histogramDisposer = null;
-          renderHistogramImportError(host, () => context.window.location.reload());
-        });
+        histogramDisposer = adapter.mountGauntletHistogram(host, result, a, b, active, () => current() && renderHistogramImportError(host, () => context.window.location.reload()));
       } catch {
         if (!current()) {
           if (host.isConnected && context.document.getElementById('gauntletHistogramPlot') === host) resetHistogramHost(host);

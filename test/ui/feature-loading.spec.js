@@ -121,9 +121,11 @@ test('Gauntlet stays Plot-free when a far disclosure opens below the fold', asyn
   await waitForFeature(page, 'gauntlet');
   await page.locator('#gauntletHistogramDisclosure').evaluate(details => {
     details.style.marginTop = '3000px';
+    details.open = true;
   });
-  await page.locator('#gauntlet-section-jump').selectOption('gauntlet-distribution');
   await expect(page.getByRole('button', { name: 'Load Score Distribution chart' })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await expect.poll(() => resources.some(resource => resource.endsWith(chartRuntime))).toBe(false);
   await page.locator('#gauntletHistogramPlot').scrollIntoViewIfNeeded();
   await expect.poll(() => resources.filter(resource => resource.endsWith(chartRuntime)).length).toBe(1);

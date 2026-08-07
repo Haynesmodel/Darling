@@ -18,7 +18,7 @@ function GauntletHistogram({ result, teamSeasonA, teamSeasonB, active }: {
   const mountRef = useRef<HTMLDivElement>(null);
   const [DeferredChart, setDeferredChart] = useState<DeferredChartComponent | null>(null);
   const payload = gauntletHistogramRows(result, teamSeasonA, teamSeasonB);
-  const signature = [teamSeasonA?.owner || '', teamSeasonA?.season || '', teamSeasonB?.owner || '', teamSeasonB?.season || '', payload.rows.length, payload.maxCount, payload.domain.join(',')].join('|');
+  const signature = [teamSeasonA?.owner || '', teamSeasonA?.season || '', teamSeasonB?.owner || '', teamSeasonB?.season || '', payload.rows.length, payload.maxCount].join('|');
   const loadDeferredChart = () => {
     if (DeferredChart) return;
     void import('../../components/charts/DeferredChart').then(module => {
@@ -41,7 +41,7 @@ function GauntletHistogram({ result, teamSeasonA, teamSeasonB, active }: {
     return () => observer?.disconnect();
   }, [signature, active, DeferredChart]);
   return <div ref={mountRef} class="gauntlet-histogram-mount">
-    {DeferredChart ? h(DeferredChart, { class: 'gauntlet-histogram-inner', name: 'Score Distribution', signature, request: { kind: 'gauntlet-histogram', data: payload } as unknown as DeferredChartProps['request'], active, emptyMessage: 'No simulation data available.' })
+    {DeferredChart ? h(DeferredChart, { class: 'gauntlet-histogram-inner', name: 'Score Distribution', signature, request: { kind: 'gauntlet-histogram', data: payload } as unknown as DeferredChartProps['request'], active })
       : <button type="button" class="btn chart-load-button" onClick={loadDeferredChart}>Load Score Distribution chart</button>}
   </div>;
 }

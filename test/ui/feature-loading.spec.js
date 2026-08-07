@@ -24,10 +24,14 @@ const files = preview
   : {};
 const chartRuntime = Object.values(manifest).find(entry => entry.name === 'chart-runtime')?.file;
 const commandPalette = manifest['src/components/search/CommandPalette.tsx'];
+const gauntletAdapter = manifest['src/features/gauntlet/GauntletHistogramMount.tsx'];
 const requestPattern = id => preview ? `**/${files[id]}` : `**/${sources[id]}*`;
 const commandPalettePattern = () => preview
   ? `**/${commandPalette.file}*`
   : '**/src/components/search/CommandPalette.tsx*';
+const gauntletAdapterPattern = () => preview
+  ? `**/${gauntletAdapter.file}*`
+  : '**/src/features/gauntlet/GauntletHistogramMount.tsx*';
 
 async function waitForFeature(page, id) {
   const panel = page.locator(`#page-${id}`);
@@ -243,6 +247,69 @@ test('Draft charts recover on a normal reload after a runtime failure', async ({
   await expect(page.locator('.draft-pick-chart svg[role="img"]')).toBeVisible();
   await page.locator('#draft-section-jump').selectOption('draft-zones');
   await expect(page.locator('.draft-zone-chart svg[role="img"]')).toBeVisible();
+});
+
+test('Gauntlet contains an adapter import failure and keeps Retry contained', async ({ page }) => {
+  const adapterPattern = gauntletAdapterPattern();
+  const pageErrors = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+  await page.route(adapterPattern, route => route.abort('failed'));
+  await page.goto('/?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019');
+  await waitForFeature(page, 'gauntlet');
+  await page.locator('#gauntlet-section-jump').selectOption('gauntlet-distribution');
+  await expect(page.locator('#gauntletHistogramPlot')).toHaveAttribute('data-chart-state', 'error');
+  const retry = page.getByRole('button', { name: 'Retry Score Distribution chart' });
+  await expect(retry).toBeVisible();
+  await expect(page.locator('.gauntlet-histogram-foot')).toBeVisible();
+  await expect(page.locator('#gauntletRerollBtn')).toBeEnabled();
+  expect(pageErrors).toEqual([]);
+  await retry.click();
+  await expect(page.locator('#gauntletHistogramPlot')).toHaveAttribute('data-chart-state', 'error');
+  expect(pageErrors).toEqual([]);
+});
+
+test('Gauntlet recovers on reload after an adapter import failure', async ({ page }) => {
+  const adapterPattern = gauntletAdapterPattern();
+  await page.route(adapterPattern, route => route.abort('failed'));
+  await page.goto('/?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019');
+  await waitForFeature(page, 'gauntlet');
+  await page.locator('#gauntlet-section-jump').selectOption('gauntlet-distribution');
+  await expect(page.locator('#gauntletHistogramPlot')).toHaveAttribute('data-chart-state', 'error');
+  await page.unroute(adapterPattern);
+  await page.reload();
+  await waitForFeature(page, 'gauntlet');
+  await page.locator('#gauntlet-section-jump').selectOption('gauntlet-distribution');
+  await expect(page.locator('#gauntletHistogramPlot svg[role="img"]')).toBeVisible();
+});
+
+test('Gauntlet histogram adapter handles a missing host and empty payload', async ({ page }) => {
+  test.skip(preview, 'the authored adapter module is served only by Vite development mode');
+  await page.goto('/');
+  const result = await page.evaluate(async () => {
+    const adapter = await import('/src/features/gauntlet/GauntletHistogramMount.tsx');
+    const disposeMissing = adapter.mountGauntletHistogram(null, null, null, null, false);
+    disposeMissing();
+
+    const host = document.createElement('div');
+    document.body.append(host);
+    const dispose = adapter.mountGauntletHistogram(host, null, null, null, false);
+    const mirroredState = await new Promise(resolve => {
+      const readState = () => {
+        if (host.dataset.chartState) {
+          resolve(host.dataset.chartState);
+          return;
+        }
+        requestAnimationFrame(readState);
+      };
+      readState();
+    });
+    const state = host.querySelector('[data-chart-state]')?.getAttribute('data-chart-state');
+    dispose();
+    const childCount = host.childElementCount;
+    host.remove();
+    return { state, mirroredState, childCount };
+  });
+  expect(result).toEqual({ state: 'empty', mirroredState: 'empty', childCount: 0 });
 });
 
 test('a delayed Draft ready callback cannot add history after an immediate tab switch', async ({ page }) => {

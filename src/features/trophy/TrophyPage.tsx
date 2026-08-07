@@ -1,7 +1,7 @@
 import { DeferredChart } from '../../components/charts/DeferredChart';
 import { TrophyControls } from './TrophyControls';
 import { hardwareArt } from './trophy-model';
-import type { TrophyPageProps } from './trophy-types';
+import type { TrophyMetricKey, TrophyPageProps, TrophyRankValue } from './trophy-types';
 
 function Disclosure({ id, title, children, open = false }: { id: string; title: string; children: preact.ComponentChildren; open?: boolean }) {
   return <details id={id} class="card feature-disclosure" open={open}>
@@ -38,15 +38,16 @@ export function TrophyPage({ view, owners, onOwnerChange, active, availableSecti
         : Number(row.finish) <= row.playoffCutoff ? 'playoff' : 'miss') as 'champion' | 'playoff' | 'saunders' | 'miss',
     title: row.title,
   }));
-  const rankLabels: Record<string, string> = {
-    championships: 'Championships',
-    avgFinish: 'Average Finish',
-    regularTitles: 'Regular Titles',
-    playoffWins: 'Playoff Wins',
-    weeklyCrowns: 'Weekly Crowns',
-    sub70Games: 'Sub-70 Games',
-    saundersPain: 'Saunders Pain',
-  };
+  const ownerRanks = view.leagueRanks.byOwner.get(view.owner);
+  const rankLabels: Array<[TrophyMetricKey, string, TrophyRankValue | undefined]> = [
+    ['championships', 'Championships', ownerRanks?.championships],
+    ['avgFinish', 'Average Finish', ownerRanks?.avgFinish],
+    ['regularTitles', 'Regular Titles', ownerRanks?.regularTitles],
+    ['playoffWins', 'Playoff Wins', ownerRanks?.playoffWins],
+    ['weeklyCrowns', 'Weekly Crowns', ownerRanks?.weeklyCrowns],
+    ['sub70Games', 'Sub-70 Games', ownerRanks?.sub70Games],
+    ['saundersPain', 'Saunders Pain', ownerRanks?.saundersPain],
+  ];
   const rankValue = (metric: string, value: number | null | undefined) => {
     if (!Number.isFinite(value)) return '—';
     return metric === 'avgFinish' ? Number(value).toFixed(1) : value;
@@ -71,7 +72,7 @@ export function TrophyPage({ view, owners, onOwnerChange, active, availableSecti
       <div id="trophyHardwareShelf" class="trophy-shelf">{view.hardwareShelf.map(item => <article class={`trophy-hardware-card ${item.tone}`} key={item.label}><div class="trophy-card-top">{item.icon && <img class="trophy-card-art" src={hardwareArt(item.icon)} alt="" aria-hidden="true" />}<div class="trophy-card-title"><div class="trophy-year-chip">{item.label}</div></div><div class="trophy-card-rank">{Number.isFinite(item.rank) ? `#${item.rank}` : '—'}</div></div><div class="trophy-card-value">{item.count}</div><div class="trophy-card-years">{item.years.length ? item.years.join(', ') : '—'}</div></article>)}</div>
     </Disclosure>}
     {available('trophyRankDisclosure') && <Disclosure id="trophyRankDisclosure" title="League Rank">
-      <div id="trophyRankStrip" class="trophy-rank-strip">{Object.keys(rankLabels).map(metric => { const row = view.leagueRanks.byOwner.get(view.owner)?.[metric]; return <div class="trophy-rank-pill" key={metric}><div class="trophy-rank-pill-label">{rankLabels[metric]}</div><div class="trophy-rank-pill-value">{Number.isFinite(row?.rank) ? `#${row?.rank}` : '—'}</div><div class="trophy-rank-pill-sub">{rankValue(metric, row?.value)}</div></div>; })}</div>
+      <div id="trophyRankStrip" class="trophy-rank-strip">{rankLabels.map(([metric, label, row]) => <div class="trophy-rank-pill" key={metric}><div class="trophy-rank-pill-label">{label}</div><div class="trophy-rank-pill-value">{Number.isFinite(row?.rank) ? `#${row?.rank}` : '—'}</div><div class="trophy-rank-pill-sub">{rankValue(metric, row?.value)}</div></div>)}</div>
     </Disclosure>}
     {available('trophyCareerDisclosure') && <Disclosure id="trophyCareerDisclosure" title="Career Shape">
       <div id="trophyCareerShape" class="trophy-career-shape"><div class="trophy-career-chart chart-shell"><div class="trophy-career-header"><div><div class="trophy-career-title">Season finish trend</div><div class="trophy-career-subtitle">Lower is better. Playoff cutoff is 6th, except 2014 when it was 4th.</div></div><div class="trophy-career-legend"><span><span class="legend-swatch champion" /> Champion</span><span><span class="legend-swatch playoff" /> Playoff finish</span><span><span class="legend-swatch saunders" /> Saunders</span><span><span class="legend-swatch miss" /> Missed playoffs</span></div></div><DeferredChart id="trophyCareerPlot" class="trophy-career-host" name="Career Shape" signature={`${view.owner}|${careerRows.map(row => `${row.season}:${row.finish}`).join(',')}`} request={{ kind: 'trophy-career', data: { rows: careerRows } }} active={active} emptyMessage="No seasons recorded." /><ol class="chart-fallback trophy-career-fallback" aria-label="Season finish values">{careerRows.map(row => <li key={row.season}><span>{row.season}</span><strong>{row.finishLabel}</strong><span>{row.tier === 'champion' ? 'Champion' : row.tier === 'saunders' ? 'Saunders' : row.madePlayoffs ? 'Playoff finish' : 'Missed playoffs'} · {view.careerShape.rows.find(candidate => candidate.season === row.season)?.record || '—'}</span></li>)}</ol></div><div class="trophy-career-summary">{view.careerShape.summary}{careerRows.some(row => row.season === 2014) ? ' 2014 used a top-4 playoff cutoff.' : ''}</div></div>

@@ -7,6 +7,7 @@ import {
   currentSeedMovementRows,
   dynastyTrendRows,
   gauntletHistogramRows,
+  histogramBins,
   rivalryLeadRows,
   trophyCareerRows,
 } from '../src/charting/chart-data.ts';
@@ -47,6 +48,34 @@ test('gauntletHistogramRows creates tidy bins and mean markers', () => {
   assert.equal(payload.rows.some(row => row.owner === 'Joe' && row.count > 0), true);
   assert.deepEqual(payload.domain, [90, 120]);
   assert.equal(payload.maxCount > 0, true);
+});
+
+test('gauntlet histogram data handles empty, constant, bounded, and custom-bin inputs', () => {
+  assert.deepEqual(histogramBins([]), []);
+  assert.deepEqual(histogramBins([7, 7, Number.NaN]), [{ start: 6.5, end: 7.5, count: 2 }]);
+
+  const bounded = histogramBins([-5, 0, 5, 10, 15], { bins: 2, min: 0, max: 10 });
+  assert.deepEqual(bounded.map(bin => bin.count), [2, 3]);
+  assert.equal(histogramBins([1, 2], { bins: 100 }).length, 50);
+  assert.equal(histogramBins([1, 2], { bins: 0 }).length, 1);
+
+  assert.deepEqual(gauntletHistogramRows(null, null, null), {
+    rows: [], means: [], domain: [0, 1], maxCount: 0,
+  });
+  assert.deepEqual(gauntletHistogramRows(
+    { scoresA: [], scoresB: [] },
+    { owner: 'A', season: 2025, mean: 0 },
+    { owner: 'B', season: 2025, mean: 0 },
+  ), { rows: [], means: [], domain: [0, 1], maxCount: 0 });
+
+  const custom = gauntletHistogramRows(
+    { scoresA: [1, 2, Number.NaN], scoresB: [8, 9] },
+    { owner: 'A', season: 2025, mean: 1.5 },
+    { owner: 'B', season: 2025, mean: 8.5 },
+    { bins: 2, min: 0, max: 10 },
+  );
+  assert.deepEqual(custom.domain, [0, 10]);
+  assert.equal(custom.rows.length, 4);
 });
 
 test('trophy, rivalry, and current-season chart rows preserve labels and selected owner state', () => {

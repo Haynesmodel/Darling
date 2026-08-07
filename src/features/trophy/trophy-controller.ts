@@ -84,7 +84,7 @@ export function createFeatureController(): DarlingFeatureController {
     context.theme.owner(selectedOwner);
     const canonicalPath = context.router.update({ tab: 'trophy', selectedTrophyOwner: selectedOwner });
     shareAction?.dispose();
-    shareAction = mountTrophyCard(context.document.getElementById('trophyShareCard'), view as never, canonicalPath, context.data.dataVersion, context.window);
+    shareAction = mountTrophyCard(context.document.getElementById('trophyShareCard'), view, canonicalPath, context.data.dataVersion, context.window);
   };
 
   return {

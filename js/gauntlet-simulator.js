@@ -69,7 +69,7 @@ function quantileSorted(sortedValues, q) {
   return sortedValues[lower] * (1 - weight) + sortedValues[upper] * weight;
 }
 
-export { histogramBins } from './gauntlet-histogram.js';
+export { histogramBins } from '../src/charting/gauntlet-histogram-data.ts';
 
 function simulateMatchup(teamSeasonA, teamSeasonB, opts = {}) {
   const model = opts.model === 'historical' ? 'historical' : 'hybrid';

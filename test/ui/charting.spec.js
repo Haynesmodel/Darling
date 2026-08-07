@@ -124,6 +124,9 @@ test('Rivalry explicit Load button works without IntersectionObserver', async ({
 
 test('Trophy career chart redraws for a new owner', async ({ page }) => {
   await page.goto('/?tab=trophy&trophyOwner=Joe');
+  const trophyArt = page.locator('.trophy-card-art').first();
+  await expect(trophyArt).toBeVisible();
+  expect(await trophyArt.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
   await expect(page.locator('#trophyCareerPlot svg')).toHaveCount(0);
   await page.locator('#trophy-section-jump').selectOption('trophy-career');
   await assertChart(page, '#trophyCareerPlot', /Season finish trend/);

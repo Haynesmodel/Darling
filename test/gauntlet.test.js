@@ -15,6 +15,16 @@ import {
   simulateMatchup,
   histogramBins,
 } from '../js/gauntlet-simulator.js';
+import {
+  gauntletHeadToHeadHtml,
+  gauntletHistogramSvg,
+  gauntletModelLabel,
+  gauntletNarrativeText,
+  gauntletProbabilityHtml,
+  gauntletStatsTableHtml,
+  gauntletTeamSeasonCardHtml,
+  renderGauntlet,
+} from '../js/gauntlet-renderers.js';
 
 test('gauntlet data helpers build team seasons from regular games only', () => {
   const leagueGames = [
@@ -149,4 +159,79 @@ test('gauntlet simulator helpers are deterministic and bounded', () => {
   const bins = histogramBins([1, 1.5, 2, 3, 4], { bins: 4, min: 1, max: 5 });
   assert.equal(bins.length, 4);
   assert.deepEqual(bins.map(bin => bin.count), [2, 1, 1, 1]);
+});
+
+test('gauntlet simulator covers empty, invalid-weight, fallback, tie, and bounded option paths', () => {
+  assert.equal(drawScore({}, 'historical', () => 0), 0);
+  assert.equal(drawScore({ mean: 42 }, 'historical', () => 0), 42);
+  assert.equal(drawScore({ scores: [10, 20], scoreEvents: [{ score: 99, weight: 0 }] }, 'historical', () => 0.99), 20);
+
+  const weightedFallback = {
+    scores: [10, 30],
+    scoreEvents: [{ score: 10, weight: 1 }, { score: 30, weight: 3 }],
+  };
+  const hybrid = drawScore(weightedFallback, 'hybrid', () => 0.5);
+  assert.ok(hybrid >= 10 && hybrid <= 30);
+
+  const tied = simulateMatchup(
+    { id: 'A', scores: [100], mean: 100, stdev: 0, min: 100, max: 100 },
+    { id: 'B', scores: [100], mean: 100, stdev: 0, min: 100, max: 100 },
+    { simulations: 0, blowoutMargin: 10, closeGameMargin: 0, includePostseason: true },
+  );
+  assert.equal(tied.simulations, 1);
+  assert.equal(tied.ties, 1);
+  assert.equal(tied.closeGamePct, 1);
+  assert.equal(tied.includePostseason, true);
+});
+
+test('gauntlet renderers preserve fallbacks, semantics, escaping, and section ownership', () => {
+  const teamA = {
+    owner: 'A&B', season: 2025, champion: true, bye: true, saunders: false,
+    finish: 1, record: '10-4', games: 14, mean: 120, min: 80, max: 170,
+    pointsFor: 1680, pointsAgainst: 1500,
+  };
+  const teamB = {
+    owner: '<B>', season: 2024, champion: false, bye: false, saunders: true,
+    finish: null, record: '7-7', games: 14, mean: 105, min: 70, max: 145,
+    pointsFor: 1470, pointsAgainst: 1490,
+  };
+  const result = {
+    model: 'historical', includePostseason: true, simulations: 1000,
+    pctA: 0.6, pctB: 0.4, actualWinsA: 600, actualWinsB: 400,
+    avgA: 120, avgB: 105, avgMargin: 15, medianMargin: 14,
+    blowoutPctA: 0.2, blowoutPctB: 0.05, closeGamePct: 0.3,
+  };
+  const context = {
+    allTime: {
+      recordA: '2-1', games: 3,
+      highestCombined: { date: '2025-01-01', combined: 300, teamA: 'A&B', teamB: '<B>', scoreA: 160, scoreB: 140 },
+      mostRecent: { date: '2025-01-01', teamA: 'A&B', teamB: '<B>', scoreA: 160, scoreB: 140 },
+    },
+    selected: null,
+  };
+
+  assert.equal(gauntletModelLabel('historical'), 'Historical');
+  assert.equal(gauntletModelLabel('hybrid', true), 'Era-adjusted + postseason');
+  assert.match(gauntletTeamSeasonCardHtml(null), /No season selected/);
+  assert.match(gauntletTeamSeasonCardHtml(teamA), /A&amp;B/);
+  assert.match(gauntletTeamSeasonCardHtml(teamB), /Saunders/);
+  assert.equal(gauntletProbabilityHtml(null, teamA, teamB), '');
+  assert.match(gauntletProbabilityHtml(result, teamA, teamB), /60\.0%/);
+  assert.match(gauntletHistogramSvg(null, teamA, teamB), /No simulation data/);
+  assert.match(gauntletHistogramSvg(result, teamA, teamB), /data-chart-state="idle"/);
+  assert.equal(gauntletStatsTableHtml(null, teamA, teamB), '');
+  assert.match(gauntletStatsTableHtml(result, teamA, teamB), /Blowout win rate/);
+  assert.equal(gauntletHeadToHeadHtml(null), '');
+  assert.match(gauntletHeadToHeadHtml(context), /No direct games in selected seasons/);
+  assert.equal(gauntletNarrativeText(null, teamA, teamB, context), 'No matchup selected.');
+  assert.match(gauntletNarrativeText(result, teamA, teamB, context), /A&amp;B|A&B/);
+
+  const targets = new Map(['gauntletMatchup', 'gauntletProbability', 'gauntletHistogram', 'gauntletStats', 'gauntletContext', 'gauntletNarrative', 'gauntletCopyText']
+    .map(id => [id, { innerHTML: '', textContent: '', value: '' }]));
+  const doc = { getElementById: id => targets.get(id) || null };
+  renderGauntlet({ teamSeasonA: teamA, teamSeasonB: teamB, result, context, narrative: 'Story', copyText: 'Copy' }, { doc });
+  assert.match(targets.get('gauntletHistogram').innerHTML, /gauntletHistogramPlot/);
+  assert.equal(targets.get('gauntletNarrative').textContent, 'Story');
+  assert.equal(targets.get('gauntletCopyText').value, 'Copy');
+  assert.equal(renderGauntlet({}, { doc: null }), undefined);
 });

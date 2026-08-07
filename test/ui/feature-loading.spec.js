@@ -25,6 +25,9 @@ const files = preview
 const chartRuntime = Object.values(manifest).find(entry => entry.name === 'chart-runtime')?.file;
 const commandPalette = manifest['src/components/search/CommandPalette.tsx'];
 const gauntletAdapter = manifest['src/features/gauntlet/GauntletHistogramMount.tsx'];
+const gauntletDeferredChart = preview && gauntletAdapter?.dynamicImports?.[0]
+  ? manifest[gauntletAdapter.dynamicImports[0]]
+  : null;
 const requestPattern = id => preview ? `**/${files[id]}` : `**/${sources[id]}*`;
 const commandPalettePattern = () => preview
   ? `**/${commandPalette.file}*`
@@ -32,6 +35,9 @@ const commandPalettePattern = () => preview
 const gauntletAdapterPattern = () => preview
   ? `**/${gauntletAdapter.file}*`
   : '**/src/features/gauntlet/GauntletHistogramMount.tsx*';
+const gauntletDeferredChartPattern = () => preview
+  ? `**/${gauntletDeferredChart.file}`
+  : '**/src/components/charts/DeferredChart.tsx*';
 
 async function waitForFeature(page, id) {
   const panel = page.locator(`#page-${id}`);
@@ -299,6 +305,27 @@ test('Gauntlet recovers on reload after an adapter import failure', async ({ pag
   await waitForFeature(page, 'gauntlet');
   await page.locator('#gauntlet-section-jump').selectOption('gauntlet-distribution');
   await expect(page.locator('#gauntletHistogramPlot svg[role="img"]')).toBeVisible();
+});
+
+test('Gauntlet reports and recovers from a DeferredChart import failure', async ({ page }) => {
+  test.skip(!preview, 'hashed resource-boundary assertions require the production preview build');
+  const deferredChartPattern = gauntletDeferredChartPattern();
+  let attempts = 0;
+  await page.route(deferredChartPattern, async route => {
+    attempts += 1;
+    if (attempts === 1) await route.abort('failed');
+    else await route.continue();
+  });
+  await page.goto('/?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019');
+  await waitForFeature(page, 'gauntlet');
+  await page.locator('#gauntlet-section-jump').selectOption('gauntlet-distribution');
+  await expect(page.locator('#gauntletHistogramPlot')).toHaveAttribute('data-chart-state', 'error');
+  await expect(page.getByRole('button', { name: 'Retry Score Distribution chart' })).toBeVisible();
+  await page.getByRole('button', { name: 'Retry Score Distribution chart' }).click();
+  await waitForFeature(page, 'gauntlet');
+  await page.locator('#gauntlet-section-jump').selectOption('gauntlet-distribution');
+  await expect(page.locator('#gauntletHistogramPlot svg[role="img"]')).toBeVisible();
+  expect(attempts).toBeGreaterThanOrEqual(2);
 });
 
 test('Gauntlet histogram adapter handles a missing host and empty payload', async ({ page }) => {

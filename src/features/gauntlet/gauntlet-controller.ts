@@ -126,7 +126,7 @@ export function createFeatureController(): DarlingFeatureController {
           const disposer = mountedDisposer;
           mountedDisposer = null;
           disposer?.();
-          histogramDisposer = [null, histogramDisposer][Number(histogramDisposer !== disposeHistogramMount)];
+          histogramDisposer = [histogramDisposer, null][Number(generation === histogramGeneration)];
         };
         const reportHistogramError = () => {
           disposeHistogramMount();

@@ -14,7 +14,7 @@ test.before(async () => {
   directory = fs.mkdtempSync(path.join(root, 'deferred-chart-'));
   const outfile = path.join(directory, 'deferred-chart.mjs');
   await esbuild.build({
-    entryPoints: [path.join(process.cwd(), 'src/components/charts/DeferredChart.tsx')],
+    entryPoints: [path.join(process.cwd(), 'src/components/charts/DeferredChartCore.tsx')],
     outfile,
     bundle: true,
     platform: 'node',

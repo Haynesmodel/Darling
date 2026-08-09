@@ -368,12 +368,12 @@ test('Gauntlet histogram adapter handles a missing host and empty payload', asyn
   await page.goto('/');
   const result = await page.evaluate(async () => {
     const adapter = await import('/src/features/gauntlet/GauntletHistogramMount.tsx');
-    const disposeMissing = adapter.mountGauntletHistogram(null, null, null, null, false);
+    const disposeMissing = adapter.mountGauntletHistogram(null, { rows: [], means: [], domain: [0, 1], maxCount: 0 }, 'empty', false, () => undefined);
     disposeMissing();
 
     const host = document.createElement('div');
     document.body.append(host);
-    const dispose = adapter.mountGauntletHistogram(host, null, null, null, false);
+    const dispose = adapter.mountGauntletHistogram(host, { rows: [], means: [], domain: [0, 1], maxCount: 0 }, 'empty', false, () => undefined);
     const mirroredState = await new Promise(resolve => {
       const readState = () => {
         if (host.dataset.chartState) {

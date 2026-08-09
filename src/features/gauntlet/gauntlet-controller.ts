@@ -4,11 +4,12 @@ import { headToHeadContext } from '../../../js/shared/head-to-head-context.js';
 import { buildGauntletControls, resolveGauntletInitialState } from '../../../js/gauntlet-controls.js';
 import { gauntletModelLabel, gauntletNarrativeText, renderGauntlet } from '../../../js/gauntlet-renderers.js';
 import { simulateMatchup } from '../../../js/gauntlet-simulator.js';
+import { gauntletHistogramRows } from './gauntlet-histogram-data';
 import type { AppContext } from '../../app/app-types';
 import type { DarlingFeatureController, FeatureActivation } from '../../app/feature-contract';
 import { createSectionDisclosure, type SectionDisclosureController } from '../../app/section-disclosure';
 
-const HISTOGRAM_ERROR_MESSAGE = 'Score Distribution chart unavailable. Reload to retry.';
+const HISTOGRAM_ERROR_MESSAGE = 'Score Distribution unavailable. Reload to retry.';
 
 function resetHistogramHost(host: HTMLElement | null): void {
   if (!host) return;
@@ -98,6 +99,8 @@ export function createFeatureController(): DarlingFeatureController {
     const result = simulateMatchup(a, b, { model: state.selectedModel, simulations: state.selectedSimulations, seed: state.seed, includePostseason: state.selectedIncludePostseason });
     const h2h = headToHeadContext(a.owner, b.owner, context.data.leagueGames, [a.season, b.season]);
     const rendered = { teamSeasonA: a, teamSeasonB: b, result, context: h2h, narrative: gauntletNarrativeText(result, a, b, h2h), copyText: copyText(a, b, result, h2h) };
+    const histogramPayload = gauntletHistogramRows(result, a, b);
+    const histogramSignature = `${teamSeasonId(a.owner, a.season)}|${teamSeasonId(b.owner, b.season)}|${state.selectedModel}|${state.selectedIncludePostseason}`;
     renderGauntlet(rendered, { doc: context.document, renderHistogramChart: false });
     let histogramLoad: Promise<void> | null = null;
     const performHistogramMount = async (): Promise<void> => {
@@ -130,7 +133,7 @@ export function createFeatureController(): DarlingFeatureController {
           renderHistogramImportError(host, () => context.window.location.reload());
         };
         const reportHistogramErrorForCurrentHost = () => [disposeHistogramMount, reportHistogramError][Number(current())]();
-        mountedDisposer = adapter.mountGauntletHistogram(host, result, a, b, active, reportHistogramErrorForCurrentHost);
+        mountedDisposer = adapter.mountGauntletHistogram(host, histogramPayload, histogramSignature, active, reportHistogramErrorForCurrentHost);
         histogramDisposer = disposeHistogramMount;
       } catch {
         if (!current()) {
@@ -157,7 +160,7 @@ export function createFeatureController(): DarlingFeatureController {
       ['gauntlet-copy', 'Narrative and Copy', 'gauntletCopyDisclosure', true, undefined],
     ] as const;
     disclosure?.update({
-      signature: `${teamSeasonId(a.owner, a.season)}|${teamSeasonId(b.owner, b.season)}|${state.selectedModel}|${state.selectedIncludePostseason}`,
+      signature: histogramSignature,
       sections: sections.flatMap(([id, label, detailsId, defaultOpen, onVisible]) => {
         const details = context.document.getElementById(detailsId) as HTMLDetailsElement | null;
         const content = details?.querySelector<HTMLElement>('.feature-section-content');

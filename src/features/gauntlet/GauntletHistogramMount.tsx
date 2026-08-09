@@ -1,27 +1,20 @@
 import { h, render, type VNode } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { DeferredChartProps } from '../../components/charts/DeferredChart';
-import {
-  gauntletHistogramRows,
-  type HistogramResultInput,
-  type HistogramTeamSeasonInput,
-} from './gauntlet-histogram-data';
+import type { GauntletHistogramPayload } from './gauntlet-histogram-data';
 
 type DeferredChartComponent = (props: DeferredChartProps) => VNode | null;
 // A rejected module record is cached by browsers, so later mounts use a tiny alternate entry.
 let deferredChartImportAttempts = 0;
 
-function GauntletHistogram({ result, teamSeasonA, teamSeasonB, active, onError }: {
-  result: HistogramResultInput | null;
-  teamSeasonA: HistogramTeamSeasonInput | null;
-  teamSeasonB: HistogramTeamSeasonInput | null;
+function GauntletHistogram({ payload, signature, active, onError }: {
+  payload: GauntletHistogramPayload;
+  signature: string;
   active: boolean;
   onError: () => void;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [DeferredChart, setDeferredChart] = useState<DeferredChartComponent | null>(null);
-  const payload = gauntletHistogramRows(result, teamSeasonA, teamSeasonB);
-  const signature = [teamSeasonA?.owner || '', teamSeasonA?.season || '', teamSeasonB?.owner || '', teamSeasonB?.season || '', payload.rows.length, payload.maxCount, payload.domain.join(',')].join('|');
   const loadDeferredChart = () => {
     if (DeferredChart) return;
     const deferredChartImport = deferredChartImportAttempts++ === 0
@@ -52,8 +45,8 @@ function GauntletHistogram({ result, teamSeasonA, teamSeasonB, active, onError }
   </div>;
 }
 
-export function mountGauntletHistogram(host: HTMLElement | null, result: HistogramResultInput | null, teamSeasonA: HistogramTeamSeasonInput | null, teamSeasonB: HistogramTeamSeasonInput | null, active: boolean, onError: () => void): () => void {
+export function mountGauntletHistogram(host: HTMLElement | null, payload: GauntletHistogramPayload, signature: string, active: boolean, onError: () => void): () => void {
   if (!host) return () => undefined;
-  render(h(GauntletHistogram, { result, teamSeasonA, teamSeasonB, active, onError }), host);
+  render(h(GauntletHistogram, { payload, signature, active, onError }), host);
   return () => render(null, host);
 }

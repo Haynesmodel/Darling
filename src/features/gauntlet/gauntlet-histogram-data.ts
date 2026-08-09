@@ -40,7 +40,7 @@ export function gauntletHistogramRows(result: HistogramResultInput | null, teamS
   const rows = teams.flatMap(team => histogramBins(team.scores, min, max).map(bin => {
     const start = bin.start.toFixed(1);
     const end = bin.end.toFixed(1);
-    return { key: team.key, label: team.label, center: (bin.start + bin.end) / 2, count: bin.count, title: `${team.label}: ${start}-${end} (${bin.count})` };
+    return { key: team.key, label: team.label, center: (bin.start + bin.end) / 2, count: bin.count, title: `${team.label} ${start}-${end} ${bin.count}` };
   }));
   return {
     rows,

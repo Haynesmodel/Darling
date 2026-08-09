@@ -16,6 +16,7 @@ export interface DeferredChartProps {
   class?: string;
   emptyMessage?: string;
   active?: boolean;
+  onStateChange?: (state: ChartState) => void;
 }
 
 function disclosureFor(host: HTMLElement): HTMLDetailsElement | null {
@@ -28,7 +29,7 @@ export function isChartHostAvailable(host: HTMLElement, active: boolean): boolea
 }
 
 export function chartErrorMessage(name: string): string {
-  return `${name} chart is unavailable. Retry, or reload the page if the browser continues to reuse a failed download.`;
+  return `${name} chart failed. Retry or reload.`;
 }
 
 export function DeferredChart({
@@ -39,6 +40,7 @@ export function DeferredChart({
   class: className,
   emptyMessage = `No ${name.toLowerCase()} chart data is available.`,
   active = true,
+  onStateChange,
 }: DeferredChartProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const plotRef = useRef<HTMLDivElement>(null);
@@ -52,6 +54,7 @@ export function DeferredChart({
   const setState = (next: ChartState) => {
     stateRef.current = next;
     setStateValue(next);
+    onStateChange?.(next);
   };
 
   useEffect(() => {

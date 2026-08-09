@@ -384,7 +384,7 @@ test('Gauntlet histogram adapter handles a missing host and empty payload', asyn
       };
       readState();
     });
-    const state = host.querySelector('[data-chart-state]')?.getAttribute('data-chart-state');
+    const state = host.dataset.chartState;
     dispose();
     const childCount = host.childElementCount;
     host.remove();

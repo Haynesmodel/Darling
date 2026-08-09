@@ -9,7 +9,7 @@ import type { AppContext } from '../../app/app-types';
 import type { DarlingFeatureController, FeatureActivation } from '../../app/feature-contract';
 import { createSectionDisclosure, type SectionDisclosureController } from '../../app/section-disclosure';
 
-const HISTOGRAM_ERROR_MESSAGE = 'Score Distribution unavailable. Reload to retry.';
+const HISTOGRAM_ERROR_MESSAGE = 'Score Distribution failed. Reload.';
 
 function resetHistogramHost(host: HTMLElement | null): void {
   if (!host) return;

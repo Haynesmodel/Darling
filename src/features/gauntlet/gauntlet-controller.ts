@@ -118,9 +118,20 @@ export function createFeatureController(): DarlingFeatureController {
           if (host.isConnected && context.document.getElementById('gauntletHistogramPlot') === host) resetHistogramHost(host);
           return;
         }
-        const reportHistogramError = () => renderHistogramImportError(host, () => context.window.location.reload());
-        const reportHistogramErrorForCurrentHost = () => [() => undefined, reportHistogramError][Number(current())]();
-        histogramDisposer = adapter.mountGauntletHistogram(host, result, a, b, active, reportHistogramErrorForCurrentHost);
+        let mountedDisposer: (() => void) | null = null;
+        const disposeHistogramMount = () => {
+          const disposer = mountedDisposer;
+          mountedDisposer = null;
+          disposer?.();
+          histogramDisposer = [null, histogramDisposer][Number(histogramDisposer !== disposeHistogramMount)];
+        };
+        const reportHistogramError = () => {
+          disposeHistogramMount();
+          renderHistogramImportError(host, () => context.window.location.reload());
+        };
+        const reportHistogramErrorForCurrentHost = () => [disposeHistogramMount, reportHistogramError][Number(current())]();
+        mountedDisposer = adapter.mountGauntletHistogram(host, result, a, b, active, reportHistogramErrorForCurrentHost);
+        histogramDisposer = disposeHistogramMount;
       } catch {
         if (!current()) {
           if (host.isConnected && context.document.getElementById('gauntletHistogramPlot') === host) resetHistogramHost(host);

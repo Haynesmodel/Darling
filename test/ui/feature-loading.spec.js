@@ -28,6 +28,9 @@ const gauntletAdapter = manifest['src/features/gauntlet/GauntletHistogramMount.t
 const gauntletDeferredChart = preview && gauntletAdapter?.dynamicImports?.[0]
   ? manifest[gauntletAdapter.dynamicImports[0]]
   : null;
+const gauntletDeferredChartRetry = preview && gauntletAdapter?.dynamicImports?.[1]
+  ? manifest[gauntletAdapter.dynamicImports[1]]
+  : null;
 const requestPattern = id => preview ? `**/${files[id]}` : `**/${sources[id]}*`;
 const commandPalettePattern = () => preview
   ? `**/${commandPalette.file}*`
@@ -38,6 +41,9 @@ const gauntletAdapterPattern = () => preview
 const gauntletDeferredChartPattern = () => preview
   ? `**/${gauntletDeferredChart.file}`
   : '**/src/components/charts/DeferredChart.tsx*';
+const gauntletDeferredChartRetryPattern = () => preview
+  ? `**/${gauntletDeferredChartRetry.file}`
+  : '**/src/components/charts/DeferredChartRetry.tsx*';
 
 async function waitForFeature(page, id) {
   const panel = page.locator(`#page-${id}`);
@@ -331,11 +337,17 @@ test('Gauntlet reports and recovers from a DeferredChart import failure', async 
 test('Gauntlet ignores a DeferredChart failure after the disclosure closes', async ({ page }) => {
   test.skip(!preview, 'hashed resource-boundary assertions require the production preview build');
   const deferredChartPattern = gauntletDeferredChartPattern();
+  let attempts = 0;
   let release;
   const gate = new Promise(resolve => { release = resolve; });
   await page.route(deferredChartPattern, async route => {
-    await gate;
-    await route.abort('failed');
+    attempts += 1;
+    if (attempts === 1) {
+      await gate;
+      await route.abort('failed');
+      return;
+    }
+    await route.continue();
   });
   await page.goto('/?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019');
   await waitForFeature(page, 'gauntlet');
@@ -344,7 +356,11 @@ test('Gauntlet ignores a DeferredChart failure after the disclosure closes', asy
   await deferredRequest;
   await page.locator('#gauntletHistogramDisclosure').evaluate(details => details.removeAttribute('open'));
   release();
-  await expect(page.locator('#gauntletHistogramPlot')).not.toHaveAttribute('data-chart-state', 'error');
+  await expect(page.locator('#gauntletHistogramPlot')).toHaveAttribute('data-chart-state', 'idle');
+  const reopenedRequest = page.waitForRequest(gauntletDeferredChartRetryPattern());
+  await page.locator('#gauntlet-section-jump').selectOption('gauntlet-distribution');
+  await reopenedRequest;
+  await expect(page.locator('#gauntletHistogramPlot')).toHaveAttribute('data-chart-state', 'ready');
 });
 
 test('Gauntlet histogram adapter handles a missing host and empty payload', async ({ page }) => {

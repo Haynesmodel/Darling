@@ -223,7 +223,9 @@ test('Gauntlet histogram rerun replaces its SVG', async ({ page }) => {
   await expect(page.locator('#gauntletHistogramPlot svg')).toHaveCount(0);
   await page.locator('#gauntlet-section-jump').selectOption('gauntlet-distribution');
   await assertChart(page, '#gauntletHistogramPlot', /Overlaid score distribution histogram/);
-  expect(await page.locator('#gauntletHistogramPlot svg title').count()).toBeGreaterThan(0);
+  const titles = await page.locator('#gauntletHistogramPlot svg title').allTextContents();
+  expect(titles.length).toBeGreaterThan(0);
+  expect(titles.some(title => title.includes('Joe 2024'))).toBe(true);
   await page.locator('#gauntletRerollBtn').click();
   await expect(page.locator('#gauntletHistogramDisclosure')).toHaveAttribute('open', '');
   await assertChart(page, '#gauntletHistogramPlot', /Overlaid score distribution histogram/);

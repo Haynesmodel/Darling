@@ -8,6 +8,8 @@ import {
 } from './gauntlet-histogram-data';
 
 type DeferredChartComponent = (props: DeferredChartProps) => VNode | null;
+// A rejected module record is cached by browsers, so later mounts use a tiny alternate entry.
+let deferredChartImportAttempts = 0;
 
 function GauntletHistogram({ result, teamSeasonA, teamSeasonB, active, onError }: {
   result: HistogramResultInput | null;
@@ -22,7 +24,10 @@ function GauntletHistogram({ result, teamSeasonA, teamSeasonB, active, onError }
   const signature = [teamSeasonA?.owner || '', teamSeasonA?.season || '', teamSeasonB?.owner || '', teamSeasonB?.season || '', payload.rows.length, payload.maxCount, payload.domain.join(',')].join('|');
   const loadDeferredChart = () => {
     if (DeferredChart) return;
-    void import('../../components/charts/DeferredChart').then(module => {
+    const deferredChartImport = deferredChartImportAttempts++ === 0
+      ? import('../../components/charts/DeferredChart')
+      : import('../../components/charts/DeferredChartRetry');
+    void deferredChartImport.then(module => {
       setDeferredChart(() => module.DeferredChart as DeferredChartComponent);
     }).catch(onError);
   };

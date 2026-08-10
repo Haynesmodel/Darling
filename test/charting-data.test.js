@@ -11,6 +11,7 @@ import {
   rivalryLeadRows,
   trophyCareerRows,
 } from '../src/charting/chart-data.ts';
+import { gauntletHistogramRows as featureGauntletHistogramRows } from '../src/features/gauntlet/gauntlet-histogram-data.ts';
 
 test('dynastyTrendRows flattens visible owner series and honors hidden owners', () => {
   const rows = dynastyTrendRows({
@@ -76,6 +77,25 @@ test('gauntlet histogram data handles empty, constant, bounded, and custom-bin i
   );
   assert.deepEqual(custom.domain, [0, 10]);
   assert.equal(custom.rows.length, 4);
+});
+
+test('feature-local gauntlet histogram data preserves typed titles across edge inputs', () => {
+  const teams = [
+    { owner: 'Joe', season: 2025, mean: 10 },
+    { owner: 'Joel', season: 2025, mean: 10 },
+  ];
+  assert.deepEqual(featureGauntletHistogramRows(null, teams[0], teams[1]), {
+    rows: [], means: [], domain: [0, 1], maxCount: 0,
+  });
+  assert.deepEqual(featureGauntletHistogramRows({}, teams[0], teams[1]), {
+    rows: [], means: [], domain: [0, 1], maxCount: 0,
+  });
+  const constant = featureGauntletHistogramRows({ scoresA: [10, Number.NaN], scoresB: [10] }, teams[0], teams[1]);
+  assert.equal(constant.rows.length, 2);
+  assert.match(constant.rows[0].title, /Joe 2025/);
+  assert.match(constant.means[1].title, /Joel 2025/);
+  const oneSided = featureGauntletHistogramRows({ scoresA: [8], scoresB: [] }, teams[0], teams[1]);
+  assert.equal(oneSided.rows.length, 1);
 });
 
 test('trophy, rivalry, and current-season chart rows preserve labels and selected owner state', () => {

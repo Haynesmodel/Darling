@@ -75,7 +75,13 @@ export function createFeatureController(): DarlingFeatureController {
       const favorite = context.ownerPreference.getSnapshot().owner;
       const mode = (input.route.dynastyMode || retained?.mode || (input.route.dynastyOwner || favorite ? 'calculator' : 'all-time')) as DynastyMode;
       state = resolveDynastyInitialState({ seasonSummaries: context.data.seasonSummaries, urlState: input.route, mode, owner: input.route.dynastyOwner || retained?.owner || favorite, startSeason: input.route.dynastyStart ?? retained?.startSeason, endSeason: input.route.dynastyEnd ?? retained?.endSeason, minSeasons: input.route.dynastyMinSeasons ?? retained?.minSeasons, includeSaundersPenalty: input.route.dynastySaunders ?? retained?.includeSaundersPenalty });
-      controlsInteracted = false;
+      // Keep the window disclosure eligible when the feature is reactivated
+      // from a URL that already carries an explicit calculator range. This is
+      // also the durable representation of a prior control interaction when
+      // navigation restores the feature.
+      controlsInteracted = controlsInteracted
+        || input.route.dynastyStart != null
+        || input.route.dynastyEnd != null;
       state = { ...state, chartHiddenOwners: retained?.chartHiddenOwners || [], selectedWindowKey: null, selectedWindowKind: null };
       initialized = true;
       renderCurrent();

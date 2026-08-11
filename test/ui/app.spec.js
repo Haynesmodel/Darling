@@ -704,6 +704,7 @@ test('dynasty tab renders controls and responds to calculator changes', async ({
   await page.locator('#dynastyEndSeason').selectOption('2023');
   await page.locator('#dynastyModeSelect').selectOption('rolling-5');
   await page.waitForFunction(() => document.querySelectorAll('#dynastySlumps .dynasty-slump-item').length > 0);
+  await page.locator('#dynasty-section-jump').selectOption('dynasty-slumps');
   expect(await page.locator('#dynastySlumps .dynasty-slump-item').count()).toBeGreaterThan(0);
   await page.locator('#dynastySlumps .dynasty-slump-item').first().click();
   await expect(page.locator('#dynastyWindowModal')).toBeVisible();

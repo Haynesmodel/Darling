@@ -39,6 +39,12 @@ type RivalryShareFacts = {
     lastMeeting: { date: string; winner: string; pf: number; pa: number } | null;
   };
 };
+type TrophyShareFacts = {
+  owner: string;
+  hardwareShelf: ReadonlyArray<{ label: string; count: number }>;
+  hero: { title: string; identityLabel: string; rankContext: string; record: string };
+  identity: { label: string };
+};
 
 function championshipScores(
   highlights: LeagueEditionCardInput['highlights'],
@@ -213,11 +219,11 @@ export function mountRivalryCard(host: HTMLElement | null, view: RivalryShareFac
   });
 }
 
-export function mountTrophyCard(host: HTMLElement | null, view: any, canonicalPath: string, dataVersion: string, win: Window) {
+export function mountTrophyCard(host: HTMLElement | null, view: TrophyShareFacts, canonicalPath: string, dataVersion: string, win: Window) {
   if (!host || !view.owner) return null;
-  const hardware = new Map((view.hardwareShelf || []).map((item: any) => [String(item.label), Number(item.count) || 0]));
-  const rank = String(view.hero?.rankContext || '').split('|')[0].trim();
-  const careerRecord = String(view.hero?.record || '—');
+  const hardware = new Map(view.hardwareShelf.map(item => [item.label, item.count]));
+  const rank = view.hero.rankContext.split('|')[0].trim();
+  const careerRecord = view.hero.record || '—';
   const recordParts = careerRecord.match(/^(\d+-\d+(?:-\d+)?)\s+\(([\d.]+%)\)$/);
   return mountShareCardAction({
     host,
@@ -225,8 +231,8 @@ export function mountTrophyCard(host: HTMLElement | null, view: any, canonicalPa
     result: result('trophy', {
       id: view.owner,
       eyebrow: 'Trophy Case',
-      title: view.hero?.title || view.owner,
-      subtitle: view.hero?.identityLabel || view.identity?.label || 'Career profile',
+      title: view.hero.title || view.owner,
+      subtitle: view.hero.identityLabel || view.identity.label || 'Career profile',
       metrics: [
         {
           label: 'Career record',
@@ -240,7 +246,7 @@ export function mountTrophyCard(host: HTMLElement | null, view: any, canonicalPa
       canonicalPath,
       sourceLabel: 'Trophy Case',
       dataVersion,
-      altText: `${view.owner} Trophy Case: ${view.hero?.record || 'no record'}. ${rank}`.trim(),
+      altText: `${view.owner} Trophy Case: ${view.hero.record || 'no record'}. ${rank}`.trim(),
     }, win),
   });
 }

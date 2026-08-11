@@ -12,5 +12,3 @@ import './current-season-renderers.test.js';
 import './history-renderers.test.js';
 import './league-renderers.test.js';
 import './rivalry-model.test.js';
-import './trophy-controls.test.js';
-import './trophy-renderers.test.js';

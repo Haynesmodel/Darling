@@ -1,36 +1,36 @@
 import './trophy.entry.css';
-import { buildTrophyControls } from '../../../js/trophy-controls.js';
-import {
-  buildTrophyCaseViewModel,
-  renderTrophyAchievementList,
-  renderTrophyCareerShape,
-  renderTrophyHardwareShelf,
-  renderTrophyHero,
-  renderTrophyRankStrip,
-  renderTrophyScarList,
-} from '../../../js/trophy-renderers.js';
+import { h, render } from 'preact';
 import type { AppContext } from '../../app/app-types';
 import type { DarlingFeatureController, FeatureActivation } from '../../app/feature-contract';
-import { ALL_TEAMS } from '../../app/feature-utils';
 import { createSectionDisclosure, type SectionDisclosureController } from '../../app/section-disclosure';
-import { registerTrophyTables } from './trophy-tables';
 import type { ShareCardActionController } from '../../share/share-card-actions';
 import { mountTrophyCard } from '../../share/share-card-feature-adapters';
+import { TrophyPage } from './TrophyPage';
+import { buildTrophyCaseViewModel } from './trophy-model';
+import { registerTrophyTables } from './trophy-tables';
+
+function availableOwners(context: AppContext): string[] {
+  return [...new Set([
+    ...context.data.seasonSummaries.map(row => row.owner),
+    ...context.data.leagueGames.flatMap(game => [game.teamA, game.teamB]),
+  ])].filter(Boolean).sort((a, b) => a.localeCompare(b));
+}
 
 export function createFeatureController(): DarlingFeatureController {
   let context: AppContext;
+  let root: HTMLElement | null = null;
   let selectedOwner = '';
+  let owners: string[] = [];
+  let availableSections: Set<string> | undefined;
+  let activeSignal: AbortSignal | null = null;
   let initialized = false;
-  let active = false;
   let disclosure: SectionDisclosureController | null = null;
   let shareAction: ShareCardActionController | null = null;
 
-  const render = () => {
-    if (!active || !selectedOwner) return;
-    shareAction?.dispose();
-    shareAction = null;
-    context.header.feature(selectedOwner, selectedOwner, `${selectedOwner} Trophy Case`);
-    context.theme.owner(selectedOwner);
+  const isActive = () => Boolean(activeSignal && !activeSignal.aborted);
+  const renderCurrent = (allowInactive = false) => {
+    const active = isActive();
+    if (!root || !selectedOwner || (!active && !allowInactive)) return;
     const view = buildTrophyCaseViewModel(selectedOwner, {
       leagueGames: context.data.leagueGames,
       seasonSummaries: context.data.seasonSummaries,
@@ -38,87 +38,89 @@ export function createFeatureController(): DarlingFeatureController {
       seasonAggregates: context.selectors.seasonAggregates(),
       ownerCareers: context.data.derivedStats?.owner_careers || null,
     });
-    renderTrophyHero(view, { doc: context.document });
-    renderTrophyHardwareShelf(view, { doc: context.document });
-    renderTrophyRankStrip(view, { doc: context.document });
-    renderTrophyCareerShape(view, { doc: context.document, renderChart: false });
-    renderTrophyAchievementList(view, { doc: context.document });
-    renderTrophyScarList(view, { doc: context.document });
+    render(h(TrophyPage, {
+      view,
+      owners,
+      availableSections,
+      active,
+      onOwnerChange(owner: string) {
+        if (!isActive() || !owners.includes(owner)) return;
+        selectedOwner = owner;
+        renderCurrent();
+      },
+    }), root);
+    if (!active) return;
+    if (!disclosure) {
+      const mount = context.document.getElementById('trophySectionNav');
+      if (mount) disclosure = createSectionDisclosure({ doc: context.document, mount, featureId: 'trophy', featureLabel: 'Trophy Case' });
+    }
     context.tables.render('trophy-seasons', {
       rows: view.seasonLedger,
       context: { owner: view.owner },
       onContextChange: tableContext => {
-        selectedOwner = String(tableContext.owner || selectedOwner);
-        const select = context.document.getElementById('trophyOwnerSelect') as HTMLSelectElement | null;
-        if (select) select.value = selectedOwner;
-        render();
+        if (typeof tableContext.owner === 'string' && owners.includes(tableContext.owner)) {
+          selectedOwner = tableContext.owner;
+          renderCurrent();
+        }
       },
       instanceKey: view.owner,
     });
     const sections = [
-      ['trophy-hardware', 'Hardware Shelf', 'trophyHardwareDisclosure', true, undefined],
-      ['trophy-rank', 'League Rank', 'trophyRankDisclosure', false, undefined],
-      ['trophy-career', 'Career Shape', 'trophyCareerDisclosure', false, () => renderTrophyCareerShape(view, { doc: context.document })],
-      ['trophy-moments', 'Highlights and Low Points', 'trophyMomentsDisclosure', false, undefined],
-      ['trophy-ledger', 'Season Ledger', 'trophyLedgerDisclosure', false, undefined],
+      ['trophy-hardware', 'Hardware Shelf', 'trophyHardwareDisclosure', true],
+      ['trophy-rank', 'League Rank', 'trophyRankDisclosure', false],
+      ['trophy-career', 'Career Shape', 'trophyCareerDisclosure', false],
+      ['trophy-moments', 'Highlights and Low Points', 'trophyMomentsDisclosure', false],
+      ['trophy-ledger', 'Season Ledger', 'trophyLedgerDisclosure', false],
     ] as const;
     disclosure?.update({
       signature: view.owner,
-      sections: sections.flatMap(([id, label, detailsId, defaultOpen, onVisible]) => {
+      sections: sections.flatMap(([id, label, detailsId, defaultOpen]) => {
         const details = context.document.getElementById(detailsId) as HTMLDetailsElement | null;
         const content = details?.querySelector<HTMLElement>('.feature-section-content');
-        return details ? [{ id, label, details, available: Boolean(content?.textContent?.trim()), defaultOpen, onVisible }] : [];
+        return details ? [{ id, label, details, available: Boolean(content?.textContent?.trim()), defaultOpen }] : [];
       }),
     });
+    context.header.feature(selectedOwner, selectedOwner, `${selectedOwner} Trophy Case`);
+    context.theme.owner(selectedOwner);
     const canonicalPath = context.router.update({ tab: 'trophy', selectedTrophyOwner: selectedOwner });
-    const host = context.document.getElementById('trophyShareCard');
-    shareAction = mountTrophyCard(host, view, canonicalPath, context.data.dataVersion, context.window);
+    shareAction?.dispose();
+    shareAction = mountTrophyCard(context.document.getElementById('trophyShareCard'), view, canonicalPath, context.data.dataVersion, context.window);
   };
 
   return {
     id: 'trophy',
     mount(nextContext) {
       context = nextContext;
+      root = context.document.getElementById('trophyRoot');
+      if (!root) throw new Error('Trophy Case root missing');
+      owners = availableOwners(context);
+      availableSections = new Set(['trophySectionNav', 'trophyHardwareDisclosure', 'trophyRankDisclosure', 'trophyCareerDisclosure', 'trophyMomentsDisclosure', 'trophyLedgerDisclosure'].filter(id => Boolean(context.document.getElementById(id))));
       registerTrophyTables(context.tables);
-      const mount = context.document.getElementById('trophySectionNav');
-      if (mount) {
-        disclosure = createSectionDisclosure({
-          doc: context.document,
-          mount,
-          featureId: 'trophy',
-          featureLabel: 'Trophy Case',
-        });
-      }
     },
     activate(input: FeatureActivation) {
-      active = !input.signal.aborted;
+      activeSignal = input.signal;
+      if (input.signal.aborted) return;
       const retained = input.reason === 'tab' && initialized ? selectedOwner : null;
-      const controls = buildTrophyControls({
-        doc: context.document,
-        leagueGames: context.data.leagueGames,
-        seasonSummaries: context.data.seasonSummaries,
-        selectedOwner: input.route.trophyOwner || input.route.team || retained || context.ownerPreference.getSnapshot().owner,
-        allTeams: ALL_TEAMS,
-        onChange: (next: { selectedOwner: string }) => {
-          if (!active) return;
-          selectedOwner = next.selectedOwner;
-          render();
-        },
-      });
-      selectedOwner = controls.selectedOwner;
+      selectedOwner = input.route.trophyOwner || input.route.team || retained || context.ownerPreference.getSnapshot().owner || owners[0] || '';
+      if (!owners.includes(selectedOwner)) selectedOwner = owners[0] || '';
       initialized = true;
-      render();
+      renderCurrent();
     },
     deactivate() {
-      active = false;
+      activeSignal = null;
+      renderCurrent(true);
       shareAction?.dispose();
       shareAction = null;
     },
     dispose() {
+      activeSignal = null;
       shareAction?.dispose();
       shareAction = null;
       disclosure?.dispose();
       disclosure = null;
+      context.tables.unmount('trophy-seasons');
+      if (root) render(null, root);
+      root = null;
     },
   };
 }

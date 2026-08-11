@@ -1,57 +1,33 @@
-import { useEffect, useRef } from 'preact/hooks';
+import { DeferredChart } from '../../components/charts/DeferredChart';
 import { DRAFT_METRICS, DRAFT_ZONES, draftMetricValue } from './draft-spot-model';
 import { draftSummaryContext, formatMetric, formatNumber, formatPercent } from './draft-spot-format';
 import type { DraftSpotState, DraftSpotViewModel } from './draft-spot-types';
-import { renderDraftChartError } from './draft-chart-error';
 
 export default function DraftZoneComparison({
   model,
   onChange,
-  chartActive,
 }: {
   model: DraftSpotViewModel;
   onChange: (state: Partial<DraftSpotState>) => void;
-  chartActive: boolean;
 }) {
-  const chartHost = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!chartActive) {
-      chartHost.current?.replaceChildren();
-      if (chartHost.current) delete chartHost.current.dataset.chartState;
-      return;
-    }
-    let active = true;
-    void import('../../../js/charting/vendor/charting-vendor.js').then(({ plot, barY }) => {
-      if (!active || !chartHost.current) return;
-      const rows = model.zoneSummary.map(summary => ({
-        zone: summary.zone,
-        value: draftMetricValue(summary, model.state.metric),
-        title: `${summary.zone}: ${formatMetric(draftMetricValue(summary, model.state.metric), model.state.metric)}, n=${summary.n}`,
-      }));
-      const svg = plot({
-        height: 220,
-        marginLeft: 56,
-        x: { label: 'Draft zone' },
-        y: { label: DRAFT_METRICS[model.state.metric].label },
-        marks: [barY(rows, { x: 'zone', y: 'value', fill: 'var(--accent-primary)', title: 'title' })],
-      });
-      svg.setAttribute('aria-label', `Draft zone comparison by ${DRAFT_METRICS[model.state.metric].label}`);
-      svg.setAttribute('role', 'img');
-      chartHost.current.replaceChildren(svg);
-      chartHost.current.dataset.chartState = 'ready';
-    }).catch(error => {
-      if (active && chartHost.current) renderDraftChartError(chartHost.current, error);
-    });
-    return () => {
-      active = false;
-      chartHost.current?.replaceChildren();
-      if (chartHost.current) delete chartHost.current.dataset.chartState;
-    };
-  }, [chartActive, model.state.metric, model.zoneSummary]);
+  const rows = model.zoneSummary.map(summary => ({
+    label: summary.zone,
+    value: draftMetricValue(summary, model.state.metric),
+    title: `${summary.zone}: ${formatMetric(draftMetricValue(summary, model.state.metric), model.state.metric)}, n=${summary.n}`,
+  }));
   const byZone = new Map(model.zoneSummary.map(summary => [summary.zone_key, summary]));
   return (
     <>
-      <div ref={chartHost} class="chart-host draft-zone-chart" />
+      <DeferredChart
+        class="draft-zone-chart"
+        name="Zone Comparison"
+        signature={`${model.state.metric}|${rows.map(row => `${row.label}:${row.value}`).join(',')}`}
+        request={{ kind: 'draft-zones', data: {
+          rows,
+          yLabel: DRAFT_METRICS[model.state.metric].label,
+          ariaLabel: `Draft zone comparison by ${DRAFT_METRICS[model.state.metric].label}`,
+        } }}
+      />
       <div class="draft-zone-grid" role="group" aria-label="Draft zones">
         {DRAFT_ZONES.map(zone => {
           const summary = byZone.get(zone.key);

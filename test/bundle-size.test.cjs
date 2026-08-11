@@ -67,6 +67,30 @@ test('settled dynamic lookup traverses a cyclic static feature closure and dedup
   });
 });
 
+test('settled dynamic lookup follows an adapter before its shared chart runtime', () => {
+  withBundleFixture({
+    budgets: {
+      chart_runtime_exact_copies: 1,
+      chart_runtime_required_routes: ['gauntlet'],
+      chart_runtime_dynamic_routes: ['gauntlet'],
+      required_dynamic_entries: { gauntlet: 'src/features/gauntlet.ts' },
+      settled_dynamic_entries: { gauntlet: ['chart-runtime'] },
+    },
+    manifest: {
+      'index.html': { file: 'assets/index.js', isEntry: true, dynamicImports: ['src/features/gauntlet.ts'] },
+      'src/features/gauntlet.ts': { file: 'assets/gauntlet.js', isDynamicEntry: true, imports: ['_shared.js'], dynamicImports: ['src/features/gauntlet-adapter.tsx'] },
+      'src/features/gauntlet-adapter.tsx': { file: 'assets/adapter.js', isDynamicEntry: true, dynamicImports: ['_deferred.js'] },
+      '_deferred.js': { file: 'assets/deferred.js', dynamicImports: ['_chart.js'] },
+      '_shared.js': { file: 'assets/shared.js' },
+      '_chart.js': { file: 'assets/chart.js', name: 'chart-runtime' },
+    },
+  }, result => {
+    assert.deepEqual(result.errors, []);
+    assert.equal(result.routes.gauntlet.staticChunks.some(chunk => chunk.name === 'chart-runtime'), false);
+    assert.equal(result.routes.gauntlet.settledChunks.filter(chunk => chunk.name === 'chart-runtime').length, 1);
+  });
+});
+
 test('route graph excludes shell dynamics and includes only configured settled imports', () => {
   withBundleFixture({
     budgets: {

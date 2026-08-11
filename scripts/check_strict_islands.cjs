@@ -37,6 +37,18 @@ function checkSource(relative, source, config) {
   if (directive) failures.push(`${relative} contains ${directive[0]}`);
   walk(ast, node => {
     if (node.type === 'TSAnyKeyword') failures.push(`${relative} contains explicit any`);
+    if (node.type === 'TSTypeAliasDeclaration'
+      && node.typeAnnotation?.type === 'TSTypeReference'
+      && node.typeAnnotation.typeName?.type === 'Identifier'
+      && node.typeAnnotation.typeName.name === 'ReturnType') {
+      const query = node.typeAnnotation.typeParameters?.params?.[0];
+      const expression = query?.type === 'TSTypeQuery' ? query.exprName : null;
+      if (expression?.type === 'TSQualifiedName'
+        && expression.left?.type === 'Identifier' && expression.left.name === 'JSON'
+        && expression.right?.type === 'Identifier' && expression.right.name === 'parse') {
+        failures.push(`${relative} derives an implicit any type from JSON.parse`);
+      }
+    }
     if ((node.type === 'MemberExpression' || node.type === 'OptionalMemberExpression') && !node.computed
       && node.property?.type === 'Identifier' && node.property.name === 'innerHTML') {
       failures.push(`${relative} uses innerHTML`);

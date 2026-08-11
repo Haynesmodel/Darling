@@ -14,7 +14,7 @@ test.before(async () => {
   directory = fs.mkdtempSync(path.join(root, 'deferred-chart-'));
   const outfile = path.join(directory, 'deferred-chart.mjs');
   await esbuild.build({
-    entryPoints: [path.join(process.cwd(), 'src/components/charts/DeferredChart.tsx')],
+    entryPoints: [path.join(process.cwd(), 'src/components/charts/DeferredChartCore.tsx')],
     outfile,
     bundle: true,
     platform: 'node',
@@ -54,6 +54,6 @@ test('deferred chart availability requires activation, connection, and an open d
 });
 
 test('deferred chart failure guidance names the chart and explains recovery', () => {
-  assert.match(component.chartErrorMessage('Lead Trend'), /Lead Trend chart is unavailable/);
-  assert.match(component.chartErrorMessage('Lead Trend'), /Retry, or reload the page/);
+  assert.match(component.chartErrorMessage('Lead Trend'), /Lead Trend chart failed/);
+  assert.match(component.chartErrorMessage('Lead Trend'), /Retry or reload/);
 });

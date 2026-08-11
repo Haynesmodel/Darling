@@ -2,7 +2,8 @@
   "paths": [
     "src/charting",
     "src/components/charts",
-    "src/features/rivalry"
+    "src/features/rivalry",
+    "src/features/trophy"
   ],
   "direct_plot_vendor_import_exceptions": [
     "src/charting/chart-vendor.ts"

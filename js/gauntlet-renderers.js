@@ -1,6 +1,5 @@
 import { escapeHtml, fmtTrimmed, nfmt } from './render-helpers.js';
 import { DEFAULT_BLOWOUT_MARGIN, DEFAULT_CLOSE_GAME_MARGIN } from './gauntlet-simulator.js';
-import { renderGauntletHistogramPlot } from '../src/charting/plot-charts.ts';
 
 function fmtSigned(value, digits = 1) {
   const rounded = Number.isFinite(value) ? value.toFixed(digits) : '0.0';
@@ -87,7 +86,7 @@ function gauntletHistogramSvg(result, teamSeasonA, teamSeasonB) {
         <span class="gauntlet-histogram-note">Overlaid score frequencies by simulation bin</span>
       </div>
       <div class="gauntlet-histogram-panel chart-shell">
-        <div id="gauntletHistogramPlot" class="chart-host gauntlet-histogram-host" aria-label="Overlaid score distribution histogram for ${escapeHtml(teamSeasonA.owner)} and ${escapeHtml(teamSeasonB.owner)}"></div>
+        <div id="gauntletHistogramPlot" class="chart-host gauntlet-histogram-host" data-chart-state="idle" aria-label="Overlaid score distribution histogram for ${escapeHtml(teamSeasonA.owner)} and ${escapeHtml(teamSeasonB.owner)}"></div>
         <div class="gauntlet-histogram-foot chart-fallback">
           <span><strong>${escapeHtml(teamSeasonA.owner)}</strong> min ${nfmt(teamSeasonA.min, 1)} · mean ${nfmt(teamSeasonA.mean, 1)} · max ${nfmt(teamSeasonA.max, 1)}</span>
           <span><strong>${escapeHtml(teamSeasonB.owner)}</strong> min ${nfmt(teamSeasonB.min, 1)} · mean ${nfmt(teamSeasonB.mean, 1)} · max ${nfmt(teamSeasonB.max, 1)}</span>
@@ -229,8 +228,8 @@ function renderGauntlet(view, opts = {}) {
   if (probability && includes('matchup')) probability.innerHTML = gauntletProbabilityHtml(view.result, view.teamSeasonA, view.teamSeasonB);
   if (histogram && includes('histogram')) {
     histogram.innerHTML = gauntletHistogramSvg(view.result, view.teamSeasonA, view.teamSeasonB);
-    const host = typeof root.getElementById === 'function' ? root.getElementById('gauntletHistogramPlot') : null;
-    if (renderHistogramChart) renderGauntletHistogramPlot(host, view.result, view.teamSeasonA, view.teamSeasonB);
+    // Histogram ownership lives in the Preact mount adapter. This renderer only
+    // restores the stable host shell used by the disclosure.
   }
   if (stats && includes('stats')) stats.innerHTML = gauntletStatsTableHtml(view.result, view.teamSeasonA, view.teamSeasonB);
   if (context && includes('context')) context.innerHTML = gauntletHeadToHeadHtml(view.context);

@@ -14,6 +14,7 @@ test('strict-island source policy rejects unsafe syntax and imports', () => {
     import { plot } from '../../js/charting/vendor/charting-vendor.js';
     import { old } from '../../../js/rivalry-renderers.js';
     const value: any = old;
+    type HiddenAny = ReturnType<typeof JSON.parse>;
     target.innerHTML = String(value);
     target.insertAdjacentHTML('beforeend', '<b>bad</b>');
     export const view = <div dangerouslySetInnerHTML={{ __html: 'bad' }} />;
@@ -21,6 +22,7 @@ test('strict-island source policy rejects unsafe syntax and imports', () => {
   const failures = checkSource('src/features/rivalry/Bad.tsx', source, config).join('\n');
   assert.match(failures, /@ts-ignore/);
   assert.match(failures, /explicit any/);
+  assert.match(failures, /implicit any type from JSON\.parse/);
   assert.match(failures, /innerHTML/);
   assert.match(failures, /insertAdjacentHTML/);
   assert.match(failures, /dangerouslySetInnerHTML/);

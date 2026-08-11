@@ -21,14 +21,28 @@ function collectClosure(byId, startIds) {
 }
 
 function findReachableDynamic(byId, startId, token) {
-  for (const chunk of collectClosure(byId, [startId])) {
-    const dynamicId = (chunk.dynamicImports || []).find(id => {
-      const target = byId.get(id);
-      return normalizeId(id) === normalizeId(token) || (target && matchesToken(target, token));
-    });
-    if (dynamicId) return dynamicId;
-  }
-  return null;
+  const visited = new Set();
+  const visitStatic = id => {
+    if (visited.has(`static:${id}`)) return null;
+    if (normalizeId(id) === 'index.html') return null;
+    visited.add(`static:${id}`);
+    const chunk = byId.get(id);
+    if (!chunk) return null;
+    for (const importId of chunk.imports || []) {
+      const nested = visitStatic(importId);
+      if (nested) return nested;
+    }
+    for (const dynamicId of chunk.dynamicImports || []) {
+      const target = byId.get(dynamicId);
+      if (normalizeId(dynamicId) === normalizeId(token) || (target && matchesToken(target, token))) return dynamicId;
+      if (!target) continue;
+      if (collectClosure(byId, [dynamicId]).some(candidate => matchesToken(candidate, token))) return dynamicId;
+      const nested = visitStatic(dynamicId);
+      if (nested) return dynamicId;
+    }
+    return null;
+  };
+  return visitStatic(startId);
 }
 
 function routeMeasurement(staticChunks, settledChunks) {
@@ -108,9 +122,20 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
     const settledRoots = [...roots];
     const requestedDynamics = limits.settled_dynamic_entries?.[routeName] || [];
     for (const token of requestedDynamics) {
-      const dynamicId = findReachableDynamic(byId, featureChunk.id, token);
-      if (!dynamicId) errors.push(`settled route ${routeName} cannot resolve configured dynamic import ${token}`);
-      else settledRoots.push(dynamicId);
+      let cursor = featureChunk.id;
+      let resolved = false;
+      const visited = new Set();
+      while (!visited.has(cursor)) {
+        visited.add(cursor);
+        const dynamicId = findReachableDynamic(byId, cursor, token);
+        if (!dynamicId) break;
+        settledRoots.push(dynamicId);
+        resolved = true;
+        const target = byId.get(dynamicId);
+        if (normalizeId(dynamicId) === normalizeId(token) || (target && matchesToken(target, token))) break;
+        cursor = dynamicId;
+      }
+      if (!resolved) errors.push(`settled route ${routeName} cannot resolve configured dynamic import ${token}`);
     }
     routes[routeName] = routeMeasurement(staticChunks, collectClosure(byId, settledRoots));
   }

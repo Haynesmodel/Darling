@@ -4,15 +4,52 @@ import { headToHeadContext } from '../../../js/shared/head-to-head-context.js';
 import { buildGauntletControls, resolveGauntletInitialState } from '../../../js/gauntlet-controls.js';
 import { gauntletModelLabel, gauntletNarrativeText, renderGauntlet } from '../../../js/gauntlet-renderers.js';
 import { simulateMatchup } from '../../../js/gauntlet-simulator.js';
+import { gauntletHistogramRows } from './gauntlet-histogram-data';
 import type { AppContext } from '../../app/app-types';
 import type { DarlingFeatureController, FeatureActivation } from '../../app/feature-contract';
 import { createSectionDisclosure, type SectionDisclosureController } from '../../app/section-disclosure';
+
+const HISTOGRAM_ERROR_MESSAGE = 'Score Distribution failed. Reload.';
+
+function resetHistogramHost(host: HTMLElement | null): void {
+  if (!host) return;
+  host.dataset.chartState = 'idle';
+  host.replaceChildren();
+}
+
+function renderHistogramLoading(host: HTMLElement): void {
+  host.dataset.chartState = 'loading';
+  const status = host.ownerDocument.createElement('div');
+  status.className = 'chart-loading';
+  status.setAttribute('role', 'status');
+  status.textContent = 'Loading Score Distribution chart…';
+  host.replaceChildren(status);
+}
+
+function renderHistogramImportError(host: HTMLElement, retry: () => void): void {
+  host.dataset.chartState = 'error';
+  const status = host.ownerDocument.createElement('div');
+  status.className = 'chart-error';
+  status.setAttribute('role', 'status');
+  const message = host.ownerDocument.createElement('span');
+  message.textContent = HISTOGRAM_ERROR_MESSAGE;
+  const button = host.ownerDocument.createElement('button');
+  button.type = 'button';
+  button.className = 'btn';
+  button.textContent = 'Retry Score Distribution chart';
+  button.addEventListener('click', retry, { once: true });
+  status.append(message, button);
+  host.replaceChildren(status);
+}
 
 export function createFeatureController(): DarlingFeatureController {
   let context: AppContext;
   let state: any = null;
   let active = false;
   let disclosure: SectionDisclosureController | null = null;
+  let histogramDisposer: (() => void) | null = null;
+  let histogramGeneration = 0;
+
 
   const copyText = (a: any, b: any, result: any, h2h: any) => {
     if (!a || !b || !result) return '';
@@ -33,6 +70,9 @@ export function createFeatureController(): DarlingFeatureController {
 
   const draw = () => {
     if (!active || !state) return;
+    histogramDisposer?.();
+    histogramDisposer = null;
+    histogramGeneration += 1;
     const seasons = context.selectors.teamSeasons(state.selectedIncludePostseason) as any[];
     const a = seasons.find(item => item.id === teamSeasonId(state.selectedOwnerA, state.selectedSeasonA)) || null;
     const b = seasons.find(item => item.id === teamSeasonId(state.selectedOwnerB, state.selectedSeasonB)) || null;
@@ -59,16 +99,68 @@ export function createFeatureController(): DarlingFeatureController {
     const result = simulateMatchup(a, b, { model: state.selectedModel, simulations: state.selectedSimulations, seed: state.seed, includePostseason: state.selectedIncludePostseason });
     const h2h = headToHeadContext(a.owner, b.owner, context.data.leagueGames, [a.season, b.season]);
     const rendered = { teamSeasonA: a, teamSeasonB: b, result, context: h2h, narrative: gauntletNarrativeText(result, a, b, h2h), copyText: copyText(a, b, result, h2h) };
+    const histogramPayload = gauntletHistogramRows(result, a, b);
+    const histogramSignature = `${teamSeasonId(a.owner, a.season)}|${teamSeasonId(b.owner, b.season)}|${state.selectedModel}|${state.selectedIncludePostseason}`;
     renderGauntlet(rendered, { doc: context.document, renderHistogramChart: false });
+    let histogramLoad: Promise<void> | null = null;
+    const performHistogramMount = async (): Promise<void> => {
+      const generation = histogramGeneration;
+      const details = context.document.getElementById('gauntletHistogramDisclosure') as HTMLDetailsElement | null;
+      const host = context.document.getElementById('gauntletHistogramPlot');
+      if (!active || !details?.open || !details.isConnected || !host?.isConnected) return;
+      const current = () => active
+        && generation === histogramGeneration
+        && details.open
+        && details.isConnected
+        && host.isConnected
+        && context.document.getElementById('gauntletHistogramPlot') === host;
+      renderHistogramLoading(host);
+      try {
+        const adapter = await import('./GauntletHistogramMount');
+        if (!current()) {
+          if (host.isConnected && context.document.getElementById('gauntletHistogramPlot') === host) resetHistogramHost(host);
+          return;
+        }
+        let mountedDisposer: (() => void) | null = null;
+        const disposeHistogramMount = () => {
+          const disposer = mountedDisposer;
+          mountedDisposer = null;
+          disposer?.();
+          histogramDisposer = [histogramDisposer, null][Number(generation === histogramGeneration)];
+        };
+        const reportHistogramError = () => {
+          disposeHistogramMount();
+          renderHistogramImportError(host, () => context.window.location.reload());
+        };
+        const reportHistogramErrorForCurrentHost = () => [disposeHistogramMount, reportHistogramError][Number(current())]();
+        mountedDisposer = adapter.mountGauntletHistogram(host, histogramPayload, histogramSignature, active, reportHistogramErrorForCurrentHost);
+        histogramDisposer = disposeHistogramMount;
+      } catch {
+        if (!current()) {
+          if (host.isConnected && context.document.getElementById('gauntletHistogramPlot') === host) resetHistogramHost(host);
+          return;
+        }
+        renderHistogramImportError(host, () => { void mountHistogram(); });
+      }
+    };
+    const mountHistogram = (): Promise<void> => {
+      if (histogramDisposer) return Promise.resolve();
+      if (histogramLoad) return histogramLoad;
+      const pending = performHistogramMount().finally(() => {
+        if (histogramLoad === pending) histogramLoad = null;
+      });
+      histogramLoad = pending;
+      return pending;
+    };
     const sections = [
       ['gauntlet-matchup', 'Matchup', 'gauntletMatchupDisclosure', true, undefined],
-      ['gauntlet-distribution', 'Score Distribution', 'gauntletHistogramDisclosure', false, () => renderGauntlet(rendered, { doc: context.document, sections: ['histogram'] })],
+      ['gauntlet-distribution', 'Score Distribution', 'gauntletHistogramDisclosure', false, mountHistogram],
       ['gauntlet-stats', 'Key Stats', 'gauntletStatsDisclosure', false, undefined],
       ['gauntlet-context', 'Head to Head Context', 'gauntletContextDisclosure', false, undefined],
       ['gauntlet-copy', 'Narrative and Copy', 'gauntletCopyDisclosure', true, undefined],
     ] as const;
     disclosure?.update({
-      signature: `${teamSeasonId(a.owner, a.season)}|${teamSeasonId(b.owner, b.season)}|${state.selectedModel}|${state.selectedIncludePostseason}`,
+      signature: histogramSignature,
       sections: sections.flatMap(([id, label, detailsId, defaultOpen, onVisible]) => {
         const details = context.document.getElementById(detailsId) as HTMLDetailsElement | null;
         const content = details?.querySelector<HTMLElement>('.feature-section-content');
@@ -135,8 +227,17 @@ export function createFeatureController(): DarlingFeatureController {
       state = buildGauntletControls({ doc: context.document, teamSeasons: context.selectors.teamSeasons() as any[], selectedState: state, onChange: change });
       draw();
     },
-    deactivate() { active = false; },
+    deactivate() {
+      active = false;
+      histogramDisposer?.();
+      histogramDisposer = null;
+      histogramGeneration += 1;
+      resetHistogramHost(context.document.getElementById('gauntletHistogramPlot'));
+    },
     dispose() {
+      histogramDisposer?.();
+      histogramDisposer = null;
+      histogramGeneration += 1;
       disclosure?.dispose();
       disclosure = null;
     },

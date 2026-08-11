@@ -16,6 +16,11 @@ function isDeployableAsset(sourceDir, filePath) {
   if (normalizedRel.startsWith('share/')) {
     return normalizedRel === 'share/darling-default-card.png';
   }
+  if (normalizedRel.startsWith('trophy/')) {
+    return /^(?:trophy|medal|bagel|warning|football|beach-chair|joker|turd)\.svg$/.test(
+      normalizedRel.slice('trophy/'.length),
+    );
+  }
 
   if (ext && ext !== '.json') return false;
   if (name.startsWith('.')) return false;

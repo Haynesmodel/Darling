@@ -1,6 +1,21 @@
+import { existsSync, readFileSync } from 'node:fs';
 import { expect, test } from './coverage-fixture.js';
 import { createSnapshotFixture } from './snapshot-fixture.js';
 import { regularSeason2026 } from './season-phase-fixtures.js';
+import { activateFeature } from './navigation-helpers.js';
+
+const productionChartRuntimeAsset = (() => {
+  const manifestPath = new URL('../../dist/.vite/manifest.json', import.meta.url);
+  if (!existsSync(manifestPath)) return null;
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  return Object.values(manifest).find(entry => entry.name === 'chart-runtime')?.file ?? null;
+})();
+const productionGauntletAdapterAsset = (() => {
+  const manifestPath = new URL('../../dist/.vite/manifest.json', import.meta.url);
+  if (!existsSync(manifestPath)) return null;
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  return Object.values(manifest).find(entry => entry.src === 'src/features/gauntlet/GauntletHistogramMount.tsx')?.file ?? null;
+})();
 
 async function installLiveCurrent(page) {
   const fixture = createSnapshotFixture({
@@ -109,6 +124,9 @@ test('Rivalry explicit Load button works without IntersectionObserver', async ({
 
 test('Trophy career chart redraws for a new owner', async ({ page }) => {
   await page.goto('/?tab=trophy&trophyOwner=Joe');
+  const trophyArt = page.locator('.trophy-card-art').first();
+  await expect(trophyArt).toBeVisible();
+  expect(await trophyArt.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
   await expect(page.locator('#trophyCareerPlot svg')).toHaveCount(0);
   await page.locator('#trophy-section-jump').selectOption('trophy-career');
   await assertChart(page, '#trophyCareerPlot', /Season finish trend/);
@@ -116,6 +134,76 @@ test('Trophy career chart redraws for a new owner', async ({ page }) => {
   await page.locator('#trophy-section-jump').selectOption('trophy-career');
   await assertChart(page, '#trophyCareerPlot', /Season finish trend/);
   await expectNoPageOverflow(page);
+});
+
+test('Trophy deactivation invalidates an in-flight career chart', async ({ page }) => {
+  let releaseRuntime;
+  let runtimeRequested = false;
+  await page.route('**/*', async route => {
+    const url = new URL(route.request().url());
+    const isDevRuntime = url.pathname.endsWith('/src/charting/plot-charts.ts');
+    const isProductionRuntime = productionChartRuntimeAsset && url.pathname.endsWith(`/${productionChartRuntimeAsset}`);
+    if (!isDevRuntime && !isProductionRuntime) {
+      await route.continue();
+      return;
+    }
+    runtimeRequested = true;
+    await new Promise(resolve => { releaseRuntime = resolve; });
+    await route.continue();
+  });
+  await page.goto('/?tab=trophy&trophyOwner=Joe');
+  await page.locator('#trophy-section-jump').selectOption('trophy-career');
+  await expect.poll(() => runtimeRequested).toBe(true);
+  await activateFeature(page, 'pulse');
+  releaseRuntime();
+  await expect(page.locator('#trophyCareerPlot svg')).toHaveCount(0);
+  await expect(page.locator('#trophyCareerPlot')).toHaveAttribute('data-chart-state', 'idle');
+});
+
+test('Draft deactivation unmounts an in-flight chart', async ({ page }) => {
+  let releaseRuntime;
+  let runtimeRequested = false;
+  await page.route('**/*', async route => {
+    const url = new URL(route.request().url());
+    const isDevRuntime = url.pathname.endsWith('/src/charting/plot-charts.ts');
+    const isProductionRuntime = productionChartRuntimeAsset && url.pathname.endsWith(`/${productionChartRuntimeAsset}`);
+    if (!isDevRuntime && !isProductionRuntime) {
+      await route.continue();
+      return;
+    }
+    runtimeRequested = true;
+    await new Promise(resolve => { releaseRuntime = resolve; });
+    await route.continue();
+  });
+  await page.goto('/?tab=draft');
+  await expect.poll(() => runtimeRequested).toBe(true);
+  await activateFeature(page, 'pulse');
+  releaseRuntime();
+  await expect(page.locator('#draftSpotRoot .draft-pick-chart svg')).toHaveCount(0);
+});
+
+test('Gauntlet adapter does not mount into a closed disclosure', async ({ page }) => {
+  let releaseAdapter;
+  let adapterRequested = false;
+  await page.route('**/*', async route => {
+    const url = new URL(route.request().url());
+    const isDevAdapter = url.pathname.endsWith('/src/features/gauntlet/GauntletHistogramMount.tsx');
+    const isProductionAdapter = productionGauntletAdapterAsset && url.pathname.endsWith(`/${productionGauntletAdapterAsset}`);
+    if (!isDevAdapter && !isProductionAdapter) {
+      await route.continue();
+      return;
+    }
+    adapterRequested = true;
+    await new Promise(resolve => { releaseAdapter = resolve; });
+    await route.continue();
+  });
+  await page.goto('/?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019');
+  await page.locator('#gauntlet-section-jump').selectOption('gauntlet-distribution');
+  await expect.poll(() => adapterRequested).toBe(true);
+  await page.locator('#gauntletHistogramDisclosure summary').click();
+  releaseAdapter();
+  await expect(page.locator('#gauntletHistogramPlot .gauntlet-histogram-mount')).toHaveCount(0);
+  await expect(page.locator('#gauntletHistogramPlot')).toHaveAttribute('data-chart-state', 'idle');
 });
 
 test('Dynasty trend chart toggle changes marks without duplicating SVG', async ({ page }) => {
@@ -135,6 +223,9 @@ test('Gauntlet histogram rerun replaces its SVG', async ({ page }) => {
   await expect(page.locator('#gauntletHistogramPlot svg')).toHaveCount(0);
   await page.locator('#gauntlet-section-jump').selectOption('gauntlet-distribution');
   await assertChart(page, '#gauntletHistogramPlot', /Overlaid score distribution histogram/);
+  const titles = await page.locator('#gauntletHistogramPlot svg title').allTextContents();
+  expect(titles.length).toBeGreaterThan(0);
+  expect(titles.some(title => title.includes('Joe 2024'))).toBe(true);
   await page.locator('#gauntletRerollBtn').click();
   await expect(page.locator('#gauntletHistogramDisclosure')).toHaveAttribute('open', '');
   await assertChart(page, '#gauntletHistogramPlot', /Overlaid score distribution histogram/);

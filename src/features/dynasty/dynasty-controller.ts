@@ -29,6 +29,7 @@ export function createFeatureController(): DarlingFeatureController {
   let activeSignal: AbortSignal | null = null;
   let initialized = false;
   let controlsInteracted = false;
+  let chartRuntimeReady: Promise<unknown> | null = null;
   let state: DynastyState = resolveDynastyInitialState({ seasonSummaries: [] });
   let disclosure: SectionDisclosureController | null = null;
   let shareAction: ShareCardActionController | null = null;
@@ -45,7 +46,7 @@ export function createFeatureController(): DarlingFeatureController {
       openWindows: controlsInteracted && state.mode === 'calculator',
       onChange(next: DynastyState) { if (!isActive()) return; controlsInteracted = true; state = { ...next, requestedStartSeason: next.startSeason, requestedEndSeason: next.endSeason }; renderCurrent(); },
       onToggleTrend(owner: string) { if (!isActive()) return; const hidden = new Set(state.chartHiddenOwners); if (hidden.has(owner)) hidden.delete(owner); else hidden.add(owner); state = { ...state, chartHiddenOwners: [...hidden].sort() }; renderCurrent(); },
-      onSelectWindow(row: DynastyScore, kind: 'playoffs' | 'saunders' = 'playoffs') { if (!isActive()) return; state = { ...state, selectedWindowKey: `${row.owner}|${row.windowStartSeason}|${row.windowEndSeason}|${row.windowSize || ''}`, selectedWindowKind: kind }; renderCurrent(); disclosure?.setOpen('dynasty-trend', true); context.window.requestAnimationFrame(() => context.document.querySelector<HTMLButtonElement>('#dynastyTrendPlot .chart-load-button')?.click()); },
+      onSelectWindow(row: DynastyScore, kind: 'playoffs' | 'saunders' = 'playoffs') { if (!isActive()) return; state = { ...state, selectedWindowKey: `${row.owner}|${row.windowStartSeason}|${row.windowEndSeason}|${row.windowSize || ''}`, selectedWindowKind: kind }; renderCurrent(); disclosure?.setOpen('dynasty-trend', true); const runtimeReady = chartRuntimeReady || loadChartRuntime(); chartRuntimeReady = runtimeReady; void runtimeReady.catch(() => undefined).then(() => context.window.requestAnimationFrame(() => context.document.querySelector<HTMLButtonElement>('#dynastyTrendPlot .chart-load-button')?.click())); },
       onCloseWindow() { if (!isActive()) return; state = { ...state, selectedWindowKey: null, selectedWindowKind: null }; renderCurrent(); },
     }), root);
     if (!isActive()) return;
@@ -85,9 +86,10 @@ export function createFeatureController(): DarlingFeatureController {
       state = { ...state, chartHiddenOwners: retained?.chartHiddenOwners || [], selectedWindowKey: null, selectedWindowKind: null };
       initialized = true;
       renderCurrent();
-      void loadChartRuntime();
+      chartRuntimeReady = loadChartRuntime();
+      void chartRuntimeReady.catch(() => undefined);
     },
     deactivate() { activeSignal = null; shareAction?.dispose(); shareAction = null; renderCurrent(true); },
-    dispose() { activeSignal = null; shareAction?.dispose(); shareAction = null; disclosure?.dispose(); disclosure = null; if (root) render(null, root); root = null; },
+    dispose() { activeSignal = null; chartRuntimeReady = null; shareAction?.dispose(); shareAction = null; disclosure?.dispose(); disclosure = null; if (root) render(null, root); root = null; },
   };
 }

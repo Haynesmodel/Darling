@@ -1,7 +1,5 @@
 import './asset-validation.test.js';
 import './data-helpers.test.js';
-import './dynasty-controls.test.js';
-import './dynasty-renderers.test.js';
 import './gauntlet.test.js';
 import './state-helpers.test.js';
 import './curse-tracker.test.js';

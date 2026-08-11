@@ -37,7 +37,7 @@
     "chart_runtime_exact_copies": 1,
     "chart_runtime_excluded_routes": ["league-pulse", "owner-hub", "transactions", "history"],
     "chart_runtime_required_routes": ["current-season", "rivalry", "trophy", "dynasty", "draft-spot", "gauntlet"],
-    "chart_runtime_dynamic_routes": ["rivalry", "trophy", "draft-spot", "gauntlet"],
+    "chart_runtime_dynamic_routes": ["rivalry", "trophy", "dynasty", "draft-spot", "gauntlet"],
     "plot_vendor_max_copies": 1,
     "require_data_runtime_chunk": true,
     "forbidden_initial_modules": ["src/features/", "history-controller.js", "plot-charts", "charting-vendor"],
@@ -61,6 +61,7 @@
       "current-season": ["current-season-odds"],
       "rivalry": ["chart-runtime"],
       "trophy": ["chart-runtime"],
+      "dynasty": ["chart-runtime"],
       "draft-spot": ["chart-runtime"],
       "gauntlet": ["chart-runtime"]
     },
@@ -82,6 +83,7 @@
     "route_static_gzip_max_bytes": {
       "rivalry": 115000,
       "trophy": 115000,
+      "dynasty": 115000,
       "draft-spot": 115000,
       "gauntlet": 115000
     }

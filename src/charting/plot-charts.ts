@@ -226,7 +226,7 @@ export function renderChart(host: HTMLElement, request: ChartRequest): void {
       renderRequestSpec(host, trophyCareerPlotOptions([...request.data.rows]) as unknown as RuntimeSpec, 'trophy-career-svg');
       return;
     case 'dynasty-trend':
-      renderRequestSpec(host, dynastyTrendPlotOptions([...request.data.rows], request.data) as unknown as RuntimeSpec, 'dynasty-trend-svg');
+      renderRequestSpec(host, dynastyTrendPlotOptions(request.data.rows.filter(row => !row.hidden), request.data) as unknown as RuntimeSpec, 'dynasty-trend-svg');
       return;
     case 'draft-picks':
       renderRequestSpec(host, draftSpec(request), 'draft-pick-chart-svg');

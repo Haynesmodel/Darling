@@ -306,64 +306,7 @@
 
     <section id="page-dynasty" class="page" aria-labelledby="page-dynasty-title" hidden>
       <h2 id="page-dynasty-title" class="visually-hidden">Dynasty Rankings</h2>
-      <div class="card">
-        <div class="controls filters dynasty-controls">
-          <label>Mode:
-            <select id="dynastyModeSelect"></select>
-          </label>
-          <label>Owner:
-            <select id="dynastyOwnerSelect"></select>
-          </label>
-          <label>Start:
-            <select id="dynastyStartSeason"></select>
-          </label>
-          <label>End:
-            <select id="dynastyEndSeason"></select>
-          </label>
-          <label>Minimum Seasons to Qualify:
-            <select id="dynastyMinSeasons"></select>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" id="dynastySaundersToggle" checked />
-            Include Saunders penalties
-          </label>
-        </div>
-        <p class="dynasty-control-hint" id="dynastyControlHint">
-          Individual scores one owner across the chosen range. Minimum Seasons to Qualify is the cutoff for being scored, and Saunders penalties stay optional.
-        </p>
-      </div>
-
-      <div class="card" id="dynastyCalculatorHero"></div>
-
-      <div id="dynastySectionNav"></div>
-      <details id="dynastyScoreDisclosure" class="card feature-disclosure">
-        <summary>Score Breakdown</summary>
-        <section class="feature-section-content"><div id="dynastyScoreBreakdown"></div></section>
-      </details>
-      <details id="dynastyPeriodDisclosure" class="card feature-disclosure">
-        <summary>Period Comparison</summary>
-        <section class="feature-section-content"><div id="dynastyPeriodLeaderboard"></div></section>
-      </details>
-      <details id="dynastyWindowsDisclosure" class="card feature-disclosure">
-        <summary>Best Dynasty Windows</summary>
-        <section class="feature-section-content"><div id="dynastyBestWindows"></div></section>
-      </details>
-      <details id="dynastyTrendDisclosure" class="card feature-disclosure">
-        <summary>Dynasty Trend</summary>
-        <section class="feature-section-content"><div id="dynastyTrendChart"></div></section>
-      </details>
-      <details id="dynastyHeatmapDisclosure" class="card feature-disclosure">
-        <summary>Era Heatmap</summary>
-        <section class="feature-section-content">
-          <div id="dynastyHeatmap" role="region" aria-label="Dynasty rankings by season" tabindex="0"></div>
-        </section>
-      </details>
-      <details id="dynastySlumpsDisclosure" class="card feature-disclosure">
-        <summary>Slumps</summary>
-        <section class="feature-section-content"><div id="dynastySlumps"></div></section>
-      </details>
-
-      <dialog id="dynastyWindowModal" class="dynasty-modal" aria-labelledby="dynastyWindowModalTitle"></dialog>
+      <div id="dynastyRoot"></div>
     </section>
 
     <section id="page-draft" class="page" aria-labelledby="page-draft-title" hidden>

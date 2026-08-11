@@ -1,243 +1,87 @@
 import './dynasty.entry.css';
-import { buildDynastyControls } from '../../../js/dynasty-controls.js';
-import {
-  buildDynastyViewModel,
-  findDynastyWindowByKey,
-  findDynastyWindowByKeyFromRows,
-  renderDynastyBestWindows,
-  renderDynastyCalculatorHero,
-  renderDynastyHeatmap,
-  renderDynastyPeriodLeaderboard,
-  renderDynastyScoreBreakdown,
-  renderDynastySlumpModal,
-  renderDynastySlumps,
-  renderDynastyTrendChart,
-  renderDynastyWindowModal,
-} from '../../../js/dynasty-renderers.js';
+import { h, render } from 'preact';
 import type { AppContext } from '../../app/app-types';
-import type { DarlingFeatureController, FeatureActivation, FeatureId } from '../../app/feature-contract';
-import { ALL_TEAMS } from '../../app/feature-utils';
+import type { DarlingFeatureController, FeatureActivation } from '../../app/feature-contract';
 import { createSectionDisclosure, type SectionDisclosureController } from '../../app/section-disclosure';
-import type { ShareCardActionController } from '../../share/share-card-actions';
 import { mountDynastyCard } from '../../share/share-card-feature-adapters';
+import type { ShareCardActionController } from '../../share/share-card-actions';
+import { loadChartRuntime } from '../../charting/load-chart-runtime';
+import { buildDynastyViewModel } from './dynasty-model.ts';
+import { ALL_DYNASTY_TEAMS, resolveDynastyInitialState } from './dynasty-state.ts';
+import type { DynastyMode, DynastyScore, DynastyState } from './dynasty-types.ts';
+import { DynastyPage } from './DynastyPage.tsx';
+
+type DisclosureSpec = { id: string; label: string; detailsId: string; defaultOpen: boolean };
+const disclosureSpecs: readonly DisclosureSpec[] = [
+  { id: 'dynasty-score', label: 'Score Breakdown', detailsId: 'dynastyScoreDisclosure', defaultOpen: true },
+  { id: 'dynasty-period', label: 'Period Comparison', detailsId: 'dynastyPeriodDisclosure', defaultOpen: true },
+  { id: 'dynasty-windows', label: 'Best Dynasty Windows', detailsId: 'dynastyWindowsDisclosure', defaultOpen: false },
+  { id: 'dynasty-trend', label: 'Dynasty Trend', detailsId: 'dynastyTrendDisclosure', defaultOpen: false },
+  { id: 'dynasty-heatmap', label: 'Era Heatmap', detailsId: 'dynastyHeatmapDisclosure', defaultOpen: false },
+  { id: 'dynasty-slumps', label: 'Slumps', detailsId: 'dynastySlumpsDisclosure', defaultOpen: false },
+];
+
+function aggregateRows(value: readonly unknown[]): Record<string, unknown>[] { return value.filter((row): row is Record<string, unknown> => Boolean(row && typeof row === 'object' && !Array.isArray(row))); }
 
 export function createFeatureController(): DarlingFeatureController {
   let context: AppContext;
-  let state: any = null;
-  let active = false;
-  let modalOpener: HTMLElement | null = null;
-  let modalOpenerKey: string | null = null;
-  let suppressClose = false;
+  let root: HTMLElement | null = null;
+  let activeSignal: AbortSignal | null = null;
+  let initialized = false;
+  let controlsInteracted = false;
+  let state: DynastyState = resolveDynastyInitialState({ seasonSummaries: [] });
   let disclosure: SectionDisclosureController | null = null;
   let shareAction: ShareCardActionController | null = null;
-
-  const restoreFocus = () => {
-    if (!modalOpener && !modalOpenerKey) return;
-    const fallback = context.document.querySelector<HTMLElement>('#dynastyBestWindows h4, #page-dynasty h3');
-    const replacement = modalOpenerKey
-      ? [...context.document.querySelectorAll<HTMLElement>('[data-window-key]')].find(element => element.dataset.windowKey === modalOpenerKey)
-      : null;
-    const target = modalOpener?.isConnected ? modalOpener : replacement || fallback;
-    modalOpener = null;
-    modalOpenerKey = null;
-    requestAnimationFrame(() => target?.focus?.());
-  };
-
-  const closeForNavigation = () => {
-    const modal = context.document.getElementById('dynastyWindowModal') as HTMLDialogElement | null;
-    if (state) state = { ...state, selectedWindowKey: null, selectedWindowKind: null };
-    modalOpener = null;
-    modalOpenerKey = null;
-    suppressClose = !!modal?.open;
-    if (modal?.open) modal.close();
-    modal?.replaceChildren();
-    context.document.body.classList.remove('no-scroll');
-  };
-
-  const closeModal = () => {
-    if (suppressClose) {
-      suppressClose = false;
-      return;
-    }
-    if (state?.selectedWindowKey) {
-      state = { ...state, selectedWindowKey: null, selectedWindowKind: null };
-      draw();
-    }
-    restoreFocus();
-  };
-
-  const draw = () => {
-    if (!active || !state) return;
-    shareAction?.dispose();
-    shareAction = null;
-    const view = buildDynastyViewModel({
-      leagueGames: context.data.leagueGames,
+  const isActive = () => Boolean(activeSignal && !activeSignal.aborted);
+  const buildView = () => buildDynastyViewModel({ leagueGames: context.data.leagueGames, seasonSummaries: context.data.seasonSummaries, seasonAggregates: aggregateRows(context.selectors.seasonAggregates()), mode: state.mode, owner: state.owner, startSeason: state.startSeason, endSeason: state.endSeason, requestedStartSeason: state.requestedStartSeason, requestedEndSeason: state.requestedEndSeason, minSeasons: state.minSeasons, includeSaundersPenalty: state.includeSaundersPenalty });
+  const renderCurrent = (allowInactive = false) => {
+    if (!root || (!isActive() && !allowInactive)) return;
+    const model = buildView();
+    render(h(DynastyPage, {
+      view: model,
+      state,
       seasonSummaries: context.data.seasonSummaries,
-      seasonAggregates: context.selectors.seasonAggregates(),
-      ...state,
-      allTeams: ALL_TEAMS,
-    });
-    const score = view.selectedScore;
-    const owner = score?.owner || null;
+      active: isActive(),
+      onChange(next: DynastyState) { if (!isActive()) return; controlsInteracted = true; state = { ...next, requestedStartSeason: next.startSeason, requestedEndSeason: next.endSeason }; renderCurrent(); },
+      onToggleTrend(owner: string) { if (!isActive()) return; const hidden = new Set(state.chartHiddenOwners); if (hidden.has(owner)) hidden.delete(owner); else hidden.add(owner); state = { ...state, chartHiddenOwners: [...hidden].sort() }; renderCurrent(); },
+      onSelectWindow(row: DynastyScore, kind: 'playoffs' | 'saunders' = 'playoffs') { if (!isActive()) return; state = { ...state, selectedWindowKey: `${row.owner}|${row.windowStartSeason}|${row.windowEndSeason}|${row.windowSize || ''}`, selectedWindowKind: kind }; renderCurrent(); const trend = context.document.getElementById('dynastyTrendDisclosure') as HTMLDetailsElement | null; if (trend && !trend.open) trend.open = true; context.window.requestAnimationFrame(() => context.document.querySelector<HTMLButtonElement>('#dynastyTrendPlot .chart-load-button')?.click()); },
+      onCloseWindow() { if (!isActive()) return; state = { ...state, selectedWindowKey: null, selectedWindowKind: null }; renderCurrent(); },
+    }), root);
+    if (!isActive()) return;
+    if (!disclosure) {
+      const mount = context.document.getElementById('dynastySectionNav');
+      if (mount) disclosure = createSectionDisclosure({ doc: context.document, mount, featureId: 'dynasty', featureLabel: 'Dynasty Rankings' });
+    }
+    const signature = `${state.mode}|${state.owner}|${state.startSeason}|${state.endSeason}|${state.minSeasons}|${state.includeSaundersPenalty}`;
+    disclosure?.update({ signature, sections: disclosureSpecs.flatMap(spec => { const details = context.document.getElementById(spec.detailsId) as HTMLDetailsElement | null; return details ? [{ id: spec.id, label: spec.label, details, available: true, defaultOpen: spec.defaultOpen }] : []; }) });
+    if (controlsInteracted && state.mode === 'calculator') {
+      const windows = context.document.getElementById('dynastyWindowsDisclosure') as HTMLDetailsElement | null;
+      if (windows && !windows.open) windows.open = true;
+    }
+    const owner = model.selectedScore?.owner || null;
     context.header.feature(owner ? `${owner} Dynasty Rankings` : 'Dynasty Rankings', owner);
-    context.theme.owner(view.controls.mode === 'calculator' ? view.controls.owner : null, state.selectedWindowKind === 'saunders' ? 'saunders' : 'regular');
-    const selectedWindowKey = state.selectedWindowKey || '';
-    const selectedWindowKind = state.selectedWindowKind || 'playoffs';
-    const selectedWindow = selectedWindowKind === 'saunders'
-      ? findDynastyWindowByKeyFromRows(view.slumps.lowestScores, selectedWindowKey)
-      : findDynastyWindowByKey(view.bestWindows, selectedWindowKey);
-    renderDynastyCalculatorHero(score, { doc: context.document });
-    renderDynastyScoreBreakdown(score, { doc: context.document });
-    renderDynastyPeriodLeaderboard(view.comparisonRows, { doc: context.document, mode: view.controls.mode, windowSizeLabel: view.bestWindows.windowSizeLabel });
-    renderDynastyBestWindows(view.bestWindows, { doc: context.document });
-    renderDynastyTrendChart(view.trendChart, { doc: context.document, hiddenOwners: state.chartHiddenOwners || [], renderChart: false });
-    if (selectedWindowKind === 'saunders') renderDynastySlumpModal(selectedWindow, { doc: context.document, allGames: context.data.leagueGames });
-    else renderDynastyWindowModal(selectedWindow, { doc: context.document, allGames: context.data.leagueGames });
-    renderDynastyHeatmap(view.heatmap, { doc: context.document });
-    renderDynastySlumps(view.slumps, { doc: context.document });
-    const individual = view.controls.mode === 'calculator';
-    const comparison = ['selected-range', 'all-time', 'rolling-3', 'rolling-5'].includes(view.controls.mode);
-    const sections = [
-      ['dynasty-score', 'Score Breakdown', 'dynastyScoreDisclosure', individual, undefined],
-      ['dynasty-period', 'Period Comparison', 'dynastyPeriodDisclosure', comparison, undefined],
-      ['dynasty-windows', 'Best Dynasty Windows', 'dynastyWindowsDisclosure', false, undefined],
-      ['dynasty-trend', 'Dynasty Trend', 'dynastyTrendDisclosure', false, () => renderDynastyTrendChart(view.trendChart, { doc: context.document, hiddenOwners: state.chartHiddenOwners || [] })],
-      ['dynasty-heatmap', 'Era Heatmap', 'dynastyHeatmapDisclosure', false, undefined],
-      ['dynasty-slumps', 'Slumps', 'dynastySlumpsDisclosure', false, undefined],
-    ] as const;
-    disclosure?.update({
-      signature: `${view.controls.mode}|${view.controls.owner}|${view.controls.startSeason}|${view.controls.endSeason}|${view.controls.minSeasons}|${view.controls.includeSaundersPenalty}`,
-      sections: sections.flatMap(([id, label, detailsId, defaultOpen, onVisible]) => {
-        const details = context.document.getElementById(detailsId) as HTMLDetailsElement | null;
-        const content = details?.querySelector<HTMLElement>('.feature-section-content');
-        return details ? [{ id, label, details, available: Boolean(content?.textContent?.trim()), defaultOpen, onVisible }] : [];
-      }),
-    });
-    const canonicalPath = context.router.update({
-      tab: 'dynasty',
-      selectedDynastyMode: view.controls.mode,
-      selectedDynastyOwner: view.controls.owner,
-      selectedDynastyStartSeason: view.controls.requestedStartSeason ?? view.controls.startSeason,
-      selectedDynastyEndSeason: view.controls.requestedEndSeason ?? view.controls.endSeason,
-      selectedDynastyMinSeasons: view.controls.minSeasons,
-      selectedDynastySaunders: view.controls.includeSaundersPenalty,
-    });
-    const host = context.document.getElementById('dynastyShareCard');
-    shareAction = mountDynastyCard(
-      host,
-      score,
-      canonicalPath,
-      context.data.dataVersion,
-      context.window,
-      view.controls.mode === 'calculator' && view.controls.owner !== ALL_TEAMS
-        ? view.controls.owner
-        : null,
-    );
+    context.theme.owner(state.mode === 'calculator' ? state.owner : null, state.includeSaundersPenalty ? 'regular' : 'saunders');
+    const canonicalPath = context.router.update({ tab: 'dynasty', selectedDynastyMode: state.mode, selectedDynastyOwner: state.owner === ALL_DYNASTY_TEAMS ? null : state.owner, selectedDynastyStartSeason: state.requestedStartSeason, selectedDynastyEndSeason: state.requestedEndSeason, selectedDynastyMinSeasons: state.minSeasons, selectedDynastySaunders: state.includeSaundersPenalty });
+    shareAction?.dispose();
+    shareAction = mountDynastyCard(context.document.getElementById('dynastyShareCard'), model.selectedScore, canonicalPath, context.data.dataVersion, context.window, state.mode === 'calculator' && state.owner !== ALL_DYNASTY_TEAMS ? state.owner : null);
   };
-
   return {
     id: 'dynasty',
-    mount(nextContext) {
-      context = nextContext;
-      const disclosureMount = context.document.getElementById('dynastySectionNav');
-      if (disclosureMount) {
-        disclosure = createSectionDisclosure({
-          doc: context.document,
-          mount: disclosureMount,
-          featureId: 'dynasty',
-          featureLabel: 'Dynasty Rankings',
-        });
-      }
-      const trend = context.document.getElementById('dynastyTrendChart');
-      trend?.addEventListener('click', event => {
-        if (!active) return;
-        const target = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-dynasty-trend-toggle="1"]') : null;
-        const owner = target?.dataset.owner;
-        if (!owner) return;
-        event.preventDefault();
-        const hidden = new Set<string>(state?.chartHiddenOwners || []);
-        if (hidden.has(owner)) hidden.delete(owner); else hidden.add(owner);
-        state = { ...(state || {}), chartHiddenOwners: [...hidden].sort() };
-        draw();
-      });
-      const bindCards = (id: string, selector: string, kind: string) => {
-        const root = context.document.getElementById(id);
-        root?.addEventListener('click', event => {
-          if (!active) return;
-          const button = event.target instanceof Element ? event.target.closest<HTMLElement>(selector) : null;
-          if (!button?.dataset.windowKey || !root.contains(button)) return;
-          event.preventDefault();
-          modalOpener = button;
-          modalOpenerKey = button.dataset.windowKey;
-          state = { ...(state || {}), selectedWindowKey: button.dataset.windowKey, selectedWindowKind: kind };
-          draw();
-        });
-      };
-      bindCards('dynastyBestWindows', '.dynasty-window-card[data-window-key]', 'playoffs');
-      bindCards('dynastySlumps', '.dynasty-slump-item[data-window-key]', 'saunders');
-      const modal = context.document.getElementById('dynastyWindowModal') as HTMLDialogElement | null;
-      modal?.addEventListener('darling:dialog-navigation-close', event => {
-        event.preventDefault();
-        closeForNavigation();
-      });
-      modal?.addEventListener('click', event => {
-        const target = event.target instanceof Element ? event.target : null;
-        if (target !== modal && !target?.closest('[data-dynasty-modal-close="1"]')) return;
-        event.preventDefault();
-        closeModal();
-      });
-      modal?.addEventListener('keydown', event => {
-        if (event.key !== 'Tab' || !modal.open) return;
-        const items = [...modal.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')];
-        if (!items.length) return;
-        if (event.shiftKey && context.document.activeElement === items[0]) { event.preventDefault(); items.at(-1)?.focus(); }
-        else if (!event.shiftKey && context.document.activeElement === items.at(-1)) { event.preventDefault(); items[0].focus(); }
-      });
-      modal?.addEventListener('close', closeModal);
-    },
+    mount(nextContext) { context = nextContext; root = context.document.getElementById('dynastyRoot'); if (!root) throw new Error('Dynasty Rankings root missing'); },
     activate(input: FeatureActivation) {
-      active = !input.signal.aborted;
-      const retained = input.reason === 'tab' ? state : null;
+      activeSignal = input.signal;
+      if (input.signal.aborted) return;
+      const retained = input.reason === 'tab' && initialized ? state : null;
       const favorite = context.ownerPreference.getSnapshot().owner;
-      const mode = input.route.dynastyMode
-        || (input.route.dynastyOwner ? 'calculator' : retained?.mode)
-        || (favorite ? 'calculator' : 'all-time');
-      const initial = {
-        ...(retained || {}),
-        mode,
-        owner: input.route.dynastyOwner || retained?.owner || (mode === 'calculator' ? favorite : ALL_TEAMS),
-        startSeason: input.route.dynastyStart ?? retained?.startSeason,
-        endSeason: input.route.dynastyEnd ?? retained?.endSeason,
-        requestedStartSeason: input.route.dynastyStart ?? retained?.requestedStartSeason,
-        requestedEndSeason: input.route.dynastyEnd ?? retained?.requestedEndSeason,
-        minSeasons: input.route.dynastyMinSeasons ?? retained?.minSeasons ?? 2,
-        includeSaundersPenalty: input.route.dynastySaunders ?? retained?.includeSaundersPenalty ?? true,
-      };
-      state = (buildDynastyControls as any)({
-        doc: context.document,
-        seasonSummaries: context.data.seasonSummaries,
-        selectedState: initial,
-        urlState: input.route,
-        allTeams: ALL_TEAMS,
-        onChange: (next: any) => {
-          if (!active) return;
-          state = { ...(state || {}), ...next };
-          draw();
-        },
-      });
-      draw();
+      const mode = (input.route.dynastyMode || retained?.mode || (input.route.dynastyOwner || favorite ? 'calculator' : 'all-time')) as DynastyMode;
+      state = resolveDynastyInitialState({ seasonSummaries: context.data.seasonSummaries, urlState: input.route, mode, owner: input.route.dynastyOwner || retained?.owner || favorite, startSeason: input.route.dynastyStart ?? retained?.startSeason, endSeason: input.route.dynastyEnd ?? retained?.endSeason, minSeasons: input.route.dynastyMinSeasons ?? retained?.minSeasons, includeSaundersPenalty: input.route.dynastySaunders ?? retained?.includeSaundersPenalty });
+      controlsInteracted = false;
+      state = { ...state, chartHiddenOwners: retained?.chartHiddenOwners || [], selectedWindowKey: null, selectedWindowKind: null };
+      initialized = true;
+      renderCurrent();
+      void loadChartRuntime();
     },
-    deactivate(_next: FeatureId) {
-      active = false;
-      shareAction?.dispose();
-      shareAction = null;
-      closeForNavigation();
-    },
-    dispose() {
-      shareAction?.dispose();
-      shareAction = null;
-      disclosure?.dispose();
-      disclosure = null;
-    },
+    deactivate() { activeSignal = null; shareAction?.dispose(); shareAction = null; renderCurrent(true); },
+    dispose() { activeSignal = null; shareAction?.dispose(); shareAction = null; disclosure?.dispose(); disclosure = null; if (root) render(null, root); root = null; },
   };
 }

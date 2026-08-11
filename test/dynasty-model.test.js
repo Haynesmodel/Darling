@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildDynastyViewModel, buildOwnerSeasonProfiles, buildDynastyTrendChartModel, calculateDynastyScore, computeRollingDynastyWindows } from '../src/features/dynasty/dynasty-model.ts';
-import { normalizeDynastyRange, resolveDynastyInitialState } from '../src/features/dynasty/dynasty-state.ts';
+import { buildDynastyViewModel, buildOwnerSeasonProfiles, buildDynastyTrendChartModel, calculateDynastyScore, computeRollingDynastyWindows, computeSlumpWindows } from '../src/features/dynasty/dynasty-model.ts';
+import { normalizeDynastyRange, normalizeDynastyStateChange, resolveDynastyInitialState } from '../src/features/dynasty/dynasty-state.ts';
 
 function row(season, owner, overrides = {}) { return { season, owner, wins: 8, losses: 4, ties: 0, finish: 2, points_for: 1000, points_against: 950, playoff_wins: 1, playoff_losses: 1, saunders_wins: 0, saunders_losses: 0, champion: false, saunders: false, bye: false, wild_card: true, saunders_bye: false, bagels_earned: null, ...overrides }; }
 const summaries = [row(2021, 'Joe', { champion: true }), row(2021, 'Shap', { wins: 4, finish: 8 }), row(2022, 'Joe'), row(2022, 'Shap', { wins: 7 }), row(2023, 'Joe', { champion: true }), row(2023, 'Shap', { wins: 5 })];
@@ -32,4 +32,23 @@ test('view model is deterministic for empty history', () => {
   assert.equal(view.selectedScore, null);
   assert.deepEqual(view.heatmap.seasonList, []);
   assert.deepEqual(view.trendChart.series, []);
+});
+
+test('control changes normalize owner, bounds, and minimum seasons', () => {
+  const state = normalizeDynastyStateChange({ mode: 'calculator', owner: '__ALL__', startSeason: 2023, endSeason: 2021, minSeasons: 99, includeSaundersPenalty: true }, summaries);
+  assert.equal(state.owner, 'Joe');
+  assert.deepEqual([state.startSeason, state.endSeason], [2021, 2023]);
+  assert.deepEqual([state.requestedStartSeason, state.requestedEndSeason], [2021, 2023]);
+  assert.equal(state.minSeasons, 3);
+});
+
+test('slump windows compare every consecutive pair and retain biggest drops', () => {
+  const profiles = buildOwnerSeasonProfiles({ seasonSummaries: summaries });
+  const windows = computeRollingDynastyWindows({ windowSize: 3, seasonProfiles: profiles, startSeason: 2021, endSeason: 2023, minSeasons: 1 });
+  const slumps = computeSlumpWindows({ rollingWindows: [
+    { ...windows[0], owner: 'Joe', windowStartSeason: 2014, windowEndSeason: 2016, windowLabel: '2014-2016', score: 100 },
+    { ...windows[0], owner: 'Joe', windowStartSeason: 2016, windowEndSeason: 2018, windowLabel: '2016-2018', score: 90 },
+  ], seasonProfiles: profiles, windowSize: 3 });
+  assert.equal(slumps.biggestDrops.length, 1);
+  assert.equal(slumps.biggestDrops[0].delta, -10);
 });

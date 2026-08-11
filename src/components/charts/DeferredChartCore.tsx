@@ -16,7 +16,6 @@ export interface DeferredChartProps {
   class?: string;
   emptyMessage?: string;
   active?: boolean;
-  loadOnReveal?: boolean;
   onStateChange?: (state: ChartState) => void;
 }
 
@@ -41,7 +40,6 @@ export function DeferredChart({
   class: className,
   emptyMessage = `No ${name.toLowerCase()} chart data is available.`,
   active = true,
-  loadOnReveal = false,
   onStateChange,
 }: DeferredChartProps) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -134,18 +132,12 @@ export function DeferredChart({
         return;
       }
       observe();
-      if (loadOnReveal && disclosure?.open && typeof IntersectionObserver === 'function' && host.getBoundingClientRect().width > 0) {
-        requestAnimationFrame(beginLoad);
-      }
     };
 
     invalidate();
     setState(hasData ? 'idle' : 'empty');
     disclosure?.addEventListener('toggle', onToggle);
     observe();
-    if (loadOnReveal && disclosure?.open && typeof IntersectionObserver === 'function' && host.getBoundingClientRect().width > 0) {
-      requestAnimationFrame(beginLoad);
-    }
 
     return () => {
       disposed = true;
@@ -154,7 +146,7 @@ export function DeferredChart({
       disclosure?.removeEventListener('toggle', onToggle);
       invalidate();
     };
-  }, [active, signature, loadOnReveal]);
+  }, [active, signature]);
 
   return <div
     id={id}

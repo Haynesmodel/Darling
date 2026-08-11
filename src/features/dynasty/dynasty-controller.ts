@@ -5,9 +5,8 @@ import type { DarlingFeatureController, FeatureActivation } from '../../app/feat
 import { createSectionDisclosure, type SectionDisclosureController } from '../../app/section-disclosure';
 import { mountDynastyCard } from '../../share/share-card-feature-adapters';
 import type { ShareCardActionController } from '../../share/share-card-actions';
-import { loadChartRuntime } from '../../charting/load-chart-runtime';
 import { buildDynastyViewModel } from './dynasty-model.ts';
-import { ALL_DYNASTY_TEAMS, resolveDynastyInitialState } from './dynasty-state.ts';
+import { ALL_DYNASTY_TEAMS, normalizeDynastyStateChange, resolveDynastyInitialState } from './dynasty-state.ts';
 import type { DynastyMode, DynastyScore, DynastyState } from './dynasty-types.ts';
 import { DynastyPage } from './DynastyPage.tsx';
 
@@ -29,7 +28,7 @@ export function createFeatureController(): DarlingFeatureController {
   let activeSignal: AbortSignal | null = null;
   let initialized = false;
   let controlsInteracted = false;
-  let chartRuntimeReady: Promise<unknown> | null = null;
+  let lastIndividualOwner: string | null = null;
   let state: DynastyState = resolveDynastyInitialState({ seasonSummaries: [] });
   let disclosure: SectionDisclosureController | null = null;
   let shareAction: ShareCardActionController | null = null;
@@ -42,11 +41,24 @@ export function createFeatureController(): DarlingFeatureController {
       view: model,
       state,
       seasonSummaries: context.data.seasonSummaries,
+      leagueGames: context.data.leagueGames,
       active: isActive(),
       openWindows: controlsInteracted && state.mode === 'calculator',
-      onChange(next: DynastyState) { if (!isActive()) return; controlsInteracted = true; state = { ...next, requestedStartSeason: next.startSeason, requestedEndSeason: next.endSeason }; renderCurrent(); },
+      openScore: state.mode === 'calculator',
+      openPeriod: state.mode !== 'calculator',
+      onChange(next: DynastyState) {
+        if (!isActive()) return;
+        controlsInteracted = true;
+        if (state.mode === 'calculator' && state.owner !== ALL_DYNASTY_TEAMS) lastIndividualOwner = state.owner;
+        const candidate = next.mode === 'calculator' && next.owner === ALL_DYNASTY_TEAMS
+          ? { ...next, owner: lastIndividualOwner || ALL_DYNASTY_TEAMS }
+          : next;
+        state = normalizeDynastyStateChange({ ...candidate, requestedStartSeason: candidate.startSeason, requestedEndSeason: candidate.endSeason }, context.data.seasonSummaries);
+        if (state.mode === 'calculator' && state.owner !== ALL_DYNASTY_TEAMS) lastIndividualOwner = state.owner;
+        renderCurrent();
+      },
       onToggleTrend(owner: string) { if (!isActive()) return; const hidden = new Set(state.chartHiddenOwners); if (hidden.has(owner)) hidden.delete(owner); else hidden.add(owner); state = { ...state, chartHiddenOwners: [...hidden].sort() }; renderCurrent(); },
-      onSelectWindow(row: DynastyScore, kind: 'playoffs' | 'saunders' = 'playoffs') { if (!isActive()) return; state = { ...state, selectedWindowKey: `${row.owner}|${row.windowStartSeason}|${row.windowEndSeason}|${row.windowSize || ''}`, selectedWindowKind: kind }; renderCurrent(); disclosure?.setOpen('dynasty-trend', true); const runtimeReady = chartRuntimeReady || loadChartRuntime(); chartRuntimeReady = runtimeReady; void runtimeReady.catch(() => undefined).then(() => context.window.requestAnimationFrame(() => context.document.querySelector<HTMLButtonElement>('#dynastyTrendPlot .chart-load-button')?.click())); },
+      onSelectWindow(row: DynastyScore, kind: 'playoffs' | 'saunders' = 'playoffs') { if (!isActive()) return; state = { ...state, selectedWindowKey: `${row.owner}|${row.windowStartSeason}|${row.windowEndSeason}|${row.windowSize || ''}`, selectedWindowKind: kind }; renderCurrent(); },
       onCloseWindow() { if (!isActive()) return; state = { ...state, selectedWindowKey: null, selectedWindowKind: null }; renderCurrent(); },
     }), root);
     if (!isActive()) return;
@@ -55,7 +67,7 @@ export function createFeatureController(): DarlingFeatureController {
       if (mount) disclosure = createSectionDisclosure({ doc: context.document, mount, featureId: 'dynasty', featureLabel: 'Dynasty Rankings' });
     }
     const signature = `${state.mode}|${state.owner}|${state.startSeason}|${state.endSeason}|${state.minSeasons}|${state.includeSaundersPenalty}`;
-    disclosure?.update({ signature, sections: disclosureSpecs.flatMap(spec => { const details = context.document.getElementById(spec.detailsId) as HTMLDetailsElement | null; return details ? [{ id: spec.id, label: spec.label, details, available: true, defaultOpen: spec.defaultOpen }] : []; }) });
+    disclosure?.update({ signature, sections: disclosureSpecs.flatMap(spec => { const details = context.document.getElementById(spec.detailsId) as HTMLDetailsElement | null; const defaultOpen = spec.id === 'dynasty-score' ? state.mode === 'calculator' : spec.id === 'dynasty-period' ? state.mode !== 'calculator' : spec.defaultOpen; return details ? [{ id: spec.id, label: spec.label, details, available: true, defaultOpen }] : []; }) });
     if (controlsInteracted && state.mode === 'calculator') {
       disclosure?.setOpen('dynasty-windows', true);
     }
@@ -84,12 +96,11 @@ export function createFeatureController(): DarlingFeatureController {
         || input.route.dynastyStart != null
         || input.route.dynastyEnd != null;
       state = { ...state, chartHiddenOwners: retained?.chartHiddenOwners || [], selectedWindowKey: null, selectedWindowKind: null };
+      if (state.mode === 'calculator' && state.owner !== ALL_DYNASTY_TEAMS) lastIndividualOwner = state.owner;
       initialized = true;
       renderCurrent();
-      chartRuntimeReady = loadChartRuntime();
-      void chartRuntimeReady.catch(() => undefined);
     },
     deactivate() { activeSignal = null; shareAction?.dispose(); shareAction = null; renderCurrent(true); },
-    dispose() { activeSignal = null; chartRuntimeReady = null; shareAction?.dispose(); shareAction = null; disclosure?.dispose(); disclosure = null; if (root) render(null, root); root = null; },
+    dispose() { activeSignal = null; shareAction?.dispose(); shareAction = null; disclosure?.dispose(); disclosure = null; if (root) render(null, root); root = null; },
   };
 }

@@ -206,11 +206,28 @@ test('Gauntlet adapter does not mount into a closed disclosure', async ({ page }
   await expect(page.locator('#gauntletHistogramPlot')).toHaveAttribute('data-chart-state', 'idle');
 });
 
-test('Dynasty trend chart toggle changes marks without duplicating SVG', async ({ page }) => {
+test('Dynasty trend chart waits for a far-below-fold disclosure before loading', async ({ page }) => {
+  const runtimeRequests = [];
+  page.on('request', request => {
+    if (request.url().includes('chart-runtime') || request.url().includes('/src/charting/plot-charts.ts')) runtimeRequests.push(request.url());
+  });
   await page.goto('/?tab=dynasty&dynastyMode=calculator&dynastyOwner=Joe&dynastyStart=2021&dynastyEnd=2025');
+  await page.evaluate(() => {
+    const spacer = document.createElement('div');
+    spacer.id = 'dynasty-far-below-fold-spacer';
+    spacer.style.height = '3000px';
+    document.querySelector('#page-dynasty')?.prepend(spacer);
+    const disclosure = document.querySelector('#dynastyTrendDisclosure');
+    if (disclosure instanceof HTMLDetailsElement) {
+      disclosure.open = true;
+      disclosure.dispatchEvent(new Event('toggle'));
+    }
+  });
   await expect(page.locator('#dynastyTrendPlot svg')).toHaveCount(0);
-  await page.locator('#dynasty-section-jump').selectOption('dynasty-trend');
+  expect(runtimeRequests).toEqual([]);
+  await page.locator('#dynastyTrendPlot').scrollIntoViewIfNeeded();
   await assertChart(page, '#dynastyTrendPlot', /All-time dynasty score through the years/);
+  await page.locator('#dynasty-section-jump').selectOption('dynasty-trend');
   const toggle = page.locator('[data-dynasty-trend-toggle="1"]').first();
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-pressed', 'false');

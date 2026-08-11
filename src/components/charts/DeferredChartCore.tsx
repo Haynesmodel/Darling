@@ -143,6 +143,9 @@ export function DeferredChart({
     setState(hasData ? 'idle' : 'empty');
     disclosure?.addEventListener('toggle', onToggle);
     observe();
+    if (loadOnReveal && disclosure?.open && typeof IntersectionObserver === 'function' && host.getBoundingClientRect().width > 0) {
+      requestAnimationFrame(beginLoad);
+    }
 
     return () => {
       disposed = true;

@@ -42,6 +42,7 @@ export function createFeatureController(): DarlingFeatureController {
       state,
       seasonSummaries: context.data.seasonSummaries,
       active: isActive(),
+      openWindows: controlsInteracted && state.mode === 'calculator',
       onChange(next: DynastyState) { if (!isActive()) return; controlsInteracted = true; state = { ...next, requestedStartSeason: next.startSeason, requestedEndSeason: next.endSeason }; renderCurrent(); },
       onToggleTrend(owner: string) { if (!isActive()) return; const hidden = new Set(state.chartHiddenOwners); if (hidden.has(owner)) hidden.delete(owner); else hidden.add(owner); state = { ...state, chartHiddenOwners: [...hidden].sort() }; renderCurrent(); },
       onSelectWindow(row: DynastyScore, kind: 'playoffs' | 'saunders' = 'playoffs') { if (!isActive()) return; state = { ...state, selectedWindowKey: `${row.owner}|${row.windowStartSeason}|${row.windowEndSeason}|${row.windowSize || ''}`, selectedWindowKind: kind }; renderCurrent(); const trend = context.document.getElementById('dynastyTrendDisclosure') as HTMLDetailsElement | null; if (trend && !trend.open) trend.open = true; context.window.requestAnimationFrame(() => context.document.querySelector<HTMLButtonElement>('#dynastyTrendPlot .chart-load-button')?.click()); },
@@ -55,8 +56,7 @@ export function createFeatureController(): DarlingFeatureController {
     const signature = `${state.mode}|${state.owner}|${state.startSeason}|${state.endSeason}|${state.minSeasons}|${state.includeSaundersPenalty}`;
     disclosure?.update({ signature, sections: disclosureSpecs.flatMap(spec => { const details = context.document.getElementById(spec.detailsId) as HTMLDetailsElement | null; return details ? [{ id: spec.id, label: spec.label, details, available: true, defaultOpen: spec.defaultOpen }] : []; }) });
     if (controlsInteracted && state.mode === 'calculator') {
-      const windows = context.document.getElementById('dynastyWindowsDisclosure') as HTMLDetailsElement | null;
-      if (windows && !windows.open) windows.open = true;
+      disclosure?.setOpen('dynasty-windows', true);
     }
     const owner = model.selectedScore?.owner || null;
     context.header.feature(owner ? `${owner} Dynasty Rankings` : 'Dynasty Rankings', owner);

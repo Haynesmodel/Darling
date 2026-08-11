@@ -690,6 +690,7 @@ test('dynasty tab renders controls and responds to calculator changes', async ({
   expect(await page.locator('#dynastyWindowModal tbody tr').count()).toBeGreaterThan(0);
   await page.locator('#dynastyWindowModal .dynasty-modal-close').click();
   await expect(page.locator('#dynastyWindowModal')).toBeHidden();
+  await page.locator('#dynasty-section-jump').selectOption('dynasty-trend');
   await expect(page.locator('#dynastyTrendChart .dynasty-trend-svg')).toBeVisible({ timeout: 15000 });
   expect(await page.locator('#dynastyTrendChart [data-dynasty-trend-toggle="1"]').count()).toBeGreaterThan(0);
   const firstTrendOwner = await page.locator('#dynastyTrendChart [data-dynasty-trend-toggle="1"]').first().getAttribute('data-owner');

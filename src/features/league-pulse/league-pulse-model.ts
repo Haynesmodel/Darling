@@ -1,4 +1,5 @@
 import { buildCurseTrackerModel } from '../../../js/curse-tracker.js';
+import { isLowestScoreEligible } from '../../../js/lowest-score-policy.js';
 import { buildCurrentSeasonStandings, isCompletedGame } from '../../../js/current-season-data.js';
 import { buildLiveMovement, buildProjectedStandings, resolveCurrentSeasonRules } from '../../../js/current-season-command-data.js';
 import { buildUrlFromState } from '../../../js/state-helpers.js';
@@ -208,13 +209,14 @@ function recordModel(data: PulseModelData, state: PulseSeasonState, pathname: st
     { game, owner: game.teamA, opponent: game.teamB, score: game.scoreA, opponentScore: game.scoreB },
     { game, owner: game.teamB, opponent: game.teamA, score: game.scoreB, opponentScore: game.scoreA },
   ]);
+  const eligibleLowScoreRows = sideRows.filter(row => isLowestScoreEligible(row.game, row.owner));
   const maxScore = Math.max(...sideRows.map(row => row.score));
-  const minScore = Math.min(...sideRows.map(row => row.score));
+  const minScore = eligibleLowScoreRows.length ? Math.min(...eligibleLowScoreRows.map(row => row.score)) : null;
   const maxMargin = Math.max(...games.map(game => Math.abs(game.scoreA - game.scoreB)));
   const maxCombined = Math.max(...games.map(game => game.scoreA + game.scoreB));
   const records: RecordCandidate[] = [
     ...sideRows.filter(row => row.score === maxScore).map(row => ({ order: 0, title: 'Highest individual score', value: row.score, ...row, sort: 'scoreDesc' })),
-    ...sideRows.filter(row => row.score === minScore).map(row => ({ order: 1, title: 'Lowest individual score', value: row.score, ...row, sort: 'scoreAsc' })),
+    ...(minScore === null ? [] : eligibleLowScoreRows.filter(row => row.score === minScore).map(row => ({ order: 1, title: 'Lowest individual score', value: row.score, ...row, sort: 'scoreAsc' }))),
     ...games.filter(game => Math.abs(game.scoreA - game.scoreB) === maxMargin).map(game => ({ order: 2, title: 'Largest winning margin', value: maxMargin, game, owner: game.scoreA >= game.scoreB ? game.teamA : game.teamB, opponent: game.scoreA >= game.scoreB ? game.teamB : game.teamA, sort: 'marginDesc' })),
     ...games.filter(game => game.scoreA + game.scoreB === maxCombined).map(game => ({ order: 3, title: 'Highest combined score', value: maxCombined, game, owner: game.teamA, opponent: game.teamB, sort: 'combinedDesc' })),
   ];

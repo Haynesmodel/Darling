@@ -1,6 +1,7 @@
 import * as core from './core-helpers.js';
 import * as render from './render-helpers.js';
 import * as stats from './stats-helpers.js';
+import { isLowestScoreEligible } from './lowest-score-policy.js';
 import { queryHistoryGames } from './history-game-query.js';
 function coreFn(name) {
   const fn = core[name] || stats[name];
@@ -222,12 +223,15 @@ function weekByWeekRows(team, games, opts = {}) {
       const type = normTypeFn(g.type);
       const week = (g._weekByTeam && g._weekByTeam[team]) || '';
       const dayGames = allGames.filter(x => +x.season === +g.season && x.date === g.date);
-      const allScores = dayGames.flatMap(x => [x.scoreA, x.scoreB]);
+      const allScores = dayGames.flatMap(x => [
+        isLowestScoreEligible(x, x.teamA) ? x.scoreA : null,
+        isLowestScoreEligible(x, x.teamB) ? x.scoreB : null,
+      ]).filter(score => score !== null);
       const maxScore = Math.max(...allScores);
       const minScore = Math.min(...allScores);
       const myScore = (g.teamA === team) ? g.scoreA : g.scoreB;
       const isCrown = myScore === maxScore;
-      const isTurd = myScore === minScore;
+      const isTurd = isLowestScoreEligible(g, team) && myScore === minScore;
       const xw = computeExpectedWinForGameFn(allGames, team, g);
 
       rows.push({

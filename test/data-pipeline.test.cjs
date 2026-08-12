@@ -8,6 +8,7 @@ const sharp = require('sharp');
 const { canonicalJson, readJson, sha256Json } = require('../scripts/data/canonical-json.cjs');
 const { HERO_REQUIREMENTS, fromRoot } = require('../scripts/data/constants.cjs');
 const { buildDerivedStats } = require('../scripts/data/derived-stats.cjs');
+const { isLowestScoreEligible } = require('../js/lowest-score-policy.js');
 const { buildManifest, seasonCoverage, verifyManifest } = require('../scripts/data/manifest.cjs');
 const { inspectHeroAssets } = require('../scripts/data/media-validation.cjs');
 const { createAjv, validateStructuralAssets, validateWithSchema } = require('../scripts/data/schema-validation.cjs');
@@ -241,6 +242,18 @@ test('canonical JSON hashing is independent of object key insertion order', () =
   assert.equal(sha256Json(a), sha256Json(b));
 });
 
+test('lowest-score policy excludes only both sides of the immutable Saunders outlier', () => {
+  const target = bundle.H2H.find(game => game.season === 2022 && game.date === '2022-12-24' && game.teamA === 'Joel' && game.teamB === 'Plot');
+  assert.deepEqual({ scoreA: target.scoreA, scoreB: target.scoreB, type: target.type }, { scoreA: 6.5, scoreB: 4.6, type: 'Saunders' });
+  assert.equal(isLowestScoreEligible(target, 'Joel'), false);
+  assert.equal(isLowestScoreEligible(target, 'Plot'), false);
+  assert.equal(isLowestScoreEligible(target, 'Joe'), true);
+  assert.equal(isLowestScoreEligible({ ...target, season: 2023 }, 'Joel'), true);
+  assert.equal(isLowestScoreEligible({ ...target, type: 'Regular' }, 'Joel'), true);
+  assert.equal(isLowestScoreEligible({ ...target, teamB: 'Nuss' }, 'Joel'), true);
+  assert.equal(isLowestScoreEligible({ ...target, scoreA: 6.5, scoreB: 4.6 }, 'Joel'), false);
+});
+
 test('derived statistics match the current client calculations', async () => {
   const stats = await import('../js/stats-helpers.js');
   const gauntlet = await import('../js/gauntlet-data.js');
@@ -259,6 +272,11 @@ test('derived statistics match the current client calculations', async () => {
   for (const field of ['top', 'low', 'high150']) {
     assert.deepEqual(sortBy(derived.weekly_awards[field], row => row.team), sortBy(clientAwards[field], row => row.team));
   }
+
+  const clientBottom = stats.computeBottomNWeeklyScoresAllTeams(bundle.H2H, 25)
+    .map(({ g: _game, ...row }) => row);
+  assert.deepEqual(derived.records.bottom_scores, clientBottom);
+  assert.equal(derived.records.bottom_scores.some(row => row.date === '2022-12-24' && ['Joel', 'Plot'].includes(row.team)), false);
 
   const clientPairs = sortBy(stats.computeHeadToHeadPairs(bundle.H2H, 0), row => `${row.team}|${row.opp}`);
   assert.deepEqual(derived.head_to_head_pairs, clientPairs);

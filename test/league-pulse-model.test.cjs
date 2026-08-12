@@ -105,3 +105,13 @@ test('preseason and postseason models expose their phase-specific context', () =
   }, { pathname: '/Darling/' });
   assert.equal(rivalry.featuredMatchup.name, 'Pair rivalry');
 });
+
+test('league pulse lowest-score record ignores the outlier game', () => {
+  const target = { season: 2022, date: '2022-12-24', teamA: 'Joel', teamB: 'Plot', scoreA: 6.5, scoreB: 4.6, week: 16, round: 'Saunders Final', type: 'Saunders' };
+  const other = { season: 2022, date: '2022-12-23', teamA: 'Joe', teamB: 'Shap', scoreA: 100, scoreB: 90, week: 16, round: '', type: 'Regular' };
+  const model = pulse.buildLeaguePulseModel({ leagueGames: [target, other], seasonSummaries: summary(2022), rivalries: [], currentSeason: null, derivedStats: null, dataVersion: 'fixture' }, { pathname: '/Darling/' });
+  assert.ok(model.record);
+  assert.notEqual(model.record.date, target.date);
+  assert.notEqual(model.record.owner, 'Joel');
+  assert.notEqual(model.record.owner, 'Plot');
+});

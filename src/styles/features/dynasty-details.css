@@ -319,10 +319,7 @@
   transform:translateY(-1px);
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.08), 0 8px 16px rgba(15,23,42,.08);
 }
-.dynasty-heatmap-cell.empty{
-  background:#f3f4f6;
-  border-style:dashed;
-}
+.dynasty-heatmap-cell.empty{background:var(--surface-panel);border-color:var(--border-subtle);border-style:dashed;color:var(--text-muted);box-shadow:none}
 .dynasty-heatmap-cell.champion{
   outline:2px solid rgba(245,158,11,.42);
 }
@@ -482,7 +479,7 @@
 :root[data-color-scheme="dark"] .dynasty-heatmap-header{
   background:var(--surface-page);
 }
-:root[data-color-scheme="dark"] .dynasty-heatmap-cell{
+:root[data-color-scheme="dark"] .dynasty-heatmap-cell:not(.empty){
   border-color:rgba(248,250,252,.12);
   color:#f8fafc;
 }
@@ -497,3 +494,5 @@
 :root[data-color-scheme="dark"] .dynasty-slump-item:hover{
   background:var(--surface-control-hover);
 }
+
+@media (forced-colors:active){.dynasty-heatmap-cell.empty{background:Canvas;border-color:CanvasText;color:CanvasText;box-shadow:none}}

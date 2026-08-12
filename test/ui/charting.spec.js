@@ -212,6 +212,7 @@ test('Dynasty trend chart waits for a far-below-fold disclosure before loading',
     if (request.url().includes('chart-runtime') || request.url().includes('/src/charting/plot-charts.ts')) runtimeRequests.push(request.url());
   });
   await page.goto('/?tab=dynasty&dynastyMode=calculator&dynastyOwner=Joe&dynastyStart=2021&dynastyEnd=2025');
+  await expect(page.locator('#page-dynasty')).toHaveAttribute('data-feature-state', 'ready');
   await page.evaluate(() => {
     const disclosure = document.querySelector('#dynastyTrendDisclosure');
     if (disclosure instanceof HTMLDetailsElement) {

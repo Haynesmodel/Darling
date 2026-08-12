@@ -74,7 +74,7 @@ export function createFeatureController(): DarlingFeatureController {
     const owner = model.selectedScore?.owner || null;
     context.header.feature(owner ? `${owner} Dynasty Rankings` : 'Dynasty Rankings', owner);
     context.theme.owner(state.mode === 'calculator' ? state.owner : null, state.includeSaundersPenalty ? 'regular' : 'saunders');
-    const canonicalPath = context.router.update({ tab: 'dynasty', selectedDynastyMode: state.mode, selectedDynastyOwner: state.owner === ALL_DYNASTY_TEAMS ? null : state.owner, selectedDynastyStartSeason: state.requestedStartSeason, selectedDynastyEndSeason: state.requestedEndSeason, selectedDynastyMinSeasons: state.minSeasons, selectedDynastySaunders: state.includeSaundersPenalty });
+    const canonicalPath = context.router.update({ tab: 'dynasty', selectedDynastyMode: state.mode, selectedDynastyOwner: state.mode === 'calculator' ? state.owner : lastIndividualOwner, selectedDynastyStartSeason: state.requestedStartSeason, selectedDynastyEndSeason: state.requestedEndSeason, selectedDynastyMinSeasons: state.minSeasons, selectedDynastySaunders: state.includeSaundersPenalty });
     shareAction?.dispose();
     shareAction = mountDynastyCard(context.document.getElementById('dynastyShareCard'), model.selectedScore, canonicalPath, context.data.dataVersion, context.window, state.mode === 'calculator' && state.owner !== ALL_DYNASTY_TEAMS ? state.owner : null);
   };
@@ -96,7 +96,8 @@ export function createFeatureController(): DarlingFeatureController {
         || input.route.dynastyStart != null
         || input.route.dynastyEnd != null;
       state = { ...state, chartHiddenOwners: retained?.chartHiddenOwners || [], selectedWindowKey: null, selectedWindowKind: null };
-      if (state.mode === 'calculator' && state.owner !== ALL_DYNASTY_TEAMS) lastIndividualOwner = state.owner;
+      const routeOwner = input.route.dynastyOwner || retained?.owner || favorite;
+      if (routeOwner && routeOwner !== ALL_DYNASTY_TEAMS) lastIndividualOwner = routeOwner;
       initialized = true;
       renderCurrent();
     },

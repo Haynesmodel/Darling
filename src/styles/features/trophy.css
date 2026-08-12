@@ -394,12 +394,19 @@
   gap:8px;
 }
 .trophy-list li{
+  min-width:0;
   display:grid;
   gap:3px;
   padding:10px 12px;
   border:1px solid var(--border);
   border-radius:12px;
   background:var(--surface-panel);
+}
+.trophy-list-label,
+.trophy-list-value,
+.trophy-list-detail{
+  min-width:0;
+  overflow-wrap:anywhere;
 }
 .trophy-list-label{
   font-size:12px;

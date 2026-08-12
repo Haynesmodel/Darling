@@ -629,6 +629,11 @@ test('trophy highlights and low points stay bounded, semantic, and readable on n
       const box = await list.boundingBox();
       expect(box).toBeTruthy();
       expect(box.width).toBeLessThanOrEqual(320);
+      const overflow = await list.evaluate(element => ({
+        scrollWidth: element.scrollWidth,
+        clientWidth: element.clientWidth,
+      }));
+      expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth);
     }
   };
 

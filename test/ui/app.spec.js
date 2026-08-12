@@ -1005,10 +1005,13 @@ test('trophy hardware tones retain readable text and borders in light and dark t
       const text = parseColor(cardStyle.color);
       const label = card.querySelector('.trophy-year-chip');
       const labelStyle = label ? getComputedStyle(label) : null;
+      const rank = card.querySelector('.trophy-card-rank');
+      const rankStyle = rank ? getComputedStyle(rank) : null;
       return {
         tone: [...card.classList].find(className => ['gold', 'neutral', 'scar'].includes(className)),
         text: ratio(text, background),
         label: labelStyle ? ratio(parseColor(labelStyle.color), blend(parseColor(labelStyle.backgroundColor), background)) : null,
+        rank: rankStyle ? ratio(parseColor(rankStyle.color), background) : null,
         border: ratio(parseColor(cardStyle.borderTopColor), background),
       };
     });
@@ -1024,6 +1027,7 @@ test('trophy hardware tones retain readable text and borders in light and dark t
       for (const item of ratios) {
         expect(item.text, `${theme} ${owner} ${item.tone} card text`).toBeGreaterThanOrEqual(4.5);
         expect(item.label, `${theme} ${owner} ${item.tone} card label`).toBeGreaterThanOrEqual(4.5);
+        expect(item.rank, `${theme} ${owner} ${item.tone} card rank`).toBeGreaterThanOrEqual(4.5);
         expect(item.border, `${theme} ${owner} ${item.tone} card border`).toBeGreaterThanOrEqual(4.5);
       }
     }

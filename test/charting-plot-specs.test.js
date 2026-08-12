@@ -61,6 +61,9 @@ test('plot specs are deterministic plain option objects', () => {
   assert.equal(dynasty.marks[1].stroke(dynastyRows[0]), '#2563eb');
   assert.equal(dynasty.marks[1].stroke(dynastyRows[2]), '#f59e0b');
   assert.equal(dynasty.marks[2].fill(dynastyRows[2]), '#f59e0b');
+  assert.equal(dynasty.x.tickFormat(2014), '2014');
+  assert.equal(dynasty.x.tickFormat('2025'), '2025');
+  assert.equal(dynasty.x.tickFormat(Number.NaN), '');
 
   const gauntlet = gauntletHistogramPlotOptions({
     rows: [{ label: 'Joe 2025', center: 100, count: 2, title: 'bin' }],

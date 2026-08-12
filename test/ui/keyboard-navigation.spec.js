@@ -334,7 +334,10 @@ for (const viewport of [
     await expect(page.locator('.search-trigger')).toBeVisible();
     await page.locator('#dynasty-section-jump').selectOption('dynasty-windows');
     await page.locator('#dynastyBestWindows .dynasty-window-card').first().click();
-    const box = await page.locator('#dynastyWindowModal').boundingBox();
+    const modal = page.locator('#dynastyWindowModal');
+    await expect(modal).toBeVisible();
+    const box = await modal.boundingBox();
+    expect(box).not.toBeNull();
     expect(box.width).toBeLessThanOrEqual(viewport.width);
     expect(box.height).toBeLessThanOrEqual(viewport.height);
   });

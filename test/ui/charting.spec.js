@@ -226,8 +226,12 @@ test('Dynasty trend chart waits for a far-below-fold disclosure before loading',
   await page.locator('#dynastyTrendPlot').scrollIntoViewIfNeeded();
   await assertChart(page, '#dynastyTrendPlot', /All-time dynasty score through the years/);
   const toggle = page.locator('[data-dynasty-trend-toggle="1"]').first();
+  const toggledOwner = await toggle.getAttribute('data-owner');
+  const toggledOwnerTitles = page.locator('#dynastyTrendPlot svg title').filter({ hasText: `${toggledOwner}:` });
+  expect(await toggledOwnerTitles.count()).toBeGreaterThan(0);
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await expect.poll(async () => toggledOwnerTitles.count()).toBe(0);
   await assertChart(page, '#dynastyTrendPlot', /All-time dynasty score through the years/);
   await expectNoPageOverflow(page);
 });

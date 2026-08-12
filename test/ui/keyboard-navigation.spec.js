@@ -223,6 +223,41 @@ test('shared controls keep lightweight states, native selection, disabled semant
   expect(tableFilterStyle.topBorder).toBe('0px');
   expect(tableFilterStyle.bottomBorder).toBe('1px');
   expect(tableFilterStyle.background).toBe('rgba(0, 0, 0, 0)');
+
+  const assertLightweightRestingStyle = async (locator) => {
+    const style = await locator.evaluate((element) => {
+      const computed = getComputedStyle(element);
+      return {
+        topBorder: computed.borderTopWidth,
+        inlineStartBorder: computed.borderLeftWidth,
+        bottomBorder: computed.borderBottomWidth,
+        bottomBorderStyle: computed.borderBottomStyle,
+        background: computed.backgroundColor,
+      };
+    });
+    expect(style.topBorder).toBe('0px');
+    expect(style.inlineStartBorder).toBe('0px');
+    expect(style.bottomBorder).toBe('1px');
+    expect(style.bottomBorderStyle).toBe('solid');
+    expect(style.background).toBe('rgba(0, 0, 0, 0)');
+  };
+
+  await page.goto('/?tab=trophy');
+  await page.waitForLoadState('networkidle');
+  await assertLightweightRestingStyle(page.locator('.trophy-toolbar select'));
+
+  await page.goto('/?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019');
+  await page.waitForLoadState('networkidle');
+  await assertLightweightRestingStyle(page.locator('.gauntlet-controls-grid .gauntlet-field select').first());
+
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+  await assertLightweightRestingStyle(page.locator('.pulse-newspaper-controls select').first());
+
+  await page.goto('/?tab=transactions&txView=players');
+  await page.waitForLoadState('networkidle');
+  await assertLightweightRestingStyle(page.locator('.transaction-player-control input'));
+  await assertLightweightRestingStyle(page.locator('.transaction-player-control select'));
 });
 
 test('Dynasty dialog contains focus, locks the page, ignores search shortcuts, and restores its opener', async ({ page }) => {

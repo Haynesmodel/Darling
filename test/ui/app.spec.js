@@ -967,6 +967,7 @@ test('trophy case first viewport stacks hero shelf and rank strip without overla
 test('trophy hardware tones retain readable text and borders in light and dark themes', async ({ page }) => {
   await page.goto('/?tab=trophy&trophyOwner=Joe');
   await page.waitForLoadState('networkidle');
+  const owners = await page.locator('#trophyOwnerSelect option').evaluateAll(options => options.map(option => option.value));
 
   const contrastRatios = async () => page.locator('.trophy-hardware-card').evaluateAll(cards => {
     const parseColor = value => {
@@ -1016,12 +1017,15 @@ test('trophy hardware tones retain readable text and borders in light and dark t
   for (const theme of ['light', 'dark']) {
     await page.getByRole('button', { name: theme === 'light' ? 'Light' : 'Dark' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-color-scheme', theme);
-    const ratios = await contrastRatios();
-    expect(ratios.map(item => item.tone)).toEqual(['gold', 'gold', 'neutral', 'neutral', 'neutral', 'scar', 'scar', 'scar']);
-    for (const item of ratios) {
-      expect(item.text, `${theme} ${item.tone} card text`).toBeGreaterThanOrEqual(4.5);
-      expect(item.label, `${theme} ${item.tone} card label`).toBeGreaterThanOrEqual(4.5);
-      expect(item.border, `${theme} ${item.tone} card border`).toBeGreaterThanOrEqual(4.5);
+    for (const owner of owners) {
+      await page.locator('#trophyOwnerSelect').selectOption(owner);
+      const ratios = await contrastRatios();
+      expect(ratios.map(item => item.tone), `${theme} ${owner} tone mapping`).toEqual(['gold', 'gold', 'neutral', 'neutral', 'neutral', 'scar', 'scar', 'scar']);
+      for (const item of ratios) {
+        expect(item.text, `${theme} ${owner} ${item.tone} card text`).toBeGreaterThanOrEqual(4.5);
+        expect(item.label, `${theme} ${owner} ${item.tone} card label`).toBeGreaterThanOrEqual(4.5);
+        expect(item.border, `${theme} ${owner} ${item.tone} card border`).toBeGreaterThanOrEqual(4.5);
+      }
     }
   }
 });

@@ -223,12 +223,13 @@ function weekByWeekRows(team, games, opts = {}) {
       const type = normTypeFn(g.type);
       const week = (g._weekByTeam && g._weekByTeam[team]) || '';
       const dayGames = allGames.filter(x => +x.season === +g.season && x.date === g.date);
-      const allScores = dayGames.flatMap(x => [
+      const allScores = dayGames.flatMap(x => [x.scoreA, x.scoreB]);
+      const eligibleLowScores = dayGames.flatMap(x => [
         isLowestScoreEligible(x, x.teamA) ? x.scoreA : null,
         isLowestScoreEligible(x, x.teamB) ? x.scoreB : null,
       ]).filter(score => score !== null);
       const maxScore = Math.max(...allScores);
-      const minScore = Math.min(...allScores);
+      const minScore = eligibleLowScores.length ? Math.min(...eligibleLowScores) : Infinity;
       const myScore = (g.teamA === team) ? g.scoreA : g.scoreB;
       const isCrown = myScore === maxScore;
       const isTurd = isLowestScoreEligible(g, team) && myScore === minScore;

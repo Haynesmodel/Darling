@@ -78,8 +78,10 @@ test('history lowest-score markers exclude the outlier but keep both game rows',
   const other = { season: 2022, date: '2022-12-24', teamA: 'Joe', teamB: 'Shap', scoreA: 100, scoreB: 90, type: 'Regular', round: '', _weekByTeam: { Joe: 16, Shap: 16 } };
   const joelRows = weekByWeekRows('Joel', [target], { allGames: [target, other] });
   const plotRows = weekByWeekRows('Plot', [target], { allGames: [target, other] });
+  const targetOnlyRows = weekByWeekRows('Joel', [target], { allGames: [target] });
   assert.equal(joelRows[0].isTurd, false);
   assert.equal(plotRows[0].isTurd, false);
+  assert.equal(targetOnlyRows[0].isCrown, true);
   assert.equal(joelRows[0].pf, 6.5);
   assert.equal(plotRows[0].pf, 4.6);
 });

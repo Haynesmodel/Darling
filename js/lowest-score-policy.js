@@ -11,13 +11,10 @@ function isLowestScoreEligible(game, side) {
   const team = typeof side === 'string' ? side : side?.team;
   if (!game || !team) return true;
 
-  const teams = [game.teamA, game.teamB].slice().sort();
-  const outlierTeams = LOW_SCORE_OUTLIER.teams.slice().sort();
   const isOutlierGame = Number(game.season) === LOW_SCORE_OUTLIER.season
     && String(game.date) === LOW_SCORE_OUTLIER.date
     && String(game.type || '').trim().toLowerCase() === LOW_SCORE_OUTLIER.type
-    && teams.length === outlierTeams.length
-    && teams.every((value, index) => value === outlierTeams[index]);
+    && ((game.teamA === 'Joel' && game.teamB === 'Plot') || (game.teamA === 'Plot' && game.teamB === 'Joel'));
 
   return !(isOutlierGame && LOW_SCORE_OUTLIER.teams.includes(team));
 }

@@ -183,6 +183,15 @@ test('Trophy candidate ranking is deterministic for ties and sparse data returns
   const tiedLists = computeAchievementAndScarLists(tiedProfile);
   assert.equal(tiedLists.achievements[0].value, '2024');
 
+  const tiedGames = [
+    game({ season: 2024, date: '2024-01-01', teamB: 'Zulu', scoreA: 150, scoreB: 90 }),
+    game({ season: 2024, date: '2024-01-01', teamB: 'Alpha', scoreA: 150, scoreB: 90 }),
+  ];
+  const forward = computeAchievementAndScarLists(buildOwnerCareerProfile('Joe', tiedRows, tiedGames));
+  const reversed = computeAchievementAndScarLists(buildOwnerCareerProfile('Joe', tiedRows, tiedGames.slice().reverse()));
+  assert.equal(forward.achievements.find(item => item.label === 'Highest weekly score')?.detail, '2024-01-01 vs Alpha');
+  assert.equal(reversed.achievements.find(item => item.label === 'Highest weekly score')?.detail, '2024-01-01 vs Alpha');
+
   const duplicate = game({ season: 2024, date: '2024-02-01', scoreA: 180, scoreB: 90 });
   const duplicateProfile = buildOwnerCareerProfile('Joe', [season({ season: 2024 })], [duplicate, duplicate]);
   const duplicateLists = computeAchievementAndScarLists(duplicateProfile);

@@ -185,11 +185,15 @@ function gameIsSaunders(game: H2HGame): boolean {
 }
 
 function byGameDateAsc(a: H2HGame, b: H2HGame): number {
-  return a.date.localeCompare(b.date);
+  return a.date.localeCompare(b.date) || stableGameKey(a).localeCompare(stableGameKey(b));
 }
 
 function byGameDateDesc(a: H2HGame, b: H2HGame): number {
-  return b.date.localeCompare(a.date);
+  return b.date.localeCompare(a.date) || stableGameKey(a).localeCompare(stableGameKey(b));
+}
+
+function stableGameKey(game: H2HGame): string {
+  return `${game.season}:${game.date}:${game.teamA}:${game.teamB}:${game.week}:${game.type}:${game.round || ''}`;
 }
 
 function byMomentDateDesc(a: TrophyGameRow, b: TrophyGameRow): number {
@@ -1006,10 +1010,7 @@ function achievementAndScarItems(ownerProfile: TrophyOwnerCareerProfile): Trophy
     : null;
 
   const seasonKey = (row: SeasonSummaryRow): string => `season:${row.season}`;
-  const gameKey = (row: TrophyGameRow): string => {
-    const game = row.game;
-    return `game:${game.season}:${game.date}:${game.teamA}:${game.teamB}`;
-  };
+  const gameKey = (row: TrophyGameRow): string => `game:${stableGameKey(row.game)}`;
   const selectCandidates = (candidates: Array<TrophyListCandidate | null>): TrophyListItem[] => {
     const seenSources = new Set<string>();
     return candidates

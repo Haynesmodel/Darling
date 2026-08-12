@@ -225,6 +225,8 @@ test('Dynasty trend chart waits for a far-below-fold disclosure before loading',
   await page.locator('#dynasty-section-jump').selectOption('dynasty-trend');
   await page.locator('#dynastyTrendPlot').scrollIntoViewIfNeeded();
   await assertChart(page, '#dynastyTrendPlot', /All-time dynasty score through the years/);
+  const plottedColors = await page.locator('#dynastyTrendPlot .dynasty-trend-series').evaluateAll(nodes => [...new Set(nodes.flatMap(node => [node, ...node.querySelectorAll('[stroke]')]).map(node => node.getAttribute('stroke')).filter(Boolean))]);
+  expect(plottedColors.length).toBeGreaterThan(1);
   const toggle = page.locator('[data-dynasty-trend-toggle="1"]').first();
   const toggledOwner = await toggle.getAttribute('data-owner');
   const toggledOwnerTitles = page.locator('#dynastyTrendPlot svg title').filter({ hasText: `${toggledOwner}:` });

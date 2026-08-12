@@ -53,11 +53,14 @@ test('plot specs are deterministic plain option objects', () => {
   const dynastyRows = [
     { owner: 'Joe', season: 2024, cumulativeScore: 5, color: '#2563eb', title: 'Joe 2024' },
     { owner: 'Joe', season: 2025, cumulativeScore: 12, color: '#2563eb', title: 'Joe 2025' },
+    { owner: 'Shap', season: 2025, cumulativeScore: 8, color: '#f59e0b', title: 'Shap 2025' },
   ];
   const dynasty = dynastyTrendPlotOptions(dynastyRows, { seasonList: [2024, 2025], minScore: 0, maxScore: 14 });
   assert.equal(dynasty.marks[1].type, 'lineY');
   assert.deepEqual(dynasty.x.domain, [2024, 2025]);
-  assert.equal(dynasty.marks[1].stroke('Joe'), '#2563eb');
+  assert.equal(dynasty.marks[1].stroke(dynastyRows[0]), '#2563eb');
+  assert.equal(dynasty.marks[1].stroke(dynastyRows[2]), '#f59e0b');
+  assert.equal(dynasty.marks[2].fill(dynastyRows[2]), '#f59e0b');
 
   const gauntlet = gauntletHistogramPlotOptions({
     rows: [{ label: 'Joe 2025', center: 100, count: 2, title: 'bin' }],

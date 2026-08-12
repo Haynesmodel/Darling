@@ -7,14 +7,24 @@ import { DynastyControls } from './DynastyControls.tsx';
 import type { DynastyScore, DynastySeasonProfile, DynastyState, DynastyViewModel } from './dynasty-types.ts';
 
 const fmt = (value: number | null | undefined, digits = 1) => Number.isFinite(value) ? Number(value).toFixed(digits) : '—';
+const fmtTrimmed = (value: number | null | undefined) => Number.isFinite(value) ? String(Number(Number(value).toFixed(1))) : '—';
 const signed = (value: number | null | undefined, digits = 1) => Number.isFinite(value) ? `${Number(value) >= 0 ? '+' : ''}${Number(value).toFixed(digits)}` : '—';
+const rangeLabel = (startSeason: number | null, endSeason: number | null) => Number.isFinite(startSeason) && Number.isFinite(endSeason) ? `${startSeason}-${endSeason}` : 'No season range';
+
+function formatCoverage(score: DynastyScore | null): string | null {
+  if (!score || !Number.isFinite(score.requestedSeasonCount) || !score.requestedSeasonCount || score.scoredSeasonCount === score.requestedSeasonCount) return null;
+  return `Requested range: ${rangeLabel(score.requestedStartSeason, score.requestedEndSeason)} | Scored range: ${rangeLabel(score.scoredStartSeason, score.scoredEndSeason)} | ${score.scoredSeasonCount} of ${score.requestedSeasonCount} requested seasons available`;
+}
 
 function WindowCard({ row, onSelect }: { row: DynastyScore; onSelect: (row: DynastyScore) => void }) {
   return <button type="button" class="dynasty-window-card" data-window-key={buildDynastyWindowKey(row)} aria-haspopup="dialog" aria-controls="dynastyWindowModal" onClick={() => onSelect(row)}><div class="dynasty-window-card-top"><div><div class="dynasty-window-label">{row.owner}</div><h4>{row.windowLabel || `${row.windowStartSeason}-${row.windowEndSeason}`}</h4></div><div class="dynasty-score-value">{fmt(row.score)}</div></div><div class="dynasty-window-meta"><span>{row.windowSize}-Year Window</span><span>{row.label}</span></div><div class="dynasty-chip-row"><span class="dynasty-chip">{row.championships} Darlings</span><span class="dynasty-chip">{row.regularSeasonTitles} RS titles</span><span class="dynasty-chip">{fmt(row.winPct * 100)}% win pct</span></div></button>;
 }
 
 function ScoreHero({ score }: { score: DynastyScore | null }) {
-  return <section id="dynastyCalculatorHero" class="card dynasty-calculator-hero"><div class="dynasty-hero-kicker">Dynasty Rankings</div><div class="dynasty-hero-title"><div><h3 tabIndex={-1}>{score?.owner ? `${score.owner} Dynasty Score` : 'Dynasty Rankings'}</h3><div class="dynasty-score-value">{score ? fmt(score.score) : '—'}</div></div><div id="dynastyShareCard" class="share-card-action-host" data-share-dynasty="1" /></div>{score?.label && <div class="dynasty-hero-label">{score.label}</div>}<p>{score?.explanation.join(' · ') || 'Select a mode and range to compare league history.'}</p>{score && <div class="dynasty-hero-meta"><span>{score.requestedStartSeason}-{score.requestedEndSeason}</span><span>#{score.rankInPeriod || '—'} of {score.totalOwners || '—'}</span><span>Coverage: {score.scoredSeasonCount}/{score.requestedSeasonCount}</span></div>}</section>;
+  const range = score ? rangeLabel(score.requestedStartSeason, score.requestedEndSeason) : '—';
+  const rank = score && Number.isFinite(score.rankInPeriod) ? `#${score.rankInPeriod} of ${score.totalOwners}` : 'Unranked';
+  const coverage = formatCoverage(score);
+  return <section id="dynastyCalculatorHero" class="card"><div class="dynasty-calculator-hero"><div class="dynasty-calculator-hero-top"><div><div class="dynasty-kicker">{score?.label || 'No Data'}</div><h3 tabIndex={-1}>{score?.owner ? `${score.owner} Dynasty Score` : 'Dynasty Rankings'}</h3><div class="dynasty-range">{range}</div>{score && <div id="dynastyShareCard" class="share-card-action-host" data-share-dynasty="1" />}</div><div class="dynasty-score"><div class="dynasty-score-rank">{rank}</div><div class="dynasty-score-value">{score ? fmtTrimmed(score.score) : '—'}</div><div class="dynasty-score-sub">Dynasty score</div></div></div>{score?.explanation.length ? <div class="dynasty-hero-summary">{score.explanation.map(item => <span key={item}>{item}</span>)}</div> : null}{coverage && <div class="dynasty-coverage">{coverage}</div>}</div></section>;
 }
 
 function Leaderboard({ rows, mode }: { rows: readonly DynastyScore[]; mode: string }) {

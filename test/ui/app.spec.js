@@ -769,6 +769,13 @@ test('dynasty url restores the requested owner and period', async ({ page }) => 
   await expect(page.locator('#dynastyCalculatorHero')).toContainText('Joe Dynasty Score');
   await expect(page.locator('#dynastyCalculatorHero')).toContainText('2021-2023');
   await expect(page.locator('#dynastyCalculatorHero')).toContainText('#1');
+  await expect(page.locator('#dynastyCalculatorHero > .dynasty-calculator-hero')).toBeVisible();
+  await expect(page.locator('#dynastyCalculatorHero .dynasty-kicker')).toContainText(/Dynasty Run|Contender Stretch|Mini-Dynasty/);
+  await expect(page.locator('#dynastyCalculatorHero .dynasty-range')).toHaveText('2021-2023');
+  await expect(page.locator('#dynastyCalculatorHero .dynasty-score-rank')).toHaveText(/#1 of \d+/);
+  await expect(page.locator('#dynastyCalculatorHero .dynasty-score-sub')).toHaveText('Dynasty score');
+  await expect(page.locator('#dynastyCalculatorHero .dynasty-hero-summary span').first()).toBeVisible();
+  await expect(page.locator('#dynastyCalculatorHero .dynasty-coverage')).toHaveCount(0);
   await expect(page.locator('#dynastyScoreBreakdown')).toContainText('regularSeason');
   await expect(page.locator('#dynastyScoreBreakdown')).toContainText('hardware');
   await expect(page.locator('#dynastyScoreBreakdown')).toContainText('Coverage');

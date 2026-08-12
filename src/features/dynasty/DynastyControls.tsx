@@ -12,6 +12,6 @@ export function DynastyControls({ state, seasonSummaries, onChange }: { state: D
     <label>Start:<select id="dynastyStartSeason" disabled={state.mode === 'all-time'} value={String(state.startSeason ?? '')} onChange={event => change('startSeason', Number(event.currentTarget.value))}>{seasons.map(season => <option value={season} key={season}>{season}</option>)}</select></label>
     <label>End:<select id="dynastyEndSeason" disabled={state.mode === 'all-time'} value={String(state.endSeason ?? '')} onChange={event => change('endSeason', Number(event.currentTarget.value))}>{seasons.map(season => <option value={season} key={season}>{season}</option>)}</select></label>
     <label>Minimum Seasons to Qualify:<select id="dynastyMinSeasons" value={String(state.minSeasons)} onChange={event => change('minSeasons', Number(event.currentTarget.value))}>{seasons.map((_, index) => <option value={index + 1} key={index + 1}>{index + 1}</option>)}</select></label>
-    <label class="checkbox-label"><input id="dynastySaundersToggle" type="checkbox" checked={state.includeSaundersPenalty} onInput={event => change('includeSaundersPenalty', event.currentTarget.checked)} /> Include Saunders penalties</label>
+    <label class="checkbox-label"><input id="dynastySaundersToggle" type="checkbox" checked={state.includeSaundersPenalty} onClick={() => change('includeSaundersPenalty', !state.includeSaundersPenalty)} /> Include Saunders penalties</label>
   </div><p class="dynasty-control-hint" id="dynastyControlHint">{hint}</p></div>;
 }

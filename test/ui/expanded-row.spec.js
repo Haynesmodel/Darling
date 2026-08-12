@@ -30,6 +30,7 @@ test('Trophy ledger expansion shows the selected season game log and empty state
 });
 
 test('Trophy season adapter covers empty, singular, and complete game-log details', async ({ page }) => {
+  test.skip(process.env.PLAYWRIGHT_SERVER === 'preview', 'The authored adapter import is exercised by the coverage dev-server lane.');
   await page.goto('/');
   const details = await page.evaluate(async () => {
     const { adaptTrophySeasonRows } = await import('/src/tables/rows/trophy-season-rows.ts');

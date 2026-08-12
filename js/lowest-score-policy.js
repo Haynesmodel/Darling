@@ -9,14 +9,12 @@ const LOW_SCORE_OUTLIER = Object.freeze({
 
 function isLowestScoreEligible(game, side) {
   const team = typeof side === 'string' ? side : side?.team;
-  if (!game || !team) return true;
-
-  const isOutlierGame = Number(game.season) === LOW_SCORE_OUTLIER.season
-    && String(game.date) === LOW_SCORE_OUTLIER.date
-    && String(game.type || '').trim().toLowerCase() === LOW_SCORE_OUTLIER.type
-    && ((game.teamA === 'Joel' && game.teamB === 'Plot') || (game.teamA === 'Plot' && game.teamB === 'Joel'));
-
-  return !(isOutlierGame && LOW_SCORE_OUTLIER.teams.includes(team));
+  return !game || !team
+    || Number(game.season) !== 2022
+    || String(game.date) !== '2022-12-24'
+    || String(game.type || '').trim().toLowerCase() !== 'saunders'
+    || !((game.teamA === 'Joel' && game.teamB === 'Plot') || (game.teamA === 'Plot' && game.teamB === 'Joel'))
+    || !['Joel', 'Plot'].includes(team);
 }
 
 export { LOW_SCORE_OUTLIER, isLowestScoreEligible };

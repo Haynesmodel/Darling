@@ -178,8 +178,9 @@ function buildTeamFunFactsViewModel(team, games, opts = {}) {
     const minScore = eligibleLowScores.length ? Math.min(...eligibleLowScores) : Infinity;
     const meGame = orderedAsc.find(x => x.date === d && sidesForTeam(x, team));
     const meScore = meGame ? (meGame.teamA === team ? meGame.scoreA : meGame.scoreB) : -Infinity;
+    const meEligible = meGame ? isLowestScoreEligible(meGame, team) : false;
     if (meScore === maxScore) crowns++;
-    if (meScore === minScore) turds++;
+    if (meEligible && meScore === minScore) turds++;
   }
 
   for (const g of orderedAsc) {

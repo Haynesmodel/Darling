@@ -67,6 +67,13 @@ test('team lowest-score surfaces exclude the named outlier but retain the game',
   assert.equal(vm.facts.find(fact => fact.label === 'Bottom-Week Turds').value, '0');
 });
 
+test('excluded outlier does not receive a tied Bottom-Week Turd award', () => {
+  const target = { season: 2022, date: '2022-12-24', teamA: 'Joel', teamB: 'Plot', scoreA: 6.5, scoreB: 4.6, type: 'Saunders', round: 'Saunders Final' };
+  const tiedEligible = { season: 2022, date: '2022-12-24', teamA: 'Joe', teamB: 'Nuss', scoreA: 6.5, scoreB: 100, type: 'Regular', round: '' };
+  const vm = buildTeamFunFactsViewModel('Joel', [target, tiedEligible], { leagueGames: [target, tiedEligible] });
+  assert.equal(vm.facts.find(fact => fact.label === 'Bottom-Week Turds').value, '0');
+});
+
 test('league renderer builds all-teams summary tables', () => {
   const seasonAggregates = [
     { team: 'Joe', w: 10, l: 4, t: 0, n: 14, pf: 1400, pa: 1260 },

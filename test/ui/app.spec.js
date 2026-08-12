@@ -964,6 +964,68 @@ test('trophy case first viewport stacks hero shelf and rank strip without overla
   expect(await page.locator('#trophyHero').textContent()).toContain('Joe');
 });
 
+test('trophy hardware tones retain readable text and borders in light and dark themes', async ({ page }) => {
+  await page.goto('/?tab=trophy&trophyOwner=Joe');
+  await page.waitForLoadState('networkidle');
+
+  const contrastRatios = async () => page.locator('.trophy-hardware-card').evaluateAll(cards => {
+    const parseColor = value => {
+      const channels = (value.match(/[\d.]+/g) || []).slice(0, 4).map(Number);
+      return {
+        red: channels[0] ?? 0,
+        green: channels[1] ?? 0,
+        blue: channels[2] ?? 0,
+        alpha: channels[3] ?? 1,
+      };
+    };
+    const luminance = ({ red, green, blue }) => {
+      const channel = value => {
+        const normalized = value / 255;
+        return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * channel(red) + 0.7152 * channel(green) + 0.0722 * channel(blue);
+    };
+    const blend = (foreground, background) => ({
+      red: foreground.red * foreground.alpha + background.red * (1 - foreground.alpha),
+      green: foreground.green * foreground.alpha + background.green * (1 - foreground.alpha),
+      blue: foreground.blue * foreground.alpha + background.blue * (1 - foreground.alpha),
+      alpha: 1,
+    });
+    const ratio = (foreground, background) => {
+      const foregroundLuminance = luminance(foreground);
+      const backgroundLuminance = luminance(background);
+      return (Math.max(foregroundLuminance, backgroundLuminance) + 0.05)
+        / (Math.min(foregroundLuminance, backgroundLuminance) + 0.05);
+    };
+    const pageBackground = parseColor(getComputedStyle(document.body).backgroundColor);
+    return cards.map(card => {
+      const cardStyle = getComputedStyle(card);
+      const background = blend(parseColor(cardStyle.backgroundColor), pageBackground);
+      const text = parseColor(cardStyle.color);
+      const label = card.querySelector('.trophy-year-chip');
+      const labelStyle = label ? getComputedStyle(label) : null;
+      return {
+        tone: [...card.classList].find(className => ['gold', 'neutral', 'scar'].includes(className)),
+        text: ratio(text, background),
+        label: labelStyle ? ratio(parseColor(labelStyle.color), blend(parseColor(labelStyle.backgroundColor), background)) : null,
+        border: ratio(parseColor(cardStyle.borderTopColor), background),
+      };
+    });
+  });
+
+  for (const theme of ['light', 'dark']) {
+    await page.getByRole('button', { name: theme === 'light' ? 'Light' : 'Dark' }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-color-scheme', theme);
+    const ratios = await contrastRatios();
+    expect(ratios.map(item => item.tone)).toEqual(['gold', 'gold', 'neutral', 'neutral', 'neutral', 'scar', 'scar', 'scar']);
+    for (const item of ratios) {
+      expect(item.text, `${theme} ${item.tone} card text`).toBeGreaterThanOrEqual(4.5);
+      expect(item.label, `${theme} ${item.tone} card label`).toBeGreaterThanOrEqual(4.5);
+      expect(item.border, `${theme} ${item.tone} card border`).toBeGreaterThanOrEqual(4.5);
+    }
+  }
+});
+
 test('url state restores selected team and facet filters on load', async ({ page }) => {
   await page.goto('/?team=Joe&seasons=2025&weeks=1&opps=Shemer&types=Regular');
   await page.waitForLoadState('networkidle');

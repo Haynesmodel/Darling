@@ -106,23 +106,34 @@
   gap:10px;
 }
 .trophy-hardware-card{
+  --trophy-card-background:var(--surface-panel);
+  --trophy-card-border:var(--trophy-card-muted);
+  --trophy-card-text:var(--text);
+  --trophy-card-muted:var(--muted);
+  --trophy-card-label-background:var(--accent-soft);
+  --trophy-card-label-text:var(--text-link);
+
   display:grid;
   gap:8px;
   padding:14px;
-  border:1px solid var(--border);
+  border:1px solid var(--trophy-card-border);
   border-radius:16px;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--surface-panel) 92%, transparent), var(--surface-panel));
+  background:var(--trophy-card-background);
+  color:var(--trophy-card-text);
   box-shadow:var(--shadow-soft);
   min-height:126px;
 }
 .trophy-hardware-card.gold{
-  border-color:var(--season-border);
-  background:var(--season-soft);
+  --trophy-card-border:var(--trophy-card-text);
+  --trophy-card-background:var(--season-soft);
 }
 .trophy-hardware-card.scar{
-  border-color:#fecaca;
-  background:linear-gradient(180deg, rgba(255,241,242,.98), rgba(255,255,255,1));
+  --trophy-card-border:var(--status-error-text);
+  --trophy-card-background:var(--status-error-bg);
+  --trophy-card-text:var(--status-error-text);
+  --trophy-card-muted:var(--text-muted);
+  --trophy-card-label-background:var(--status-error-bg);
+  --trophy-card-label-text:var(--status-error-text);
 }
 .trophy-card-top{
   display:flex;
@@ -146,7 +157,7 @@
 .trophy-card-rank{
   font-size:12px;
   font-weight:800;
-  color:var(--muted);
+  color:var(--trophy-card-muted);
 }
 .trophy-card-value{
   font-size:30px;
@@ -157,12 +168,12 @@
 .trophy-card-years{
   font-size:13px;
   font-weight:700;
-  color:var(--text);
+  color:var(--trophy-card-text);
 }
 .trophy-card-context{
   font-size:12px;
   line-height:1.35;
-  color:var(--muted);
+  color:var(--trophy-card-muted);
 }
 
 .trophy-year-chip{
@@ -171,8 +182,8 @@
   gap:6px;
   padding:4px 10px;
   border-radius:999px;
-  background:var(--accent-soft);
-  color:var(--text-link);
+  background:var(--trophy-card-label-background);
+  color:var(--trophy-card-label-text);
   font-size:11px;
   font-weight:900;
   text-transform:uppercase;

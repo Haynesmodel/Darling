@@ -54,6 +54,9 @@ test('Trophy view model is pure and typed at the feature boundary', () => {
   assert.equal(view.owner, 'Joe');
   assert.equal(view.careerShape.rows[0].season, 2024);
   assert.equal(view.seasonLedger[0].record, '8-4-0');
+  assert.deepEqual(view.hardwareShelf.map(item => item.state), ['empty', 'earned', 'empty', 'earned', 'earned', 'empty', 'empty', 'empty']);
+  assert.equal(view.hardwareShelf.find(item => item.label === 'Darlings')?.context, 'Still chasing the first one');
+  assert.equal(view.hardwareShelf.find(item => item.label === 'Wild cards')?.context, 'Back-door playoff appearances');
 });
 
 test('Trophy model exercises every canonical owner through typed profile, rank, moment, and list boundaries', () => {
@@ -79,6 +82,10 @@ test('Trophy model exercises every canonical owner through typed profile, rank, 
     assert.equal(view.owner, profile.owner);
     assert.equal(view.careerShape.rows.length, profile.seasonRows.length);
     assert.equal(computeHardwareShelf(profile, ranks).length, 8);
+    for (const item of computeHardwareShelf(profile, ranks)) {
+      assert.ok(item.context.length > 0);
+      assert.equal(item.state, item.count > 0 ? 'earned' : 'empty');
+    }
     assert.ok(computeOwnerIdentity(profile, ranks).label.length > 0);
     assert.ok(computeSignatureSeasons(profile).length > 0);
     assert.ok(computeOwnerMoments(profile.owner, leagueGames).length > 0);

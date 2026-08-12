@@ -102,7 +102,7 @@
 
 .trophy-shelf{
   display:grid;
-  grid-template-columns:repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns:repeat(4, minmax(0, 1fr));
   gap:10px;
 }
 .trophy-hardware-card{
@@ -121,7 +121,8 @@
   background:var(--trophy-card-background);
   color:var(--trophy-card-text);
   box-shadow:var(--shadow-soft);
-  min-height:126px;
+  min-height:176px;
+  align-content:start;
 }
 .trophy-hardware-card.gold{
   --trophy-card-border:var(--trophy-card-text);
@@ -144,6 +145,7 @@
 .trophy-card-title{
   display:flex;
   align-items:center;
+  flex-wrap:wrap;
   gap:10px;
   min-width:0;
 }
@@ -165,15 +167,22 @@
   line-height:1;
   letter-spacing:-.04em;
 }
-.trophy-card-years{
-  font-size:13px;
-  font-weight:700;
-  color:var(--trophy-card-text);
+.trophy-card-measure{display:flex;align-items:baseline;gap:8px}
+.trophy-card-measure-label,
+.trophy-card-meta-label{color:var(--trophy-card-muted);font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.trophy-card-years{font-size:13px;font-weight:700;color:var(--trophy-card-text)}
+.trophy-card-context{margin:0;font-size:12px;line-height:1.35;color:var(--trophy-card-muted)}
+.trophy-card-state{color:var(--trophy-card-muted);font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
+.trophy-hardware-card.state-empty{border-style:dashed;box-shadow:none}
+.trophy-hardware-card.gold.state-empty,
+.trophy-hardware-card.neutral.state-empty{
+  --trophy-card-background:var(--surface-panel-alt);
+  --trophy-card-border:var(--trophy-card-text);
 }
-.trophy-card-context{
-  font-size:12px;
-  line-height:1.35;
-  color:var(--trophy-card-muted);
+.trophy-hardware-card.scar.state-empty{
+  --trophy-card-background:var(--surface-panel-alt);
+  --trophy-card-text:var(--muted);--trophy-card-muted:var(--muted);--trophy-card-label-background:var(--surface-panel);--trophy-card-label-text:var(--muted);
+  --trophy-card-border:var(--trophy-card-text);
 }
 
 .trophy-year-chip{
@@ -474,3 +483,12 @@
 }
 
 .trophy-ledger{overflow:auto}
+
+@media (max-width:900px){.trophy-shelf{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.trophy-toolbar{align-items:stretch}.trophy-toolbar select{width:100%;min-width:0}.trophy-hero{padding:16px}.trophy-shelf{grid-template-columns:1fr}}
+@media (forced-colors:active){
+  .trophy-hardware-card,.trophy-hardware-card.gold,.trophy-hardware-card.neutral,.trophy-hardware-card.scar{border:1px solid CanvasText;background:Canvas;color:CanvasText;box-shadow:none}
+  .trophy-hardware-card.state-empty{border-style:dashed}
+  .trophy-year-chip{border:1px solid CanvasText;background:Canvas;color:CanvasText}
+  .trophy-card-context,.trophy-card-rank,.trophy-card-state,.trophy-card-measure-label,.trophy-card-meta-label{color:CanvasText}
+}

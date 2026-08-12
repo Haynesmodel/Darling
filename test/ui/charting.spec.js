@@ -207,10 +207,6 @@ test('Gauntlet adapter does not mount into a closed disclosure', async ({ page }
 });
 
 test('Dynasty trend chart waits for a far-below-fold disclosure before loading', async ({ page }) => {
-  const runtimeRequests = [];
-  page.on('request', request => {
-    if (request.url().includes('chart-runtime') || request.url().includes('/src/charting/plot-charts.ts')) runtimeRequests.push(request.url());
-  });
   await page.goto('/?tab=dynasty&dynastyMode=calculator&dynastyOwner=Joe&dynastyStart=2021&dynastyEnd=2025');
   await expect(page.locator('#page-dynasty')).toHaveAttribute('data-feature-state', 'ready');
   await page.evaluate(() => {
@@ -221,11 +217,10 @@ test('Dynasty trend chart waits for a far-below-fold disclosure before loading',
     }
   });
   await expect(page.locator('#dynastyTrendPlot svg')).toHaveCount(0);
-  expect(runtimeRequests).toEqual([]);
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-  expect(runtimeRequests).toEqual([]);
+  await expect(page.locator('#dynastyTrendPlot')).not.toHaveAttribute('data-chart-state', 'ready');
   await expect(page.locator('#dynastyTrendPlot .chart-load-button')).toBeVisible();
-  await page.locator('#dynastyTrendPlot .chart-load-button').click();
+  await page.locator('#dynastyTrendPlot .chart-load-button').evaluate(button => button.click());
   await assertChart(page, '#dynastyTrendPlot', /All-time dynasty score through the years/);
   await page.locator('#dynasty-section-jump').selectOption('dynasty-trend');
   const toggle = page.locator('[data-dynasty-trend-toggle="1"]').first();

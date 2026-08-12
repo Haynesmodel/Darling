@@ -207,7 +207,7 @@ test('Gauntlet adapter does not mount into a closed disclosure', async ({ page }
 });
 
 test('Dynasty trend chart waits for a far-below-fold disclosure before loading', async ({ page }) => {
-  await page.goto('/?tab=dynasty&dynastyMode=calculator&dynastyOwner=Joe&dynastyStart=2021&dynastyEnd=2025');
+  await page.goto('/?tab=dynasty&dynastyMode=calculator&dynastyOwner=Joe&dynastyStart=2014&dynastyEnd=2025');
   await expect(page.locator('#page-dynasty')).toHaveAttribute('data-feature-state', 'ready');
   await page.evaluate(() => {
     const disclosure = document.querySelector('#dynastyTrendDisclosure');
@@ -225,6 +225,11 @@ test('Dynasty trend chart waits for a far-below-fold disclosure before loading',
   await page.locator('#dynasty-section-jump').selectOption('dynasty-trend');
   await page.locator('#dynastyTrendPlot').scrollIntoViewIfNeeded();
   await assertChart(page, '#dynastyTrendPlot', /All-time dynasty score through the years/);
+  const axisLabels = await page.locator('#dynastyTrendPlot svg g[aria-label="x-axis tick label"] text').allTextContents();
+  expect(axisLabels).toContain('2014');
+  expect(axisLabels).toContain('2025');
+  expect(axisLabels).not.toContain('2,014');
+  expect(axisLabels).not.toContain('2,025');
   const plottedColors = await page.locator('#dynastyTrendPlot .dynasty-trend-series').evaluateAll(nodes => [...new Set(nodes.flatMap(node => [node, ...node.querySelectorAll('[stroke]')]).map(node => node.getAttribute('stroke')).filter(Boolean))]);
   expect(plottedColors.length).toBeGreaterThan(1);
   const toggle = page.locator('[data-dynasty-trend-toggle="1"]').first();

@@ -757,6 +757,72 @@ test('dynasty tab renders controls and responds to calculator changes', async ({
   })).toBe('dynasty|rolling-5|Joe|2014|2023');
 });
 
+test('dynasty heatmap empty cells use the theme surface and retain their distinction', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto('/?tab=dynasty');
+  await page.waitForLoadState('networkidle');
+
+  const heatmap = page.locator('#dynastyHeatmap');
+  await expect(heatmap).toBeVisible();
+  expect(await heatmap.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true);
+
+  const inspectEmptyCells = async () => page.locator('#dynastyHeatmap .dynasty-heatmap-row').evaluateAll((rows, owners) => {
+    const results = {};
+    for (const owner of owners) {
+      const row = rows.find(candidate => candidate.querySelector('.dynasty-heatmap-owner')?.textContent?.trim() === owner);
+      const cell = row?.querySelector('.dynasty-heatmap-cell.empty');
+      if (!cell) {
+        results[owner] = null;
+        continue;
+      }
+      const styles = getComputedStyle(cell);
+      const container = document.querySelector('#dynastyHeatmap')?.closest('.card');
+      results[owner] = {
+        background: styles.backgroundColor,
+        containerBackground: container ? getComputedStyle(container).backgroundColor : null,
+        borderColor: styles.borderColor,
+        borderStyle: styles.borderStyle,
+        color: styles.color,
+        title: cell.getAttribute('title'),
+        height: cell.getBoundingClientRect().height,
+      };
+    }
+    return results;
+  }, ['Snare', 'Shemer']);
+
+  const light = await inspectEmptyCells();
+  for (const owner of ['Snare', 'Shemer']) {
+    expect(light[owner]).not.toBeNull();
+    expect(light[owner].background).toBe(light[owner].containerBackground);
+    expect(light[owner].background).not.toBe('rgb(243, 244, 246)');
+    expect(light[owner].borderStyle).toBe('dashed');
+    expect(light[owner].borderColor).not.toBe('rgba(0, 0, 0, 0)');
+    expect(light[owner].title).toMatch(new RegExp(`^${owner} \\d{4}: No data$`));
+    expect(light[owner].height).toBeGreaterThanOrEqual(82);
+  }
+
+  await page.getByRole('button', { name: 'Dark' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-color-scheme', 'dark');
+  const dark = await inspectEmptyCells();
+  for (const owner of ['Snare', 'Shemer']) {
+    expect(dark[owner]).not.toBeNull();
+    expect(dark[owner].background).toBe(dark[owner].containerBackground);
+    expect(dark[owner].background).not.toBe('rgb(243, 244, 246)');
+    expect(dark[owner].borderStyle).toBe('dashed');
+    expect(dark[owner].borderColor).not.toBe('rgba(0, 0, 0, 0)');
+    expect(dark[owner].title).toMatch(new RegExp(`^${owner} \\d{4}: No data$`));
+  }
+
+  await page.emulateMedia({ forcedColors: 'active' });
+  const forced = await inspectEmptyCells();
+  for (const owner of ['Snare', 'Shemer']) {
+    expect(forced[owner]).not.toBeNull();
+    expect(forced[owner].borderStyle).toBe('dashed');
+    expect(forced[owner].borderColor).not.toBe('rgba(0, 0, 0, 0)');
+    expect(forced[owner].color).not.toBe('rgba(0, 0, 0, 0)');
+  }
+});
+
 test('dynasty url restores the requested owner and period', async ({ page }) => {
   await page.goto('/?tab=dynasty&dynastyMode=calculator&dynastyOwner=Joe&dynastyStart=2021&dynastyEnd=2023&dynastyMinSeasons=2&dynastySaunders=1');
   await page.waitForLoadState('networkidle');

@@ -610,6 +610,25 @@ test('trophy case url restores the trophy page and owner selection', async ({ pa
   expect(download.suggestedFilename()).toBe('history_ALL.csv');
 });
 
+test('trophy highlights and low points stay capped, semantic, and readable on a narrow viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  await page.goto('/?tab=trophy&trophyOwner=Joe');
+  await page.waitForLoadState('networkidle');
+
+  const moments = page.locator('#trophyMomentsDisclosure');
+  if (!(await moments.getAttribute('open'))) await moments.locator('summary').click();
+
+  for (const list of [page.locator('#trophyAchievementList ul'), page.locator('#trophyScarList ul')]) {
+    await expect(list).toBeVisible();
+    expect(await list.locator('li').count()).toBeLessThanOrEqual(5);
+    const box = await list.boundingBox();
+    expect(box).toBeTruthy();
+    expect(box.width).toBeLessThanOrEqual(320);
+  }
+  await expect(page.locator('#trophyAchievementList')).toContainText('Best regular season');
+  await expect(page.locator('#trophyScarList')).toContainText('Most unlucky season');
+});
+
 test('history filters do not leak into dynasty controls', async ({ page }) => {
   await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');

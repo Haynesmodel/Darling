@@ -1,7 +1,7 @@
 import { DeferredChart } from '../../components/charts/DeferredChart';
 import { TrophyControls } from './TrophyControls';
 import { hardwareArt } from './trophy-model';
-import type { TrophyMetricKey, TrophyPageProps, TrophyRankValue } from './trophy-types';
+import type { TrophyListItem, TrophyMetricKey, TrophyPageProps, TrophyRankValue } from './trophy-types';
 
 function Disclosure({ id, title, children, open = false }: { id: string; title: string; children: preact.ComponentChildren; open?: boolean }) {
   return <details id={id} class="card feature-disclosure" open={open}>
@@ -10,10 +10,10 @@ function Disclosure({ id, title, children, open = false }: { id: string; title: 
   </details>;
 }
 
-function List({ items, empty, tone }: { items: Array<{ label: string; value: string; detail: string }>; empty: string; tone: string }) {
+function List({ items, empty, tone }: { items: TrophyListItem[]; empty: string; tone: string }) {
   if (!items.length) return <div class="trophy-empty">{empty}</div>;
   return <ul class={`trophy-list tone-${tone}`}>
-    {items.map(item => <li key={`${item.label}-${item.value}`}>
+    {items.map(item => <li key={item.key}>
       <span class="trophy-list-label">{item.label}</span>
       <span class="trophy-list-value">{item.value}</span>
       <span class="trophy-list-detail">{item.detail}</span>

@@ -78,6 +78,12 @@ interface OwnerMomentCandidate {
   item: TrophyGameRow;
 }
 
+interface TrophyListCandidate {
+  item: TrophyListItem;
+  sourceKey: string;
+  priority: number;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }
@@ -557,6 +563,9 @@ function buildOwnerCareerProfile(
     bestDiffSeason: seasonRows
       .filter(row => Number.isFinite(+row.points_for) && Number.isFinite(+row.points_against))
       .sort((a, b) => ((+b.points_for - +b.points_against) - (+a.points_for - +a.points_against)) || +b.season - +a.season)[0] || null,
+    worstDiffSeason: seasonRows
+      .filter(row => Number.isFinite(+row.points_for) && Number.isFinite(+row.points_against) && (+row.points_for - +row.points_against) < 0)
+      .sort((a, b) => ((+a.points_for - +a.points_against) - (+b.points_for - +b.points_against)) || +b.season - +a.season)[0] || null,
     worstFinishSeason: seasonRows
       .filter(row => Number.isFinite(+row.finish))
       .sort((a, b) => (+b.finish) - (+a.finish) || +b.season - +a.season)[0] || null,
@@ -975,6 +984,7 @@ function achievementAndScarItems(ownerProfile: TrophyOwnerCareerProfile): Trophy
   const biggestLoss = ownerProfile.biggestLoss;
   const bestDiffSeason = ownerProfile.bestDiffSeason;
   const mostUnluckySeason = ownerProfile.mostUnluckySeason;
+  const luckiestSeason = ownerProfile.luckiestSeason;
   const bestSeason = ownerProfile.bestPFSeason || ownerProfile.bestDiffSeason || ownerProfile.seasonRows[0] || null;
   const bestSeasonRecord = bestSeason ? `${bestSeason.wins}-${bestSeason.losses}-${bestSeason.ties || 0}` : '—';
   const bestSeasonFinish = bestSeason && Number.isFinite(+bestSeason.finish) ? `${bestSeason.finish}` : '—';
@@ -995,41 +1005,96 @@ function achievementAndScarItems(ownerProfile: TrophyOwnerCareerProfile): Trophy
     ? `Record ${mostUnluckySeason.wins}-${mostUnluckySeason.losses}-${mostUnluckySeason.ties || 0} • Expected ${unluckyExpectedRecord || '—'} • Luck ${fmtSigned(unluckyLuckValue, 2)}`
     : null;
 
-  const achievements = ([
+  const seasonKey = (row: SeasonSummaryRow): string => `season:${row.season}`;
+  const gameKey = (row: TrophyGameRow): string => {
+    const game = row.game;
+    return `game:${game.season}:${game.date}:${game.teamA}:${game.teamB}`;
+  };
+  const selectCandidates = (candidates: Array<TrophyListCandidate | null>): TrophyListItem[] => {
+    const seenSources = new Set<string>();
+    return candidates
+      .map((candidate, index) => candidate ? { candidate, index } : null)
+      .filter((entry): entry is { candidate: TrophyListCandidate; index: number } => entry !== null)
+      .sort((a, b) => a.candidate.priority - b.candidate.priority || a.index - b.index)
+      .filter(({ candidate }) => {
+        if (seenSources.has(candidate.sourceKey)) return false;
+        seenSources.add(candidate.sourceKey);
+        return true;
+      })
+      .slice(0, 5)
+      .map(({ candidate }) => candidate.item);
+  };
+  const item = (key: string, label: string, value: string, detail: string): TrophyListItem => ({ key, label, value, detail });
+  const titleSeason = ownerProfile.seasonRows.find(row => row.champion)
+    || ownerProfile.seasonRows.find(row => ownerProfile.years.regularTitles.includes(+row.season))
+    || null;
+  const saundersSeason = ownerProfile.seasonRows.find(row => row.saunders || row.saunders_bye) || null;
+
+  const achievements = selectCandidates([
     bestSeason ? {
-      label: 'Best regular season',
-      value: `${bestSeason.season}`,
-      detail: bestSeasonDetail,
+      priority: 0,
+      sourceKey: seasonKey(bestSeason),
+      item: item(`highlight:best-season:${bestSeason.season}`, 'Best regular season', `${bestSeason.season}`, bestSeasonDetail),
     } : null,
     bestScore ? {
-      label: 'Highest weekly score',
-      value: `${fmtDecimal(bestScore.pf, 1)}`,
-      detail: `${bestScore.game.date} vs ${bestScore.opponent}`,
+      priority: 1,
+      sourceKey: gameKey(bestScore),
+      item: item(`highlight:highest-week:${gameKey(bestScore)}`, 'Highest weekly score', `${fmtDecimal(bestScore.pf, 1)}`, `${bestScore.game.date} vs ${bestScore.opponent}`),
     } : null,
     biggestWin ? {
-      label: 'Best win margin',
-      value: fmtSigned(biggestWin.margin, 1),
-      detail: `${biggestWin.game.date} vs ${biggestWin.opponent}`,
+      priority: 2,
+      sourceKey: gameKey(biggestWin),
+      item: item(`highlight:best-margin:${gameKey(biggestWin)}`, 'Best win margin', fmtSigned(biggestWin.margin, 1), `${biggestWin.game.date} vs ${biggestWin.opponent}`),
     } : null,
-  ] satisfies Array<TrophyListItem | null>).filter((item): item is TrophyListItem => item !== null);
+    bestDiffSeason ? {
+      priority: 3,
+      sourceKey: seasonKey(bestDiffSeason),
+      item: item(`highlight:best-diff:${bestDiffSeason.season}`, 'Best point differential season', `${bestDiffSeason.season}`, `Diff ${fmtSigned(+bestDiffSeason.points_for - +bestDiffSeason.points_against, 1)} • PF ${fmtDecimal(bestDiffSeason.points_for, 1)} • PA ${fmtDecimal(bestDiffSeason.points_against, 1)}`),
+    } : null,
+    luckiestSeason ? {
+      priority: 4,
+      sourceKey: seasonKey(luckiestSeason),
+      item: item(`highlight:luckiest-season:${luckiestSeason.season}`, 'Luckiest season', `${luckiestSeason.season}`, `Record ${luckiestSeason.wins}-${luckiestSeason.losses}-${luckiestSeason.ties || 0} • Luck ${fmtSigned(ownerProfile.seasonLuckRows.find(row => row.season === +luckiestSeason.season)?.luck, 2)}`),
+    } : null,
+    titleSeason ? {
+      priority: 5,
+      sourceKey: seasonKey(titleSeason),
+      item: item(`highlight:title-season:${titleSeason.season}`, titleSeason.champion ? 'Championship season' : 'Regular-season title', `${titleSeason.season}`, `${titleSeason.champion ? 'Champion' : 'Regular-season title'} • Finish ${Number.isFinite(+titleSeason.finish) ? titleSeason.finish : '—'}`),
+    } : null,
+  ]);
 
-  const scars = ([
+  const scars = selectCandidates([
     mostUnluckySeason ? {
-      label: 'Most unlucky season',
-      value: `${mostUnluckySeason.season}`,
-      detail: unluckySeasonDetail || 'Luck —',
+      priority: 0,
+      sourceKey: seasonKey(mostUnluckySeason),
+      item: item(`low:unlucky-season:${mostUnluckySeason.season}`, 'Most unlucky season', `${mostUnluckySeason.season}`, unluckySeasonDetail || 'Luck —'),
     } : null,
     worstScore ? {
-      label: 'Worst weekly score',
-      value: `${fmtDecimal(worstScore.pf, 1)}`,
-      detail: `${worstScore.game.date} vs ${worstScore.opponent}`,
+      priority: 1,
+      sourceKey: gameKey(worstScore),
+      item: item(`low:worst-week:${gameKey(worstScore)}`, 'Worst weekly score', `${fmtDecimal(worstScore.pf, 1)}`, `${worstScore.game.date} vs ${worstScore.opponent}`),
     } : null,
     biggestLoss ? {
-      label: 'Biggest loss',
-      value: fmtSigned(biggestLoss.margin, 1),
-      detail: `${biggestLoss.game.date} vs ${biggestLoss.opponent}`,
+      priority: 2,
+      sourceKey: gameKey(biggestLoss),
+      item: item(`low:biggest-loss:${gameKey(biggestLoss)}`, 'Biggest loss', fmtSigned(biggestLoss.margin, 1), `${biggestLoss.game.date} vs ${biggestLoss.opponent}`),
     } : null,
-  ] satisfies Array<TrophyListItem | null>).filter((item): item is TrophyListItem => item !== null);
+    ownerProfile.worstFinishSeason ? {
+      priority: 3,
+      sourceKey: seasonKey(ownerProfile.worstFinishSeason),
+      item: item(`low:worst-finish:${ownerProfile.worstFinishSeason.season}`, 'Worst finish', `${ownerProfile.worstFinishSeason.season}`, `Finished ${ordinalText(ownerProfile.worstFinishSeason.finish)} • Record ${ownerProfile.worstFinishSeason.wins}-${ownerProfile.worstFinishSeason.losses}-${ownerProfile.worstFinishSeason.ties || 0}`),
+    } : null,
+    ownerProfile.worstDiffSeason ? {
+      priority: 4,
+      sourceKey: seasonKey(ownerProfile.worstDiffSeason),
+      item: item(`low:negative-diff:${ownerProfile.worstDiffSeason.season}`, 'Negative-differential season', `${ownerProfile.worstDiffSeason.season}`, `Diff ${fmtSigned(+ownerProfile.worstDiffSeason.points_for - +ownerProfile.worstDiffSeason.points_against, 1)} • PF ${fmtDecimal(ownerProfile.worstDiffSeason.points_for, 1)} • PA ${fmtDecimal(ownerProfile.worstDiffSeason.points_against, 1)}`),
+    } : null,
+    saundersSeason ? {
+      priority: 5,
+      sourceKey: seasonKey(saundersSeason),
+      item: item(`low:saunders-season:${saundersSeason.season}`, saundersSeason.saunders ? 'Saunders title' : 'Saunders bye', `${saundersSeason.season}`, saundersSeason.saunders ? 'Saunders title receipt' : 'Saunders bye receipt'),
+    } : null,
+  ]);
 
   return {
     achievements,

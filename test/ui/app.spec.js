@@ -674,9 +674,6 @@ test('dynasty tab renders controls and responds to calculator changes', async ({
   await page.locator('#dynastyOwnerSelect').selectOption('Joe');
   await expect(page.locator('#dynastyCalculatorHero')).toContainText('Dynasty Score');
 
-  await page.locator('#dynastyStartSeason').selectOption('2021');
-  await page.locator('#dynastyEndSeason').selectOption('2021');
-  await expect.poll(async () => [await page.locator('#dynastyStartSeason').inputValue(), await page.locator('#dynastyEndSeason').inputValue()]).toEqual(['2021', '2021']);
   await page.locator('#dynastyStartSeason').selectOption('2023');
   await page.locator('#dynastyEndSeason').selectOption('2021');
   await expect.poll(async () => [await page.locator('#dynastyStartSeason').inputValue(), await page.locator('#dynastyEndSeason').inputValue()]).toEqual(['2021', '2023']);

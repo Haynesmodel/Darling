@@ -223,7 +223,8 @@ test('Dynasty trend chart waits for a far-below-fold disclosure before loading',
   expect(runtimeRequests).toEqual([]);
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   expect(runtimeRequests).toEqual([]);
-  await page.locator('#dynastyTrendPlot').scrollIntoViewIfNeeded();
+  await expect(page.locator('#dynastyTrendPlot .chart-load-button')).toBeVisible();
+  await page.locator('#dynastyTrendPlot .chart-load-button').click();
   await assertChart(page, '#dynastyTrendPlot', /All-time dynasty score through the years/);
   await page.locator('#dynasty-section-jump').selectOption('dynasty-trend');
   const toggle = page.locator('[data-dynasty-trend-toggle="1"]').first();

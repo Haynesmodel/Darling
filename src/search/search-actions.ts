@@ -1,5 +1,6 @@
 import { buildUrlFromState } from '../../js/state-helpers.js';
 import { buildHistoryGameRows } from '../../js/history-game-query.js';
+import { isLowestScoreEligible } from '../../js/lowest-score-policy.js';
 import type { SearchDocument, SearchHydrationData, SearchIntent } from './search-types';
 
 const ALL_TEAMS = '__ALL__';
@@ -46,6 +47,7 @@ function recordDetails(intent: Extract<SearchIntent, { kind: 'game-extreme' }>, 
     'lowest-score': { result: null, sort: (a, b) => a.score - b.score, gameSort: 'scoreAsc', title: 'Lowest score' },
   }[intent.metric];
   if (config.result) rows = rows.filter(row => row.result === config.result);
+  if (intent.metric === 'lowest-score') rows = rows.filter(row => isLowestScoreEligible(row.sourceGame, row.team));
   rows.sort(config.sort);
   return { row: rows[0], ...config };
 }
@@ -250,6 +252,7 @@ export function buildIntentDocument(intent: SearchIntent, data: SearchHydrationD
           selectedGameResult: details.result,
           selectedGameSort: details.gameSort,
           selectedGameLimit: 1,
+          selectedGameMinScore: intent.metric === 'lowest-score' ? details.row.score : undefined,
           selectedFocus: 'games',
         }),
         focus: 'games',

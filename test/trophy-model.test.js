@@ -87,6 +87,23 @@ test('Trophy model exercises every canonical owner through typed profile, rank, 
   }
 });
 
+test('Trophy low-score moments exclude the outlier while retaining canonical game history', () => {
+  const seasonSummaries = JSON.parse(readFileSync(new URL('../assets/SeasonSummary.json', import.meta.url), 'utf8'));
+  const leagueGames = JSON.parse(readFileSync(new URL('../assets/H2H.json', import.meta.url), 'utf8'));
+  const derived = JSON.parse(readFileSync(new URL('../assets/DerivedStats.json', import.meta.url), 'utf8'));
+  const target = leagueGames.find(game => game.season === 2022 && game.date === '2022-12-24' && game.teamA === 'Joel' && game.teamB === 'Plot');
+  for (const owner of ['Joel', 'Plot']) {
+    const profile = buildOwnerCareerProfile(owner, seasonSummaries, leagueGames, {
+      weeklyAwards: derived.weekly_awards,
+      seasonAggregates: derived.season_aggregates,
+      ownerCareers: derived.owner_careers,
+    });
+    assert.ok(profile.ownerGames.some(game => game === target));
+    assert.notEqual(profile.worstGame?.game, target);
+    assert.notEqual(computeOwnerMoments(owner, leagueGames).find(moment => moment.label === 'Lowest score')?.date, target.date);
+  }
+});
+
 test('Trophy hardware shelf preserves the semantic tone mapping for each card family', () => {
   const profile = buildOwnerCareerProfile('Joe', [
     season({ champion: true, bye: true, saunders: true, bagels_earned: 1 }),

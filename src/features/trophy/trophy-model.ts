@@ -11,6 +11,7 @@ import {
   computeExpectedWinForGame,
   computeWeeklyAwards,
 } from '../../../js/stats-helpers.js';
+import { isLowestScoreEligible } from '../../../js/lowest-score-policy.js';
 
 import type { H2HGame, SeasonSummaryRow } from '../../data/generated/asset-types';
 import type {
@@ -565,6 +566,7 @@ function buildOwnerCareerProfile(
       .slice()
       .sort((a, b) => b.pf - a.pf || byMomentDateDesc(a, b))[0] || null,
     worstGame: singleGameRows
+      .filter(row => isLowestScoreEligible(row.game, owner))
       .slice()
       .sort((a, b) => a.pf - b.pf || byMomentDateDesc(a, b))[0] || null,
     biggestWin: singleGameRows
@@ -1063,7 +1065,10 @@ function computeOwnerMoments(owner: string, leagueGames: readonly H2HGame[] = []
     .filter(row => row.game.season !== 2014)
     .slice()
     .sort((a, b) => b.pf - a.pf || byMomentDateDesc(a, b))[0] || null;
-  const lowestScore = ownerGames.slice().sort((a, b) => a.pf - b.pf || byMomentDateDesc(a, b))[0] || null;
+  const lowestScore = ownerGames
+    .filter(row => isLowestScoreEligible(row.game, owner))
+    .slice()
+    .sort((a, b) => a.pf - b.pf || byMomentDateDesc(a, b))[0] || null;
   const biggestWin = ownerGames.filter(row => row.margin > 0).slice().sort((a, b) => b.margin - a.margin || byMomentDateDesc(a, b))[0] || null;
   const biggestLoss = ownerGames.filter(row => row.margin < 0).slice().sort((a, b) => a.margin - b.margin || byMomentDateDesc(a, b))[0] || null;
 

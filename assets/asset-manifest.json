@@ -55,12 +55,12 @@
       "sha256": "sha256:1dc2ad97f69bfd444c55ceb4d29243dc8dc96ca96f6b86142dfaad96cca61618"
     }
   },
-  "data_version": "sha256:9967006f990c70272cea8bb33de91bb8f396595a70f8f85de6873ecdc87d507a",
+  "data_version": "sha256:f62143a14f1f844c1a00395b92239a6b4d0c590f83fd49a3c6a77103ccf575ee",
   "derived": {
-    "bytes": 180301,
+    "bytes": 180308,
     "path": "assets/DerivedStats.json",
     "required": false,
-    "sha256": "sha256:2e5541ac09843571b5b8c4b21bcf355dd8e9733f636a056fa94851b6f6f45237",
+    "sha256": "sha256:2285988744b7a1f4cc53fb93a927d6099f3a70ade7a6a4876e3647f7fb93534e",
     "source_hashes": {
       "H2H": "sha256:ca8155035573c00dc8922d3f6de90772869a2baec9a16909c5d6562bae371d18",
       "Rivalries": "sha256:476e07f1f8d1af669854b1c4343770ca9c2539f99c6ebf3d8d5a8ae1a8cb51fa",

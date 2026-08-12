@@ -41,17 +41,17 @@ test.after(() => {
   fs.rmSync(temp, { recursive: true, force: true });
 });
 
-function runtime() {
+function runtime(leagueGames = [{
+  season: 2025,
+  date: '2025-09-01',
+  teamA: 'Joe',
+  teamB: 'Shap',
+  scoreA: 100,
+  scoreB: 90,
+}]) {
   const value = search.createSearchRuntime();
   value.hydrate({
-    leagueGames: [{
-      season: 2025,
-      date: '2025-09-01',
-      teamA: 'Joe',
-      teamB: 'Shap',
-      scoreA: 100,
-      scoreB: 90,
-    }],
+    leagueGames,
     seasonSummaries: [{ owner: 'Joe', season: 2025 }, { owner: 'Shap', season: 2025 }],
     rivalries: [],
     currentSeason: null,
@@ -83,4 +83,14 @@ test('owner moves use the canonical owner and preserve neutral transactions', ()
   );
   assert.equal(value.search('transactions')[0].action.url, '/Darling/?tab=transactions');
   assert.equal(fetches, 0);
+});
+
+test('lowest-score search excludes the outlier from the returned record', () => {
+  const target = { season: 2022, date: '2022-12-24', teamA: 'Joel', teamB: 'Plot', scoreA: 6.5, scoreB: 4.6, type: 'Saunders', round: 'Saunders Final' };
+  const other = { season: 2022, date: '2022-12-23', teamA: 'Joe', teamB: 'Shap', scoreA: 100, scoreB: 90, type: 'Regular', round: '' };
+  const result = runtime([target, other]).search('lowest score')[0];
+  assert.equal(result.title, 'Lowest score');
+  assert.match(result.subtitle, /90\.00/);
+  assert.doesNotMatch(result.subtitle, /4\.60/);
+  assert.match(result.action.url, /gameMinScore=90/);
 });

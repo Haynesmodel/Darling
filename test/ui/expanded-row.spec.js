@@ -28,3 +28,50 @@ test('Trophy ledger expansion shows the selected season game log and empty state
   await expect(firstSeason.locator('.table-expand-button')).toHaveAttribute('aria-expanded', 'true');
   await page.screenshot({ path: 'test-results/trophy-season-game-log.png', fullPage: false });
 });
+
+test('Trophy season adapter covers empty, singular, and complete game-log details', async ({ page }) => {
+  await page.goto('/');
+  const details = await page.evaluate(async () => {
+    const { adaptTrophySeasonRows } = await import('/src/tables/rows/trophy-season-rows.ts');
+    const fallback = adaptTrophySeasonRows([{
+      season: 2023,
+      finish: 'unknown',
+      pf: null,
+      pa: null,
+      diff: '',
+      notes: null,
+      games: null,
+    }]);
+    const singular = adaptTrophySeasonRows([{
+      season: 2024,
+      finish: '—',
+      pf: '—',
+      pa: '—',
+      diff: '—',
+      notes: [],
+      games: [{}],
+    }]);
+    const complete = adaptTrophySeasonRows([{
+      season: 2025,
+      finish: '1',
+      pf: '100.0',
+      pa: '90.0',
+      diff: '+10.0',
+      notes: ['Champion'],
+      games: [
+        { date: '2025-09-07', week: '1', opponent: 'Shap', scoreline: '100.0 - 90.0', result: 'W', type: 'Regular', round: '—' },
+        { date: '2025-12-21', week: '16', opponent: 'Alex', scoreline: '90.0 - 100.0', result: 'L', type: 'Playoff', round: 'Final' },
+      ],
+    }], { owner: 'Joe' });
+    return {
+      fallback: fallback[0].details,
+      singular: singular[0].details,
+      complete: complete[0].details,
+    };
+  });
+  expect(details.fallback[2]).toEqual({ label: 'Game log', value: 'No games recorded' });
+  expect(details.singular[2]).toEqual({ label: 'Game log', value: '1 game' });
+  expect(details.singular[3].value).toContain('Opponent: —');
+  expect(details.complete[2]).toEqual({ label: 'Game log', value: '2 games' });
+  expect(details.complete[4].value).toContain('Round: Final');
+});

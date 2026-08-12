@@ -1,6 +1,15 @@
 /* Controls */
 .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-:where(.controls, .feature-section-nav) :is(input:not([type="checkbox"]), select){
+:where(
+  .controls,
+  .feature-section-nav,
+  .transaction-controls,
+  .owner-hub-owner-control,
+  .table-filter-field,
+  .table-filter-fieldset,
+  .table-save-view,
+  .table-pagination
+) :is(input:not([type="checkbox"]), select){
   min-block-size:var(--control-min-block-size);
   padding:8px 10px;
   border:0;
@@ -11,15 +20,42 @@
   color:var(--text);
   transition:background-color var(--motion-fast) var(--motion-easing), border-color var(--motion-fast) var(--motion-easing);
 }
-:where(.controls, .feature-section-nav) :is(input:not([type="checkbox"]), select):hover{
+:where(
+  .controls,
+  .feature-section-nav,
+  .transaction-controls,
+  .owner-hub-owner-control,
+  .table-filter-field,
+  .table-filter-fieldset,
+  .table-save-view,
+  .table-pagination
+) :is(input:not([type="checkbox"]), select):hover{
   border-block-end-color:var(--control-hover-border);
   background:var(--control-hover-surface);
 }
-:where(.controls, .feature-section-nav) :is(input:not([type="checkbox"]), select):focus{
+:where(
+  .controls,
+  .feature-section-nav,
+  .transaction-controls,
+  .owner-hub-owner-control,
+  .table-filter-field,
+  .table-filter-fieldset,
+  .table-save-view,
+  .table-pagination
+) :is(input:not([type="checkbox"]), select):focus{
   border-block-end-color:var(--control-open-border);
   background:var(--control-open-surface);
 }
-:where(.controls, .feature-section-nav) :is(input:not([type="checkbox"]), select):disabled{
+:where(
+  .controls,
+  .feature-section-nav,
+  .transaction-controls,
+  .owner-hub-owner-control,
+  .table-filter-field,
+  .table-filter-fieldset,
+  .table-save-view,
+  .table-pagination
+) :is(input:not([type="checkbox"]), select):disabled{
   cursor:not-allowed;
   opacity:.55;
 }
@@ -171,7 +207,16 @@
 }
 
 @media (forced-colors:active){
-  :where(.controls, .feature-section-nav) :is(input:not([type="checkbox"]), select),
+  :where(
+    .controls,
+    .feature-section-nav,
+    .transaction-controls,
+    .owner-hub-owner-control,
+    .table-filter-field,
+    .table-filter-fieldset,
+    .table-save-view,
+    .table-pagination
+  ) :is(input:not([type="checkbox"]), select),
   .dropdown-toggle,
   .dropdown-menu{
     border-color:CanvasText;

@@ -212,6 +212,17 @@ test('shared controls keep lightweight states, native selection, disabled semant
   expect(firstOptionHeight).toBeGreaterThanOrEqual(44);
   await page.keyboard.press('Escape');
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+  await page.locator('#historyGamesDisclosure > summary').click();
+  await page.locator('[data-table-id="history-games"] .table-filter-menu > summary').click();
+  const tableFilter = page.locator('[data-table-id="history-games"] .table-filter-field').first().locator('input, select');
+  const tableFilterStyle = await tableFilter.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { topBorder: style.borderTopWidth, bottomBorder: style.borderBottomWidth, background: style.backgroundColor };
+  });
+  expect(tableFilterStyle.topBorder).toBe('0px');
+  expect(tableFilterStyle.bottomBorder).toBe('1px');
+  expect(tableFilterStyle.background).toBe('rgba(0, 0, 0, 0)');
 });
 
 test('Dynasty dialog contains focus, locks the page, ignores search shortcuts, and restores its opener', async ({ page }) => {

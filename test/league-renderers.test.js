@@ -58,6 +58,15 @@ test('league renderer view models normalize team fun fact text', () => {
   assert.equal(vm.lowestGames[0].opponent, 'Nuss');
 });
 
+test('team lowest-score surfaces exclude the named outlier but retain the game', () => {
+  const target = { season: 2022, date: '2022-12-24', teamA: 'Joel', teamB: 'Plot', scoreA: 6.5, scoreB: 4.6, type: 'Saunders', round: 'Saunders Final' };
+  const other = { season: 2022, date: '2022-12-23', teamA: 'Joel', teamB: 'Nuss', scoreA: 80, scoreB: 70, type: 'Regular', round: '' };
+  const vm = buildTeamFunFactsViewModel('Joel', [target, other], { leagueGames: [target, other] });
+  assert.equal(vm.lowestGames.length, 1);
+  assert.equal(vm.lowestGames[0].date, other.date);
+  assert.equal(vm.facts.find(fact => fact.label === 'Bottom-Week Turds').value, '0');
+});
+
 test('league renderer builds all-teams summary tables', () => {
   const seasonAggregates = [
     { team: 'Joe', w: 10, l: 4, t: 0, n: 14, pf: 1400, pa: 1260 },

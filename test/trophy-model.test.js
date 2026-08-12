@@ -56,6 +56,30 @@ test('Trophy view model is pure and typed at the feature boundary', () => {
   assert.equal(view.seasonLedger[0].record, '8-4-0');
 });
 
+test('Trophy season ledger includes only the selected owner games for that season in chronological order', () => {
+  const view = buildTrophyCaseViewModel('Joe', {
+    seasonSummaries: [season({ season: 2025 }), season({ season: 2024 })],
+    leagueGames: [
+      { season: 2025, date: '2025-12-14', teamA: 'Shap', teamB: 'Joe', scoreA: 80, scoreB: 90, week: 15, type: 'Playoff', round: 'Final' },
+      { season: 2025, date: '2025-09-07', teamA: 'Joe', teamB: 'Shap', scoreA: 100, scoreB: 90, week: 1, type: 'Regular', round: null },
+      { season: 2025, date: '2025-09-14', teamA: 'Joel', teamB: 'Shap', scoreA: 110, scoreB: 90, week: 2, type: 'Regular', round: null },
+      { season: 2024, date: '2024-09-07', teamA: 'Joe', teamB: 'Joel', scoreA: 70, scoreB: 70, week: 1, type: 'Saunders', round: 'Saunders Final' },
+    ],
+  });
+  assert.deepEqual(view.seasonLedger[0].games, [
+    { date: '2025-09-07', week: '1', opponent: 'Shap', scoreline: '100.0 - 90.0', result: 'W', type: 'Regular', round: '—' },
+    { date: '2025-12-14', week: '15', opponent: 'Shap', scoreline: '90.0 - 80.0', result: 'W', type: 'Playoff', round: 'Final' },
+  ]);
+  assert.deepEqual(view.seasonLedger[1].games, [
+    { date: '2024-09-07', week: '1', opponent: 'Joel', scoreline: '70.0 - 70.0', result: 'T', type: 'Saunders', round: 'Saunders Final' },
+  ]);
+});
+
+test('Trophy season ledger records an explicit no-game state', () => {
+  const view = buildTrophyCaseViewModel('Joe', { seasonSummaries: [season({ season: 2025 })], leagueGames: [] });
+  assert.deepEqual(view.seasonLedger[0].games, []);
+});
+
 test('Trophy model exercises every canonical owner through typed profile, rank, moment, and list boundaries', () => {
   const seasonSummaries = JSON.parse(readFileSync(new URL('../assets/SeasonSummary.json', import.meta.url), 'utf8'));
   const leagueGames = JSON.parse(readFileSync(new URL('../assets/H2H.json', import.meta.url), 'utf8'));

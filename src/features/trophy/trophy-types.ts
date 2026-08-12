@@ -240,6 +240,16 @@ export interface TrophyOwnerMoment {
   note: string;
 }
 
+export interface TrophySeasonGameLog {
+  date: string;
+  week: string;
+  opponent: string;
+  scoreline: string;
+  result: 'W' | 'L' | 'T';
+  type: H2HGame['type'];
+  round: string;
+}
+
 export interface TrophySeasonLedgerRow {
   season: number;
   record: string;
@@ -248,6 +258,7 @@ export interface TrophySeasonLedgerRow {
   pa: string;
   diff: string;
   notes: string[];
+  games: TrophySeasonGameLog[];
 }
 
 export interface TrophyViewModel {

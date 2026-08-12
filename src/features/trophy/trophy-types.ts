@@ -181,13 +181,17 @@ export interface TrophyHero {
   rankContext: string;
 }
 
+export type TrophyHardwareTone = 'gold' | 'neutral' | 'scar';
+export type TrophyHardwareState = 'earned' | 'empty';
+
 export interface TrophyHardwareItem {
   label: string;
   count: number;
   years: number[];
   rank: number | null;
   context: string;
-  tone: string;
+  tone: TrophyHardwareTone;
+  state: TrophyHardwareState;
   icon: string | null;
 }
 

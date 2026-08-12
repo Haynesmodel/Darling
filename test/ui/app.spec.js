@@ -580,6 +580,8 @@ test('trophy case url restores the trophy page and owner selection', async ({ pa
   await expect(page.locator('#trophyHero')).toContainText(/Dynasty Threat|Contender Profile|Regular Season Merchant|Playoff Riser|Snakebitten|Boom\/Bust|Saunders Survivor|Chaos Team|Rebuild Resume/);
   expect(await page.locator('#trophyHardwareShelf .trophy-hardware-card').count()).toBeGreaterThan(0);
   await expect(page.locator('#trophyHardwareShelf')).toContainText('Byes');
+  await expect(page.locator('#trophyHardwareShelf .trophy-hardware-card').first()).toContainText('League title hardware');
+  await expect(page.locator('#trophyHardwareShelf .trophy-card-context')).toHaveCount(8);
   expect(await page.locator('#trophyRankStrip .trophy-rank-pill').count()).toBeGreaterThan(0);
   await expect(page.locator('#trophyRankStrip')).not.toContainText('Actual:');
   await expect(page.locator('#trophyCareerShape')).toContainText('Playoff cutoff is 6th');
@@ -1028,6 +1030,34 @@ test('trophy case first viewport stacks hero shelf and rank strip without overla
   expect(heroBox.y + heroBox.height).toBeLessThanOrEqual(shelfBox.y + 2);
   expect(shelfBox.y + shelfBox.height).toBeLessThanOrEqual(rankBox.y + 2);
   expect(await page.locator('#trophyHero').textContent()).toContain('Joe');
+});
+
+test('trophy hardware communicates earned, empty, and Saunders states from the selected owner', async ({ page }) => {
+  await page.goto('/?tab=trophy&trophyOwner=Connor');
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.locator('#trophyHardwareShelf .trophy-hardware-card')).toHaveCount(8);
+  await expect(page.locator('#trophyHardwareShelf .trophy-hardware-card.earned')).toHaveCount(4);
+  await expect(page.locator('#trophyHardwareShelf .trophy-hardware-card.empty')).toHaveCount(4);
+  await expect(page.locator('#trophyHardwareShelf .trophy-hardware-card.scar.earned').filter({ hasText: 'Saunders titles' })).toContainText('Saunders hardware');
+  await expect(page.locator('#trophyHardwareShelf .trophy-hardware-card.empty .trophy-card-state')).toHaveText(['Still chasing', 'Still chasing', 'Still chasing', 'Still chasing']);
+
+  await page.locator('#trophyOwnerSelect').selectOption('Snare');
+  await expect(page.locator('#trophyHardwareShelf .trophy-hardware-card.empty')).toHaveCount(7);
+  await expect(page.locator('#trophyHardwareShelf')).toContainText('No regular-season crown yet');
+});
+
+test('trophy hardware stays inside a 320px viewport and exposes forced-colors borders', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 720 });
+  await page.goto('/?tab=trophy&trophyOwner=Joe');
+  await page.waitForLoadState('networkidle');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+
+  await page.emulateMedia({ forcedColors: 'active' });
+  const card = page.locator('#trophyHardwareShelf .trophy-hardware-card').first();
+  await expect(card).toBeVisible();
+  await expect(card).toHaveCSS('border-top-color', 'rgb(0, 0, 0)');
+  await expect(card.locator('img')).toHaveAttribute('aria-hidden', 'true');
 });
 
 test('trophy hardware tones retain readable text and borders in light and dark themes', async ({ page }) => {

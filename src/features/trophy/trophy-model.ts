@@ -763,8 +763,26 @@ function buildHeroView(ownerProfile: TrophyOwnerCareerProfile, identity: TrophyI
 
 function computeHardwareShelf(ownerProfile: TrophyOwnerCareerProfile, leagueRanks: TrophyLeagueRanks): TrophyHardwareItem[] {
   const rankMap = leagueRanks.byOwner.get(ownerProfile.owner);
+  const item = ({
+    label,
+    count,
+    years,
+    rank,
+    context,
+    tone,
+    icon,
+  }: Omit<TrophyHardwareItem, 'state'>): TrophyHardwareItem => ({
+    label,
+    count,
+    years,
+    rank,
+    context,
+    tone,
+    state: count > 0 ? 'earned' : 'empty',
+    icon,
+  });
   const items: TrophyHardwareItem[] = [
-    {
+    item({
       label: 'Darlings',
       count: ownerProfile.counts.championships,
       years: ownerProfile.years.champions,
@@ -772,8 +790,8 @@ function computeHardwareShelf(ownerProfile: TrophyOwnerCareerProfile, leagueRank
       context: ownerProfile.counts.championships > 0 ? 'League title hardware' : 'Still chasing the first one',
       tone: 'gold',
       icon: 'trophy',
-    },
-    {
+    }),
+    item({
       label: 'Regular-season titles',
       count: ownerProfile.counts.regularTitles,
       years: ownerProfile.years.regularTitles,
@@ -781,35 +799,35 @@ function computeHardwareShelf(ownerProfile: TrophyOwnerCareerProfile, leagueRank
       context: ownerProfile.counts.regularTitles > 0 ? 'Regular season hardware' : 'No regular-season crown yet',
       tone: 'gold',
       icon: 'medal',
-    },
-    {
+    }),
+    item({
       label: 'Byes',
       count: ownerProfile.counts.top2Seeds,
       years: ownerProfile.years.top2Seeds,
       rank: null,
-      context: 'Playoff positioning',
+      context: ownerProfile.counts.top2Seeds > 0 ? 'Playoff positioning' : 'No top-two seed yet',
       tone: 'neutral',
       icon: 'beachChair',
-    },
-    {
+    }),
+    item({
       label: 'Wild cards',
       count: ownerProfile.counts.wildCards,
       years: ownerProfile.years.wildCards,
       rank: null,
-      context: 'Back-door playoff appearances',
+      context: ownerProfile.counts.wildCards > 0 ? 'Back-door playoff appearances' : 'No wild-card run yet',
       tone: 'neutral',
       icon: 'joker',
-    },
-    {
+    }),
+    item({
       label: 'Playoff wins',
       count: ownerProfile.totals.playoffs.wins,
       years: [],
       rank: rankMap?.playoffWins.rank ?? null,
-      context: 'Postseason wins',
+      context: ownerProfile.totals.playoffs.wins > 0 ? 'Postseason wins' : 'No postseason wins yet',
       tone: 'neutral',
       icon: null,
-    },
-    {
+    }),
+    item({
       label: 'Saunders titles',
       count: ownerProfile.counts.saundersTitles,
       years: ownerProfile.years.saundersTitles,
@@ -817,25 +835,25 @@ function computeHardwareShelf(ownerProfile: TrophyOwnerCareerProfile, leagueRank
       context: ownerProfile.counts.saundersTitles > 0 ? 'Saunders hardware' : 'Clean Saunders sheet',
       tone: 'scar',
       icon: 'turd',
-    },
-    {
+    }),
+    item({
       label: 'Saunders byes',
       count: ownerProfile.counts.saundersByes,
       years: ownerProfile.years.saundersByes,
       rank: null,
-      context: 'Avoided the basement',
+      context: ownerProfile.counts.saundersByes > 0 ? 'Avoided the basement' : 'No Saunders bye yet',
       tone: 'scar',
       icon: 'warning',
-    },
-    {
+    }),
+    item({
       label: 'Bagels',
       count: ownerProfile.counts.bagels,
       years: [],
       rank: null,
-      context: 'League-wide bagels earned',
+      context: ownerProfile.counts.bagels > 0 ? 'League-wide bagels earned' : 'No league-wide bagels earned',
       tone: 'scar',
       icon: 'bagel',
-    },
+    }),
   ];
 
   return items;

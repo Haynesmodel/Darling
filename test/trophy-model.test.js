@@ -112,18 +112,37 @@ test('Trophy hardware shelf preserves the semantic tone mapping for each card fa
   const shelf = computeHardwareShelf(profile, ranks);
 
   assert.deepEqual(
-    shelf.map(({ label, tone }) => [label, tone]),
+    shelf.map(({ label, tone, state }) => [label, tone, state]),
     [
-      ['Darlings', 'gold'],
-      ['Regular-season titles', 'gold'],
-      ['Byes', 'neutral'],
-      ['Wild cards', 'neutral'],
-      ['Playoff wins', 'neutral'],
-      ['Saunders titles', 'scar'],
-      ['Saunders byes', 'scar'],
-      ['Bagels', 'scar'],
+      ['Darlings', 'gold', 'earned'],
+      ['Regular-season titles', 'gold', 'earned'],
+      ['Byes', 'neutral', 'earned'],
+      ['Wild cards', 'neutral', 'earned'],
+      ['Playoff wins', 'neutral', 'earned'],
+      ['Saunders titles', 'scar', 'earned'],
+      ['Saunders byes', 'scar', 'empty'],
+      ['Bagels', 'scar', 'earned'],
     ],
   );
+});
+
+test('Trophy hardware shelf supplies contextual empty states for zero counts', () => {
+  const profile = buildOwnerCareerProfile('Nobody', []);
+  const shelf = computeHardwareShelf(profile, computeLeagueRanks([profile]));
+  assert.equal(shelf.length, 8);
+  assert.ok(shelf.every(item => item.state === 'empty'));
+  assert.ok(shelf.every(item => item.years.length === 0));
+  assert.ok(shelf.every(item => item.context.length > 0));
+  assert.deepEqual(shelf.map(item => item.context), [
+    'Still chasing the first one',
+    'No regular-season crown yet',
+    'No top-two seed yet',
+    'No wild-card run yet',
+    'No postseason wins yet',
+    'Clean Saunders sheet',
+    'No Saunders bye yet',
+    'No league-wide bagels earned',
+  ]);
 });
 
 test('Trophy model narrows malformed selector data and covers empty and outcome edge cases', () => {

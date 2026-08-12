@@ -488,7 +488,13 @@ function buildOwnerCareerProfile(
     .filter(row => row.games > 0)
     .sort((a, b) => a.luck - b.luck || b.season - a.season);
 
-  const luckySeason = seasonLuckRows.length ? seasonLuckRows[seasonLuckRows.length - 1] : null;
+  const luckySeason = seasonLuckRows.reduce<TrophySeasonLuckRow | null>((best, row) => (
+    best === null
+      || row.luck > best.luck
+      || (row.luck === best.luck && row.season > best.season)
+      ? row
+      : best
+  ), null);
   const unluckySeason = seasonLuckRows.length ? seasonLuckRows[0] : null;
 
   const singleGameRows = ownerGames

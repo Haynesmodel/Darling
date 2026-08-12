@@ -617,6 +617,9 @@ test('trophy highlights and low points stay capped, semantic, and readable on a 
 
   const moments = page.locator('#trophyMomentsDisclosure');
   if (!(await moments.getAttribute('open'))) await moments.locator('summary').click();
+  await expect.poll(() => page.evaluate(() => (
+    document.documentElement.scrollWidth <= document.documentElement.clientWidth
+  ))).toBe(true);
 
   for (const list of [page.locator('#trophyAchievementList ul'), page.locator('#trophyScarList ul')]) {
     await expect(list).toBeVisible();
@@ -625,6 +628,8 @@ test('trophy highlights and low points stay capped, semantic, and readable on a 
     expect(box).toBeTruthy();
     expect(box.width).toBeLessThanOrEqual(320);
   }
+  expect(await page.locator('#trophyAchievementList .trophy-list-detail').count()).toBeGreaterThan(0);
+  expect(await page.locator('#trophyScarList .trophy-list-detail').count()).toBeGreaterThan(0);
   await expect(page.locator('#trophyAchievementList')).toContainText('Best regular season');
   await expect(page.locator('#trophyScarList')).toContainText('Most unlucky season');
 });

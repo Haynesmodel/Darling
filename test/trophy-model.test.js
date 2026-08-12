@@ -208,6 +208,20 @@ test('Trophy candidate ranking is deterministic for ties and sparse data returns
   assert.ok(sparseLists.achievements.every(item => item.detail.length > 0));
 });
 
+test('Trophy luckiest season chooses the newest season when luck is tied', () => {
+  const tiedRows = [
+    season({ season: 2024 }),
+    season({ season: 2023 }),
+    season({ season: 2022 }),
+  ];
+  const tiedGames = tiedRows.map(row => game({ season: row.season, date: `${row.season}-01-01` }));
+  const profile = buildOwnerCareerProfile('Joe', tiedRows, tiedGames, {
+    seasonAggregates: tiedRows.map(row => ({ team: 'Joe', season: row.season, expWins: 4, luck: 1.25 })),
+  });
+
+  assert.equal(profile.luckiestSeason?.season, 2024);
+});
+
 test('Trophy hardware shelf preserves the semantic tone mapping for each card family', () => {
   const profile = buildOwnerCareerProfile('Joe', [
     season({ champion: true, bye: true, saunders: true, bagels_earned: 1 }),

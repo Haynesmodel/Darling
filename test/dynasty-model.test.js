@@ -27,6 +27,11 @@ test('range and URL state clamp requested seasons without losing intent', () => 
   assert.equal(state.endSeason, 2023);
 });
 
+test('initial URL state clamps minimum seasons to available history', () => {
+  const state = resolveDynastyInitialState({ seasonSummaries: summaries, urlState: { dynastyMode: 'calculator', dynastyOwner: 'Joe', dynastyMinSeasons: 999 } });
+  assert.equal(state.minSeasons, 3);
+});
+
 test('view model is deterministic for empty history', () => {
   const view = buildDynastyViewModel({ leagueGames: [], seasonSummaries: [], mode: 'all-time', owner: '__ALL__' });
   assert.equal(view.selectedScore, null);

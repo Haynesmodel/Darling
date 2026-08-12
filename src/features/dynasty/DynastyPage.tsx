@@ -41,8 +41,11 @@ function heatmapCellStyle(cell: { profile: DynastySeasonProfile | null; heat: nu
   const t = value <= anchor ? Math.max(0, Math.min(1, (anchor - value) / Math.max(1, anchor - lower))) : Math.max(0, Math.min(1, (value - anchor) / Math.max(1, upper - anchor)));
   const from = value <= anchor ? [255, 248, 248] : [244, 248, 255];
   const to = value <= anchor ? [185, 28, 28] : [37, 99, 235];
-  const rgb = from.map((part, index) => Math.round(part + (to[index] - part) * t)).join(', ');
-  return { background: `rgb(${rgb})`, color: t > 0.55 ? '#fff' : '#0f172a' };
+  const channels = from.map((part, index) => Math.round(part + (to[index] - part) * t));
+  const rgb = channels.join(', ');
+  const luminance = channels.map(channel => channel / 255).map(channel => channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4).reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0);
+  const contrast = (foreground: number) => (Math.max(luminance, foreground) + 0.05) / (Math.min(luminance, foreground) + 0.05);
+  return { background: `rgb(${rgb})`, color: contrast(0) >= contrast(1) ? '#0f172a' : '#fff' };
 }
 
 function Heatmap({ view }: { view: DynastyViewModel }) {

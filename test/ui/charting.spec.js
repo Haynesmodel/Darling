@@ -221,8 +221,10 @@ test('Dynasty trend chart waits for a far-below-fold disclosure before loading',
   await expect(page.locator('#dynastyTrendPlot')).not.toHaveAttribute('data-chart-state', 'ready');
   await expect(page.locator('#dynastyTrendPlot .chart-load-button')).toBeVisible();
   await page.locator('#dynastyTrendPlot .chart-load-button').evaluate(button => button.click());
-  await assertChart(page, '#dynastyTrendPlot', /All-time dynasty score through the years/);
+  await expect(page.locator('#dynastyTrendPlot')).toHaveAttribute('data-chart-state', 'ready');
   await page.locator('#dynasty-section-jump').selectOption('dynasty-trend');
+  await page.locator('#dynastyTrendPlot').scrollIntoViewIfNeeded();
+  await assertChart(page, '#dynastyTrendPlot', /All-time dynasty score through the years/);
   const toggle = page.locator('[data-dynasty-trend-toggle="1"]').first();
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-pressed', 'false');

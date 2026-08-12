@@ -692,6 +692,11 @@ test('dynasty tab renders controls and responds to calculator changes', async ({
   await expect(page.locator('#dynastyScoreBreakdown')).toContainText('scoringDominance');
   await expect(page.locator('#dynastyScoreBreakdown')).toContainText('consistency');
   await expect(page.locator('#dynastyScoreBreakdown')).toContainText('penalties');
+  const scoreBeforeSaundersToggle = await page.locator('#dynastyCalculatorHero .dynasty-score-value').innerText();
+  await page.locator('#dynastySaundersToggle').uncheck();
+  await expect(page.locator('#dynastySaundersToggle')).not.toBeChecked();
+  await expect.poll(async () => page.evaluate(() => new URL(location.href).searchParams.get('dynastySaunders'))).toBe('0');
+  await expect(page.locator('#dynastyCalculatorHero .dynasty-score-value')).not.toHaveText(scoreBeforeSaundersToggle);
   expect(await page.locator('#dynastyBestWindows .dynasty-window-card').count()).toBeGreaterThan(0);
   await page.locator('#dynastyBestWindows .dynasty-window-card').first().click();
   await expect(page.locator('#dynastyWindowModal')).toBeVisible();

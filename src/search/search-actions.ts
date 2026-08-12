@@ -252,6 +252,7 @@ export function buildIntentDocument(intent: SearchIntent, data: SearchHydrationD
           selectedGameResult: details.result,
           selectedGameSort: details.gameSort,
           selectedGameLimit: 1,
+          selectedGameMinScore: intent.metric === 'lowest-score' ? details.row.score : undefined,
           selectedFocus: 'games',
         }),
         focus: 'games',

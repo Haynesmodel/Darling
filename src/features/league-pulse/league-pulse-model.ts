@@ -227,7 +227,7 @@ function recordModel(data: PulseModelData, state: PulseSeasonState, pathname: st
     label: Number(chosen.game.season) === state.season ? `New in ${state.season}` : `Still standing since ${chosen.game.date}`,
     title: chosen.title, owner: chosen.owner, opponent: chosen.opponent,
     scoreline: `${formatScore(ownerScore)}–${formatScore(opponentScore)}`, value: formatScore(chosen.value), date: chosen.game.date,
-    href: historyLink(data, pathname, { selectedTeam: chosen.owner, selectedSeasons: new Set([Number(chosen.game.season)]), selectedGameSort: chosen.sort, selectedGameLimit: 1, selectedFocus: 'games' }),
+    href: historyLink(data, pathname, { selectedTeam: chosen.owner, selectedSeasons: new Set([Number(chosen.game.season)]), selectedGameSort: chosen.sort, selectedGameLimit: 1, selectedGameMinScore: chosen.title === 'Lowest individual score' ? chosen.value : undefined, selectedFocus: 'games' }),
   };
 }
 

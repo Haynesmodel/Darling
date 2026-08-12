@@ -92,4 +92,5 @@ test('lowest-score search excludes the outlier from the returned record', () => 
   assert.equal(result.title, 'Lowest score');
   assert.match(result.subtitle, /90\.00/);
   assert.doesNotMatch(result.subtitle, /4\.60/);
+  assert.match(result.action.url, /gameMinScore=90/);
 });

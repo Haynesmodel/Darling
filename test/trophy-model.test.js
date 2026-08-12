@@ -38,6 +38,19 @@ const season = (overrides = {}) => ({
   ...overrides,
 });
 
+const game = (overrides = {}) => ({
+  season: 2024,
+  date: '2024-10-01',
+  teamA: 'Joe',
+  teamB: 'Shap',
+  scoreA: 100,
+  scoreB: 90,
+  week: 1,
+  round: null,
+  type: 'Regular',
+  ...overrides,
+});
+
 test('Trophy career model preserves chart tiers and cutoffs', () => {
   const view = computeCareerShape('Joe', [
     season({ season: 2021, finish: 1, champion: true }),
@@ -85,6 +98,88 @@ test('Trophy model exercises every canonical owner through typed profile, rank, 
     assert.ok(computeAchievementAndScarLists(profile).achievements.length > 0);
     assert.equal(computeSeasonLedger(profile.owner, profile.seasonRows).length, profile.seasonRows.length);
   }
+});
+
+test('Trophy highlights and low points select ordered, owner-relative, distinct facts', () => {
+  const seasonSummaries = [
+    season({ season: 2020, wins: 5, losses: 7, finish: 6, points_for: 1000, points_against: 1100 }),
+    season({ season: 2021, wins: 9, losses: 3, finish: 1, points_for: 1300, points_against: 1200, champion: true, saunders: true, saunders_bye: true }),
+    season({ season: 2022, wins: 10, losses: 2, finish: 2, points_for: 1250, points_against: 750, bye: true }),
+    season({ season: 2023, wins: 3, losses: 9, finish: 8, points_for: 900, points_against: 1100 }),
+    season({ season: 2024, wins: 8, losses: 4, finish: 3, points_for: 1500, points_against: 1000 }),
+    season({ season: 2025, wins: 7, losses: 4, ties: 1, finish: 4, points_for: 1500, points_against: 1300 }),
+  ];
+  seasonSummaries.push(...seasonSummaries.map(row => ({
+    ...row,
+    owner: 'Shap',
+    wins: row.season === 2021 ? row.wins - 1 : row.wins + 1,
+  })));
+  const duplicateWin = game({ season: 2023, date: '2023-10-08', scoreA: 180, scoreB: 90, week: 2 });
+  const options = {
+    seasonSummaries,
+    leagueGames: [
+      game({ season: 2020, date: '2020-10-01', scoreA: 80, scoreB: 90 }),
+      game({ season: 2021, date: '2021-10-02', scoreA: 40, scoreB: 100 }),
+      game({ season: 2022, date: '2022-10-02', scoreA: 120, scoreB: 110 }),
+      game({ season: 2023, date: '2023-10-07', scoreA: 50, scoreB: 160 }),
+      duplicateWin,
+      { ...duplicateWin },
+      game({ season: 2024, date: '2024-10-01', scoreA: 200, scoreB: 100 }),
+      game({ season: 2025, date: '2025-10-01', scoreA: 110, scoreB: 110 }),
+    ],
+    weeklyAwards: { top: [], low: [], high150: [] },
+    seasonAggregates: [
+      { team: 'Joe', season: 2020, expWins: 7, luck: -2 },
+      { team: 'Joe', season: 2021, expWins: 8, luck: 1 },
+      { team: 'Joe', season: 2022, expWins: 8, luck: 2 },
+      { team: 'Joe', season: 2023, expWins: 4, luck: -1 },
+      { team: 'Joe', season: 2024, expWins: 7, luck: 1 },
+      { team: 'Joe', season: 2025, expWins: 6, luck: 1 },
+    ],
+  };
+  const profile = buildOwnerCareerProfile('Joe', seasonSummaries, options.leagueGames, options);
+  const lists = computeAchievementAndScarLists(profile);
+
+  assert.deepEqual(lists.achievements.map(item => item.label), [
+    'Best regular season',
+    'Highest weekly score',
+    'Best point differential season',
+    'Luckiest season',
+    'Championship',
+  ]);
+  assert.deepEqual(lists.achievements.map(item => item.value), ['2025', '200.0', '2024', '2022', '2021']);
+  assert.deepEqual(lists.scars.map(item => item.label), [
+    'Most unlucky season',
+    'Worst weekly score',
+    'Biggest loss',
+    'Worst finish',
+    'Saunders title',
+  ]);
+  assert.deepEqual(lists.scars.map(item => item.value), ['2020', '40.0', '-110.0', '2023', '2021']);
+  assert.equal(new Set(lists.achievements.map(item => item.key)).size, lists.achievements.length);
+  assert.equal(new Set(lists.scars.map(item => item.key)).size, lists.scars.length);
+  assert.equal(lists.bestAchievement, lists.achievements[0]);
+  assert.equal(lists.worstScar, lists.scars[0]);
+  assert.equal(lists.achievements.length, 5);
+  assert.equal(lists.scars.length, 5);
+  assert.deepEqual(computeAchievementAndScarLists(profile), lists);
+});
+
+test('Trophy list selection keeps sparse and empty owners explicit without filler', () => {
+  const sparseProfile = buildOwnerCareerProfile('Joe', [season({ season: 2025 })], [game({ season: 2025, scoreA: 101, scoreB: 90 })], {
+    weeklyAwards: { top: [], low: [], high150: [] },
+  });
+  const sparse = computeAchievementAndScarLists(sparseProfile);
+  assert.deepEqual(sparse.achievements.map(item => item.label), ['Best regular season', 'Highest weekly score']);
+  assert.deepEqual(sparse.scars.map(item => item.label), ['Most unlucky season', 'Worst weekly score']);
+  assert.ok(sparse.achievements.every(item => item.detail.length > 0));
+  assert.ok(sparse.scars.every(item => item.detail.length > 0));
+
+  const empty = computeAchievementAndScarLists(buildOwnerCareerProfile('Nobody'));
+  assert.deepEqual(empty.achievements, []);
+  assert.deepEqual(empty.scars, []);
+  assert.equal(empty.bestAchievement, null);
+  assert.equal(empty.worstScar, null);
 });
 
 test('Trophy low-score moments exclude the outlier while retaining canonical game history', () => {

@@ -206,6 +206,7 @@ export interface TrophyCareerRow {
 }
 
 export interface TrophyListItem {
+  key: string;
   label: string;
   value: string;
   detail: string;

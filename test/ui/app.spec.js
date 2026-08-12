@@ -610,6 +610,35 @@ test('trophy case url restores the trophy page and owner selection', async ({ pa
   expect(download.suggestedFilename()).toBe('history_ALL.csv');
 });
 
+test('trophy highlights and low points stay bounded, semantic, and readable on narrow themes', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.goto('/?tab=trophy&trophyOwner=Joe');
+  await page.waitForLoadState('networkidle');
+
+  const assertLists = async () => {
+    for (const selector of ['#trophyAchievementList', '#trophyScarList']) {
+      const list = page.locator(`${selector} > ul`);
+      await expect(list).toHaveCount(1);
+      const items = list.locator(':scope > li');
+      const count = await items.count();
+      expect(count).toBeGreaterThan(0);
+      expect(count).toBeLessThanOrEqual(5);
+      const details = await items.locator('.trophy-list-detail').evaluateAll(nodes => nodes.map(node => node.textContent?.trim() || ''));
+      expect(details).toHaveLength(count);
+      expect(details.every(Boolean)).toBe(true);
+      const box = await list.boundingBox();
+      expect(box).toBeTruthy();
+      expect(box.width).toBeLessThanOrEqual(320);
+    }
+  };
+
+  for (const theme of ['light', 'dark']) {
+    await page.getByRole('button', { name: theme === 'light' ? 'Light' : 'Dark' }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-color-scheme', theme);
+    await assertLists();
+  }
+});
+
 test('history filters do not leak into dynasty controls', async ({ page }) => {
   await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');

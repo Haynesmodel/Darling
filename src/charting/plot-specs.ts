@@ -39,6 +39,12 @@ function basePlotOptions(opts: PlotSpecOptions = {}) {
   };
 }
 
+function formatDynastySeasonTick(value: unknown) {
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  if (typeof value === 'string' && value.trim()) return value;
+  return '';
+}
+
 export function dynastyTrendPlotOptions(
   rows: readonly DynastyTrendChartRow[] = [],
   chart: { seasonList?: readonly (number | string)[]; minScore?: number; maxScore?: number } = {},
@@ -53,7 +59,7 @@ export function dynastyTrendPlotOptions(
     ...basePlotOptions({ ...opts, height: opts.height || 340 }),
     ariaLabel: 'All-time dynasty score through the years',
     rows,
-    x: { label: 'Season', type: 'point', domain: chart.seasonList || undefined },
+    x: { label: 'Season', type: 'point', domain: chart.seasonList || undefined, tickFormat: formatDynastySeasonTick },
     y: { label: 'Cumulative score', domain: [chart.minScore ?? undefined, chart.maxScore ?? undefined] },
     marks: [
       { type: 'ruleY' as const, data: [0], stroke: CHART_COLORS.grid },

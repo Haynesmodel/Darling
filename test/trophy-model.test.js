@@ -104,6 +104,28 @@ test('Trophy low-score moments exclude the outlier while retaining canonical gam
   }
 });
 
+test('Trophy hardware shelf preserves the semantic tone mapping for each card family', () => {
+  const profile = buildOwnerCareerProfile('Joe', [
+    season({ champion: true, bye: true, saunders: true, bagels_earned: 1 }),
+  ]);
+  const ranks = computeLeagueRanks([profile]);
+  const shelf = computeHardwareShelf(profile, ranks);
+
+  assert.deepEqual(
+    shelf.map(({ label, tone }) => [label, tone]),
+    [
+      ['Darlings', 'gold'],
+      ['Regular-season titles', 'gold'],
+      ['Byes', 'neutral'],
+      ['Wild cards', 'neutral'],
+      ['Playoff wins', 'neutral'],
+      ['Saunders titles', 'scar'],
+      ['Saunders byes', 'scar'],
+      ['Bagels', 'scar'],
+    ],
+  );
+});
+
 test('Trophy model narrows malformed selector data and covers empty and outcome edge cases', () => {
   const rows = [
     season({ season: 2025, finish: 1, champion: true, bye: true, bagels_earned: 2, playoff_wins: 1 }),

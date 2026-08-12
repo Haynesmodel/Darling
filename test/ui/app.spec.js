@@ -757,6 +757,72 @@ test('dynasty tab renders controls and responds to calculator changes', async ({
   })).toBe('dynasty|rolling-5|Joe|2014|2023');
 });
 
+test('dynasty heatmap empty cells use the theme surface and retain their distinction', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto('/?tab=dynasty');
+  await page.waitForLoadState('networkidle');
+
+  const heatmap = page.locator('#dynastyHeatmap');
+  await expect(heatmap).toBeVisible();
+  expect(await heatmap.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true);
+
+  const inspectEmptyCells = async () => page.locator('#dynastyHeatmap .dynasty-heatmap-row').evaluateAll((rows, owners) => {
+    const results = {};
+    for (const owner of owners) {
+      const row = rows.find(candidate => candidate.querySelector('.dynasty-heatmap-owner')?.textContent?.trim() === owner);
+      const cell = row?.querySelector('.dynasty-heatmap-cell.empty');
+      if (!cell) {
+        results[owner] = null;
+        continue;
+      }
+      const styles = getComputedStyle(cell);
+      const container = document.querySelector('#dynastyHeatmap')?.closest('.card');
+      results[owner] = {
+        background: styles.backgroundColor,
+        containerBackground: container ? getComputedStyle(container).backgroundColor : null,
+        borderColor: styles.borderColor,
+        borderStyle: styles.borderStyle,
+        color: styles.color,
+        title: cell.getAttribute('title'),
+        height: cell.getBoundingClientRect().height,
+      };
+    }
+    return results;
+  }, ['Snare', 'Shemer']);
+
+  const light = await inspectEmptyCells();
+  for (const owner of ['Snare', 'Shemer']) {
+    expect(light[owner]).not.toBeNull();
+    expect(light[owner].background).toBe(light[owner].containerBackground);
+    expect(light[owner].background).not.toBe('rgb(243, 244, 246)');
+    expect(light[owner].borderStyle).toBe('dashed');
+    expect(light[owner].borderColor).not.toBe('rgba(0, 0, 0, 0)');
+    expect(light[owner].title).toMatch(new RegExp(`^${owner} \\d{4}: No data$`));
+    expect(light[owner].height).toBeGreaterThanOrEqual(82);
+  }
+
+  await page.getByRole('button', { name: 'Dark' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-color-scheme', 'dark');
+  const dark = await inspectEmptyCells();
+  for (const owner of ['Snare', 'Shemer']) {
+    expect(dark[owner]).not.toBeNull();
+    expect(dark[owner].background).toBe(dark[owner].containerBackground);
+    expect(dark[owner].background).not.toBe('rgb(243, 244, 246)');
+    expect(dark[owner].borderStyle).toBe('dashed');
+    expect(dark[owner].borderColor).not.toBe('rgba(0, 0, 0, 0)');
+    expect(dark[owner].title).toMatch(new RegExp(`^${owner} \\d{4}: No data$`));
+  }
+
+  await page.emulateMedia({ forcedColors: 'active' });
+  const forced = await inspectEmptyCells();
+  for (const owner of ['Snare', 'Shemer']) {
+    expect(forced[owner]).not.toBeNull();
+    expect(forced[owner].borderStyle).toBe('dashed');
+    expect(forced[owner].borderColor).not.toBe('rgba(0, 0, 0, 0)');
+    expect(forced[owner].color).not.toBe('rgba(0, 0, 0, 0)');
+  }
+});
+
 test('dynasty url restores the requested owner and period', async ({ page }) => {
   await page.goto('/?tab=dynasty&dynastyMode=calculator&dynastyOwner=Joe&dynastyStart=2021&dynastyEnd=2023&dynastyMinSeasons=2&dynastySaunders=1');
   await page.waitForLoadState('networkidle');
@@ -962,6 +1028,76 @@ test('trophy case first viewport stacks hero shelf and rank strip without overla
   expect(heroBox.y + heroBox.height).toBeLessThanOrEqual(shelfBox.y + 2);
   expect(shelfBox.y + shelfBox.height).toBeLessThanOrEqual(rankBox.y + 2);
   expect(await page.locator('#trophyHero').textContent()).toContain('Joe');
+});
+
+test('trophy hardware tones retain readable text and borders in light and dark themes', async ({ page }) => {
+  await page.goto('/?tab=trophy&trophyOwner=Joe');
+  await page.waitForLoadState('networkidle');
+  const owners = await page.locator('#trophyOwnerSelect option').evaluateAll(options => options.map(option => option.value));
+
+  const contrastRatios = async () => page.locator('.trophy-hardware-card').evaluateAll(cards => {
+    const parseColor = value => {
+      const channels = (value.match(/[\d.]+/g) || []).slice(0, 4).map(Number);
+      return {
+        red: channels[0] ?? 0,
+        green: channels[1] ?? 0,
+        blue: channels[2] ?? 0,
+        alpha: channels[3] ?? 1,
+      };
+    };
+    const luminance = ({ red, green, blue }) => {
+      const channel = value => {
+        const normalized = value / 255;
+        return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * channel(red) + 0.7152 * channel(green) + 0.0722 * channel(blue);
+    };
+    const blend = (foreground, background) => ({
+      red: foreground.red * foreground.alpha + background.red * (1 - foreground.alpha),
+      green: foreground.green * foreground.alpha + background.green * (1 - foreground.alpha),
+      blue: foreground.blue * foreground.alpha + background.blue * (1 - foreground.alpha),
+      alpha: 1,
+    });
+    const ratio = (foreground, background) => {
+      const foregroundLuminance = luminance(foreground);
+      const backgroundLuminance = luminance(background);
+      return (Math.max(foregroundLuminance, backgroundLuminance) + 0.05)
+        / (Math.min(foregroundLuminance, backgroundLuminance) + 0.05);
+    };
+    const pageBackground = parseColor(getComputedStyle(document.body).backgroundColor);
+    return cards.map(card => {
+      const cardStyle = getComputedStyle(card);
+      const background = blend(parseColor(cardStyle.backgroundColor), pageBackground);
+      const text = parseColor(cardStyle.color);
+      const label = card.querySelector('.trophy-year-chip');
+      const labelStyle = label ? getComputedStyle(label) : null;
+      const rank = card.querySelector('.trophy-card-rank');
+      const rankStyle = rank ? getComputedStyle(rank) : null;
+      return {
+        tone: [...card.classList].find(className => ['gold', 'neutral', 'scar'].includes(className)),
+        text: ratio(text, background),
+        label: labelStyle ? ratio(parseColor(labelStyle.color), blend(parseColor(labelStyle.backgroundColor), background)) : null,
+        rank: rankStyle ? ratio(parseColor(rankStyle.color), background) : null,
+        border: ratio(parseColor(cardStyle.borderTopColor), background),
+      };
+    });
+  });
+
+  for (const theme of ['light', 'dark']) {
+    await page.getByRole('button', { name: theme === 'light' ? 'Light' : 'Dark' }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-color-scheme', theme);
+    for (const owner of owners) {
+      await page.locator('#trophyOwnerSelect').selectOption(owner);
+      const ratios = await contrastRatios();
+      expect(ratios.map(item => item.tone), `${theme} ${owner} tone mapping`).toEqual(['gold', 'gold', 'neutral', 'neutral', 'neutral', 'scar', 'scar', 'scar']);
+      for (const item of ratios) {
+        expect(item.text, `${theme} ${owner} ${item.tone} card text`).toBeGreaterThanOrEqual(4.5);
+        expect(item.label, `${theme} ${owner} ${item.tone} card label`).toBeGreaterThanOrEqual(4.5);
+        expect(item.rank, `${theme} ${owner} ${item.tone} card rank`).toBeGreaterThanOrEqual(4.5);
+        expect(item.border, `${theme} ${owner} ${item.tone} card border`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  }
 });
 
 test('url state restores selected team and facet filters on load', async ({ page }) => {

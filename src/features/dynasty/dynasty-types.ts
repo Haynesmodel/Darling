@@ -54,7 +54,7 @@ export interface DynastyHeatmapCell { season: number; score: number | null; heat
 export interface DynastyHeatmapRow { owner: string; cells: DynastyHeatmapCell[] }
 export interface DynastyHeatmapModel { seasonList: number[]; rows: DynastyHeatmapRow[]; minScore: number; maxScore: number }
 export interface DynastyTrendSeries { owner: string; color: string; finalScore: number; points: DynastyTrendChartRow[] }
-export interface DynastyTrendModel { seasonList: number[]; series: DynastyTrendSeries[]; hiddenOwners?: string[] }
+export interface DynastyTrendModel { seasonList: number[]; series: DynastyTrendSeries[]; minScore: number; maxScore: number; hiddenOwners?: string[] }
 export interface DynastyBestWindows { windowSize: number; windowSizeLabel: string; topOverall: DynastyScore[]; byOwner: DynastyScore[] }
 export interface DynastySlumps { windowSize: number; lowestScores: DynastyScore[]; worstAverageFinish: DynastyScore[]; mostSaundersPain: DynastyScore[]; biggestDrops: Array<{ owner: string; previousWindow: DynastyScore; currentWindow: DynastyScore; delta: number }>; worstSingleSeasons: DynastySeasonProfile[] }
 export interface DynastyViewModel {

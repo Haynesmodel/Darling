@@ -233,6 +233,16 @@ test('Dynasty trend chart waits for a far-below-fold disclosure before loading',
   await expect(toggle).toHaveAttribute('aria-pressed', 'false');
   await expect.poll(async () => toggledOwnerTitles.count()).toBe(0);
   await assertChart(page, '#dynastyTrendPlot', /All-time dynasty score through the years/);
+  const toggleCount = await page.locator('[data-dynasty-trend-toggle="1"]').count();
+  for (let index = 1; index < toggleCount; index += 1) {
+    await page.locator('[data-dynasty-trend-toggle="1"][aria-pressed="true"]').first().click();
+  }
+  await expect(page.locator('#dynastyTrendPlot')).toHaveAttribute('data-chart-state', 'empty');
+  await expect(page.locator('#dynastyTrendPlot')).toContainText('All teams are hidden. Click a team in the key to bring it back.');
+  await expect(page.locator('#dynastyTrendPlot svg')).toHaveCount(0);
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await assertChart(page, '#dynastyTrendPlot', /All-time dynasty score through the years/);
   await expectNoPageOverflow(page);
 });
 

@@ -16,6 +16,18 @@ test('typed dynasty model preserves score, ranks, windows, and trend facts', () 
   const trend = buildDynastyTrendChartModel(profiles);
   assert.deepEqual(trend.seasonList, [2021, 2022, 2023]);
   assert.equal(trend.series.find(series => series.owner === 'Joe')?.points.at(-1)?.title, 'Joe: 207.0 through 2023');
+  assert.equal(trend.series.find(series => series.owner === 'Joe')?.color, '#2563eb');
+  assert.equal(trend.series.find(series => series.owner === 'Shap')?.color, '#f59e0b');
+  assert.ok(trend.minScore < Math.min(...trend.series.flatMap(series => series.points.map(point => point.cumulativeScore))));
+  assert.ok(trend.maxScore > Math.max(...trend.series.flatMap(series => series.points.map(point => point.cumulativeScore))));
+});
+
+test('trend preserves a flat point for seasons an owner did not participate', () => {
+  const profiles = buildOwnerSeasonProfiles({ seasonSummaries: summaries }).filter(profile => profile.owner !== 'Shap' || profile.season !== 2022);
+  const points = buildDynastyTrendChartModel(profiles).series.find(series => series.owner === 'Shap').points;
+  assert.deepEqual(points.map(point => point.season), [2021, 2022, 2023]);
+  assert.equal(points[1].seasonScore, 0);
+  assert.equal(points[1].cumulativeScore, points[0].cumulativeScore);
 });
 
 test('range and URL state clamp requested seasons without losing intent', () => {
@@ -30,6 +42,12 @@ test('range and URL state clamp requested seasons without losing intent', () => 
 test('initial URL state clamps minimum seasons to available history', () => {
   const state = resolveDynastyInitialState({ seasonSummaries: summaries, urlState: { dynastyMode: 'calculator', dynastyOwner: 'Joe', dynastyMinSeasons: 999 } });
   assert.equal(state.minSeasons, 3);
+});
+
+test('invalid URL modes normalize to the legacy calculator fallback', () => {
+  const state = resolveDynastyInitialState({ seasonSummaries: summaries, urlState: { dynastyMode: 'unsupported', dynastyOwner: 'Joe' } });
+  assert.equal(state.mode, 'calculator');
+  assert.equal(state.owner, 'Joe');
 });
 
 test('view model is deterministic for empty history', () => {

@@ -669,11 +669,18 @@ test('dynasty tab renders controls and responds to calculator changes', async ({
   await expect(page.locator('#dynastyModeSelect')).toHaveValue('all-time');
   await expect(page.locator('#dynastyOwnerSelect')).toHaveValue('__ALL__');
   await page.locator('#dynastyModeSelect').selectOption('calculator');
+  await expect(page.locator('#dynastyOwnerSelect')).not.toHaveValue('__ALL__');
+  await expect(page.locator('#dynastyCalculatorHero')).toContainText('Dynasty Score');
   await page.locator('#dynastyOwnerSelect').selectOption('Joe');
   await expect(page.locator('#dynastyCalculatorHero')).toContainText('Dynasty Score');
 
-  await page.locator('#dynastyStartSeason').selectOption('2021');
-  await page.locator('#dynastyEndSeason').selectOption('2023');
+  await page.locator('#dynastyStartSeason').selectOption('2023');
+  await page.locator('#dynastyEndSeason').selectOption('2021');
+  await expect.poll(async () => [await page.locator('#dynastyStartSeason').inputValue(), await page.locator('#dynastyEndSeason').inputValue()]).toEqual(['2021', '2023']);
+  await expect.poll(async () => page.evaluate(() => {
+    const params = new URL(location.href).searchParams;
+    return `${params.get('dynastyStart')}|${params.get('dynastyEnd')}`;
+  })).toBe('2021|2023');
   await page.locator('#dynastyOwnerSelect').selectOption('Joe');
   await page.waitForLoadState('networkidle');
 
@@ -681,6 +688,26 @@ test('dynasty tab renders controls and responds to calculator changes', async ({
   await expect(page.locator('#dynastyCalculatorHero')).toContainText('2021-2023');
   await expect(page.locator('#dynastyCalculatorHero')).toContainText(/Dynasty Run|Contender Stretch|Mini-Dynasty/);
   await expect(page.locator('#dynastyPeriodLeaderboard')).toContainText('Joe');
+  await expect(page.locator('#dynastyScoreBreakdown')).toContainText('postseason');
+  await expect(page.locator('#dynastyScoreBreakdown')).toContainText('scoringDominance');
+  await expect(page.locator('#dynastyScoreBreakdown')).toContainText('consistency');
+  await expect(page.locator('#dynastyScoreBreakdown')).toContainText('penalties');
+  await page.locator('#dynastyOwnerSelect').selectOption('Plot');
+  await expect(page.locator('#dynastyCalculatorHero')).toContainText('Plot Dynasty Score');
+  const saundersToggle = page.locator('#dynastySaundersToggle');
+  const scoreBeforeSaundersToggle = await page.locator('#dynastyCalculatorHero .dynasty-score-value').innerText();
+  await saundersToggle.click();
+  await expect(saundersToggle).not.toBeChecked();
+  await expect.poll(async () => page.evaluate(() => new URL(location.href).searchParams.get('dynastySaunders'))).toBe('0');
+  await expect(page.locator('#dynastyCalculatorHero .dynasty-score-value')).not.toHaveText(scoreBeforeSaundersToggle);
+  await page.locator('label.checkbox-label').click();
+  await expect(saundersToggle).toBeChecked();
+  await expect.poll(async () => page.evaluate(() => new URL(location.href).searchParams.get('dynastySaunders'))).toBe('1');
+  await expect(page.locator('#dynastyCalculatorHero .dynasty-score-value')).toHaveText(scoreBeforeSaundersToggle);
+  await saundersToggle.press('Space');
+  await expect(saundersToggle).not.toBeChecked();
+  await expect.poll(async () => page.evaluate(() => new URL(location.href).searchParams.get('dynastySaunders'))).toBe('0');
+  await page.locator('#dynastyOwnerSelect').selectOption('Joe');
   expect(await page.locator('#dynastyBestWindows .dynasty-window-card').count()).toBeGreaterThan(0);
   await page.locator('#dynastyBestWindows .dynasty-window-card').first().click();
   await expect(page.locator('#dynastyWindowModal')).toBeVisible();
@@ -690,7 +717,10 @@ test('dynasty tab renders controls and responds to calculator changes', async ({
   expect(await page.locator('#dynastyWindowModal tbody tr').count()).toBeGreaterThan(0);
   await page.locator('#dynastyWindowModal .dynasty-modal-close').click();
   await expect(page.locator('#dynastyWindowModal')).toBeHidden();
-  await expect(page.locator('#dynastyTrendChart .dynasty-trend-svg')).toBeVisible();
+  await page.locator('#dynasty-section-jump').selectOption('dynasty-trend');
+  const trendLoad = page.locator('#dynastyTrendPlot .chart-load-button');
+  await trendLoad.evaluateAll(buttons => buttons[0]?.click());
+  await expect(page.locator('#dynastyTrendChart .dynasty-trend-svg')).toBeVisible({ timeout: 15000 });
   expect(await page.locator('#dynastyTrendChart [data-dynasty-trend-toggle="1"]').count()).toBeGreaterThan(0);
   const firstTrendOwner = await page.locator('#dynastyTrendChart [data-dynasty-trend-toggle="1"]').first().getAttribute('data-owner');
   const firstOwnerTitles = page.locator('#dynastyTrendChart svg title').filter({ hasText: `${firstTrendOwner}:` });
@@ -699,11 +729,14 @@ test('dynasty tab renders controls and responds to calculator changes', async ({
   await expect(page.locator('#dynastyTrendChart [data-dynasty-trend-toggle="1"]').first()).toHaveAttribute('aria-pressed', 'false');
   await expect.poll(async () => firstOwnerTitles.count()).toBe(0);
   expect(await page.locator('#dynastyHeatmap .dynasty-heatmap-row').count()).toBeGreaterThan(0);
+  expect(await page.locator('#dynastyHeatmap .dynasty-heatmap-cell[style*="background"]').count()).toBeGreaterThan(0);
   await page.locator('#dynastyStartSeason').selectOption('2014');
   await page.locator('#dynastyEndSeason').selectOption('2023');
   await page.locator('#dynastyModeSelect').selectOption('rolling-5');
   await page.waitForFunction(() => document.querySelectorAll('#dynastySlumps .dynasty-slump-item').length > 0);
+  await page.locator('#dynasty-section-jump').selectOption('dynasty-slumps');
   expect(await page.locator('#dynastySlumps .dynasty-slump-item').count()).toBeGreaterThan(0);
+  await expect(page.locator('#dynastySlumps')).toContainText('Biggest Drops');
   await page.locator('#dynastySlumps .dynasty-slump-item').first().click();
   await expect(page.locator('#dynastyWindowModal')).toBeVisible();
   await expect(page.locator('#dynastyWindowModal')).toContainText('Saunders Bowl Appearances');
@@ -736,6 +769,13 @@ test('dynasty url restores the requested owner and period', async ({ page }) => 
   await expect(page.locator('#dynastyCalculatorHero')).toContainText('Joe Dynasty Score');
   await expect(page.locator('#dynastyCalculatorHero')).toContainText('2021-2023');
   await expect(page.locator('#dynastyCalculatorHero')).toContainText('#1');
+  await expect(page.locator('#dynastyCalculatorHero > .dynasty-calculator-hero')).toBeVisible();
+  await expect(page.locator('#dynastyCalculatorHero .dynasty-kicker')).toContainText(/Dynasty Run|Contender Stretch|Mini-Dynasty/);
+  await expect(page.locator('#dynastyCalculatorHero .dynasty-range')).toHaveText('2021-2023');
+  await expect(page.locator('#dynastyCalculatorHero .dynasty-score-rank')).toHaveText(/#1 of \d+/);
+  await expect(page.locator('#dynastyCalculatorHero .dynasty-score-sub')).toHaveText('Dynasty score');
+  await expect(page.locator('#dynastyCalculatorHero .dynasty-hero-summary span').first()).toBeVisible();
+  await expect(page.locator('#dynastyCalculatorHero .dynasty-coverage')).toHaveCount(0);
   await expect(page.locator('#dynastyScoreBreakdown')).toContainText('regularSeason');
   await expect(page.locator('#dynastyScoreBreakdown')).toContainText('hardware');
   await expect(page.locator('#dynastyScoreBreakdown')).toContainText('Coverage');

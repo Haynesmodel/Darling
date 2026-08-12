@@ -72,7 +72,7 @@ test('every cold route requests only its feature entry and chart routes share on
     draft: '/?tab=draft',
     gauntlet: '/?tab=gauntlet&ga=Joe%3A2024&gb=Zook%3A2019',
   };
-  const coldRuntimeRoutes = new Set(['current', 'dynasty', 'draft']);
+  const coldRuntimeRoutes = new Set(['current', 'draft']);
   const observedChartRuntimeUrls = new Set();
 
   for (const [id, url] of Object.entries(routes)) {
@@ -88,11 +88,11 @@ test('every cold route requests only its feature entry and chart routes share on
     if (coldRuntimeRoutes.has(id)) {
       await expect.poll(() => resources.some(resource => resource.endsWith(chartRuntime))).toBe(true);
       resources.filter(resource => resource.endsWith(chartRuntime)).forEach(resource => observedChartRuntimeUrls.add(resource));
-    } else if (id === 'rivalry') {
+    } else if (id === 'rivalry' || id === 'dynasty') {
       expect(resources.some(resource => resource.endsWith(chartRuntime)), `${id} loaded chart-runtime before eligibility`).toBe(false);
-      await page.locator('#rivalry-section-jump').selectOption('rivalry-trend');
+      await page.locator(`#${id}-section-jump`).selectOption(id === 'rivalry' ? 'rivalry-trend' : 'dynasty-trend');
       await expect.poll(() => resources.filter(resource => resource.endsWith(chartRuntime)).length).toBe(1);
-      await expect(page.locator('#rivalryLeadPlot')).toHaveAttribute('data-chart-state', 'ready');
+      await expect(page.locator(id === 'rivalry' ? '#rivalryLeadPlot' : '#dynastyTrendPlot')).toHaveAttribute('data-chart-state', 'ready');
       resources.filter(resource => resource.endsWith(chartRuntime)).forEach(resource => observedChartRuntimeUrls.add(resource));
     } else {
       expect(resources.some(resource => resource.endsWith(chartRuntime)), `${id} loaded chart-runtime`).toBe(false);

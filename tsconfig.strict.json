@@ -14,6 +14,8 @@
     "src/features/rivalry/**/*.tsx",
     "src/features/trophy/**/*.ts",
     "src/features/trophy/**/*.tsx"
+    ,"src/features/dynasty/**/*.ts"
+    ,"src/features/dynasty/**/*.tsx"
   ],
   "exclude": ["node_modules", "dist", "public"]
 }

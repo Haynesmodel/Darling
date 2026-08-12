@@ -48,6 +48,7 @@ export function dynastyTrendPlotOptions(
     rows.map(row => row.owner),
     new Map(rows.flatMap(row => row.color ? [[row.owner, row.color]] : [])),
   );
+  const ownerColor = (row: DynastyTrendChartRow) => color(row.owner);
   return {
     ...basePlotOptions({ ...opts, height: opts.height || 340 }),
     ariaLabel: 'All-time dynasty score through the years',
@@ -56,8 +57,8 @@ export function dynastyTrendPlotOptions(
     y: { label: 'Cumulative score', domain: [chart.minScore ?? undefined, chart.maxScore ?? undefined] },
     marks: [
       { type: 'ruleY' as const, data: [0], stroke: CHART_COLORS.grid },
-      { type: 'lineY' as const, data: rows, x: 'season', y: 'cumulativeScore', z: 'owner', stroke: color, className: 'dynasty-trend-series' },
-      { type: 'dot' as const, data: rows, x: 'season', y: 'cumulativeScore', fill: color, title: 'title', className: 'dynasty-trend-point' },
+      { type: 'lineY' as const, data: rows, x: 'season', y: 'cumulativeScore', z: 'owner', stroke: ownerColor, className: 'dynasty-trend-series' },
+      { type: 'dot' as const, data: rows, x: 'season', y: 'cumulativeScore', fill: ownerColor, title: 'title', className: 'dynasty-trend-point' },
     ],
   };
 }

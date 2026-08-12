@@ -1,0 +1,17 @@
+import type { SeasonSummaryRow } from '../../data/generated/asset-types';
+import type { DynastyMode, DynastyState } from './dynasty-types.ts';
+import { ALL_DYNASTY_TEAMS, availableDynastyOwners, availableDynastySeasons } from './dynasty-state.ts';
+
+export function DynastyControls({ state, seasonSummaries, onChange }: { state: DynastyState; seasonSummaries: readonly SeasonSummaryRow[]; onChange(next: DynastyState): void }) {
+  const seasons = availableDynastySeasons(seasonSummaries); const owners = availableDynastyOwners(seasonSummaries);
+  const change = (patch: Partial<DynastyState>) => onChange({ ...state, ...patch });
+  const hint = state.mode === 'calculator' ? 'Individual scores one owner across the chosen range. Minimum Seasons to Qualify is the cutoff for being scored, and Saunders penalties stay optional.' : state.mode === 'rolling-3' ? 'Rolling 3-Year Windows ignores the owner picker. Start and end bound the search, and every result is a true 3-season stretch inside that range.' : state.mode === 'rolling-5' ? 'Rolling 5-Year Windows ignores the owner picker. Start and end bound the search, and every result is a true 5-season stretch inside that range.' : state.mode === 'selected-range' ? 'Selected Range Leaderboard ignores the owner picker. Start and end define the league span being ranked.' : 'All-Time Leaderboard ignores the owner picker and locks the range to the full history.';
+  return <div class="card"><div class="controls filters dynasty-controls">
+    <label>Mode:<select id="dynastyModeSelect" value={state.mode} onChange={event => change({ mode: event.currentTarget.value as DynastyMode })}>{[['calculator', 'Individual'], ['rolling-3', 'Rolling 3-Year Windows'], ['rolling-5', 'Rolling 5-Year Windows'], ['selected-range', 'Selected Range Leaderboard'], ['all-time', 'All-Time Leaderboard']].map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
+    <label>Owner:<select id="dynastyOwnerSelect" disabled={state.mode !== 'calculator'} value={state.owner} onChange={event => change({ owner: event.currentTarget.value })}>{state.mode !== 'calculator' && <option value={ALL_DYNASTY_TEAMS}>All Owners</option>}{owners.map(owner => <option value={owner} key={owner}>{owner}</option>)}</select></label>
+    <label>Start:<select id="dynastyStartSeason" disabled={state.mode === 'all-time'} value={String(state.startSeason ?? '')} onChange={event => change({ startSeason: Number(event.currentTarget.value) })}>{seasons.map(season => <option value={season} key={season}>{season}</option>)}</select></label>
+    <label>End:<select id="dynastyEndSeason" disabled={state.mode === 'all-time'} value={String(state.endSeason ?? '')} onChange={event => change({ endSeason: Number(event.currentTarget.value) })}>{seasons.map(season => <option value={season} key={season}>{season}</option>)}</select></label>
+    <label>Minimum Seasons to Qualify:<select id="dynastyMinSeasons" value={String(state.minSeasons)} onChange={event => change({ minSeasons: Number(event.currentTarget.value) })}>{seasons.map((_, index) => <option value={index + 1} key={index + 1}>{index + 1}</option>)}</select></label>
+    <label class="checkbox-label"><input id="dynastySaundersToggle" type="checkbox" checked={state.includeSaundersPenalty} onChange={event => change({ includeSaundersPenalty: event.currentTarget.checked })} /> Include Saunders penalties</label>
+  </div><p class="dynasty-control-hint" id="dynastyControlHint">{hint}</p></div>;
+}

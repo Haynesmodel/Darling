@@ -206,14 +206,44 @@ test('Gauntlet adapter does not mount into a closed disclosure', async ({ page }
   await expect(page.locator('#gauntletHistogramPlot')).toHaveAttribute('data-chart-state', 'idle');
 });
 
-test('Dynasty trend chart toggle changes marks without duplicating SVG', async ({ page }) => {
+test('Dynasty trend chart waits for a far-below-fold disclosure before loading', async ({ page }) => {
   await page.goto('/?tab=dynasty&dynastyMode=calculator&dynastyOwner=Joe&dynastyStart=2021&dynastyEnd=2025');
+  await expect(page.locator('#page-dynasty')).toHaveAttribute('data-feature-state', 'ready');
+  await page.evaluate(() => {
+    const disclosure = document.querySelector('#dynastyTrendDisclosure');
+    if (disclosure instanceof HTMLDetailsElement) {
+      disclosure.style.marginTop = '3000px';
+      disclosure.open = true;
+    }
+  });
   await expect(page.locator('#dynastyTrendPlot svg')).toHaveCount(0);
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await expect(page.locator('#dynastyTrendPlot')).not.toHaveAttribute('data-chart-state', 'ready');
+  await expect(page.locator('#dynastyTrendPlot .chart-load-button')).toBeVisible();
+  await page.locator('#dynastyTrendPlot .chart-load-button').evaluate(button => button.click());
+  await expect(page.locator('#dynastyTrendPlot')).toHaveAttribute('data-chart-state', 'ready');
   await page.locator('#dynasty-section-jump').selectOption('dynasty-trend');
+  await page.locator('#dynastyTrendPlot').scrollIntoViewIfNeeded();
   await assertChart(page, '#dynastyTrendPlot', /All-time dynasty score through the years/);
+  const plottedColors = await page.locator('#dynastyTrendPlot .dynasty-trend-series').evaluateAll(nodes => [...new Set(nodes.flatMap(node => [node, ...node.querySelectorAll('[stroke]')]).map(node => node.getAttribute('stroke')).filter(Boolean))]);
+  expect(plottedColors.length).toBeGreaterThan(1);
   const toggle = page.locator('[data-dynasty-trend-toggle="1"]').first();
+  const toggledOwner = await toggle.getAttribute('data-owner');
+  const toggledOwnerTitles = page.locator('#dynastyTrendPlot svg title').filter({ hasText: `${toggledOwner}:` });
+  expect(await toggledOwnerTitles.count()).toBeGreaterThan(0);
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await expect.poll(async () => toggledOwnerTitles.count()).toBe(0);
+  await assertChart(page, '#dynastyTrendPlot', /All-time dynasty score through the years/);
+  const toggleCount = await page.locator('[data-dynasty-trend-toggle="1"]').count();
+  for (let index = 1; index < toggleCount; index += 1) {
+    await page.locator('[data-dynasty-trend-toggle="1"][aria-pressed="true"]').first().click();
+  }
+  await expect(page.locator('#dynastyTrendPlot')).toHaveAttribute('data-chart-state', 'empty');
+  await expect(page.locator('#dynastyTrendPlot')).toContainText('All teams are hidden. Click a team in the key to bring it back.');
+  await expect(page.locator('#dynastyTrendPlot svg')).toHaveCount(0);
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
   await assertChart(page, '#dynastyTrendPlot', /All-time dynasty score through the years/);
   await expectNoPageOverflow(page);
 });

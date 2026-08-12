@@ -213,17 +213,15 @@ test('Dynasty trend chart waits for a far-below-fold disclosure before loading',
   });
   await page.goto('/?tab=dynasty&dynastyMode=calculator&dynastyOwner=Joe&dynastyStart=2021&dynastyEnd=2025');
   await page.evaluate(() => {
-    const spacer = document.createElement('div');
-    spacer.id = 'dynasty-far-below-fold-spacer';
-    spacer.style.height = '3000px';
-    document.querySelector('#page-dynasty')?.prepend(spacer);
     const disclosure = document.querySelector('#dynastyTrendDisclosure');
     if (disclosure instanceof HTMLDetailsElement) {
+      disclosure.style.marginTop = '3000px';
       disclosure.open = true;
-      disclosure.dispatchEvent(new Event('toggle'));
     }
   });
   await expect(page.locator('#dynastyTrendPlot svg')).toHaveCount(0);
+  expect(runtimeRequests).toEqual([]);
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   expect(runtimeRequests).toEqual([]);
   await page.locator('#dynastyTrendPlot').scrollIntoViewIfNeeded();
   await assertChart(page, '#dynastyTrendPlot', /All-time dynasty score through the years/);

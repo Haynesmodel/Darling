@@ -488,6 +488,9 @@
 @media (max-width:520px){.trophy-toolbar{align-items:stretch}.trophy-toolbar select{width:100%;min-width:0}.trophy-hero{padding:16px}.trophy-shelf{grid-template-columns:1fr}}
 @media (forced-colors:active){
   .trophy-hardware-card,.trophy-hardware-card.gold,.trophy-hardware-card.neutral,.trophy-hardware-card.scar{border:1px solid CanvasText;background:Canvas;color:CanvasText;box-shadow:none}
+  .trophy-hardware-card.gold.state-earned{border-style:double}
+  .trophy-hardware-card.neutral.state-earned{border-style:dotted}
+  .trophy-hardware-card.scar.state-earned{border-width:3px}
   .trophy-hardware-card.state-empty{border-style:dashed}
   .trophy-year-chip{border:1px solid CanvasText;background:Canvas;color:CanvasText}
   .trophy-card-context,.trophy-card-rank,.trophy-card-state,.trophy-card-measure-label,.trophy-card-meta-label{color:CanvasText}

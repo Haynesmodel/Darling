@@ -161,6 +161,59 @@ test('facet disclosure supports Arrow, Home, End, Space, Tab, and Escape', async
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
 });
 
+test('shared controls keep lightweight states, native selection, disabled semantics, and touch targets', async ({ page }) => {
+  await page.goto('/?tab=dynasty');
+  await page.waitForLoadState('networkidle');
+
+  const mode = page.locator('#dynastyModeSelect');
+  const resting = await mode.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      topBorder: style.borderTopWidth,
+      inlineStartBorder: style.borderLeftWidth,
+      bottomBorder: style.borderBottomWidth,
+      bottomBorderStyle: style.borderBottomStyle,
+      background: style.backgroundColor,
+    };
+  });
+  expect(resting.topBorder).toBe('0px');
+  expect(resting.inlineStartBorder).toBe('0px');
+  expect(resting.bottomBorder).toBe('1px');
+  expect(resting.bottomBorderStyle).toBe('solid');
+  expect(resting.background).toBe('rgba(0, 0, 0, 0)');
+
+  await mode.focus();
+  const focused = await mode.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { outlineStyle: style.outlineStyle, outlineWidth: style.outlineWidth };
+  });
+  expect(focused.outlineStyle).toBe('solid');
+  expect(Number.parseFloat(focused.outlineWidth)).toBeGreaterThanOrEqual(3);
+
+  await mode.selectOption('rolling-3');
+  await expect(mode).toHaveValue('rolling-3');
+  await mode.selectOption('all-time');
+  await expect(page.locator('#dynastyOwnerSelect')).toBeDisabled();
+  await expect(page.locator('#dynastyOwnerSelect')).toHaveCSS('opacity', '0.55');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?tab=history');
+  await page.waitForLoadState('networkidle');
+  const toggle = page.locator('.dropdown-toggle[data-target="seasonFilters"]');
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  const open = await toggle.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { background: style.backgroundColor, border: style.borderBottomColor };
+  });
+  expect(open.background).not.toBe('rgba(0, 0, 0, 0)');
+  expect(open.border).not.toBe('rgba(0, 0, 0, 0)');
+  const firstOptionHeight = await page.locator('#seasonFilters label').first().evaluate((element) => element.getBoundingClientRect().height);
+  expect(firstOptionHeight).toBeGreaterThanOrEqual(44);
+  await page.keyboard.press('Escape');
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+});
+
 test('Dynasty dialog contains focus, locks the page, ignores search shortcuts, and restores its opener', async ({ page }) => {
   await page.goto('/?tab=dynasty');
   await page.waitForLoadState('networkidle');

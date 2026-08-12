@@ -30,11 +30,14 @@ test('Trophy ledger expansion shows the selected season game log and empty state
 });
 
 test('Trophy season adapter covers empty, singular, and complete game-log details', async ({ page }) => {
-  test.skip(process.env.PLAYWRIGHT_SERVER === 'preview', 'The authored adapter import is exercised by the coverage dev-server lane.');
-  await page.goto('/');
-  const details = await page.evaluate(async () => {
-    const { adaptTrophySeasonRows } = await import('/src/tables/rows/trophy-season-rows.ts');
-    const fallback = adaptTrophySeasonRows([{
+  await page.goto('/?tab=trophy&trophyOwner=Joe');
+  await page.waitForLoadState('networkidle');
+  await page.locator('#trophyLedgerDisclosure > summary').click();
+  await page.evaluate(() => {
+    window.darlingTables.render('trophy-seasons', {
+      instanceKey: 'coverage-fixture',
+      initialState: { sorting: [{ id: 'season', desc: false }] },
+      rows: [{
       season: 2023,
       finish: 'unknown',
       pf: null,
@@ -42,8 +45,7 @@ test('Trophy season adapter covers empty, singular, and complete game-log detail
       diff: '',
       notes: null,
       games: null,
-    }]);
-    const singular = adaptTrophySeasonRows([{
+      }, {
       season: 2024,
       finish: '—',
       pf: '—',
@@ -51,8 +53,7 @@ test('Trophy season adapter covers empty, singular, and complete game-log detail
       diff: '—',
       notes: [],
       games: [{}],
-    }]);
-    const complete = adaptTrophySeasonRows([{
+      }, {
       season: 2025,
       finish: '1',
       pf: '100.0',
@@ -63,16 +64,15 @@ test('Trophy season adapter covers empty, singular, and complete game-log detail
         { date: '2025-09-07', week: '1', opponent: 'Shap', scoreline: '100.0 - 90.0', result: 'W', type: 'Regular', round: '—' },
         { date: '2025-12-21', week: '16', opponent: 'Alex', scoreline: '90.0 - 100.0', result: 'L', type: 'Playoff', round: 'Final' },
       ],
-    }], { owner: 'Joe' });
-    return {
-      fallback: fallback[0].details,
-      singular: singular[0].details,
-      complete: complete[0].details,
-    };
+      }],
+    });
   });
-  expect(details.fallback[2]).toEqual({ label: 'Game log', value: 'No games recorded' });
-  expect(details.singular[2]).toEqual({ label: 'Game log', value: '1 game' });
-  expect(details.singular[3].value).toContain('Opponent: —');
-  expect(details.complete[2]).toEqual({ label: 'Game log', value: '2 games' });
-  expect(details.complete[4].value).toContain('Round: Final');
+  const table = page.locator('[data-table-id="trophy-seasons"]');
+  await expect(table.locator('tbody > tr:not(.table-expanded-row)')).toHaveCount(3);
+  for (const [index, expected] of [[0, 'No games recorded'], [1, 'Opponent: —'], [2, 'Round: Final']]) {
+    const row = table.locator('tbody > tr:not(.table-expanded-row)').nth(index);
+    await row.locator('.table-expand-button').click();
+    await expect(table.locator('.table-expanded-row').first()).toContainText(expected);
+    await row.locator('.table-expand-button').click();
+  }
 });

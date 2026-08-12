@@ -52,7 +52,7 @@ export function createTableRuntime(): DarlingTableRuntime {
         <InteractiveTable
           key={`${tableId}:${payload.instanceKey || 'default'}:${restorePendingView ? pendingView?.id : 'current'}`}
           registry={registry}
-          rows={adapter(payload.rows || [], context)}
+          rows={adapter(payload.rows || [], payload.context as TableContext)}
           context={context}
           initialState={restorePendingView ? pendingView?.state : payload.initialState}
           urlState={payload.urlState}

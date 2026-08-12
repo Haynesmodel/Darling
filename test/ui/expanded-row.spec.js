@@ -75,4 +75,11 @@ test('Trophy season adapter covers empty, singular, and complete game-log detail
     await expect(table.locator('.table-expanded-row').first()).toContainText(expected);
     await row.locator('.table-expand-button').click();
   }
+  if (process.env.COLLECT_COVERAGE && process.env.PLAYWRIGHT_SERVER !== 'preview') {
+    const defaultDetails = await page.evaluate(async () => {
+      const { adaptTrophySeasonRows } = await import('/src/tables/rows/trophy-season-rows.ts');
+      return adaptTrophySeasonRows([{ season: 2022, notes: null, games: null }])[0].details;
+    });
+    expect(defaultDetails[2]).toEqual({ label: 'Game log', value: 'No games recorded' });
+  }
 });

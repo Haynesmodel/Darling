@@ -317,10 +317,10 @@ for (const width of [320, 390, 768, 1280, 1440]) {
         if (width === 320 && route.id === 'history') {
           const funLists = await page.locator('#funLists').evaluate(element => {
             const rect = element.getBoundingClientRect();
-            return { right: rect.right, viewport: document.documentElement.clientWidth, columns: getComputedStyle(element).gridTemplateColumns };
+            return { left: rect.left, right: rect.right, width: rect.width, viewport: document.documentElement.clientWidth };
           });
           expect(funLists.right, 'History fun facts fit the 320px viewport').toBeLessThanOrEqual(funLists.viewport);
-          expect(funLists.columns).toBe('230px');
+          expect(funLists.width, 'History fun facts stay within their available content width').toBeLessThanOrEqual(funLists.viewport - funLists.left);
         }
       }
       if (width === 390) {

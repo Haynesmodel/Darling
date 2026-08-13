@@ -58,7 +58,7 @@
       "share-card-runtime": "src/share/share-card-runtime.ts"
     },
     "settled_dynamic_entries": {
-      "current-season": ["current-season-odds"],
+      "current-season": ["chart-runtime", "current-season-odds"],
       "rivalry": ["chart-runtime"],
       "trophy": ["chart-runtime"],
       "dynasty": ["chart-runtime"],

@@ -1030,6 +1030,45 @@ test('trophy case first viewport stacks hero shelf and rank strip without overla
   expect(await page.locator('#trophyHero').textContent()).toContain('Joe');
 });
 
+test('trophy hardware shelf exposes complete earned and empty states for each owner', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.goto('/?tab=trophy&trophyOwner=Snare');
+  await page.waitForLoadState('networkidle');
+
+  const cards = page.locator('#trophyHardwareShelf .trophy-hardware-card');
+  await expect(cards).toHaveCount(8);
+  await expect(cards.first()).toHaveAttribute('data-state', 'empty');
+  await expect(cards.first()).toContainText('Still chasing the first one');
+  await expect(cards.first().locator('.trophy-card-years')).toContainText('—');
+  await expect(cards.first().locator('.trophy-card-context')).toBeVisible();
+  expect(await page.locator('body').evaluate(body => body.scrollWidth <= 320)).toBe(true);
+
+  await page.locator('#trophyOwnerSelect').selectOption('Connor');
+  await expect(page.locator('#trophyHardwareShelf .trophy-hardware-card.scar.state-earned').first()).toContainText('Saunders hardware');
+  await expect(page.locator('#trophyHardwareShelf .trophy-hardware-card')).toHaveCount(8);
+  await page.locator('#trophyOwnerSelect').selectOption('Snare');
+  await expect(page.locator('#trophyHardwareShelf .trophy-hardware-card.scar.state-empty').first()).toContainText('Clean / avoided');
+});
+
+test('trophy hardware categories retain forced-colors distinctions', async ({ page }) => {
+  await page.goto('/?tab=trophy&trophyOwner=Connor');
+  await page.waitForLoadState('networkidle');
+  await page.emulateMedia({ forcedColors: 'active' });
+
+  const borders = await page.locator('#trophyHardwareShelf .trophy-hardware-card.state-earned').evaluateAll(cards => Object.fromEntries(
+    cards.map(card => [
+      ['gold', 'neutral', 'scar'].find(tone => card.classList.contains(tone)),
+      {
+        borderStyle: getComputedStyle(card).borderStyle,
+        borderWidth: getComputedStyle(card).borderWidth,
+      },
+    ]),
+  ));
+  expect(borders.gold.borderStyle).toBe('double');
+  expect(borders.neutral.borderStyle).toBe('dotted');
+  expect(borders.scar.borderWidth).toBe('3px');
+});
+
 test('trophy hardware tones retain readable text and borders in light and dark themes', async ({ page }) => {
   await page.goto('/?tab=trophy&trophyOwner=Joe');
   await page.waitForLoadState('networkidle');

@@ -254,6 +254,48 @@ test('Trophy cross-list arbitration skips a colliding low point and keeps a lowe
   assert.equal(lists.scars.some(item => highlightSources.has(item.sourceKey)), false);
 });
 
+test('Trophy cross-list arbitration does not reserve an undisplayed overflow highlight', () => {
+  const rows = [
+    season({ season: 2025, points_for: 1600, points_against: 1500, finish: 2 }),
+    season({ season: 2024, points_for: 1400, points_against: 1300, finish: 3 }),
+    season({ season: 2023, points_for: 1300, points_against: 1200, finish: 4 }),
+    season({ season: 2022, points_for: 1500, points_against: 500, finish: 5 }),
+    season({ season: 2021, points_for: 1200, points_against: 1100, finish: 6 }),
+    season({ season: 2020, points_for: 1000, points_against: 1400, finish: 1, champion: true }),
+  ];
+  const games = [
+    game({ season: 2025, date: '2025-01-01', scoreA: 100, scoreB: 90 }),
+    game({ season: 2024, date: '2024-01-01', scoreA: 180, scoreB: 170 }),
+    game({ season: 2023, date: '2023-01-01', scoreA: 170, scoreB: 80 }),
+    game({ season: 2022, date: '2022-01-01', scoreA: 120, scoreB: 100 }),
+    game({ season: 2021, date: '2021-01-01', scoreA: 110, scoreB: 100 }),
+    game({ season: 2020, date: '2020-01-01', scoreA: 90, scoreB: 100 }),
+  ];
+  const profile = buildOwnerCareerProfile('Joe', rows, games, {
+    seasonAggregates: [
+      { team: 'Joe', season: 2025, expWins: 4, luck: 0 },
+      { team: 'Joe', season: 2024, expWins: 4, luck: 0 },
+      { team: 'Joe', season: 2023, expWins: 4, luck: 0 },
+      { team: 'Joe', season: 2022, expWins: 4, luck: 0 },
+      { team: 'Joe', season: 2021, expWins: 4, luck: 2 },
+      { team: 'Joe', season: 2020, expWins: 4, luck: -2 },
+    ],
+  });
+  const lists = computeAchievementAndScarLists(profile);
+
+  assert.deepEqual(lists.achievements.map(item => item.label), [
+    'Best regular season',
+    'Highest weekly score',
+    'Best win margin',
+    'Best point differential season',
+    'Luckiest season',
+  ]);
+  assert.equal(lists.achievements.some(item => item.label === 'Championship season'), false);
+  assert.ok(lists.scars.some(item => item.label === 'Most unlucky season' && item.sourceKey === 'season:2020'));
+  const highlightSources = new Set(lists.achievements.map(item => item.sourceKey));
+  assert.equal(lists.scars.some(item => highlightSources.has(item.sourceKey)), false);
+});
+
 test('Trophy hardware shelf preserves the semantic tone mapping for each card family', () => {
   const profile = buildOwnerCareerProfile('Joe', [
     season({ champion: true, bye: true, saunders: true, bagels_earned: 1 }),

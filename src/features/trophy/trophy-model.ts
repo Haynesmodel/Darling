@@ -1022,17 +1022,18 @@ function achievementAndScarItems(ownerProfile: TrophyOwnerCareerProfile): Trophy
   const gameKey = (row: TrophyGameRow): string => `game:${stableGameKey(row.game)}`;
   const seenSources = new Set<string>();
   const selectCandidates = (candidates: Array<TrophyListCandidate | null>): TrophyListItem[] => {
-    return candidates
+    const selected: TrophyListItem[] = [];
+    const rankedCandidates = candidates
       .map((candidate, index) => candidate ? { candidate, index } : null)
       .filter((entry): entry is { candidate: TrophyListCandidate; index: number } => entry !== null)
-      .sort((a, b) => a.candidate.priority - b.candidate.priority || a.index - b.index)
-      .filter(({ candidate }) => {
-        if (seenSources.has(candidate.sourceKey)) return false;
-        seenSources.add(candidate.sourceKey);
-        return true;
-      })
-      .slice(0, 5)
-      .map(({ candidate }) => candidate.item);
+      .sort((a, b) => a.candidate.priority - b.candidate.priority || a.index - b.index);
+    for (const { candidate } of rankedCandidates) {
+      if (seenSources.has(candidate.sourceKey)) continue;
+      seenSources.add(candidate.sourceKey);
+      selected.push(candidate.item);
+      if (selected.length === 5) break;
+    }
+    return selected;
   };
   const item = (key: string, sourceKey: string, label: string, value: string, detail: string): TrophyListItem => ({ key, sourceKey, label, value, detail });
   const titleSeason = ownerProfile.seasonRows.find(row => row.champion)

@@ -527,7 +527,15 @@ test('rivalry tab renders a tale of the tape and saved rivalry selection', async
   await expect(page.locator('#rivalryHeadline')).toContainText('Joe vs Joel');
   await expect(page.locator('#rivalryHeadline')).toContainText('Current streak:');
   await expect(page.locator('#rivalryLeadMeter')).toContainText('Joe');
-  await expect(page.locator('#rivalryHighlightBoard .rivalry-highlight')).toHaveCount(4);
+  await expect(page.locator('#rivalryHighlightBoard .rivalry-highlight')).toHaveCount(5);
+  expect(await page.locator('#rivalryHighlightBoard .rivalry-highlight-label').allTextContents()).toEqual([
+    'Biggest Blowout',
+    'Highest Combined',
+    'Longest Run',
+    'Shootouts',
+    'Stinkers',
+  ]);
+  await expect(page.locator('#rivalryHighlightBoard .rivalry-stinker')).toContainText('Both teams below 70');
   expect(await page.locator('#rivalryTapeGrid .stat').count()).toBeGreaterThan(0);
   await page.locator('#rivalry-section-jump').selectOption('rivalry-trend');
   await expect(page.locator('#rivalryLeadTrend svg')).toBeVisible();

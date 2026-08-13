@@ -38,6 +38,26 @@ test('dynastyTrendRows flattens visible owner series and honors hidden owners', 
   assert.equal(rows[1].title, 'Joe: 7 through 2025');
 });
 
+test('dynastyTrendRows handles absent, invalid, hidden, and profiled point data', () => {
+  assert.deepEqual(dynastyTrendRows(), []);
+
+  const rows = dynastyTrendRows({
+    series: [{
+      owner: 'Joe',
+      hidden: true,
+      points: [{ season: 'bad', seasonScore: 'bad', cumulativeScore: Infinity, profile: { season: 2025 } }],
+    }],
+  }, { includeHidden: true });
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].season, 'bad');
+  assert.equal(rows[0].seasonScore, 0);
+  assert.equal(rows[0].cumulativeScore, 0);
+  assert.equal(rows[0].finalScore, 0);
+  assert.deepEqual(rows[0].profile, { season: 2025 });
+  assert.equal(rows[0].title, 'Joe: 0 through bad');
+});
+
 test('gauntletHistogramRows creates tidy bins and mean markers', () => {
   const payload = gauntletHistogramRows(
     { scoresA: [100, 110, 120], scoresB: [90, 95, 105] },

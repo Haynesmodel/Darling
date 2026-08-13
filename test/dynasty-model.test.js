@@ -80,7 +80,9 @@ test('Dynasty score display trims insignificant tenths and rejects invalid value
   assert.equal(formatDynastyScore(7.0), '7');
   assert.equal(formatDynastyScore(28.7), '28.7');
   assert.equal(formatDynastyScore(-0), '0');
+  assert.equal(formatDynastyScore(-0.04), '0');
   assert.equal(formatDynastyScore(null), '—');
+  assert.equal(formatDynastyScore(undefined), '—');
   assert.equal(formatDynastyScore(Number.NaN), '—');
   assert.equal(formatDynastyScore(Number.POSITIVE_INFINITY), '—');
 });

@@ -789,7 +789,6 @@ function renderCurrentCommandCharts(view, opts = {}) {
     [oddsMovementHost, 'renderCurrentOddsMovementPlot'],
     [projectionHost, 'renderCurrentProjectedStandingsPlot'],
   ].filter(([host]) => host && (!host.closest('details') || host.closest('details').open));
-  if (!targets.length) return;
   void import('../src/charting/plot-charts.ts').then(runtime => {
     targets.forEach(([host, renderer]) => runtime[renderer](host, view));
   });

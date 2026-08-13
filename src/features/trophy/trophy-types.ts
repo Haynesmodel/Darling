@@ -182,6 +182,8 @@ export interface TrophyHero {
   rankContext: string;
 }
 
+export type TrophyHardwareState = 'earned' | 'empty';
+
 export interface TrophyHardwareItem {
   label: string;
   count: number;
@@ -189,6 +191,7 @@ export interface TrophyHardwareItem {
   rank: number | null;
   context: string;
   tone: string;
+  state: TrophyHardwareState;
   icon: string | null;
 }
 

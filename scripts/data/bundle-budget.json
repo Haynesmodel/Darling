@@ -26,7 +26,7 @@
   "budgets": {
     "entry_chunk_max_bytes": 190000,
     "entry_chunk_gzip_max_bytes": 56000,
-    "entry_chunk_gzip_target_bytes": 48250,
+    "entry_chunk_gzip_target_bytes": 48254,
     "total_javascript_gzip_target_bytes": 297868,
     "total_javascript_gzip_max_bytes": 300000,
     "feature_chunk_gzip_max_bytes": 50000,

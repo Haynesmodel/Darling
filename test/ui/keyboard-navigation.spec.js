@@ -285,6 +285,38 @@ test('Dynasty dialog contains focus, locks the page, ignores search shortcuts, a
   await expect(opener).toBeFocused();
 });
 
+test('Dynasty lowest-score rows are single-box keyboard buttons with focus restoration', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+  await activateFeature(page, 'dynasty');
+  await page.locator('#dynastyModeSelect').selectOption('rolling-5');
+  await page.locator('#dynastyStartSeason').selectOption('2014');
+  await page.locator('#dynastyEndSeason').selectOption('2023');
+  await page.waitForFunction(() => document.querySelectorAll('#dynastySlumps .dynasty-slump-item').length > 0);
+  await page.locator('#dynasty-section-jump').selectOption('dynasty-slumps');
+
+  const button = page.locator('#dynastySlumps .dynasty-slump-card').first().locator('.dynasty-slump-item').first();
+  const row = button.locator('..');
+  await expect(row).toHaveClass(/dynasty-slump-interactive-row/);
+  await expect(button).toHaveCSS('min-height', '44px');
+  await expect(row).toHaveCSS('border-top-width', '0px');
+  await expect(button).toHaveCSS('border-top-width', '1px');
+
+  await button.focus();
+  await page.keyboard.press('Enter');
+  const dialog = page.locator('#dynastyWindowModal');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('#dynastyWindowModalTitle')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(button).toBeFocused();
+
+  await page.keyboard.press('Space');
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(button).toBeFocused();
+});
+
 test('browser Back closes the Dynasty dialog before hiding its feature section', async ({ page }) => {
   await page.goto('/');
   await page.waitForLoadState('networkidle');

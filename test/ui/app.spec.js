@@ -779,9 +779,31 @@ test('dynasty tab renders controls and responds to calculator changes', async ({
   await page.locator('#dynastyModeSelect').selectOption('rolling-5');
   await page.waitForFunction(() => document.querySelectorAll('#dynastySlumps .dynasty-slump-item').length > 0);
   await page.locator('#dynasty-section-jump').selectOption('dynasty-slumps');
-  expect(await page.locator('#dynastySlumps .dynasty-slump-item').count()).toBeGreaterThan(0);
+  const lowestScoreButton = page.locator('#dynastySlumps .dynasty-slump-card').first().locator('.dynasty-slump-item').first();
+  expect(await lowestScoreButton.count()).toBeGreaterThan(0);
+  const lowestScoreBox = await lowestScoreButton.evaluate(button => {
+    const row = button.parentElement;
+    const rowStyle = row ? getComputedStyle(row) : null;
+    const buttonStyle = getComputedStyle(button);
+    return {
+      rowBorder: rowStyle?.borderTopWidth,
+      rowBackground: rowStyle?.backgroundColor,
+      rowPadding: rowStyle?.padding,
+      buttonBorder: buttonStyle.borderTopWidth,
+      buttonBackground: buttonStyle.backgroundColor,
+      buttonMinHeight: Number.parseFloat(buttonStyle.minHeight),
+    };
+  });
+  expect(lowestScoreBox).toEqual({
+    rowBorder: '0px',
+    rowBackground: 'rgba(0, 0, 0, 0)',
+    rowPadding: '0px',
+    buttonBorder: '1px',
+    buttonBackground: 'rgb(250, 251, 255)',
+    buttonMinHeight: 44,
+  });
   await expect(page.locator('#dynastySlumps')).toContainText('Biggest Drops');
-  await page.locator('#dynastySlumps .dynasty-slump-item').first().click();
+  await lowestScoreButton.click();
   await expect(page.locator('#dynastyWindowModal')).toBeVisible();
   await expect(page.locator('#dynastyWindowModal')).toContainText('Saunders Bowl Appearances');
   await expect(page.locator('#dynastyWindowModal')).toContainText('Saunders Record');

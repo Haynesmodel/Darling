@@ -1,7 +1,12 @@
 import { DeferredChart } from '../../components/charts/DeferredChart';
 import { TrophyControls } from './TrophyControls';
 import { hardwareArt } from './trophy-model';
-import type { TrophyMetricKey, TrophyPageProps, TrophyRankValue } from './trophy-types';
+import type { TrophyHardwareItem, TrophyMetricKey, TrophyPageProps, TrophyRankValue } from './trophy-types';
+
+function hardwareStateLabel(item: TrophyHardwareItem) {
+  if (item.state === 'earned') return 'Earned';
+  return item.tone === 'scar' ? 'Clean / avoided' : 'Still chasing';
+}
 
 function Disclosure({ id, title, children, open = false }: { id: string; title: string; children: preact.ComponentChildren; open?: boolean }) {
   return <details id={id} class="card feature-disclosure" open={open}>
@@ -69,7 +74,7 @@ export function TrophyPage({ view, owners, onOwnerChange, active, availableSecti
     </section>
     {available('trophySectionNav') && <div id="trophySectionNav" />}
     {available('trophyHardwareDisclosure') && <Disclosure id="trophyHardwareDisclosure" title="Hardware Shelf" open>
-      <div id="trophyHardwareShelf" class="trophy-shelf">{view.hardwareShelf.map(item => <article class={`trophy-hardware-card ${item.tone}`} key={item.label}><div class="trophy-card-top">{item.icon && <img class="trophy-card-art" src={hardwareArt(item.icon)} alt="" aria-hidden="true" />}<div class="trophy-card-title"><div class="trophy-year-chip">{item.label}</div></div><div class="trophy-card-rank">{Number.isFinite(item.rank) ? `#${item.rank}` : '—'}</div></div><div class="trophy-card-value">{item.count}</div><div class="trophy-card-years">{item.years.length ? item.years.join(', ') : '—'}</div></article>)}</div>
+      <div id="trophyHardwareShelf" class="trophy-shelf">{view.hardwareShelf.map(item => <article class={`trophy-hardware-card ${item.tone} state-${item.state}`} data-state={item.state} key={item.label}><div class="trophy-card-top">{item.icon && <img class="trophy-card-art" src={hardwareArt(item.icon)} alt="" aria-hidden="true" />}<div class="trophy-card-title"><div class="trophy-year-chip">{item.label}</div><span class="trophy-card-state">{hardwareStateLabel(item)}</span></div><div class="trophy-card-rank">{Number.isFinite(item.rank) ? `#${item.rank}` : '—'}</div></div><div class="trophy-card-measure"><span class="trophy-card-measure-label">Count</span><strong class="trophy-card-value">{item.count}</strong></div><div class="trophy-card-years"><span class="trophy-card-meta-label">Years</span>{item.years.length ? item.years.join(', ') : '—'}</div><p class="trophy-card-context">{item.context}</p></article>)}</div>
     </Disclosure>}
     {available('trophyRankDisclosure') && <Disclosure id="trophyRankDisclosure" title="League Rank">
       <div id="trophyRankStrip" class="trophy-rank-strip">{rankLabels.map(([metric, label, row]) => <div class="trophy-rank-pill" key={metric}><div class="trophy-rank-pill-label">{label}</div><div class="trophy-rank-pill-value">{Number.isFinite(row?.rank) ? `#${row?.rank}` : '—'}</div><div class="trophy-rank-pill-sub">{rankValue(metric, row?.value)}</div></div>)}</div>

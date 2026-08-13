@@ -163,6 +163,8 @@ test('Trophy highlights and low points select five ordered, owner-relative facts
     'Worst finish',
     'Negative-differential season',
   ]);
+  const highlightSources = new Set(lists.achievements.map(item => item.sourceKey));
+  assert.equal(lists.scars.some(item => highlightSources.has(item.sourceKey)), false);
   assert.equal(new Set(lists.achievements.map(item => item.key)).size, lists.achievements.length);
   assert.equal(new Set(lists.scars.map(item => item.key)).size, lists.scars.length);
   assert.equal(lists.bestAchievement?.key, lists.achievements[0].key);
@@ -220,6 +222,29 @@ test('Trophy luckiest season chooses the newest season when luck is tied', () =>
   });
 
   assert.equal(profile.luckiestSeason?.season, 2024);
+});
+
+test('Trophy cross-list arbitration skips a colliding low point and keeps a lower-priority candidate', () => {
+  const rows = [
+    season({ season: 2024, points_for: 1500, points_against: 1000 }),
+    season({ season: 2023, points_for: 1000, points_against: 1000 }),
+  ];
+  const profile = buildOwnerCareerProfile('Joe', rows, [
+    game({ season: 2024, date: '2024-01-01', scoreA: 120, scoreB: 100 }),
+    game({ season: 2023, date: '2023-01-01', scoreA: 80, scoreB: 100 }),
+  ], {
+    seasonAggregates: [
+      { team: 'Joe', season: 2024, expWins: 5, luck: -2 },
+      { team: 'Joe', season: 2023, expWins: 4, luck: 0 },
+    ],
+  });
+  const lists = computeAchievementAndScarLists(profile);
+  const highlightSources = new Set(lists.achievements.map(item => item.sourceKey));
+
+  assert.ok(lists.achievements.some(item => item.sourceKey === 'season:2024'));
+  assert.equal(lists.scars.some(item => item.label === 'Most unlucky season'), false);
+  assert.ok(lists.scars.some(item => item.label === 'Worst weekly score'));
+  assert.equal(lists.scars.some(item => highlightSources.has(item.sourceKey)), false);
 });
 
 test('Trophy hardware shelf preserves the semantic tone mapping for each card family', () => {

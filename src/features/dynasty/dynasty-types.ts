@@ -20,6 +20,7 @@ export interface DynastyState {
 
 export interface DynastyScoreComponents {
   regularSeason: number;
+  winRatePrecision: number;
   postseason: number;
   hardware: number;
   scoringDominance: number;

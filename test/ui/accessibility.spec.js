@@ -57,6 +57,16 @@ for (const group of ['Owners', 'Tools']) {
   });
 }
 
+for (const theme of ['light', 'dark']) {
+  test(`primary action links keep readable text in ${theme} theme`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/');
+    await page.locator(`[data-theme-preference="${theme}"]`).click();
+    await expect(page.locator('.pulse-actions > .primary.btn').first()).toBeVisible();
+    expect(await page.locator('.pulse-actions > .primary.btn').first().evaluate(element => getComputedStyle(element).color)).toBe('rgb(255, 255, 255)');
+  });
+}
+
 test('expanded data freshness disclosure has no automated violations or mobile hero overlap', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
@@ -84,6 +94,11 @@ test('Rivalry ready chart state has no automated violations or 320px overflow', 
   await page.locator('#rivalry-section-jump').selectOption('rivalry-trend');
   await expect(page.locator('#rivalryLeadPlot')).toHaveAttribute('data-chart-state', 'ready');
   await expectNoViolations(page, '#page-rivalry');
+  const chartBounds = await page.locator('#rivalryLeadPlot').evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    return { right: rect.right, viewport: document.documentElement.clientWidth };
+  });
+  expect(chartBounds.right).toBeLessThanOrEqual(chartBounds.viewport);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 

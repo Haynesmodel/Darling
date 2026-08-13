@@ -371,7 +371,7 @@
   display:grid;
   gap:8px;
 }
-.dynasty-slump-list li{
+.dynasty-slump-list > li:not(.dynasty-slump-interactive-row){
   display:flex;
   justify-content:space-between;
   gap:10px;
@@ -388,7 +388,7 @@
 .dynasty-slump-list li span{
   color:var(--muted);
 }
-.dynasty-slump-list-item{
+.dynasty-slump-list > .dynasty-slump-interactive-row{
   display:block;
   padding:0;
   border:none;
@@ -400,6 +400,7 @@
   justify-content:space-between;
   gap:12px;
   width:100%;
+  min-height:var(--touch-target-size);
   padding:10px 12px;
   border:1px solid var(--border);
   border-radius:12px;

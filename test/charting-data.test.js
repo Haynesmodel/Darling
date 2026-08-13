@@ -42,12 +42,16 @@ test('dynastyTrendRows handles absent, invalid, hidden, and profiled point data'
   assert.deepEqual(dynastyTrendRows(), []);
 
   const rows = dynastyTrendRows({
-    series: [{
-      owner: 'Joe',
-      hidden: true,
-      points: [{ season: 'bad', seasonScore: 'bad', cumulativeScore: Infinity, profile: { season: 2025 } }],
-    }],
-  }, { includeHidden: true });
+    hiddenOwners: ['Joe'],
+    series: [
+      {
+        owner: 'Joe',
+        hidden: true,
+        points: [{ season: 'bad', seasonScore: 'bad', cumulativeScore: Infinity, profile: { season: 2025 } }],
+      },
+      { owner: 'Empty' },
+    ],
+  }, { hiddenOwners: ['Joe'], includeHidden: true });
 
   assert.equal(rows.length, 1);
   assert.equal(rows[0].season, 'bad');

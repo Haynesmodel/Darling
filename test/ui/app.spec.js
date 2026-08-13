@@ -628,6 +628,17 @@ test('trophy highlights and low points stay capped, semantic, and readable on a 
     expect(box).toBeTruthy();
     expect(box.width).toBeLessThanOrEqual(320);
   }
+  const splitBounds = await page.locator('#trophyMomentsDisclosure .trophy-split > div').evaluateAll(elements => elements.map(element => {
+    const box = element.getBoundingClientRect();
+    return { left: box.left, right: box.right, top: box.top, bottom: box.bottom };
+  }));
+  expect(splitBounds).toHaveLength(2);
+  const [highlights, lowPoints] = splitBounds;
+  const overlaps = highlights.left < lowPoints.right
+    && lowPoints.left < highlights.right
+    && highlights.top < lowPoints.bottom
+    && lowPoints.top < highlights.bottom;
+  expect(overlaps).toBe(false);
   expect(await page.locator('#trophyAchievementList .trophy-list-detail').count()).toBeGreaterThan(0);
   expect(await page.locator('#trophyScarList .trophy-list-detail').count()).toBeGreaterThan(0);
   await expect(page.locator('#trophyAchievementList')).toContainText('Best regular season');

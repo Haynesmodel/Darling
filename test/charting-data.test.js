@@ -40,6 +40,7 @@ test('dynastyTrendRows flattens visible owner series and honors hidden owners', 
 
 test('dynastyTrendRows handles absent, invalid, hidden, and profiled point data', () => {
   assert.deepEqual(dynastyTrendRows(), []);
+  assert.deepEqual(dynastyTrendRows({ hiddenOwners: null, series: null }, { hiddenOwners: null }), []);
 
   const rows = dynastyTrendRows({
     hiddenOwners: ['Joe'],

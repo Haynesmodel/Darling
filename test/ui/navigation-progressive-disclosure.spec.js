@@ -314,6 +314,14 @@ for (const width of [320, 390, 768, 1280, 1440]) {
           await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
           `${route.id} ${theme} overflow at ${width}px`,
         ).toBe(true);
+        if (width === 320 && route.id === 'history') {
+          const funLists = await page.locator('#funLists').evaluate(element => {
+            const rect = element.getBoundingClientRect();
+            return { left: rect.left, right: rect.right, width: rect.width, viewport: document.documentElement.clientWidth };
+          });
+          expect(funLists.right, 'History fun facts fit the 320px viewport').toBeLessThanOrEqual(funLists.viewport);
+          expect(funLists.width, 'History fun facts stay within their available content width').toBeLessThanOrEqual(funLists.viewport - funLists.left);
+        }
       }
       if (width === 390) {
         expect(await page.evaluate(() => document.documentElement.scrollHeight), `${route.id} compact height`).toBeLessThanOrEqual(route.height);

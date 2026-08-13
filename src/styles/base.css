@@ -13,6 +13,11 @@ a{
   color:var(--text-link);
 }
 
+a.btn.primary,
+a.btn.danger{
+  color:var(--text-on-accent);
+}
+
 :where(
   button,
   a,

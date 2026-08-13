@@ -13,6 +13,7 @@ import type {
   RivalryLeadChartRow,
   TrophyCareerChartRow,
 } from './chart-types.ts';
+import { formatDynastyScore } from '../data/dynasty-formatters.ts';
 
 function toFinite<T>(value: unknown, fallback: T): number | T {
   const numeric = Number(value);
@@ -66,7 +67,7 @@ export function dynastyTrendRows(
       color: series.color,
       hidden: series.hidden,
       profile: point.profile || null,
-      title: `${series.owner}: ${toFinite(point.cumulativeScore, 0).toFixed(1)} through ${point.season}`,
+      title: `${series.owner}: ${formatDynastyScore(toFinite(point.cumulativeScore, 0))} through ${point.season}`,
     })))
     .filter(row => opts.includeHidden || !row.hidden);
 }

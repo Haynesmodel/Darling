@@ -13,12 +13,6 @@ import {
   buildCommandCenterModel,
   matchupKey,
 } from './current-season-command-data.js';
-import {
-  renderCurrentOddsMovementPlot,
-  renderCurrentProjectedStandingsPlot,
-  renderCurrentSeedMovementPlot,
-} from '../src/charting/plot-charts.ts';
-
 function docOrDefault(doc) {
   return doc || (typeof document !== 'undefined' ? document : null);
 }
@@ -790,9 +784,14 @@ function renderCurrentCommandCharts(view, opts = {}) {
   const movementHost = typeof root?.getElementById === 'function' ? root.getElementById('currentSeedMovementPlot') : null;
   const oddsMovementHost = typeof root?.getElementById === 'function' ? root.getElementById('currentOddsMovementPlot') : null;
   const projectionHost = typeof root?.getElementById === 'function' ? root.getElementById('currentProjectedStandingsPlot') : null;
-  if (!movementHost?.closest('details') || movementHost.closest('details').open) renderCurrentSeedMovementPlot(movementHost, view);
-  if (!oddsMovementHost?.closest('details') || oddsMovementHost.closest('details').open) renderCurrentOddsMovementPlot(oddsMovementHost, view);
-  if (!projectionHost?.closest('details') || projectionHost.closest('details').open) renderCurrentProjectedStandingsPlot(projectionHost, view);
+  const targets = [
+    [movementHost, 'renderCurrentSeedMovementPlot'],
+    [oddsMovementHost, 'renderCurrentOddsMovementPlot'],
+    [projectionHost, 'renderCurrentProjectedStandingsPlot'],
+  ].filter(([host]) => host && (!host.closest('details') || host.closest('details').open));
+  void import('../src/charting/plot-charts.ts').then(runtime => {
+    targets.forEach(([host, renderer]) => runtime[renderer](host, view));
+  });
 }
 
 export {

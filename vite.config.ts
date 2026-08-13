@@ -261,6 +261,7 @@ export default defineConfig({
         booleans_as_integers: false,
         ecma: 2022,
         passes: 8,
+        pure_getters: true,
       },
       mangle: { toplevel: true },
     },
@@ -283,6 +284,12 @@ export default defineConfig({
               name: 'table-runtime',
               test: /src\/(?:tables\/(?:table-runtime|table-saved-views|table-filter-functions|table-quick-filters)|components\/tables\/[^/]+)\.(?:js|ts|tsx)$/,
               priority: 2,
+              minSize: 0,
+            },
+            {
+              name: 'shared-display-formatters',
+              test: /src\/data\/dynasty-formatters\.ts$/,
+              priority: 5,
               minSize: 0,
             },
             {

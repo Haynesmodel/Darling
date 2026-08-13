@@ -1,4 +1,5 @@
 import { buildShareCard, type ShareStoryFacts } from './share-card-builders';
+import { formatDynastyScore } from '../data/dynasty-formatters.ts';
 import {
   absoluteShareHref,
   mountCopyLinkAction,
@@ -297,7 +298,7 @@ export function buildDynastyCardResult(
     title: `${score.owner} Dynasty Score`,
     subtitle: `${score.label || 'Dynasty profile'}${partialCoverage ? ' · Partial coverage' : ''}`,
     metrics: [
-      { label: 'Dynasty score', value: Number(score.score).toFixed(1) },
+      { label: 'Dynasty score', value: formatDynastyScore(Number(score.score)) },
       { label: 'Period rank', value: `#${score.rankInPeriod} of ${score.totalOwners}` },
       { label: 'Record', value: `${score.wins}-${score.losses}-${score.ties}` },
       partialCoverage
@@ -307,7 +308,7 @@ export function buildDynastyCardResult(
     canonicalPath,
     sourceLabel: 'Dynasty Rankings',
     dataVersion,
-    altText: `${score.owner}: ${Number(score.score).toFixed(1)} Dynasty score, rank ${score.rankInPeriod} of ${score.totalOwners}, ${score.requestedStartSeason}–${score.requestedEndSeason}.${partialCoverage ? ` Based on ${scoredSeasonCount} of ${requestedSeasonCount} requested seasons; scored range ${scoredRange}.` : ''}`,
+    altText: `${score.owner}: ${formatDynastyScore(Number(score.score))} Dynasty score, rank ${score.rankInPeriod} of ${score.totalOwners}, ${score.requestedStartSeason}–${score.requestedEndSeason}.${partialCoverage ? ` Based on ${scoredSeasonCount} of ${requestedSeasonCount} requested seasons; scored range ${scoredRange}.` : ''}`,
   }, win);
 }
 

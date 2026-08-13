@@ -736,6 +736,14 @@ test('dynasty tab renders controls and responds to calculator changes', async ({
   await expect(page.locator('#dynastyScoreBreakdown')).toContainText('Win-rate precision');
   await expect(page.locator('#dynastyScoreBreakdown')).toContainText('consistency');
   await expect(page.locator('#dynastyScoreBreakdown')).toContainText('penalties');
+  const initialScoreDisplays = await page.locator([
+    '#dynastyCalculatorHero .dynasty-score-value',
+    '#dynastyPeriodLeaderboard tbody .dynasty-row td:nth-child(3)',
+    '#dynastyBestWindows .dynasty-score-value',
+    '#dynastyHeatmap .dynasty-heatmap-cell strong',
+  ].join(', ')).allTextContents();
+  expect(initialScoreDisplays.length).toBeGreaterThan(0);
+  expect(initialScoreDisplays.every(text => !text.trim().endsWith('.0'))).toBe(true);
   await page.locator('#dynastyOwnerSelect').selectOption('Plot');
   await expect(page.locator('#dynastyCalculatorHero')).toContainText('Plot Dynasty Score');
   const saundersToggle = page.locator('#dynastySaundersToggle');
@@ -767,6 +775,9 @@ test('dynasty tab renders controls and responds to calculator changes', async ({
   await expect(page.locator('#dynastyTrendChart .dynasty-trend-svg')).toBeVisible({ timeout: 15000 });
   expect(await page.locator('#dynastyTrendChart [data-dynasty-trend-toggle="1"]').count()).toBeGreaterThan(0);
   const firstTrendOwner = await page.locator('#dynastyTrendChart [data-dynasty-trend-toggle="1"]').first().getAttribute('data-owner');
+  const trendScoreDisplays = await page.locator('#dynastyTrendChart .dynasty-facet-value, #dynastyTrendChart .dynasty-trend-fallback strong').allTextContents();
+  expect(trendScoreDisplays.length).toBeGreaterThan(0);
+  expect(trendScoreDisplays.every(text => !text.trim().endsWith('.0'))).toBe(true);
   const firstOwnerTitles = page.locator('#dynastyTrendChart svg title').filter({ hasText: `${firstTrendOwner}:` });
   expect(await firstOwnerTitles.count()).toBeGreaterThan(0);
   await page.locator('#dynastyTrendChart [data-dynasty-trend-toggle="1"]').first().click();
@@ -802,6 +813,8 @@ test('dynasty tab renders controls and responds to calculator changes', async ({
     buttonBackground: 'rgb(250, 251, 255)',
     buttonMinHeight: 44,
   });
+  const slumpScoreDisplays = await page.locator('#dynastySlumps .dynasty-slump-score').allTextContents();
+  expect(slumpScoreDisplays.every(text => !text.trim().endsWith('.0'))).toBe(true);
   await expect(page.locator('#dynastySlumps')).toContainText('Biggest Drops');
   await lowestScoreButton.click();
   await expect(page.locator('#dynastyWindowModal')).toBeVisible();

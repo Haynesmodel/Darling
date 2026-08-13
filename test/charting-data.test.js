@@ -21,7 +21,7 @@ test('dynastyTrendRows flattens visible owner series and honors hidden owners', 
         owner: 'Joe',
         color: '#2563eb',
         finalScore: 12,
-        points: [{ season: 2024, seasonScore: 5, cumulativeScore: 5 }, { season: 2025, seasonScore: 7, cumulativeScore: 12 }],
+        points: [{ season: 2024, seasonScore: 5, cumulativeScore: 5 }, { season: 2025, seasonScore: 2, cumulativeScore: 7 }],
       },
       {
         owner: 'Shap',
@@ -34,7 +34,33 @@ test('dynastyTrendRows flattens visible owner series and honors hidden owners', 
 
   assert.equal(rows.length, 2);
   assert.deepEqual(rows.map(row => row.owner), ['Joe', 'Joe']);
-  assert.equal(rows[1].cumulativeScore, 12);
+  assert.equal(rows[1].cumulativeScore, 7);
+  assert.equal(rows[1].title, 'Joe: 7 through 2025');
+});
+
+test('dynastyTrendRows handles absent, invalid, hidden, and profiled point data', () => {
+  assert.deepEqual(dynastyTrendRows(), []);
+  assert.deepEqual(dynastyTrendRows({ hiddenOwners: null, series: null }, { hiddenOwners: null }), []);
+
+  const rows = dynastyTrendRows({
+    hiddenOwners: ['Joe'],
+    series: [
+      {
+        owner: 'Joe',
+        hidden: true,
+        points: [{ season: 'bad', seasonScore: 'bad', cumulativeScore: Infinity, profile: { season: 2025 } }],
+      },
+      { owner: 'Empty' },
+    ],
+  }, { hiddenOwners: ['Joe'], includeHidden: true });
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].season, 'bad');
+  assert.equal(rows[0].seasonScore, 0);
+  assert.equal(rows[0].cumulativeScore, 0);
+  assert.equal(rows[0].finalScore, 0);
+  assert.deepEqual(rows[0].profile, { season: 2025 });
+  assert.equal(rows[0].title, 'Joe: 0 through bad');
 });
 
 test('gauntletHistogramRows creates tidy bins and mean markers', () => {
@@ -116,6 +142,11 @@ test('trophy, rivalry, and current-season chart rows preserve labels and selecte
   ]);
   assert.equal(rivalry[0].spread, 'Joe + 1');
   assert.match(rivalry[1].title, /Series spread: Tied/);
+  const fallbackRivalry = rivalryLeadRows({ teamA: 'Joe', teamB: 'Joel' }, [{ date: '2025-09-21', lead: -2 }])[0];
+  assert.deepEqual(
+    [fallbackRivalry.season, fallbackRivalry.result, fallbackRivalry.winner, fallbackRivalry.score, fallbackRivalry.type, fallbackRivalry.round, fallbackRivalry.spread],
+    [0, 'T', 'Tie', '', '', '', 'Joel + 2'],
+  );
 
   const view = {
     commandCenter: {

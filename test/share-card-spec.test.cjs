@@ -255,6 +255,8 @@ test('Dynasty cards bind to the selected owner and disclose partial coverage', (
     'Shemer',
   );
   assert.equal(result.ok, true);
+  assert.equal(result.spec.metrics[0].value, '10');
+  assert.match(result.spec.altText, /Shemer: 10 Dynasty score/);
   assert.deepEqual(result.spec.metrics.at(-1), {
     label: 'Coverage',
     value: '1/12 seasons',

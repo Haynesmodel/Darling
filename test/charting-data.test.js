@@ -142,6 +142,11 @@ test('trophy, rivalry, and current-season chart rows preserve labels and selecte
   ]);
   assert.equal(rivalry[0].spread, 'Joe + 1');
   assert.match(rivalry[1].title, /Series spread: Tied/);
+  const fallbackRivalry = rivalryLeadRows({ teamA: 'Joe', teamB: 'Joel' }, [{ date: '2025-09-21', lead: -2 }])[0];
+  assert.deepEqual(
+    [fallbackRivalry.season, fallbackRivalry.result, fallbackRivalry.winner, fallbackRivalry.score, fallbackRivalry.type, fallbackRivalry.round, fallbackRivalry.spread],
+    [0, 'T', 'Tie', '', '', '', 'Joel + 2'],
+  );
 
   const view = {
     commandCenter: {

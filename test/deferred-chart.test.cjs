@@ -31,6 +31,12 @@ test.before(async () => {
 
 test.after(() => fs.rmSync(directory, { recursive: true, force: true }));
 
+test('deferred chart uses the shared retrying chart loader', () => {
+  const source = fs.readFileSync(path.join(process.cwd(), 'src/components/charts/DeferredChartCore.tsx'), 'utf8');
+  assert.match(source, /import \{ loadChartRuntime \} from '\.\.\/\.\.\/charting\/load-chart-runtime';/);
+  assert.doesNotMatch(source, /import\('\.\.\/\.\.\/charting\/plot-charts\.ts'\)/);
+});
+
 test('deferred chart uses the exact expanded viewport observer contract', () => {
   assert.deepEqual(component.CHART_INTERSECTION_OPTIONS, {
     root: null,

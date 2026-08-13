@@ -167,6 +167,30 @@ test('WEBKIT-05 keeps an interactive History header sticky', async ({ page }) =>
   await expect(shell.locator('.table-expanded-row').first()).toBeVisible();
 });
 
+test('WEBKIT-09 mounts interactive tables across History, Rivalry, and Trophy', async ({ page }) => {
+  await page.goto('/?tab=history&team=Joe');
+  await page.locator('#history-section-jump').selectOption('history-games');
+  const history = page.locator('[data-table-id="history-games"]');
+  await expect(history.locator('tbody > tr:not(.table-expanded-row)')).not.toHaveCount(0);
+  await history.locator('.table-expand-button').first().click();
+  await expect(history.locator('.table-expanded-row').first()).toBeVisible();
+
+  await page.goto('/?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel');
+  await page.locator('#rivalry-section-jump').selectOption('rivalry-games');
+  const rivalry = page.locator('[data-table-id="rivalry-games"]');
+  await expect(rivalry.locator('tbody > tr:not(.table-expanded-row)')).not.toHaveCount(0);
+  await rivalry.getByRole('button', { name: 'Last five meetings' }).click();
+  await rivalry.locator('.table-expand-button').first().click();
+  await expect(rivalry.locator('.table-expanded-row').first()).toContainText('Running series record');
+
+  await page.goto('/?tab=trophy&trophyOwner=Joe');
+  await page.locator('#trophyLedgerDisclosure > summary').click();
+  const trophy = page.locator('[data-table-id="trophy-seasons"]');
+  await expect(trophy.locator('tbody > tr:not(.table-expanded-row)')).not.toHaveCount(0);
+  await trophy.locator('.table-expand-button').first().click();
+  await expect(trophy.locator('.table-expanded-row').first()).toContainText('Game log');
+});
+
 test('WEBKIT-06 preserves the responsive shell and skip target', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto('/');

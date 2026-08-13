@@ -7,6 +7,7 @@ import DataFreshnessBadge, { createDataFreshnessRuntime } from './components/dat
 import { createDarlingThemeRuntime, type DarlingThemeRuntime } from './theme/apply-theme';
 import { createSearchRuntime } from './search/search-runtime';
 import type { DarlingSearchRuntime } from './search/search-types';
+import { createTableRuntime } from './tables/table-runtime';
 import type { DarlingTableRuntime } from './tables/table-types';
 import type { DataDiagnostics } from './data/load-league-assets';
 import { bootstrapDarlingApp } from './app/app-controller';
@@ -38,7 +39,7 @@ interface BrowserDocument {
 
 const themeRuntime = createDarlingThemeRuntime();
 const searchRuntime = createSearchRuntime();
-const tableRuntimePromise = import('./tables/table-runtime').then(({ createTableRuntime }) => createTableRuntime());
+const tableRuntime = createTableRuntime();
 const freshnessRuntime = createDataFreshnessRuntime();
 const browser = globalThis as unknown as {
   window: BrowserWindow;
@@ -47,6 +48,7 @@ const browser = globalThis as unknown as {
 
 browser.window.darlingTheme = themeRuntime;
 browser.window.darlingSearch = searchRuntime;
+browser.window.darlingTables = tableRuntime;
 browser.window.darlingDataLoader = async options => {
   const { loadLeagueAssets } = await import('./data/load-league-assets');
   return loadLeagueAssets(options);
@@ -73,7 +75,7 @@ function mountDataFreshness() {
   render(<DataFreshnessBadge runtime={freshnessRuntime} />, mount as Parameters<typeof render>[1]);
 }
 
-async function mountShell() {
+function mountShell() {
   mountThemeControls();
   mountGlobalSearch();
   mountDataFreshness();
@@ -83,8 +85,6 @@ async function mountShell() {
     document.documentElement.dataset.reducedMotion = reduced ? 'reduce' : 'no-preference';
     window.dispatchEvent(new CustomEvent('darling:motionchange', { detail: { reduced } }));
   });
-  const tableRuntime = await tableRuntimePromise;
-  browser.window.darlingTables = tableRuntime;
   void bootstrapDarlingApp({ tableRuntime, searchRuntime, freshnessRuntime });
 }
 

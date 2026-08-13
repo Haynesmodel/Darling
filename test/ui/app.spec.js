@@ -746,7 +746,7 @@ test('dynasty tab renders controls and responds to calculator changes', async ({
   await page.locator('#dynastyWindowModal .dynasty-modal-close').click();
   await expect(page.locator('#dynastyWindowModal')).toBeHidden();
   await expect(page.locator('#dynastyFormula')).toContainText('round((wins + 0.5 × ties) / games × 3, 1)');
-  await expect(page.locator('#dynastyFormula')).toContainText('10-3-0 earns 2.3');
+  await expect(page.locator('#dynastyFormula')).toContainText('10-3-0 = 2.3');
   await expect.poll(async () => page.evaluate(() => {
     const params = new URL(location.href).searchParams;
     return [

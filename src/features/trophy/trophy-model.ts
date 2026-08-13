@@ -35,6 +35,7 @@ import type {
   TrophyRankValue,
   TrophyRecord,
   TrophySeasonAggregate,
+  TrophySeasonGameLog,
   TrophySeasonLedgerRow,
   TrophySeasonLuckRow,
   TrophySignatureSeason,
@@ -1187,7 +1188,30 @@ function computeOwnerMoments(owner: string, leagueGames: readonly H2HGame[] = []
   });
 }
 
-function computeSeasonLedger(_owner: string, seasonRows: readonly SeasonSummaryRow[] = []): TrophySeasonLedgerRow[] {
+function seasonGameLog(owner: string, games: readonly H2HGame[], season: number): TrophySeasonGameLog[] {
+  return games
+    .filter(game => game.season === season)
+    .map((game): TrophySeasonGameLog | null => {
+      const side = sideForGame(game, owner);
+      if (!side) return null;
+      return {
+        date: game.date,
+        week: Number.isFinite(game.week) ? String(game.week) : '—',
+        opponent: side.opp,
+        scoreline: `${fmtDecimal(side.pf, 1)} - ${fmtDecimal(side.pa, 1)}`,
+        result: side.result,
+        type: game.type,
+        round: game.round || '—',
+      };
+    })
+    .filter((game): game is TrophySeasonGameLog => game !== null)
+    .sort((a, b) => {
+      const week = (value: string) => Number.isFinite(Number(value)) ? Number(value) : Number.MAX_SAFE_INTEGER;
+      return a.date.localeCompare(b.date) || week(a.week) - week(b.week) || a.opponent.localeCompare(b.opponent);
+    });
+}
+
+function computeSeasonLedger(owner: string, seasonRows: readonly SeasonSummaryRow[] = [], ownerGames: readonly H2HGame[] = []): TrophySeasonLedgerRow[] {
   return seasonRows
     .slice()
     .sort(sortSeasonDesc)
@@ -1207,6 +1231,7 @@ function computeSeasonLedger(_owner: string, seasonRows: readonly SeasonSummaryR
         pa,
         diff,
         notes,
+        games: seasonGameLog(owner, ownerGames, +row.season),
       };
     });
 }
@@ -1228,7 +1253,7 @@ function buildTrophyCaseViewModel(owner: string, input: TrophyModelOptions = {})
   const hardwareShelf = computeHardwareShelf(ownerProfile, leagueRanks);
   const careerShape = computeCareerShape(ownerProfile.owner, ownerProfile.seasonRows);
   const achievementScar = achievementAndScarItems(ownerProfile);
-  const seasonLedger = computeSeasonLedger(ownerProfile.owner, ownerProfile.seasonRows);
+  const seasonLedger = computeSeasonLedger(ownerProfile.owner, ownerProfile.seasonRows, ownerProfile.ownerGames);
 
   return {
     owner,

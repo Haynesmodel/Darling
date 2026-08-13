@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { formatDynastyScore } from '../src/data/dynasty-formatters.ts';
 import { buildDynastyViewModel, buildOwnerSeasonProfiles, buildDynastyTrendChartModel, calculateDynastyScore, calculateWinRatePrecision, computeRollingDynastyWindows, computeSlumpWindows, scoreOwnerSeason } from '../src/features/dynasty/dynasty-model.ts';
 import { normalizeDynastyRange, normalizeDynastyStateChange, resolveDynastyInitialState } from '../src/features/dynasty/dynasty-state.ts';
 
@@ -15,7 +16,7 @@ test('typed dynasty model preserves score, ranks, windows, and trend facts', () 
   assert.equal(computeRollingDynastyWindows({ windowSize: 3, seasonProfiles: profiles, startSeason: 2021, endSeason: 2023, minSeasons: 2 }).length, 2);
   const trend = buildDynastyTrendChartModel(profiles);
   assert.deepEqual(trend.seasonList, [2021, 2022, 2023]);
-  assert.equal(trend.series.find(series => series.owner === 'Joe')?.points.at(-1)?.title, 'Joe: 213.0 through 2023');
+  assert.equal(trend.series.find(series => series.owner === 'Joe')?.points.at(-1)?.title, 'Joe: 213 through 2023');
   assert.equal(trend.series.find(series => series.owner === 'Joe')?.color, '#2563eb');
   assert.equal(trend.series.find(series => series.owner === 'Shap')?.color, '#f59e0b');
   assert.ok(trend.minScore < Math.min(...trend.series.flatMap(series => series.points.map(point => point.cumulativeScore))));
@@ -72,6 +73,16 @@ test('ranking remains deterministic when precision separates otherwise equivalen
   assert.equal(scores.components.winRatePrecision, 2.3);
   assert.deepEqual(ranked.sort((a, b) => a.rankInPeriod - b.rankInPeriod).map(row => row.owner), ['Moe', 'Zulu', 'Amy']);
   assert.equal(ranked.find(row => row.owner === 'Moe').score, ranked.find(row => row.owner === 'Zulu').score);
+});
+
+test('Dynasty score display trims insignificant tenths and rejects invalid values', () => {
+  assert.equal(formatDynastyScore(7), '7');
+  assert.equal(formatDynastyScore(7.0), '7');
+  assert.equal(formatDynastyScore(28.7), '28.7');
+  assert.equal(formatDynastyScore(-0), '0');
+  assert.equal(formatDynastyScore(null), '—');
+  assert.equal(formatDynastyScore(Number.NaN), '—');
+  assert.equal(formatDynastyScore(Number.POSITIVE_INFINITY), '—');
 });
 
 test('trend preserves a flat point for seasons an owner did not participate', () => {

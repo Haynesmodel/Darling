@@ -21,7 +21,7 @@ test('dynastyTrendRows flattens visible owner series and honors hidden owners', 
         owner: 'Joe',
         color: '#2563eb',
         finalScore: 12,
-        points: [{ season: 2024, seasonScore: 5, cumulativeScore: 5 }, { season: 2025, seasonScore: 7, cumulativeScore: 12 }],
+        points: [{ season: 2024, seasonScore: 5, cumulativeScore: 5 }, { season: 2025, seasonScore: 2, cumulativeScore: 7 }],
       },
       {
         owner: 'Shap',
@@ -34,7 +34,8 @@ test('dynastyTrendRows flattens visible owner series and honors hidden owners', 
 
   assert.equal(rows.length, 2);
   assert.deepEqual(rows.map(row => row.owner), ['Joe', 'Joe']);
-  assert.equal(rows[1].cumulativeScore, 12);
+  assert.equal(rows[1].cumulativeScore, 7);
+  assert.equal(rows[1].title, 'Joe: 7 through 2025');
 });
 
 test('gauntletHistogramRows creates tidy bins and mean markers', () => {

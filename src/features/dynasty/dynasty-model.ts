@@ -1,5 +1,6 @@
 import type { H2HGame, SeasonSummaryRow } from '../../data/generated/asset-types';
 import type { DynastyTrendChartRow } from '../../charting/chart-types';
+import { formatDynastyScore } from '../../data/dynasty-formatters.ts';
 import { computeSeasonAggregatesAllTeams } from '../../../js/stats-helpers.js';
 import type { DynastyBestWindows, DynastyHeatmapModel, DynastyMode, DynastyModelInput, DynastyScore, DynastyScoreComponents, DynastySeasonProfile, DynastySlumps, DynastyState, DynastyTrendModel, DynastyTrendSeries, DynastyViewModel } from './dynasty-types.ts';
 
@@ -69,7 +70,7 @@ export function computeSlumpWindows(input: { rollingWindows: readonly DynastySco
 const DYNASTY_TREND_COLORS = ['#2563eb', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#0ea5e9', '#84cc16', '#ec4899', '#f97316', '#14b8a6', '#7c3aed', '#dc2626'] as const;
 export function buildDynastyTrendChartModel(profiles: readonly DynastySeasonProfile[], hiddenOwners: readonly string[] = []): DynastyTrendModel {
   const seasonList = [...new Set(profiles.map(row => row.season))].sort((a, b) => a - b); const owners = [...new Set(profiles.map(row => row.owner))].sort((a, b) => a.localeCompare(b)); const hidden = new Set(hiddenOwners); const profileIndex = new Map(profiles.map(row => [`${row.owner}|${row.season}`, row]));
-  const series: DynastyTrendSeries[] = owners.map((owner, index) => { let cumulative = 0; const color = DYNASTY_TREND_COLORS[index % DYNASTY_TREND_COLORS.length]; const pointValues = seasonList.map((season, seasonIndex) => { const seasonScore = profileIndex.get(`${owner}|${season}`)?.seasonScore ?? 0; cumulative += seasonScore; return { owner, season, seasonIndex, seasonScore, cumulativeScore: cumulative, color, hidden: hidden.has(owner), title: `${owner}: ${cumulative.toFixed(1)} through ${season}` }; }); const finalScore = cumulative; const points: DynastyTrendChartRow[] = pointValues.map(point => ({ ...point, finalScore })); return { owner, color, finalScore, points }; });
+  const series: DynastyTrendSeries[] = owners.map((owner, index) => { let cumulative = 0; const color = DYNASTY_TREND_COLORS[index % DYNASTY_TREND_COLORS.length]; const pointValues = seasonList.map((season, seasonIndex) => { const seasonScore = profileIndex.get(`${owner}|${season}`)?.seasonScore ?? 0; cumulative += seasonScore; return { owner, season, seasonIndex, seasonScore, cumulativeScore: cumulative, color, hidden: hidden.has(owner), title: `${owner}: ${formatDynastyScore(cumulative)} through ${season}` }; }); const finalScore = cumulative; const points: DynastyTrendChartRow[] = pointValues.map(point => ({ ...point, finalScore })); return { owner, color, finalScore, points }; });
   const scores = series.flatMap(row => row.points.map(point => point.cumulativeScore)); const minimum = scores.length ? Math.min(...scores) : 0; const maximum = scores.length ? Math.max(...scores) : 1; const padding = Math.max(1, (maximum - minimum) * .08);
   return { seasonList, series, minScore: minimum - padding, maxScore: maximum + padding, hiddenOwners: [...hidden] };
 }

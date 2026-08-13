@@ -184,7 +184,6 @@ export default function InteractiveTable({
       columnVisibility: startingState.columnVisibility,
       columnPinning: { start: startingState.columnPinning.left, end: startingState.columnPinning.right },
       pagination: { pageIndex: 0, pageSize: startingState.pageSize },
-      expanded: {},
     },
   } as any, (state: any) => ({
     sorting: state.sorting,
@@ -235,8 +234,8 @@ export default function InteractiveTable({
     table.setColumnVisibility?.(valid.columnVisibility);
     table.setColumnPinning?.({ start: valid.columnPinning.left.slice(0, 1), end: valid.columnPinning.right.slice(0, 1) });
     table.setPageSize?.(valid.pageSize);
-    table.setPageIndex?.(0);
-    table.setExpanded?.({});
+    table.setPageIndex(0);
+    table.resetExpanded();
     setQuickFilters(valid.quickFilters);
     setGameLimit(registry.id === 'history-games' && typeof nextUrlState?.gameLimit === 'number' && Number.isFinite(nextUrlState.gameLimit) ? nextUrlState.gameLimit : null);
   };

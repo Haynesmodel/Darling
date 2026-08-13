@@ -10,9 +10,3 @@
 @import "../components/data-freshness/data-freshness.css" layer(components);
 @import "./utilities.css" layer(utilities);
 @import "./motion.css" layer(utilities);
-
-/* Dynamic feature styles can establish the component layer before this entry
-   stylesheet loads. Keep action-link text explicit so the base anchor color
-   cannot override the button's accessible foreground. */
-a.btn.primary{color:#fff}
-a.btn.danger{color:#fff}

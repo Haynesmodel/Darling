@@ -29,6 +29,32 @@ test('Trophy ledger expansion shows the selected season game log and empty state
   await page.screenshot({ path: 'test-results/trophy-season-game-log.png', fullPage: false });
 });
 
+test('Trophy season expansions reset after sorting and clearing a Season filter', async ({ page }) => {
+  await page.goto('/?tab=trophy&trophyOwner=Joe');
+  await page.waitForLoadState('networkidle');
+  await page.locator('#trophyLedgerDisclosure > summary').click();
+  const table = page.locator('[data-table-id="trophy-seasons"]');
+  const season2025 = () => table.locator('tbody > tr:not(.table-expanded-row)').filter({ hasText: '2025' }).first();
+
+  await season2025().locator('.table-expand-button').click();
+  await expect(table.locator('.table-expanded-row')).toHaveCount(1);
+
+  await table.getByRole('button', { name: /Sort Finish/ }).click();
+  await expect(table.locator('.table-expanded-row')).toHaveCount(0);
+
+  await season2025().locator('.table-expand-button').click();
+  await expect(table.locator('.table-expanded-row')).toHaveCount(1);
+  await table.locator('.table-filter-menu > summary').click();
+  const seasonMaximum = page.getByRole('spinbutton', { name: 'Season maximum' });
+  await seasonMaximum.fill('2024');
+  await expect(season2025()).toHaveCount(0);
+  await expect(table.locator('.table-expanded-row')).toHaveCount(0);
+
+  await seasonMaximum.fill('');
+  await expect(season2025()).toBeVisible();
+  await expect(table.locator('.table-expanded-row')).toHaveCount(0);
+});
+
 test('Trophy season adapter covers empty, singular, and complete game-log details', async ({ page }) => {
   await page.goto('/?tab=trophy&trophyOwner=Joe');
   await page.waitForLoadState('networkidle');

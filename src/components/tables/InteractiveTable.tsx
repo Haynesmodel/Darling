@@ -178,7 +178,6 @@ export default function InteractiveTable({
     enableSortingRemoval: true,
     enableMultiSort: true,
     isMultiSortEvent: (event: any) => !!event?.shiftKey,
-    autoResetPageIndex: true,
     initialState: {
       sorting: startingState.sorting,
       columnFilters: startingState.columnFilters,
@@ -208,9 +207,10 @@ export default function InteractiveTable({
     pageSize: table.state.pagination?.pageSize || registry.defaultPageSize,
   };
 
+  useEffect(table.resetExpanded, [data, context, table.state.sorting, table.state.columnFilters, table.state.pagination]);
+
   useEffect(() => {
-    table.setPageIndex?.(0);
-    table.setExpanded?.({});
+    table.setPageIndex(0);
   }, [quickFilters]);
 
   useEffect(() => {

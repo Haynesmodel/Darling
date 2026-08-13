@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { chartRequestHasData, type ChartRequest, type ChartState } from '../../charting/chart-types';
+import { loadChartRuntime } from '../../charting/load-chart-runtime';
 
 export const CHART_INTERSECTION_OPTIONS: IntersectionObserverInit = Object.freeze({
   root: null,
@@ -86,7 +87,7 @@ export function DeferredChart({
       observer?.disconnect();
       const generation = ++generationRef.current;
       setState('loading');
-      void import('../../charting/plot-charts.ts').then(runtime => {
+      void loadChartRuntime().then(runtime => {
         if (!current(generation)) return;
         const latestRequest = requestRef.current;
         if (!latestRequest) return;

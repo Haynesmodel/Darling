@@ -1,7 +1,7 @@
 import { DeferredChart } from '../../components/charts/DeferredChart';
 import { TrophyControls } from './TrophyControls';
 import { hardwareArt } from './trophy-model';
-import type { TrophyHardwareItem, TrophyMetricKey, TrophyPageProps, TrophyRankValue } from './trophy-types';
+import type { TrophyHardwareItem, TrophyListItem, TrophyMetricKey, TrophyPageProps, TrophyRankValue } from './trophy-types';
 
 function hardwareStateLabel(item: TrophyHardwareItem) {
   if (item.state === 'earned') return 'Earned';
@@ -15,10 +15,10 @@ function Disclosure({ id, title, children, open = false }: { id: string; title: 
   </details>;
 }
 
-function List({ items, empty, tone }: { items: Array<{ label: string; value: string; detail: string }>; empty: string; tone: string }) {
+function List({ items, empty, tone }: { items: TrophyListItem[]; empty: string; tone: string }) {
   if (!items.length) return <div class="trophy-empty">{empty}</div>;
   return <ul class={`trophy-list tone-${tone}`}>
-    {items.map(item => <li key={`${item.label}-${item.value}`}>
+    {items.map(item => <li key={item.key}>
       <span class="trophy-list-label">{item.label}</span>
       <span class="trophy-list-value">{item.value}</span>
       <span class="trophy-list-detail">{item.detail}</span>

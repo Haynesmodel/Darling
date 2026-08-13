@@ -280,6 +280,12 @@ export default defineConfig({
         codeSplitting: {
           groups: [
             {
+              name: 'table-runtime',
+              test: /src\/(?:tables\/(?:table-runtime|table-saved-views|table-filter-functions|table-quick-filters)|components\/tables\/[^/]+)\.(?:js|ts|tsx)$/,
+              priority: 2,
+              minSize: 0,
+            },
+            {
               name: 'chart-runtime',
               test: /charting-vendor\.js$|src\/charting\/(?:chart-data|chart-runtime|chart-theme|chart-vendor|plot-charts|plot-specs)\.ts$/,
               priority: 2,

@@ -107,5 +107,6 @@
 }
 
 @media (max-width:700px){
+  .fun-lists{grid-template-columns:minmax(0,1fr)}
   #funFacts{grid-template-columns:repeat(2,minmax(120px,1fr))}
 }

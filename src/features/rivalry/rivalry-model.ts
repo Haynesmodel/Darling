@@ -360,6 +360,12 @@ function buildTape(summary: RivalrySummary, teamA: string, teamB: string): Rival
   ];
 }
 
+const STINKER_SCORE_LIMIT = 70;
+
+function isStinkerMeeting(game: RivalryGame): boolean {
+  return game.scoreA < STINKER_SCORE_LIMIT && game.scoreB < STINKER_SCORE_LIMIT;
+}
+
 function buildHighlights(summary: RivalrySummary, teamA: string, teamB: string): RivalryHighlight[] {
   if (!summary.overall.g) return [];
   const highlights: RivalryHighlight[] = [];
@@ -370,6 +376,7 @@ function buildHighlights(summary: RivalrySummary, teamA: string, teamB: string):
   const longest = !second ? first : !first ? second : first.len > second.len || (first.len === second.len && first.end.date >= second.end.date) ? first : second;
   if (longest) highlights.push({ icon: '🎯', label: 'Longest Run', value: formatLeaderText(teamA, teamB, longest.result, longest.len), sub: `${longest.start.date} to ${longest.end.date}`, tone: 'run' });
   highlights.push({ icon: '⚡', label: 'Shootouts', value: String(summary.games.filter(game => game.scoreA >= 130 && game.scoreB >= 130).length), sub: 'Both teams 130+', tone: 'spark' });
+  highlights.push({ icon: '💩', label: 'Stinkers', value: String(summary.games.filter(isStinkerMeeting).length), sub: 'Both teams below 70', tone: 'stinker' });
   return highlights;
 }
 

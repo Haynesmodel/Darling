@@ -38,6 +38,19 @@ const season = (overrides = {}) => ({
   ...overrides,
 });
 
+const game = (overrides = {}) => ({
+  season: 2024,
+  date: '2024-01-01',
+  teamA: 'Joe',
+  teamB: 'Opp',
+  scoreA: 100,
+  scoreB: 90,
+  week: 1,
+  round: null,
+  type: 'Regular',
+  ...overrides,
+});
+
 test('Trophy career model preserves chart tiers and cutoffs', () => {
   const view = computeCareerShape('Joe', [
     season({ season: 2021, finish: 1, champion: true }),
@@ -133,6 +146,178 @@ test('Trophy low-score moments exclude the outlier while retaining canonical gam
     assert.notEqual(profile.worstGame?.game, target);
     assert.notEqual(computeOwnerMoments(owner, leagueGames).find(moment => moment.label === 'Lowest score')?.date, target.date);
   }
+});
+
+test('Trophy highlights and low points select five ordered, owner-relative facts without duplicate sources', () => {
+  const seasonSummaries = [
+    season({ season: 2025, finish: 1, points_for: 2000, points_against: 1800 }),
+    season({ season: 2024, finish: 2, points_for: 1500, points_against: 1000 }),
+    season({ season: 2023, finish: 3, points_for: 1300, points_against: 1200 }),
+    season({ season: 2022, finish: 4, points_for: 1000, points_against: 1200 }),
+    season({ season: 2021, finish: 5, points_for: 1100, points_against: 1300 }),
+    season({ season: 2020, finish: 6, points_for: 900, points_against: 1000 }),
+    season({ season: 2019, finish: 12, points_for: 950, points_against: 1100, saunders: true }),
+    season({ season: 2018, finish: 7, points_for: 1000, points_against: 1000 }),
+  ];
+  const leagueGames = [
+    game({ season: 2025, date: '2025-01-01', scoreA: 180, scoreB: 190 }),
+    game({ season: 2024, date: '2024-02-01', scoreA: 140, scoreB: 60 }),
+    game({ season: 2023, date: '2023-03-01', scoreA: 130, scoreB: 50 }),
+    game({ season: 2022, date: '2022-04-01', scoreA: 30, scoreB: 100 }),
+    game({ season: 2021, date: '2021-04-01', scoreA: 110, scoreB: 120 }),
+    game({ season: 2020, date: '2020-05-01', scoreA: 40, scoreB: 140 }),
+    game({ season: 2019, date: '2019-06-01', scoreA: 90, scoreB: 100, type: 'Saunders' }),
+  ];
+  const profile = buildOwnerCareerProfile('Joe', seasonSummaries, leagueGames, {
+    seasonAggregates: seasonSummaries.map((row, index) => ({
+      team: 'Joe',
+      season: row.season,
+      expWins: index === 2 ? 1 : 4,
+      luck: index === 2 ? 2 : index === 4 ? -2 : 0,
+    })),
+  });
+  const lists = computeAchievementAndScarLists(profile);
+
+  assert.equal(lists.achievements.length, 5);
+  assert.equal(lists.scars.length, 5);
+  assert.deepEqual(lists.achievements.map(item => item.label), [
+    'Best regular season',
+    'Highest weekly score',
+    'Best win margin',
+    'Best point differential season',
+    'Luckiest season',
+  ]);
+  assert.deepEqual(lists.scars.map(item => item.label), [
+    'Most unlucky season',
+    'Worst weekly score',
+    'Biggest loss',
+    'Worst finish',
+    'Negative-differential season',
+  ]);
+  const highlightSources = new Set(lists.achievements.map(item => item.sourceKey));
+  assert.equal(lists.scars.some(item => highlightSources.has(item.sourceKey)), false);
+  assert.equal(new Set(lists.achievements.map(item => item.key)).size, lists.achievements.length);
+  assert.equal(new Set(lists.scars.map(item => item.key)).size, lists.scars.length);
+  assert.equal(lists.bestAchievement?.key, lists.achievements[0].key);
+  assert.equal(lists.worstScar?.key, lists.scars[0].key);
+  assert.match(lists.achievements[1].detail, /2025-01-01 vs Opp/);
+  assert.match(lists.scars[0].detail, /Expected/);
+});
+
+test('Trophy candidate ranking is deterministic for ties and sparse data returns only available facts', () => {
+  const tiedRows = [
+    season({ season: 2024, points_for: 1200, points_against: 1000 }),
+    season({ season: 2023, points_for: 1200, points_against: 1000 }),
+  ];
+  const tiedProfile = buildOwnerCareerProfile('Joe', tiedRows, [
+    game({ season: 2024, date: '2024-01-01', scoreA: 100, scoreB: 90 }),
+    game({ season: 2024, date: '2024-01-02', scoreA: 100, scoreB: 90 }),
+  ]);
+  const tiedLists = computeAchievementAndScarLists(tiedProfile);
+  assert.equal(tiedLists.achievements[0].value, '2024');
+
+  const tiedGames = [
+    game({ season: 2024, date: '2024-01-01', teamB: 'Zulu', scoreA: 150, scoreB: 90 }),
+    game({ season: 2024, date: '2024-01-01', teamB: 'Alpha', scoreA: 150, scoreB: 90 }),
+  ];
+  const forward = computeAchievementAndScarLists(buildOwnerCareerProfile('Joe', tiedRows, tiedGames));
+  const reversed = computeAchievementAndScarLists(buildOwnerCareerProfile('Joe', tiedRows, tiedGames.slice().reverse()));
+  assert.equal(forward.achievements.find(item => item.label === 'Highest weekly score')?.detail, '2024-01-01 vs Alpha');
+  assert.equal(reversed.achievements.find(item => item.label === 'Highest weekly score')?.detail, '2024-01-01 vs Alpha');
+
+  const duplicate = game({ season: 2024, date: '2024-02-01', scoreA: 180, scoreB: 90 });
+  const duplicateProfile = buildOwnerCareerProfile('Joe', [season({ season: 2024 })], [duplicate, duplicate]);
+  const duplicateLists = computeAchievementAndScarLists(duplicateProfile);
+  assert.equal(duplicateLists.achievements.filter(item => item.label === 'Highest weekly score').length, 1);
+
+  const sparseProfile = buildOwnerCareerProfile('Joe', [season({ season: 2024, points_for: null, points_against: null, finish: null })], [
+    game({ season: 2024, date: '2024-01-01', scoreA: 100, scoreB: 90 }),
+  ]);
+  const sparseLists = computeAchievementAndScarLists(sparseProfile);
+  assert.ok(sparseLists.achievements.length <= 5);
+  assert.ok(sparseLists.scars.length <= 5);
+  assert.equal(new Set(sparseLists.achievements.map(item => item.key)).size, sparseLists.achievements.length);
+  assert.equal(new Set(sparseLists.scars.map(item => item.key)).size, sparseLists.scars.length);
+  assert.ok(sparseLists.achievements.every(item => item.detail.length > 0));
+});
+
+test('Trophy luckiest season chooses the newest season when luck is tied', () => {
+  const tiedRows = [
+    season({ season: 2024 }),
+    season({ season: 2023 }),
+    season({ season: 2022 }),
+  ];
+  const tiedGames = tiedRows.map(row => game({ season: row.season, date: `${row.season}-01-01` }));
+  const profile = buildOwnerCareerProfile('Joe', tiedRows, tiedGames, {
+    seasonAggregates: tiedRows.map(row => ({ team: 'Joe', season: row.season, expWins: 4, luck: 1.25 })),
+  });
+
+  assert.equal(profile.luckiestSeason?.season, 2024);
+});
+
+test('Trophy cross-list arbitration skips a colliding low point and keeps a lower-priority candidate', () => {
+  const rows = [
+    season({ season: 2024, points_for: 1500, points_against: 1000 }),
+    season({ season: 2023, points_for: 1000, points_against: 1000 }),
+  ];
+  const profile = buildOwnerCareerProfile('Joe', rows, [
+    game({ season: 2024, date: '2024-01-01', scoreA: 120, scoreB: 100 }),
+    game({ season: 2023, date: '2023-01-01', scoreA: 80, scoreB: 100 }),
+  ], {
+    seasonAggregates: [
+      { team: 'Joe', season: 2024, expWins: 5, luck: -2 },
+      { team: 'Joe', season: 2023, expWins: 4, luck: 0 },
+    ],
+  });
+  const lists = computeAchievementAndScarLists(profile);
+  const highlightSources = new Set(lists.achievements.map(item => item.sourceKey));
+
+  assert.ok(lists.achievements.some(item => item.sourceKey === 'season:2024'));
+  assert.equal(lists.scars.some(item => item.label === 'Most unlucky season'), false);
+  assert.ok(lists.scars.some(item => item.label === 'Worst weekly score'));
+  assert.equal(lists.scars.some(item => highlightSources.has(item.sourceKey)), false);
+});
+
+test('Trophy cross-list arbitration does not reserve an undisplayed overflow highlight', () => {
+  const rows = [
+    season({ season: 2025, points_for: 1600, points_against: 1500, finish: 2 }),
+    season({ season: 2024, points_for: 1400, points_against: 1300, finish: 3 }),
+    season({ season: 2023, points_for: 1300, points_against: 1200, finish: 4 }),
+    season({ season: 2022, points_for: 1500, points_against: 500, finish: 5 }),
+    season({ season: 2021, points_for: 1200, points_against: 1100, finish: 6 }),
+    season({ season: 2020, points_for: 1000, points_against: 1400, finish: 1, champion: true }),
+  ];
+  const games = [
+    game({ season: 2025, date: '2025-01-01', scoreA: 100, scoreB: 90 }),
+    game({ season: 2024, date: '2024-01-01', scoreA: 180, scoreB: 170 }),
+    game({ season: 2023, date: '2023-01-01', scoreA: 170, scoreB: 80 }),
+    game({ season: 2022, date: '2022-01-01', scoreA: 120, scoreB: 100 }),
+    game({ season: 2021, date: '2021-01-01', scoreA: 110, scoreB: 100 }),
+    game({ season: 2020, date: '2020-01-01', scoreA: 90, scoreB: 100 }),
+  ];
+  const profile = buildOwnerCareerProfile('Joe', rows, games, {
+    seasonAggregates: [
+      { team: 'Joe', season: 2025, expWins: 4, luck: 0 },
+      { team: 'Joe', season: 2024, expWins: 4, luck: 0 },
+      { team: 'Joe', season: 2023, expWins: 4, luck: 0 },
+      { team: 'Joe', season: 2022, expWins: 4, luck: 0 },
+      { team: 'Joe', season: 2021, expWins: 4, luck: 2 },
+      { team: 'Joe', season: 2020, expWins: 4, luck: -2 },
+    ],
+  });
+  const lists = computeAchievementAndScarLists(profile);
+
+  assert.deepEqual(lists.achievements.map(item => item.label), [
+    'Best regular season',
+    'Highest weekly score',
+    'Best win margin',
+    'Best point differential season',
+    'Luckiest season',
+  ]);
+  assert.equal(lists.achievements.some(item => item.label === 'Championship season'), false);
+  assert.ok(lists.scars.some(item => item.label === 'Most unlucky season' && item.sourceKey === 'season:2020'));
+  const highlightSources = new Set(lists.achievements.map(item => item.sourceKey));
+  assert.equal(lists.scars.some(item => highlightSources.has(item.sourceKey)), false);
 });
 
 test('Trophy hardware shelf preserves the semantic tone mapping for each card family', () => {

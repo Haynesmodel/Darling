@@ -108,6 +108,7 @@ export interface TrophyOwnerCareerProfile {
   bestSeason: number | null;
   bestPFSeason: SeasonSummaryRow | null;
   bestDiffSeason: SeasonSummaryRow | null;
+  worstDiffSeason: SeasonSummaryRow | null;
   worstFinishSeason: SeasonSummaryRow | null;
   mostUnluckySeason: SeasonSummaryRow | null;
   luckiestSeason: SeasonSummaryRow | null;
@@ -209,6 +210,8 @@ export interface TrophyCareerRow {
 }
 
 export interface TrophyListItem {
+  key: string;
+  sourceKey: string;
   label: string;
   value: string;
   detail: string;

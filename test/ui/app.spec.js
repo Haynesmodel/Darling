@@ -527,7 +527,15 @@ test('rivalry tab renders a tale of the tape and saved rivalry selection', async
   await expect(page.locator('#rivalryHeadline')).toContainText('Joe vs Joel');
   await expect(page.locator('#rivalryHeadline')).toContainText('Current streak:');
   await expect(page.locator('#rivalryLeadMeter')).toContainText('Joe');
-  await expect(page.locator('#rivalryHighlightBoard .rivalry-highlight')).toHaveCount(4);
+  await expect(page.locator('#rivalryHighlightBoard .rivalry-highlight')).toHaveCount(5);
+  expect(await page.locator('#rivalryHighlightBoard .rivalry-highlight-label').allTextContents()).toEqual([
+    'Biggest Blowout',
+    'Highest Combined',
+    'Longest Run',
+    'Shootouts',
+    'Stinkers',
+  ]);
+  await expect(page.locator('#rivalryHighlightBoard .rivalry-stinker')).toContainText('Both teams below 70');
   expect(await page.locator('#rivalryTapeGrid .stat').count()).toBeGreaterThan(0);
   await page.locator('#rivalry-section-jump').selectOption('rivalry-trend');
   await expect(page.locator('#rivalryLeadTrend svg')).toBeVisible();
@@ -608,6 +616,41 @@ test('trophy case url restores the trophy page and owner selection', async ({ pa
   await page.locator('#exportCsv').click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe('history_ALL.csv');
+});
+
+test('trophy highlights and low points stay capped, semantic, and readable on a narrow viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  await page.goto('/?tab=trophy&trophyOwner=Joe');
+  await page.waitForLoadState('networkidle');
+
+  const moments = page.locator('#trophyMomentsDisclosure');
+  if (!(await moments.getAttribute('open'))) await moments.locator('summary').click();
+  await expect.poll(() => page.evaluate(() => (
+    document.documentElement.scrollWidth <= document.documentElement.clientWidth
+  ))).toBe(true);
+
+  for (const list of [page.locator('#trophyAchievementList ul'), page.locator('#trophyScarList ul')]) {
+    await expect(list).toBeVisible();
+    expect(await list.locator('li').count()).toBeLessThanOrEqual(5);
+    const box = await list.boundingBox();
+    expect(box).toBeTruthy();
+    expect(box.width).toBeLessThanOrEqual(320);
+  }
+  const splitBounds = await page.locator('#trophyMomentsDisclosure .trophy-split > div').evaluateAll(elements => elements.map(element => {
+    const box = element.getBoundingClientRect();
+    return { left: box.left, right: box.right, top: box.top, bottom: box.bottom };
+  }));
+  expect(splitBounds).toHaveLength(2);
+  const [highlights, lowPoints] = splitBounds;
+  const overlaps = highlights.left < lowPoints.right
+    && lowPoints.left < highlights.right
+    && highlights.top < lowPoints.bottom
+    && lowPoints.top < highlights.bottom;
+  expect(overlaps).toBe(false);
+  expect(await page.locator('#trophyAchievementList .trophy-list-detail').count()).toBeGreaterThan(0);
+  expect(await page.locator('#trophyScarList .trophy-list-detail').count()).toBeGreaterThan(0);
+  await expect(page.locator('#trophyAchievementList')).toContainText('Best regular season');
+  await expect(page.locator('#trophyScarList')).toContainText('Most unlucky season');
 });
 
 test('history filters do not leak into dynasty controls', async ({ page }) => {

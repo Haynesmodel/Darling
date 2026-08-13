@@ -1,3 +1,4 @@
+#rivalryRoot{min-width:0;overflow-x:hidden}
 .rivalry-headline{display:grid;gap:8px}
 .rivalry-title{font-size:24px;font-weight:800;line-height:1.1}
 .rivalry-subtitle{font-size:16px;font-weight:700;color:var(--header)}
@@ -61,8 +62,9 @@
 .rivalry-heat .rivalry-highlight-icon{background:#ffedd5}
 .rivalry-run .rivalry-highlight-icon{background:#e0e7ff}
 .rivalry-spark .rivalry-highlight-icon{background:#ecfeff}
+.rivalry-stinker .rivalry-highlight-icon{background:var(--status-warn-bg);color:var(--status-warn-text);border:2px solid var(--status-warn-border)}
 
-.rivalry-trend{display:grid;gap:10px}
+.rivalry-trend{display:grid;gap:10px;min-width:0}
 .rivalry-trend-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
 .rivalry-trend-label{font-size:18px;font-weight:800}
 .rivalry-trend-sub{font-size:13px;color:var(--muted);font-weight:600}
@@ -87,8 +89,10 @@
 }
 .rivalry-trend-host{
   min-height:250px;
+  min-width:0;
+  overflow:hidden;
 }
-.rivalry-trend-svg{width:100%;height:250px;display:block;overflow:visible}
+.rivalry-trend-svg{width:100%;height:250px;display:block;overflow:hidden}
 .rivalry-trend-zero{stroke:var(--chart-grid);stroke-dasharray:4 4;stroke-width:2}
 .rivalry-trend-axis{stroke:var(--chart-grid);stroke-width:1.5}
 .rivalry-trend-path{fill:none;stroke:var(--accent-primary);stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
@@ -142,6 +146,11 @@
 .rivalry-timeline-date{font-size:12px;color:var(--muted);margin-top:auto}
 
 @media (forced-colors:active){
+  .rivalry-stinker .rivalry-highlight-icon{
+    background:Canvas;
+    border:2px solid CanvasText;
+    color:CanvasText;
+  }
   .rivalry-meter-bar span,
   .rivalry-timeline-item{
     border:1px solid CanvasText;

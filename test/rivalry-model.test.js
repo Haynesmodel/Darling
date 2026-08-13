@@ -35,7 +35,8 @@ test('typed rivalry model preserves records, runs, tables, and chart facts', () 
   assert.match(model.seasonRows[1].notes.join(' • '), /Saunders meeting \(Saunders Final\)/);
   assert.equal(model.gameRows[0].score, '70.00 - 80.00');
   assert.equal(model.tape.find(item => item.label === 'Margin Avg / Median')?.value, '7.50 / 10.00');
-  assert.equal(model.highlights.map(item => item.label).join('|'), 'Biggest Blowout|Highest Combined|Longest Run|Shootouts');
+  assert.equal(model.highlights.map(item => item.label).join('|'), 'Biggest Blowout|Highest Combined|Longest Run|Shootouts|Stinkers');
+  assert.equal(model.highlights.find(item => item.label === 'Stinkers')?.value, '0');
   assert.equal(model.leadPoints.length, 4);
   assert.match(model.leadPoints.at(-1)?.title || '', /Series spread: Joel \+ 1/);
   assert.equal(formatLeaderText('Joe', 'Joel', 'L', 2), 'Joel W2');
@@ -60,4 +61,23 @@ test('typed rivalry state and model preserve scopes, sweeps, and literal owner s
   assert.equal(literal.teamA, unsafeOwner);
   assert.equal(literal.teamB, 'Joel & Co');
   assert.equal(buildRivalryViewModel('Nobody', 'Else', [], { scope: 'allTime', currentSeason: 2025 }).gameRows.length, 0);
+});
+
+test('rivalry Stinkers count requires both scores to be strictly below 70', () => {
+  const boundaryGames = [
+    { season: 2022, date: '2022-09-01', teamA: 'Joe', teamB: 'Joel', scoreA: 69.99, scoreB: 69.99, type: 'Regular', round: '' },
+    { season: 2023, date: '2023-09-01', teamA: 'Joel', teamB: 'Joe', scoreA: 70, scoreB: 69.99, type: 'Playoff', round: 'Final' },
+    { season: 2024, date: '2024-09-01', teamA: 'Joe', teamB: 'Joel', scoreA: 69.99, scoreB: 70, type: 'Saunders', round: 'Saunders Final' },
+    { season: 2025, date: '2025-09-01', teamA: 'Joel', teamB: 'Joe', scoreA: 69.98, scoreB: 69.97, type: 'Regular', round: '' },
+  ];
+  const model = buildRivalryViewModel('Joe', 'Joel', boundaryGames, { scope: 'allTime', currentSeason: 2025 });
+  const stinker = model.highlights.find(item => item.label === 'Stinkers');
+
+  assert.deepEqual(stinker, {
+    icon: '💩',
+    label: 'Stinkers',
+    value: '2',
+    sub: 'Both teams below 70',
+    tone: 'stinker',
+  });
 });

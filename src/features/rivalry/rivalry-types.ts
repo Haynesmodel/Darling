@@ -121,7 +121,7 @@ export interface RivalryHighlight {
   label: string;
   value: string;
   sub: string;
-  tone: 'blowout' | 'heat' | 'run' | 'spark';
+  tone: 'blowout' | 'heat' | 'run' | 'spark' | 'stinker';
 }
 
 export interface RivalryViewModel {

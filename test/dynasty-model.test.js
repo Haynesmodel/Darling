@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildDynastyViewModel, buildOwnerSeasonProfiles, buildDynastyTrendChartModel, calculateDynastyScore, computeRollingDynastyWindows, computeSlumpWindows } from '../src/features/dynasty/dynasty-model.ts';
+import { buildDynastyViewModel, buildOwnerSeasonProfiles, buildDynastyTrendChartModel, calculateDynastyScore, calculateWinRatePrecision, computeRollingDynastyWindows, computeSlumpWindows, scoreOwnerSeason } from '../src/features/dynasty/dynasty-model.ts';
 import { normalizeDynastyRange, normalizeDynastyStateChange, resolveDynastyInitialState } from '../src/features/dynasty/dynasty-state.ts';
 
 function row(season, owner, overrides = {}) { return { season, owner, wins: 8, losses: 4, ties: 0, finish: 2, points_for: 1000, points_against: 950, playoff_wins: 1, playoff_losses: 1, saunders_wins: 0, saunders_losses: 0, champion: false, saunders: false, bye: false, wild_card: true, saunders_bye: false, bagels_earned: null, ...overrides }; }
@@ -15,11 +15,63 @@ test('typed dynasty model preserves score, ranks, windows, and trend facts', () 
   assert.equal(computeRollingDynastyWindows({ windowSize: 3, seasonProfiles: profiles, startSeason: 2021, endSeason: 2023, minSeasons: 2 }).length, 2);
   const trend = buildDynastyTrendChartModel(profiles);
   assert.deepEqual(trend.seasonList, [2021, 2022, 2023]);
-  assert.equal(trend.series.find(series => series.owner === 'Joe')?.points.at(-1)?.title, 'Joe: 207.0 through 2023');
+  assert.equal(trend.series.find(series => series.owner === 'Joe')?.points.at(-1)?.title, 'Joe: 213.0 through 2023');
   assert.equal(trend.series.find(series => series.owner === 'Joe')?.color, '#2563eb');
   assert.equal(trend.series.find(series => series.owner === 'Shap')?.color, '#f59e0b');
   assert.ok(trend.minScore < Math.min(...trend.series.flatMap(series => series.points.map(point => point.cumulativeScore))));
   assert.ok(trend.maxScore > Math.max(...trend.series.flatMap(series => series.points.map(point => point.cumulativeScore))));
+});
+
+test('win-rate precision is capped, tie-aware, and rounded at the season boundary', () => {
+  const profiles = buildOwnerSeasonProfiles({ seasonSummaries: [
+    row(2024, 'TenWins', { wins: 10, losses: 3, ties: 0 }),
+    row(2024, 'SixSix', { wins: 6, losses: 6, ties: 0 }),
+    row(2024, 'Tied', { wins: 5, losses: 5, ties: 2 }),
+    row(2024, 'NoGames', { wins: 0, losses: 0, ties: 0 }),
+  ] });
+  const value = owner => profiles.find(profile => profile.owner === owner);
+  assert.equal(calculateWinRatePrecision({ wins: 10, losses: 3, ties: 0, games: 13 }), 2.3);
+  assert.equal(value('TenWins').seasonComponents.winRatePrecision, 2.3);
+  assert.equal(value('SixSix').seasonComponents.winRatePrecision, 1.5);
+  assert.equal(value('Tied').seasonComponents.winRatePrecision, 1.5);
+  assert.equal(value('NoGames').seasonComponents.winRatePrecision, 0);
+  assert.equal(scoreOwnerSeason(value('TenWins')).components.winRatePrecision, 2.3);
+});
+
+test('precision aggregates consistently across periods, rolling windows, heatmap, and trend', () => {
+  const profiles = buildOwnerSeasonProfiles({ seasonSummaries: [
+    row(2021, 'Joe', { wins: 10, losses: 3, ties: 0 }),
+    row(2022, 'Joe', { wins: 6, losses: 6, ties: 0 }),
+    row(2023, 'Joe', { wins: 0, losses: 0, ties: 0 }),
+  ] });
+  const period = calculateDynastyScore({ owner: 'Joe', startSeason: 2021, endSeason: 2022, seasonProfiles: profiles });
+  const window = computeRollingDynastyWindows({ windowSize: 2, seasonProfiles: profiles, startSeason: 2021, endSeason: 2022, minSeasons: 1 }).find(score => score.owner === 'Joe');
+  const trend = buildDynastyTrendChartModel(profiles).series.find(series => series.owner === 'Joe');
+  const seasonTotal = profiles.filter(profile => profile.season <= 2022).reduce((sum, profile) => sum + profile.seasonScore, 0);
+  const allSeasonTotal = profiles.reduce((sum, profile) => sum + profile.seasonScore, 0);
+  assert.equal(period.components.winRatePrecision, 3.8);
+  assert.equal(window.components.winRatePrecision, 3.8);
+  assert.equal(period.score, Object.values(period.components).reduce((sum, component) => sum + component, 0));
+  assert.equal(trend.points.find(point => point.season === 2022).cumulativeScore, seasonTotal);
+  assert.equal(trend.points.find(point => point.season === 2023).cumulativeScore, allSeasonTotal);
+  const heatmapCell = buildDynastyViewModel({ leagueGames: [], seasonSummaries: profiles.map(profile => ({ ...profile, points_for: profile.pointsFor, points_against: profile.pointsAgainst, playoff_wins: profile.playoffWins, playoff_losses: profile.playoffLosses, saunders_wins: profile.saundersWins, saunders_losses: profile.saundersLosses, wild_card: profile.wildCard, saunders_bye: profile.saundersBye, bagels_earned: profile.bagelsEarned })), mode: 'calculator', owner: 'Joe', startSeason: 2021, endSeason: 2022, minSeasons: 1 }).heatmap.rows.find(row => row.owner === 'Joe').cells.find(cell => cell.season === 2021);
+  assert.equal(heatmapCell.score, heatmapCell.profile.seasonScore);
+  assert.equal(heatmapCell.profile.seasonComponents.winRatePrecision, 2.3);
+});
+
+test('ranking remains deterministic when precision separates otherwise equivalent records', () => {
+  const profiles = buildOwnerSeasonProfiles({ seasonSummaries: [
+    row(2024, 'Zulu', { wins: 10, losses: 3, ties: 0 }),
+    row(2024, 'Amy', { wins: 10, losses: 4, ties: 0 }),
+    row(2024, 'Moe', { wins: 10, losses: 3, ties: 0 }),
+  ] });
+  const scores = calculateDynastyScore({ owner: 'Zulu', startSeason: 2024, endSeason: 2024, seasonProfiles: profiles });
+  const ranked = [
+    ...new Set(['Zulu', 'Amy', 'Moe']),
+  ].map(owner => calculateDynastyScore({ owner, startSeason: 2024, endSeason: 2024, seasonProfiles: profiles }));
+  assert.equal(scores.components.winRatePrecision, 2.3);
+  assert.deepEqual(ranked.sort((a, b) => a.rankInPeriod - b.rankInPeriod).map(row => row.owner), ['Moe', 'Zulu', 'Amy']);
+  assert.equal(ranked.find(row => row.owner === 'Moe').score, ranked.find(row => row.owner === 'Zulu').score);
 });
 
 test('trend preserves a flat point for seasons an owner did not participate', () => {

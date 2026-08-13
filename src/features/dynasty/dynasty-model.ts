@@ -3,13 +3,13 @@ import type { DynastyTrendChartRow } from '../../charting/chart-types';
 import { computeSeasonAggregatesAllTeams } from '../../../js/stats-helpers.js';
 import type { DynastyBestWindows, DynastyHeatmapModel, DynastyMode, DynastyModelInput, DynastyScore, DynastyScoreComponents, DynastySeasonProfile, DynastySlumps, DynastyState, DynastyTrendModel, DynastyTrendSeries, DynastyViewModel } from './dynasty-types.ts';
 
-export const DYNASTY_WEIGHTS = { regularSeasonWin: 1, regularSeasonTie: .5, playoffWin: 6, playoffLoss: 0, saundersWin: .5, championship: 30, regularSeasonTitle: 15, topTwoBye: 8, wildCard: 4, pointsForRank1: 8, pointsForRank2: 5, pointsForRank3: 3, pointDiffRank1: 8, pointDiffRank2: 5, pointDiffRank3: 3, topHalfFinish: 3, bottomFinishPenalty: -5, saundersTitlePenalty: -18, saundersByePenalty: -6, negativeDiffPenalty: -3, multiTitleBonus: 8, cleanWindowBonus: 5 } as const;
+export const DYNASTY_WEIGHTS = { regularSeasonWin: 1, regularSeasonTie: .5, winRatePrecision: 3, playoffWin: 6, playoffLoss: 0, saundersWin: .5, championship: 30, regularSeasonTitle: 15, topTwoBye: 8, wildCard: 4, pointsForRank1: 8, pointsForRank2: 5, pointsForRank3: 3, pointDiffRank1: 8, pointDiffRank2: 5, pointDiffRank3: 3, topHalfFinish: 3, bottomFinishPenalty: -5, saundersTitlePenalty: -18, saundersByePenalty: -6, negativeDiffPenalty: -3, multiTitleBonus: 8, cleanWindowBonus: 5 } as const;
 export type DynastyWeights = typeof DYNASTY_WEIGHTS;
-const components = (): DynastyScoreComponents => ({ regularSeason: 0, postseason: 0, hardware: 0, scoringDominance: 0, consistency: 0, penalties: 0 });
+const components = (): DynastyScoreComponents => ({ regularSeason: 0, winRatePrecision: 0, postseason: 0, hardware: 0, scoringDominance: 0, consistency: 0, penalties: 0 });
 const finite = (value: unknown): number | null => { const n = Number(value); return Number.isFinite(n) ? n : null; };
 const num = (value: unknown, fallback = 0): number => finite(value) ?? fallback;
 const isFiniteInput = (value: unknown): boolean => finite(value) !== null && value !== '';
-const add = (a: DynastyScoreComponents, b: DynastyScoreComponents): DynastyScoreComponents => ({ regularSeason: a.regularSeason + b.regularSeason, postseason: a.postseason + b.postseason, hardware: a.hardware + b.hardware, scoringDominance: a.scoringDominance + b.scoringDominance, consistency: a.consistency + b.consistency, penalties: a.penalties + b.penalties });
+const add = (a: DynastyScoreComponents, b: DynastyScoreComponents): DynastyScoreComponents => ({ regularSeason: a.regularSeason + b.regularSeason, winRatePrecision: a.winRatePrecision + b.winRatePrecision, postseason: a.postseason + b.postseason, hardware: a.hardware + b.hardware, scoringDominance: a.scoringDominance + b.scoringDominance, consistency: a.consistency + b.consistency, penalties: a.penalties + b.penalties });
 const total = (value: DynastyScoreComponents): number => Object.values(value).reduce((sum, item) => sum + item, 0);
 const rankBy = <T>(rows: readonly T[], getter: (row: T) => number | null, descending = true): Map<string, number> => {
   const sorted = rows.slice().sort((a, b) => { const left = getter(a) ?? (descending ? -Infinity : Infinity); const right = getter(b) ?? (descending ? -Infinity : Infinity); return descending ? right - left : left - right; });
@@ -18,9 +18,16 @@ const rankBy = <T>(rows: readonly T[], getter: (row: T) => number | null, descen
   return result;
 };
 
+export function calculateWinRatePrecision(profile: Pick<DynastySeasonProfile, 'wins' | 'ties' | 'games'>, cap = DYNASTY_WEIGHTS.winRatePrecision): number {
+  if (profile.games <= 0) return 0;
+  const normalized = Math.max(0, Math.min(cap, ((profile.wins + .5 * profile.ties) / profile.games) * cap));
+  return Math.round(normalized * 10) / 10;
+}
+
 export function scoreOwnerSeason(profile: DynastySeasonProfile, weights: DynastyWeights = DYNASTY_WEIGHTS, options: { includeSaundersPenalty?: boolean } = {}): { score: number; components: DynastyScoreComponents } {
   const out = components(); const include = options.includeSaundersPenalty !== false;
   out.regularSeason += profile.wins * weights.regularSeasonWin + profile.ties * weights.regularSeasonTie;
+  out.winRatePrecision += calculateWinRatePrecision(profile, weights.winRatePrecision);
   out.postseason += profile.playoffWins * weights.playoffWin + profile.saundersWins * weights.saundersWin;
   if (profile.champion) out.hardware += weights.championship; if (profile.regularSeasonTitle) out.hardware += weights.regularSeasonTitle; if (profile.bye) out.hardware += weights.topTwoBye; if (profile.wildCard) out.hardware += weights.wildCard;
   if (profile.pointsForRank === 1) out.scoringDominance += weights.pointsForRank1; else if (profile.pointsForRank === 2) out.scoringDominance += weights.pointsForRank2; else if (profile.pointsForRank === 3) out.scoringDominance += weights.pointsForRank3;

@@ -6,6 +6,13 @@ import { activateFeature } from './navigation-helpers.js';
 
 const manifest = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'assets/asset-manifest.json'), 'utf8'));
 
+test.beforeEach(async ({ page }) => {
+  // Keep canonical 2025/offseason assertions independent of the wall clock;
+  // after the August 15 publication boundary the same snapshot is correctly
+  // reported as a 2026 season gap.
+  await page.clock.setFixedTime(new Date('2026-08-14T12:00:00Z'));
+});
+
 function activeSnapshot(generatedAt, status = 'scheduled') {
   return current => {
     current.season = 2026;

@@ -159,5 +159,5 @@ test('draft pick charts preserve numeric pick order for ordinal labels', () => {
   renderChart(host, requestWithNumericPicks);
 
   assert.deepEqual(host.child.options.x.domain, ['P1', 'P2', 'P10', 'P11']);
-  assert.equal(host.child.options.x.type, 'point');
+  assert.equal(host.child.options.x.type, 'band');
 });

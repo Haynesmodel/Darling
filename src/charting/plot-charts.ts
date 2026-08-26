@@ -194,12 +194,12 @@ function draftSpec(request: Extract<ChartRequest, { kind: 'draft-picks' | 'draft
     marginLeft: pick ? 48 : 56,
     ariaLabel: request.data.ariaLabel,
     rows: request.data.rows,
-    // Plot infers an ordinal domain when the x channel contains labels. Keep
-    // the domain in the caller's semantic order so P10/P11 cannot sort beside
-    // P1 lexicographically ahead of P2.
+    // Plot uses a band scale for barY. Keep its domain in the caller's
+    // semantic order so P10/P11 cannot sort beside P1 lexicographically
+    // ahead of P2.
     x: {
       label: pick ? request.data.xLabel : 'Draft zone',
-      type: 'point',
+      type: 'band',
       domain: request.data.rows.map(row => row.label),
     },
     y: { label: request.data.yLabel },

@@ -4,6 +4,7 @@ import type { LoreRevealOptions, LoreScope, LoreSearchDocument, LoreService } fr
 /** Keeps the presentation/registry out of the entry chunk until lore is used. */
 export function createLazyLoreService(): LoreService {
   let asset: LeagueLore | null = null;
+  let reducedMotion = false;
   let loading: Promise<typeof import('./lore-presentation')> | null = null;
   const load = () => loading ||= import('./lore-presentation');
   const docs = () => !asset?.enabled ? [] : [
@@ -23,12 +24,12 @@ export function createLazyLoreService(): LoreService {
       const target = type === 'entry' ? asset.entries.find(entry => entry.enabled && entry.id === id) : asset.collections.find(collection => collection.enabled && collection.id === id);
       if (!target) return false;
       const module = await load();
-      module.showLore(target, new Map(asset.entries.filter(entry => entry.enabled).map(entry => [entry.id, entry])), asset.effects.find(effect => effect.id === 'lore-dialog' && effect.enabled) || null, { scope: options?.scope, opener: options?.opener, reducedMotion: false });
+      module.showLore(target, new Map(asset.entries.filter(entry => entry.enabled).map(entry => [entry.id, entry])), asset.effects.find(effect => effect.id === 'lore-dialog' && effect.enabled) || null, { scope: options?.scope, opener: options?.opener, reducedMotion });
       return true;
     },
     createScope(id) { return { ...noScope, id }; },
-    setReducedMotion() {},
-    dispose() { loading = null; asset = null; },
+    setReducedMotion(value) { reducedMotion = value; },
+    dispose() { loading = null; asset = null; reducedMotion = false; },
     isEnabled() { return !!asset?.enabled; },
   };
 }

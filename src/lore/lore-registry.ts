@@ -14,14 +14,14 @@ function createScope(id: string, scopes: Set<LoreScope>): LoreScope {
   const scope: LoreScope = {
     id,
     clear() {
-      timers.forEach(timer => window.clearTimeout(timer));
+      timers.forEach(timer => win.clearTimeout(timer));
       timers.clear();
       nodes.forEach(node => node.parentNode?.removeChild(node));
       nodes.clear();
       scopes.delete(scope);
     },
     timer(callback, duration) {
-      const timer = window.setTimeout(() => { timers.delete(timer); callback(); }, Math.min(Math.max(0, duration), MAX_TIMER));
+      const timer = win.setTimeout(() => { timers.delete(timer); callback(); }, Math.min(Math.max(0, duration), MAX_TIMER));
       timers.add(timer);
       return timer;
     },

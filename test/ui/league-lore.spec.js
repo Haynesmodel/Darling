@@ -29,3 +29,22 @@ test('owner emblem is keyboard-operable and loads lore only after the third acti
   await expect(page.locator('dialog')).toHaveCount(0);
   await expect(trigger).toBeFocused();
 });
+
+test('lore dialog traps focus, closes on Escape, and survives motion/forced-color changes', async ({ page }) => {
+  await page.goto('/?tab=owner&owner=Connor');
+  const trigger = page.locator('[data-lore-trigger="owner-emblem"]');
+  await trigger.press('Enter');
+  await trigger.press('Enter');
+  await trigger.press('Enter');
+  const dialog = page.locator('dialog');
+  await expect(dialog).toBeVisible();
+  await page.emulateMedia({ reducedMotion: 'reduce', forcedColors: 'active' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('h2')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(dialog.locator('button[aria-label="Close league lore"]')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator('.lore-overlay')).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+});

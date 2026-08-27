@@ -17,6 +17,7 @@ export interface LoreScope {
   clear(): void;
   timer(callback: () => void, duration: number): number;
   add(node: Node): void;
+  onClear(callback: () => void): void;
 }
 
 export interface LoreRevealOptions {

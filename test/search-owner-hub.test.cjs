@@ -69,6 +69,20 @@ test('current-only owners and generic My Team remain searchable without persisti
   assert.equal(defaults[1].id, 'feature:owner:all');
 });
 
+test('authored League Lore owner aliases participate in structured owner intents', () => {
+  const runtime = search.createSearchRuntime();
+  runtime.hydrate({
+    leagueGames: [{ season: 2025, date: '2025-09-01', teamA: 'Joe', teamB: 'Shap', scoreA: 100, scoreB: 90 }],
+    seasonSummaries: [{ owner: 'Joe', season: 2025 }, { owner: 'Shap', season: 2025 }],
+    currentSeason: { teams: [{ owner: 'Joe', display_name: 'Joseph H' }] },
+    loreOwnerAliases: [{ owner: 'Joe', aliases: ['The Commissioner'] }],
+  });
+  assert.equal(runtime.search('The Commissioner owner hub')[0].action.url, '/Darling/?tab=owner&owner=Joe');
+  const historical = runtime.search('The Commissioner 2025')[0];
+  assert.equal(historical.action.url, '/Darling/?tab=history&team=Joe');
+  assert.match(historical.title, /^Joe/);
+});
+
 test('transaction destinations are generic and owner-scoped without transaction data hydration', () => {
   const runtime = search.createSearchRuntime();
   hydrate(runtime);

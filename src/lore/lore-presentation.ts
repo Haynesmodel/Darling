@@ -10,6 +10,7 @@ const p = (doc: Document, value: string) => Object.assign(doc.createElement('p')
 function close() { const doc = openDocument || openDialog?.ownerDocument; const scope = openScope; openScope = null; if (openDialog?.open) openDialog.close(); openDialog?.remove(); activeOverlays.forEach(node => node.remove()); activeOverlays.clear(); openDialog = null; scope?.clear(); if (doc) doc.body.classList.remove('lore-dialog-open'); restoreFocus?.focus(); restoreFocus = null; openDocument = null; }
 export function showLore(target: Entry | Collection, entries: Map<string, Entry>, effect: Effect | null, options: { scope?: LoreScope; opener?: HTMLElement | null; reducedMotion?: boolean; context?: Record<string, unknown> } = {}) {
   close(); const doc = options.opener?.ownerDocument || document; openDocument = doc; openScope = options.scope || null; restoreFocus = options.opener || null;
+  options.scope?.onClear(close);
   const dialog = doc.createElement('dialog'); openDialog = dialog; dialog.className = `lore-dialog lore-tone-${effect?.tone || 'informational'}`; dialog.setAttribute('aria-labelledby', 'lore-dialog-title');
   const button = doc.createElement('button'); button.type = 'button'; button.textContent = 'Close'; button.setAttribute('aria-label', 'Close league lore'); button.addEventListener('click', close); dialog.append(button);
   const title = doc.createElement('h2'); title.id = 'lore-dialog-title'; title.tabIndex = -1; title.textContent = target.title; dialog.append(title);

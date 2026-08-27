@@ -530,6 +530,10 @@ export interface Entry {
          */
         owners: [string, string];
       }
+    | {
+        type: 'rivalry';
+        slug: string;
+      }
   )[];
   search_terms: SearchTerms;
   provenance: string;

@@ -19,10 +19,12 @@ export function buildSearchIndex(data: SearchHydrationData): BuiltSearchIndex {
   const ownerAliases = new Map<string, string[]>();
   owners.forEach(owner => {
     const sleeperTeam = data.currentSeason?.teams?.find(team => team.owner === owner);
+    const authored = data.loreOwnerAliases?.find(item => item.owner === owner)?.aliases || [];
     ownerAliases.set(owner, [
       owner,
       sleeperTeam?.display_name,
       sleeperTeam?.sleeper_team_name,
+      ...authored,
     ].filter(Boolean).map(value => normalizeSearchText(value)));
   });
 

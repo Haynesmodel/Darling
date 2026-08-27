@@ -65,6 +65,19 @@ function yesNo(value) {
   return value ? 'yes' : 'no';
 }
 
+function loreFacts(view, owner) {
+  const rows = view.recap?.finalStandings || view.standings || [];
+  const row = rows.find(item => item.owner === owner);
+  if (!row) return '';
+  return escapeHtml(JSON.stringify({
+    record: row.record || (row.ties ? `${row.wins}-${row.losses}-${row.ties}` : `${row.wins}-${row.losses}`),
+    points_for: row.pointsFor ?? row.points_for,
+    finish: row.finish ?? row.rank,
+    champion: row.champion,
+    status: row.status?.label,
+  }));
+}
+
 function methodologyNoteHtml(command) {
   const meta = command?.methodology;
   if (!meta) return '';
@@ -319,10 +332,7 @@ function currentSeasonHeroHtml(view) {
           <div class="stat"><div class="label">Final Table</div><div class="value">${escapeHtml(recap?.finalStandings?.length || 0)}</div><div class="sub">owners</div></div>
         </div>
         <div class="current-lore-actions" aria-label="Current season lore">
-          <button type="button" class="btn" data-lore-trigger="plot-admin" data-lore-value="${escapeHtml(view.season || '')}">Plot administration</button>
-          <button type="button" class="btn" data-lore-trigger="zook-points-story" data-lore-owner="Zook" data-lore-value="${escapeHtml(view.season || '')}">Zook points mode</button>
-          <button type="button" class="btn" data-lore-trigger="connor-collapse-story" data-lore-owner="Connor" data-lore-value="${escapeHtml(view.season || '')}">Connor collapse</button>
-          <button type="button" class="btn" data-lore-trigger="plot-rankings-story" data-lore-owner="Plot" data-lore-value="${escapeHtml(view.season || '')}">Plot power rankings</button>
+          ${view.season === 2025 ? `<button type="button" class="btn" data-lore-trigger="plot-admin" data-lore-owner="Plot" data-lore-season="2025" data-lore-value="2025" data-lore-facts="${loreFacts(view, 'Plot')}">Plot administration</button><button type="button" class="btn" data-lore-trigger="zook-points-story" data-lore-owner="Zook" data-lore-season="2025" data-lore-value="2025" data-lore-facts="${loreFacts(view, 'Zook')}">Zook points mode</button><button type="button" class="btn" data-lore-trigger="connor-collapse-story" data-lore-owner="Connor" data-lore-season="2025" data-lore-value="2025" data-lore-facts="${loreFacts(view, 'Connor')}">Connor collapse</button><button type="button" class="btn" data-lore-trigger="plot-rankings-story" data-lore-owner="Plot" data-lore-season="2025" data-lore-value="2025" data-lore-facts="${loreFacts(view, 'Plot')}">Plot power rankings</button>` : ''}
         </div>
       </div>
     `;
@@ -356,10 +366,7 @@ function currentSeasonHeroHtml(view) {
         </div>
       </div>
       <div class="current-lore-actions" aria-label="Current season lore">
-        <button type="button" class="btn" data-lore-trigger="plot-admin" data-lore-value="${escapeHtml(view.season || '')}">Plot administration</button>
-        <button type="button" class="btn" data-lore-trigger="zook-points-story" data-lore-owner="Zook" data-lore-value="${escapeHtml(view.season || '')}">Zook points mode</button>
-        <button type="button" class="btn" data-lore-trigger="connor-collapse-story" data-lore-owner="Connor" data-lore-value="${escapeHtml(view.season || '')}">Connor collapse</button>
-        <button type="button" class="btn" data-lore-trigger="plot-rankings-story" data-lore-owner="Plot" data-lore-value="${escapeHtml(view.season || '')}">Plot power rankings</button>
+        ${view.season === 2025 ? `<button type="button" class="btn" data-lore-trigger="plot-admin" data-lore-owner="Plot" data-lore-season="2025" data-lore-value="2025" data-lore-facts="${loreFacts(view, 'Plot')}">Plot administration</button><button type="button" class="btn" data-lore-trigger="zook-points-story" data-lore-owner="Zook" data-lore-season="2025" data-lore-value="2025" data-lore-facts="${loreFacts(view, 'Zook')}">Zook points mode</button><button type="button" class="btn" data-lore-trigger="connor-collapse-story" data-lore-owner="Connor" data-lore-season="2025" data-lore-value="2025" data-lore-facts="${loreFacts(view, 'Connor')}">Connor collapse</button><button type="button" class="btn" data-lore-trigger="plot-rankings-story" data-lore-owner="Plot" data-lore-season="2025" data-lore-value="2025" data-lore-facts="${loreFacts(view, 'Plot')}">Plot power rankings</button>` : ''}
       </div>
     </div>
   `;

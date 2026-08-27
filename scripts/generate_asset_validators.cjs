@@ -113,7 +113,7 @@ const anchor = (value: unknown): boolean => {
   if (value.type === 'transaction') return integer(value.season) && typeof value.transaction_id === 'string' && value.transaction_id.length > 0;
   if (value.type === 'season') return integer(value.season);
   if (value.type === 'record') return value.selector === 'lowest-score' && anchor(value.game);
-  if (value.type === 'rivalry') return Array.isArray(value.owners) && value.owners.length === 2 && value.owners.every(owner);
+  if (value.type === 'rivalry') return (Array.isArray(value.owners) && value.owners.length === 2 && value.owners.every(owner)) || (typeof value.slug === 'string' && value.slug.length > 0);
   return false;
 };
 const entry = (value: unknown) => object(value) && id(value.id) && strings(value.body) && strings(value.owners) && arrayOf(value.anchors, anchor) && strings(value.search_terms)

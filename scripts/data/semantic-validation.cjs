@@ -632,6 +632,16 @@ function validateSemanticBundle(bundle, opts = {}) {
     const summaryByOwnerSeason = new Set(summaries.map(row => `${row.season}|${row.owner}`));
     const draftByOwnerSeason = new Map(summaries.map(row => [`${row.season}|${row.owner}`, row.draft_pick]));
     const gameKeys = new Set(games.map(game => canonicalGameKey(game)));
+    const rivalryBySlug = new Map(rivalries.map(rivalry => [rivalry.slug, rivalry]));
+    const loreGameExists = anchor => {
+      const game = anchor?.type === 'record' ? anchor.game : anchor;
+      if (!game || game.type !== 'game') return false;
+      return games.some(row => row.season === game.season
+        && row.week === game.week
+        && String(row.round || row.type) === game.game_type
+        && game.owners.length === 2
+        && game.owners.every(owner => [row.teamA, row.teamB].includes(owner)));
+    };
     const reportReference = (kind, location, key, message) => report(kind, location, key, message);
     const aliasOwners = new Map();
     lore.owners.forEach(row => {
@@ -661,9 +671,8 @@ function validateSemanticBundle(bundle, opts = {}) {
       if (entry.sensitivity === 'respectful' && entry.anchors.some(anchor => anchor.type === 'game') && entry.id === '2022-championship-context' && entry.body.join(' ').includes('Tee Higgins') === false) reportReference('LORE_YEAR_ORDER', 'assets/LeagueLore.json', entry.id, 'sensitive championship context is incomplete');
       entry.anchors.forEach(anchor => {
         if (anchor.type === 'owner-season' && !summaryByOwnerSeason.has(`${anchor.season}|${anchor.owner}`)) reportReference('LORE_OWNER_SEASON_MISSING', 'assets/LeagueLore.json', `${entry.id}|${anchor.season}|${anchor.owner}`, 'owner-season anchor is absent from SeasonSummary');
-        if (anchor.type === 'game') {
-          const matching = games.some(game => game.season === anchor.season && game.week === anchor.week && String(game.round || game.type) === anchor.game_type && new Set([game.teamA, game.teamB]).size === 2 && anchor.owners.every(owner => [game.teamA, game.teamB].includes(owner)));
-          if (!matching) reportReference('LORE_GAME_MISSING', 'assets/LeagueLore.json', entry.id, 'game anchor does not exist in H2H');
+        if (anchor.type === 'game' || anchor.type === 'record') {
+          if (!loreGameExists(anchor)) reportReference('LORE_GAME_MISSING', 'assets/LeagueLore.json', entry.id, 'game anchor does not exist in H2H');
         }
         if (anchor.type === 'draft-slot') {
           const actual = draftByOwnerSeason.get(`${anchor.season}|${anchor.owner}`);
@@ -675,14 +684,26 @@ function validateSemanticBundle(bundle, opts = {}) {
         }
         if (anchor.type === 'transaction' && !(transactionsBySeason.get(anchor.season)?.has(anchor.transaction_id))) reportReference('LORE_TRANSACTION_MISSING', 'assets/LeagueLore.json', entry.id, 'transaction anchor is absent from TransactionHistory');
         if (anchor.type === 'record' && (!anchor.game || anchor.game.type !== 'game')) reportReference('LORE_GAME_MISSING', 'assets/LeagueLore.json', entry.id, 'record anchor requires a nested game anchor');
-        if (anchor.type === 'rivalry') ownersIn(anchor.owners);
+        if (anchor.type === 'rivalry') {
+          if (anchor.slug) {
+            if (!rivalryBySlug.has(anchor.slug)) reportReference('LORE_RIVALRY_MISSING', 'assets/LeagueLore.json', entry.id, `rivalry slug ${anchor.slug} is absent from Rivalries`);
+          } else {
+            ownersIn(anchor.owners);
+            const pair = anchor.owners.slice().sort().join('|');
+            if (!rivalryPairs.has(pair)) reportReference('LORE_RIVALRY_MISSING', 'assets/LeagueLore.json', entry.id, `rivalry pair ${pair} is absent from Rivalries`);
+          }
+        }
       });
     });
     lore.collections.forEach(collection => collection.entry_ids.forEach(id => {
       if (!entries.has(id)) reportReference('LORE_UNKNOWN_REFERENCE', 'assets/LeagueLore.json', collection.id, `unknown entry ${id}`);
       if (!entries.get(id)?.enabled && collection.enabled) reportReference('LORE_DISABLED_REFERENCE', 'assets/LeagueLore.json', collection.id, `enabled collection references disabled entry ${id}`);
     }));
-    lore.commissioner_terms.forEach(term => term.entry_ids.forEach(id => { if (!entries.has(id)) reportReference('LORE_UNKNOWN_REFERENCE', 'assets/LeagueLore.json', term.id, `unknown entry ${id}`); }));
+    lore.commissioner_terms.forEach(term => term.entry_ids.forEach(id => {
+      const entry = entries.get(id);
+      if (!entry) reportReference('LORE_UNKNOWN_REFERENCE', 'assets/LeagueLore.json', term.id, `unknown entry ${id}`);
+      else if (entry.category !== 'commissioner' || !entry.owners.includes(term.owner)) reportReference('LORE_COMMISSIONER_REFERENCE', 'assets/LeagueLore.json', term.id, `commissioner entry ${id} must be categorized and owned by ${term.owner}`);
+    }));
     lore.triggers.forEach(trigger => {
       const entry = trigger.entry_id ? entries.get(trigger.entry_id) : null;
       const collection = trigger.collection_id ? collections.get(trigger.collection_id) : null;

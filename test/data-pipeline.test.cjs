@@ -23,6 +23,7 @@ const bundle = {
   Rivalries: readJson(path.join(root, 'assets', 'Rivalries.json')),
   CurrentSeason: readJson(path.join(root, 'assets', 'CurrentSeason.json')),
   TransactionHistory: readJson(path.join(root, 'assets', 'TransactionHistory.json')),
+  LeagueLore: readJson(path.join(root, 'assets', 'LeagueLore.json')),
 };
 
 function clone(value) {
@@ -212,6 +213,22 @@ test('semantic validation accepts the canonical bundle and reports stable rule I
     validateSemanticBundle(staleInsights, { root }).errors
       .some(error => error.includes('[TRANSACTION_INSIGHT_RECONCILIATION]')),
   );
+
+  const duplicateAlias = clone(bundle);
+  duplicateAlias.LeagueLore.owners.find(owner => owner.owner === 'Shap').aliases.push('joey');
+  assert.ok(validateSemanticBundle(duplicateAlias, { root }).errors.some(error => error.includes('[LORE_DUPLICATE_ALIAS]')));
+  const badYears = clone(bundle);
+  badYears.LeagueLore.entries.find(entry => entry.id === 'record-42').completed_year = 2018;
+  assert.ok(validateSemanticBundle(badYears, { root }).errors.some(error => error.includes('[LORE_YEAR_ORDER]')));
+  const unsafe = clone(bundle);
+  unsafe.LeagueLore.triggers.find(trigger => trigger.id === 'championship-context').effect_id = 'blue-bloods';
+  assert.ok(validateSemanticBundle(unsafe, { root }).errors.some(error => error.includes('[LORE_UNSAFE_PRESENTATION]')));
+  const disabled = clone(bundle);
+  disabled.LeagueLore.entries.find(entry => entry.id === 'record-42').enabled = false;
+  assert.ok(validateSemanticBundle(disabled, { root }).errors.some(error => error.includes('[LORE_DISABLED_REFERENCE]')));
+  const missingRivalry = clone(bundle);
+  missingRivalry.LeagueLore.entries.find(entry => entry.id === 'record-42').anchors.push({ type: 'rivalry', owners: ['Joe', 'Connor'] });
+  assert.ok(validateSemanticBundle(missingRivalry, { root }).errors.some(error => error.includes('[LORE_RIVALRY_MISSING]')));
 });
 
 test('structural validation accepts injected values and reports required source files', () => {

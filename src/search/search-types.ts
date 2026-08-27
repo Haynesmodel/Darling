@@ -57,6 +57,7 @@ export interface SearchHydrationData {
     teams?: Array<{ owner: string; display_name?: string; sleeper_team_name?: string }>;
   } | null;
   loreDocuments?: SearchDocument[];
+  loreOwnerAliases?: Array<{ owner: string; aliases: string[] }>;
 }
 
 export interface SearchRuntimeSnapshot {

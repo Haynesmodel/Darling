@@ -41,6 +41,16 @@ function runtimeFactory() {
   return service;
 }
 
+function runtimeWithClock(clock, onReveal = () => {}) {
+  const source = fs.readFileSync(path.join(__dirname, '../src/lore/lore-lazy.ts'), 'utf8');
+  const { code } = esbuild.transformSync(source, { loader: 'ts', format: 'cjs', target: 'node24' });
+  const module = { exports: {} };
+  new Function('module', 'exports', code)(module, module.exports);
+  const service = module.exports.createLazyLoreService(async () => ({ showLore: onReveal }), clock);
+  service.hydrate(lore);
+  return service;
+}
+
 test('typed trigger runtime accepts valid facts and rejects wrong contexts', () => {
   const featureTriggers = lore.triggers.filter(trigger => !['search', 'collection-open'].includes(trigger.activation));
   for (const trigger of featureTriggers) {
@@ -82,6 +92,55 @@ test('typed trigger runtime accepts valid facts and rejects wrong contexts', () 
       assert.equal(runtimeFactory().trigger(trigger.id, { ...positive, owners: [match.owners[0]] }), false);
     }
   }
+});
+
+test('trigger runtime enforces monotonic windows, target signatures, and lifecycle cleanup', async () => {
+  let at = 0;
+  let reveals = 0;
+  const service = runtimeWithClock(() => at, () => { reveals += 1; });
+  const ownerContext = { owner: 'Connor', value: '' };
+  assert.equal(service.trigger('owner-emblem', ownerContext), false);
+  assert.equal(service.trigger('owner-emblem', ownerContext), false);
+  assert.equal(service.trigger('owner-emblem', ownerContext), true);
+  await Promise.resolve();
+  assert.equal(reveals, 1);
+  at += 4001;
+  assert.equal(service.trigger('owner-emblem', ownerContext), false);
+  assert.equal(service.trigger('owner-emblem', { owner: 'Rishi', value: '' }), false);
+  assert.equal(service.trigger('owner-emblem', { owner: 'Rishi', value: '' }), false);
+  assert.equal(service.trigger('owner-emblem', { owner: 'Rishi', value: '' }), true);
+  const session = runtimeWithClock(() => at);
+  assert.equal(session.trigger('theme-sunday-night', { value: 'system' }), false);
+  session.clearTransient();
+  assert.equal(session.trigger('theme-sunday-night', { value: 'light' }), false);
+  const scope = service.createScope('route');
+  let cleared = 0;
+  scope.onClear(() => { cleared += 1; });
+  scope.clear();
+  scope.clear();
+  assert.equal(cleared, 1);
+});
+
+test('reveal forwards canonical facts to the presentation boundary', async () => {
+  let received;
+  const service = runtimeWithClock(() => 0, (...args) => { received = args; });
+  await service.reveal('entry', 'record-42', { context: { facts: { score: '42.00' } } });
+  assert.equal(received[0].id, 'record-42');
+  assert.deepEqual(received[3].context, { facts: { score: '42.00' } });
+});
+
+test('dynasty and theme sequences require the complete ordered gesture', () => {
+  let at = 0;
+  const service = runtimeWithClock(() => at);
+  assert.equal(service.trigger('dynasty-joel-elevator', { value: '2016' }), false);
+  at += 100;
+  assert.equal(service.trigger('dynasty-joel-elevator', { value: '2017' }), true);
+  assert.equal(service.trigger('dynasty-joel-elevator', { value: '2017' }), false);
+  const theme = runtimeWithClock(() => at);
+  for (const value of ['system', 'light', 'dark', 'system', 'light']) assert.equal(theme.trigger('theme-sunday-night', { value }), false);
+  assert.equal(theme.trigger('theme-sunday-night', { value: 'dark' }), true);
+  at += 5001;
+  assert.equal(theme.trigger('theme-sunday-night', { value: 'system' }), false);
 });
 
 test('native feature surfaces expose the intended lore trigger controls', () => {

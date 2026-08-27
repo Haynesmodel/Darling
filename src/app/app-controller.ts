@@ -95,7 +95,7 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
       coreVerified: ['H2H', 'SeasonSummary'].every(asset => data.diagnostics.integrity.verifiedAssets.includes(asset)),
     });
     options.lore.hydrate(data.leagueLore);
-    options.searchRuntime.hydrate({ leagueGames: data.leagueGames, seasonSummaries: data.seasonSummaries, rivalries: data.rivalries, currentSeason: data.currentSeason, loreDocuments: options.lore.searchDocuments() });
+    options.searchRuntime.hydrate({ leagueGames: data.leagueGames, seasonSummaries: data.seasonSummaries, rivalries: data.rivalries, currentSeason: data.currentSeason, loreDocuments: options.lore.searchDocuments(), loreOwnerAliases: data.leagueLore?.owners.map(owner => ({ owner: owner.owner, aliases: owner.aliases })) });
     ownerPreference = createOwnerPreferenceService(canonicalOwners(data), win);
     updateOwnerDestination(doc, win, ownerPreference.getSnapshot());
     ownerPreference.subscribe(snapshot => updateOwnerDestination(doc, win, snapshot));

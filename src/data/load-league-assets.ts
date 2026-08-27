@@ -32,6 +32,7 @@ import {
   isSeasonSummary,
 } from './generated/asset-validators';
 import type { ValidatorName } from './generated/asset-validators';
+import { isLeagueLore } from './generated/league-lore-validator';
 
 export interface DataDiagnostics {
   dataVersion: string;
@@ -109,16 +110,6 @@ function runtimeRequiredSemanticCheck(games: H2HGame[], version: string): void {
   if (invalid) throw new DataLoadError('SEMANTIC_ERROR', 'H2H', `Invalid self-matchup in ${invalid.season} week ${invalid.week}`, version);
 }
 
-// Keep the optional browser guard intentionally tiny; full structural and
-// semantic validation runs in scripts/data/schema-validation.cjs.
-function isLeagueLore(value: unknown): value is LeagueLore {
-  return Boolean(value && typeof value === 'object' && !Array.isArray(value)
-    && (value as any).schema_version === 1
-    && typeof (value as any).enabled === 'boolean'
-    && Array.isArray((value as any).entries)
-    && Array.isArray((value as any).triggers));
-}
-
 export async function loadLeagueAssets(options: LoaderOptions = {}): Promise<LoadedLeagueAssets> {
   const fetchFn = options.fetchFn || globalThis.fetch;
   if (typeof fetchFn !== 'function') throw new Error('loadLeagueAssets requires a fetch function');
@@ -142,12 +133,13 @@ export async function loadLeagueAssets(options: LoaderOptions = {}): Promise<Loa
     return { name, path: entry.path, sha256: entry.sha256, bytes: entry.bytes, dataVersion: version };
   }
 
-  async function verified<T>(entry: JsonAssetDescriptor): Promise<VerifiedJsonResult<T>> {
+  async function verified<T>(entry: JsonAssetDescriptor, maximumBytes?: number): Promise<VerifiedJsonResult<T>> {
     const result = await fetchVerifiedJson<T>(entry, {
       fetchFn,
       basePath,
       digestFn: options.digestFn,
       logger,
+      maximumBytes,
     });
     verifiedAssets.push(entry.name);
     if (result.cacheRecovered) recoveredAssets.push(entry.name);
@@ -168,7 +160,7 @@ export async function loadLeagueAssets(options: LoaderOptions = {}): Promise<Loa
 
   async function optional<T>(name: ValidatorName | 'LeagueLore', entry: JsonAssetDescriptor, guard: (value: unknown) => value is T): Promise<T | null> {
     try {
-      const result = await verified<unknown>(entry);
+      const result = await verified<unknown>(entry, name === 'LeagueLore' ? 100 * 1024 : undefined);
       const value = result.value;
       if (!guard(value)) throw new DataLoadError('INVALID_ASSET', name, name === 'LeagueLore' ? 'LeagueLore: schema validation failed' : formatValidatorErrors(name, getValidatorErrors(name)), version);
       loadedAssets.push(name);

@@ -84,6 +84,7 @@
     "searchTerms": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 80 }, "uniqueItems": true },
     "trigger": {
       "type": "object", "additionalProperties": false, "required": ["id", "surface", "activation", "once_policy", "enabled"],
+      "oneOf": [{ "properties": { "entry_id": { "$ref": "#/$defs/id" } }, "required": ["entry_id"], "not": { "type": "object", "properties": { "collection_id": {} }, "required": ["collection_id"] } }, { "properties": { "collection_id": { "$ref": "#/$defs/id" } }, "required": ["collection_id"], "not": { "type": "object", "properties": { "entry_id": {} }, "required": ["entry_id"] } }],
       "properties": {
         "id": { "$ref": "#/$defs/id" }, "surface": { "type": "string", "enum": ["global-search", "history", "curse-tracker", "trophy", "rivalry", "dynasty", "gauntlet", "transactions", "draft-spot", "current-season", "owner-hub", "theme"] }, "activation": { "enum": ["search", "triple-activate", "selection", "filter-state", "render-condition", "theme-sequence", "owner-emblem", "collection-open"] },
         "entry_id": { "$ref": "#/$defs/id" }, "collection_id": { "$ref": "#/$defs/id" }, "effect_id": { "$ref": "#/$defs/id" }, "match": { "$ref": "#/$defs/match" }, "once_policy": { "enum": ["session", "repeatable", "scope"] }, "enabled": { "type": "boolean" }

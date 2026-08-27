@@ -15,6 +15,7 @@ const assetValues = Object.fromEntries([
   'assets/Rivalries.json',
   'assets/CurrentSeason.json',
   'assets/DerivedStats.json',
+  'assets/LeagueLore.json',
 ].map(relativePath => [
   relativePath,
   JSON.parse(fs.readFileSync(path.join(root, relativePath), 'utf8')),
@@ -53,10 +54,10 @@ function createFetch(overrides = {}, requests = []) {
     const attempt = attempts.get(relativePath) || 0;
     attempts.set(relativePath, attempt + 1);
     const override = configured?.sequence ? configured.sequence[Math.min(attempt, configured.sequence.length - 1)] : configured;
-    if (override?.status) return jsonResponse(override.body || {}, override.status);
+    if (override?.status) return jsonResponse(override.body || {}, override.status, override.rawBody || null);
     return override === undefined
       ? jsonResponse(assetValues[relativePath], 200, assetBodies[relativePath])
-      : jsonResponse(override);
+      : jsonResponse(override, 200, configured?.rawBody || null);
   };
 }
 
@@ -180,6 +181,34 @@ test('runtime loader degrades invalid optional assets without hiding required hi
   assert.ok(warnings.some(message => message.includes('Optional CurrentSeason unavailable')));
 });
 
+test('runtime loader fails closed for malformed optional LeagueLore while required history boots', async t => {
+  await t.test('nested schema failure', async () => {
+    const lore = clone(assetValues['assets/LeagueLore.json']);
+    lore.entries[0].body = null;
+    const manifest = manifestWithValue('LeagueLore', lore);
+    const { logger } = quietLogger();
+    const loaded = await loadLeagueAssets({ basePath: '/', logger, fetchFn: createFetch({
+      'assets/asset-manifest.json': manifest,
+      'assets/LeagueLore.json': lore,
+    }) });
+    assert.ok(loaded.leagueGames.length > 0);
+    assert.equal(loaded.leagueLore, null);
+    assert.deepEqual(loaded.diagnostics.optionalFailures.find(failure => failure.asset === 'LeagueLore'), { asset: 'LeagueLore', reason: 'invalid', code: 'INVALID_ASSET' });
+  });
+  await t.test('HTTP failure', async () => {
+    const { logger } = quietLogger();
+    const loaded = await loadLeagueAssets({ basePath: '/', logger, fetchFn: createFetch({ 'assets/LeagueLore.json': { status: 503 } }) });
+    assert.equal(loaded.leagueLore, null);
+    assert.equal(loaded.diagnostics.optionalFailures.find(failure => failure.asset === 'LeagueLore')?.reason, 'http');
+  });
+  await t.test('integrity failure', async () => {
+    const { logger } = quietLogger();
+    const loaded = await loadLeagueAssets({ basePath: '/', logger, fetchFn: createFetch({ 'assets/LeagueLore.json': { rawBody: Buffer.from('{"tampered":true}') } }) });
+    assert.equal(loaded.leagueLore, null);
+    assert.equal(loaded.diagnostics.optionalFailures.find(failure => failure.asset === 'LeagueLore')?.reason, 'integrity');
+  });
+});
+
 test('runtime loader rejects stale DerivedStats dependencies and uses fallbacks', async () => {
   const derived = clone(assetValues['assets/DerivedStats.json']);
   derived.source_hashes.H2H = `sha256:${'0'.repeat(64)}`;
@@ -224,7 +253,7 @@ test('runtime loader prefixes every request with the configured base path', asyn
     fetchFn: createFetch({}, requests),
   });
   assert.ok(loaded.leagueGames.length > 0);
-  assert.ok(requests.length >= 6);
+  assert.ok(requests.length >= 7);
   assert.ok(requests.every(request => request.url.startsWith('/Darling/assets/')), requests.map(request => request.url).join('\n'));
 });
 
@@ -243,7 +272,7 @@ test('runtime loader revalidates the manifest and versions assets with full hash
     assert.ok(name, request.url);
     assert.equal(new URL(request.url, 'https://darling.test').searchParams.get('v'), entry.sha256.replace('sha256:', ''));
   }
-  assert.deepEqual(loaded.diagnostics.integrity.verifiedAssets, ['CurrentSeason', 'DerivedStats', 'H2H', 'Rivalries', 'SeasonSummary']);
+  assert.deepEqual(loaded.diagnostics.integrity.verifiedAssets, ['CurrentSeason', 'DerivedStats', 'H2H', 'LeagueLore', 'Rivalries', 'SeasonSummary']);
 });
 
 test('runtime loader retries a mismatched cached asset once and records recovery', async () => {
@@ -287,12 +316,10 @@ test('optional assets fail after the second attempt and diagnostics remain sorte
   assert.equal(attemptsFor('assets/CurrentSeason.json'), 2);
   assert.deepEqual(loaded.diagnostics.optionalFailures.map(failure => failure.asset), [
     'CurrentSeason',
-    'LeagueLore',
     'Rivalries',
   ]);
   assert.deepEqual(loaded.diagnostics.integrity.failedOptionalAssets, [
     'CurrentSeason',
-    'LeagueLore',
     'Rivalries',
   ]);
 });

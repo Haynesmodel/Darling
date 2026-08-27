@@ -56,6 +56,9 @@ test('typed trigger runtime accepts valid facts and rejects wrong contexts', () 
     if (trigger.activation === 'theme-sequence') {
       assert.equal(service.trigger(trigger.id, { value: 'system' }), false);
       assert.equal(service.trigger(trigger.id, { value: 'light' }), false);
+      assert.equal(service.trigger(trigger.id, { value: 'dark' }), false);
+      assert.equal(service.trigger(trigger.id, { value: 'system' }), false);
+      assert.equal(service.trigger(trigger.id, { value: 'light' }), false);
       assert.equal(service.trigger(trigger.id, { value: 'dark' }), true);
     } else if (trigger.id === 'dynasty-joel-elevator') {
       assert.equal(service.trigger(trigger.id, { value: '2016' }), false);

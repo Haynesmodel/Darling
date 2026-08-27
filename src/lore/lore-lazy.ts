@@ -19,7 +19,7 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
     states.delete(id); return true;
   };
   const docs = () => !asset?.enabled ? [] : [
-    ...asset.entries.filter(entry => entry.enabled).map(entry => ({ id: `lore:entry:${entry.id}`, category: 'lore' as const, title: entry.title, subtitle: entry.teaser, keywords: [...entry.search_terms, ...entry.owners], priority: 125, action: { kind: 'lore' as const, targetType: 'entry' as const, targetId: entry.id } })),
+    ...asset.entries.filter(entry => entry.enabled).map(entry => ({ id: `lore:entry:${entry.id}`, category: 'lore' as const, title: entry.title, subtitle: entry.teaser, keywords: [...entry.search_terms, ...entry.owners, ...asset!.owners.filter(owner => entry.owners.includes(owner.owner)).flatMap(owner => owner.aliases)], priority: 125, action: { kind: 'lore' as const, targetType: 'entry' as const, targetId: entry.id } })),
     ...asset.collections.filter(collection => collection.enabled).map(collection => ({ id: `lore:collection:${collection.id}`, category: 'lore' as const, title: collection.title, subtitle: collection.summary, keywords: collection.search_terms, priority: 130, action: { kind: 'lore' as const, targetType: 'collection' as const, targetId: collection.id } })),
   ];
   const makeScope = (id: string): LoreScope => {
@@ -62,12 +62,15 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
       if (match?.activation_value && String(context.activation_value ?? context.value ?? '') !== match.activation_value) return false;
       if (match?.owners && (!owners || owners.length !== match.owners.length || !match.owners.every(owner => owners.includes(owner)))) return false;
       const value = String(context.value ?? '');
+      const signature = [id, context.owner, context.season, context.activation_value, value, ...(owners || []).slice().sort()].join('|');
+      const stateId = trigger.activation === 'triple-activate' ? signature : id;
       if (trigger.activation === 'theme-sequence' || id === 'dynasty-joel-elevator') {
-        if (!advance(id, value, trigger.activation === 'theme-sequence' ? 5000 : 4000, trigger.activation === 'theme-sequence' ? 'system|light|dark' : '2016|2017', trigger.activation === 'theme-sequence' ? 3 : 2)) return false;
+        if (!advance(stateId, value, trigger.activation === 'theme-sequence' ? 5000 : 4000, trigger.activation === 'theme-sequence' ? 'system|light|dark|system|light|dark' : '2016|2017', trigger.activation === 'theme-sequence' ? 6 : 2)) return false;
       }
-      if (trigger.activation === 'triple-activate' && !advance(id, value, 4000, `${value}|${value}|${value}`, 3)) return false;
-      if (trigger.once_policy === 'session' && states.has(`seen:${id}`)) return false;
-      if (trigger.once_policy === 'session') states.set(`seen:${id}`, { at: now(), value });
+      if (trigger.activation === 'triple-activate' && !advance(stateId, value, 4000, `${value}|${value}|${value}`, 3)) return false;
+      const onceId = id.startsWith('dynasty-') ? `${id}:${value}` : id;
+      if (trigger.once_policy === 'session' && states.has(`seen:${onceId}`)) return false;
+      if (trigger.once_policy === 'session') states.set(`seen:${onceId}`, { at: now(), value });
       const collection = trigger.collection_id && asset.collections.find(item => item.id === trigger.collection_id);
       const ownerEntry = id === 'owner-emblem' && collection && context.owner
         ? asset.entries.find(entry => collection.entry_ids.includes(entry.id) && entry.enabled && entry.owners.includes(String(context.owner)))
@@ -80,8 +83,9 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
     },
     reveal,
     createScope: makeScope,
-    setReducedMotion(value) { reducedMotion = value; },
-      dispose() { scopes.forEach(scope => scope.clear()); loading = null; asset = null; reducedMotion = false; states.clear(); },
+    setReducedMotion(value) { reducedMotion = value; if (loading) void loading.then(module => module.setReducedMotion?.(value)); },
+    clearTransient() { scopes.forEach(scope => scope.clear()); states.clear(); },
+    dispose() { scopes.forEach(scope => scope.clear()); loading = null; asset = null; reducedMotion = false; states.clear(); },
     isEnabled() { return !!asset?.enabled; },
   };
 }

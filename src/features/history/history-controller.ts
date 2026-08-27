@@ -176,6 +176,14 @@ export function createFeatureController(): DarlingFeatureController {
     if (!mount) return;
     const view = seasonCalloutView(selectedTeam, { allTeams: ALL_TEAMS, selectedSeasons, seasonSummaries: context.data.seasonSummaries, champNoteFn: champNote, saundersNoteFn: saundersNote });
     mount.innerHTML = view.html;
+    if (view.effectType && view.season && view.team) {
+      const button = context.document.createElement('button');
+      button.type = 'button'; button.className = 'btn history-lore-trigger';
+      button.textContent = view.effectType === 'champion' ? 'Show champion crown' : 'Show Saunders fog';
+      button.dataset.loreTrigger = view.effectType === 'champion' ? 'history-champion' : 'history-saunders';
+      button.dataset.loreSeason = String(view.season); button.dataset.loreOwner = view.team;
+      mount.append(button);
+    }
     if (selectedTeam === 'Nuss' && selectedSeasons.has(2019)) {
       const button = context.document.createElement('button');
       button.type = 'button'; button.className = 'btn history-lore-trigger'; button.textContent = 'Reveal 42.00 record lore';
@@ -323,8 +331,6 @@ export function createFeatureController(): DarlingFeatureController {
     },
     deactivate() {
       active = false;
-      const crown = context.document.getElementById('fxCrown'); if (crown) { crown.style.display = 'none'; crown.replaceChildren(); }
-      const fog = context.document.getElementById('fxSaunders'); if (fog) fog.style.display = 'none';
     },
     dispose() {
       disclosure?.dispose();

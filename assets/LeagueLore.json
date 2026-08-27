@@ -44,7 +44,9 @@
     { "id": "suitcase", "label": "Passport trail", "symbol": "🧳", "presentation": "overlay", "tone": "playful", "duration_ms": 2200, "motion_policy": "reduce-to-static", "enabled": true },
     { "id": "podium", "label": "Draft podium", "symbol": "🏆", "presentation": "callout", "tone": "celebratory", "duration_ms": 2200, "motion_policy": "reduce-to-static", "enabled": true },
     { "id": "snake-tail", "label": "Snake tail", "symbol": "🐍", "presentation": "callout", "tone": "playful", "duration_ms": 2200, "motion_policy": "reduce-to-static", "enabled": true },
-    { "id": "chairs", "label": "Beach chairs", "symbol": "🏖️", "presentation": "overlay", "tone": "playful", "duration_ms": 2200, "motion_policy": "reduce-to-static", "enabled": true }
+    { "id": "chairs", "label": "Beach chairs", "symbol": "🏖️", "presentation": "overlay", "tone": "playful", "duration_ms": 2200, "motion_policy": "reduce-to-static", "enabled": true },
+    { "id": "crown", "label": "Champion crown", "symbol": "👑", "presentation": "crown", "tone": "celebratory", "duration_ms": 2200, "motion_policy": "reduce-to-static", "enabled": true },
+    { "id": "saunders-fog", "label": "Saunders fog", "symbol": "🪰", "presentation": "fog", "tone": "respectful", "duration_ms": 2200, "motion_policy": "reduce-to-static", "enabled": true }
   ],
   "entries": [
     { "id": "commissioner-haynes-story", "category": "commissioner", "title": "Haynes, 2014–2017", "teaser": "SEC expansion and the first in-person draft.", "body": ["Joe led the league through SEC expansion and started the in-person draft."], "season": null, "occurred_year": 2014, "completed_year": null, "almanac_edition": 2024, "owners": ["Joe"], "anchors": [], "search_terms": ["commissioner", "Haynes", "SEC"], "provenance": "Supplied league timeline; Almanac context through 2024.", "sensitivity": "ordinary", "enabled": true },
@@ -138,6 +140,13 @@
     { "id": "history-group-sec", "surface": "history", "activation": "selection", "collection_id": "league-moments", "effect_id": "sec", "once_policy": "scope", "enabled": true },
     { "id": "history-group-nuss-rishi", "surface": "history", "activation": "selection", "collection_id": "league-moments", "effect_id": "nuss-rishi", "once_policy": "scope", "enabled": true },
     { "id": "history-group-singer-nuss", "surface": "history", "activation": "selection", "collection_id": "league-moments", "effect_id": "singer-nuss", "once_policy": "scope", "enabled": true },
-    { "id": "current-clinched", "surface": "current-season", "activation": "selection", "entry_id": "current-clinched-story", "effect_id": "birds-clinch", "once_policy": "repeatable", "enabled": true }
+    { "id": "current-clinched", "surface": "current-season", "activation": "selection", "entry_id": "current-clinched-story", "effect_id": "birds-clinch", "once_policy": "repeatable", "enabled": true },
+    { "id": "history-champion", "surface": "history", "activation": "selection", "entry_id": "trophy-championship-story", "effect_id": "crown", "match": {}, "once_policy": "repeatable", "enabled": true },
+    { "id": "history-saunders", "surface": "history", "activation": "selection", "entry_id": "trophy-saunders-story", "effect_id": "saunders-fog", "match": {}, "once_policy": "repeatable", "enabled": true },
+    { "id": "expansion-story", "surface": "draft-spot", "activation": "collection-open", "entry_id": "2025-expansion", "effect_id": "chairs", "once_policy": "repeatable", "enabled": true },
+    { "id": "rashid-shaheed-story", "surface": "transactions", "activation": "selection", "entry_id": "2025-rashid-shaheed", "effect_id": "suitcase", "once_policy": "repeatable", "enabled": true },
+    { "id": "zook-points-story", "surface": "current-season", "activation": "selection", "entry_id": "2025-zook-points-mode", "effect_id": "podium", "once_policy": "repeatable", "enabled": true },
+    { "id": "connor-collapse-story", "surface": "current-season", "activation": "selection", "entry_id": "2025-connor-choke", "effect_id": "respectful-static", "once_policy": "repeatable", "enabled": true },
+    { "id": "plot-rankings-story", "surface": "current-season", "activation": "selection", "entry_id": "2025-missing-power-rankings", "effect_id": "commish", "once_policy": "repeatable", "enabled": true }
   ]
 }

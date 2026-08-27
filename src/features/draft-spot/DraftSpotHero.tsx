@@ -32,6 +32,7 @@ export default function DraftSpotHero({ model }: { model: DraftSpotViewModel }) 
       </div>
       {state.mode === 'pick' && state.selectedPick === first && <button type="button" class="btn draft-lore-trigger" data-lore-trigger="draft-podium" data-lore-value={first}>Reveal first-slot lore</button>}
       {state.mode === 'pick' && state.selectedPick === last && last !== first && <button type="button" class="btn draft-lore-trigger" data-lore-trigger="draft-snake-tail" data-lore-value={last}>Reveal last-slot lore</button>}
+      {state.mode === 'pick' && model.seasons.includes(2025) && <button type="button" class="btn draft-lore-trigger" data-lore-trigger="expansion-story" data-lore-value="2025">Reveal expansion lore</button>}
     </div>
   );
 }

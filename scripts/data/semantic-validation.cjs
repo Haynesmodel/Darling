@@ -615,6 +615,8 @@ function validateSemanticBundle(bundle, opts = {}) {
   }
 
   if (lore) {
+    const loreBytes = Buffer.byteLength(canonicalJson(lore));
+    if (loreBytes > 100 * 1024) report('LORE_ASSET_SIZE', 'assets/LeagueLore.json', 'asset', `asset is ${loreBytes} bytes; maximum is 102400`);
     const namespaces = [lore.owners, lore.commissioner_terms, lore.collections, lore.effects, lore.entries, lore.triggers];
     const ids = new Set();
     namespaces.forEach(rows => rows.forEach(row => {
@@ -631,14 +633,31 @@ function validateSemanticBundle(bundle, opts = {}) {
     const draftByOwnerSeason = new Map(summaries.map(row => [`${row.season}|${row.owner}`, row.draft_pick]));
     const gameKeys = new Set(games.map(game => canonicalGameKey(game)));
     const reportReference = (kind, location, key, message) => report(kind, location, key, message);
+    const aliasOwners = new Map();
+    lore.owners.forEach(row => {
+      for (const alias of [row.owner, ...row.aliases].map(value => String(value).trim().toLocaleLowerCase())) {
+        const previous = aliasOwners.get(alias);
+        if (previous && previous !== row.owner) reportReference('LORE_DUPLICATE_ALIAS', 'assets/LeagueLore.json', alias, `alias is shared by ${previous} and ${row.owner}`);
+        aliasOwners.set(alias, row.owner);
+      }
+    });
     const ownersIn = value => (Array.isArray(value) ? value : []).forEach(owner => {
       if (!knownOwners.has(owner)) reportReference('LORE_UNKNOWN_OWNER', 'assets/LeagueLore.json', owner, `unknown owner ${owner}`);
     });
     lore.owners.forEach(row => ownersIn([row.owner]));
+    lore.commissioner_terms.forEach(term => {
+      ownersIn([term.owner]);
+      if (term.term_end !== null && term.term_end < term.term_start) reportReference('LORE_YEAR_ORDER', 'assets/LeagueLore.json', term.id, 'commissioner term ends before it starts');
+    });
+    const punishmentCollection = lore.collections.find(collection => collection.id === 'punishment-museum');
     lore.entries.forEach(entry => {
       ownersIn(entry.owners);
       if (entry.category === 'punishment' && entry.id === 'singer-lawn-story') reportReference('LORE_PUNISHMENT_CLASSIFICATION', 'assets/LeagueLore.json', entry.id, 'Singer lawn story is not a punishment');
-      if (entry.id.startsWith('2025-') && entry.almanac_edition === 2026 && entry.season !== 2025) reportReference('LORE_YEAR_ORDER', 'assets/LeagueLore.json', entry.id, '2026 Almanac material should use a 2025 fantasy season');
+      if (entry.season !== null && entry.occurred_year !== null && entry.occurred_year < entry.season) reportReference('LORE_YEAR_ORDER', 'assets/LeagueLore.json', entry.id, 'occurred year precedes fantasy season');
+      if (entry.occurred_year !== null && entry.completed_year !== null && entry.completed_year < entry.occurred_year) reportReference('LORE_YEAR_ORDER', 'assets/LeagueLore.json', entry.id, 'completed year precedes occurred year');
+      if (entry.almanac_edition !== null && entry.completed_year !== null && entry.almanac_edition < entry.completed_year) reportReference('LORE_YEAR_ORDER', 'assets/LeagueLore.json', entry.id, 'Almanac edition precedes completion year');
+      if (entry.category === 'punishment' && punishmentCollection && !punishmentCollection.entry_ids.includes(entry.id)) reportReference('LORE_PUNISHMENT_CLASSIFICATION', 'assets/LeagueLore.json', entry.id, 'punishment entry must belong to punishment-museum');
+      if (entry.category !== 'punishment' && punishmentCollection?.entry_ids.includes(entry.id)) reportReference('LORE_PUNISHMENT_CLASSIFICATION', 'assets/LeagueLore.json', entry.id, 'non-punishment entry cannot belong to punishment-museum');
       if (entry.sensitivity === 'respectful' && entry.anchors.some(anchor => anchor.type === 'game') && entry.id === '2022-championship-context' && entry.body.join(' ').includes('Tee Higgins') === false) reportReference('LORE_YEAR_ORDER', 'assets/LeagueLore.json', entry.id, 'sensitive championship context is incomplete');
       entry.anchors.forEach(anchor => {
         if (anchor.type === 'owner-season' && !summaryByOwnerSeason.has(`${anchor.season}|${anchor.owner}`)) reportReference('LORE_OWNER_SEASON_MISSING', 'assets/LeagueLore.json', `${entry.id}|${anchor.season}|${anchor.owner}`, 'owner-season anchor is absent from SeasonSummary');
@@ -655,6 +674,8 @@ function validateSemanticBundle(bundle, opts = {}) {
           if (!pick || pick.owner !== anchor.owner) reportReference('LORE_DRAFT_SELECTION_MISMATCH', 'assets/LeagueLore.json', entry.id, 'draft selection does not match TransactionHistory');
         }
         if (anchor.type === 'transaction' && !(transactionsBySeason.get(anchor.season)?.has(anchor.transaction_id))) reportReference('LORE_TRANSACTION_MISSING', 'assets/LeagueLore.json', entry.id, 'transaction anchor is absent from TransactionHistory');
+        if (anchor.type === 'record' && (!anchor.game || anchor.game.type !== 'game')) reportReference('LORE_GAME_MISSING', 'assets/LeagueLore.json', entry.id, 'record anchor requires a nested game anchor');
+        if (anchor.type === 'rivalry') ownersIn(anchor.owners);
       });
     });
     lore.collections.forEach(collection => collection.entry_ids.forEach(id => {
@@ -668,8 +689,12 @@ function validateSemanticBundle(bundle, opts = {}) {
       const effect = trigger.effect_id ? effects.get(trigger.effect_id) : null;
       if ((trigger.entry_id && !entry) || (trigger.collection_id && !collection) || (trigger.effect_id && !effect)) reportReference('LORE_UNKNOWN_REFERENCE', 'assets/LeagueLore.json', trigger.id, 'trigger reference does not resolve');
       if (trigger.enabled && ((entry && !entry.enabled) || (collection && !collection.enabled) || (effect && !effect.enabled))) reportReference('LORE_DISABLED_REFERENCE', 'assets/LeagueLore.json', trigger.id, 'enabled trigger references disabled lore');
-      if (entry?.sensitivity === 'respectful' && ['celebratory', 'confetti'].includes(effect?.tone) ) reportReference('LORE_UNSAFE_PRESENTATION', 'assets/LeagueLore.json', trigger.id, 'respectful entries cannot use celebratory effects');
+      if (entry?.sensitivity === 'respectful' && (effect?.tone === 'celebratory' || effect?.presentation === 'confetti')) reportReference('LORE_UNSAFE_PRESENTATION', 'assets/LeagueLore.json', trigger.id, 'respectful entries cannot use celebratory/confetti effects');
     });
+    const referencedEntries = new Set(lore.collections.flatMap(collection => collection.entry_ids).concat(lore.commissioner_terms.flatMap(term => term.entry_ids)).concat(lore.triggers.map(trigger => trigger.entry_id).filter(Boolean)));
+    lore.entries.filter(entry => entry.enabled && !referencedEntries.has(entry.id)).forEach(entry => warnings.push(`WARN  [LORE_UNUSED_ENTRY] assets/LeagueLore.json: ${entry.id} is not reachable from a collection, commissioner term, or trigger`));
+    const referencedEffects = new Set(lore.triggers.map(trigger => trigger.effect_id).filter(Boolean));
+    lore.effects.filter(effect => effect.enabled && !referencedEffects.has(effect.id)).forEach(effect => warnings.push(`WARN  [LORE_UNUSED_EFFECT] assets/LeagueLore.json: ${effect.id} is not referenced by a trigger`));
   }
 
   exceptions.forEach((entry, index) => {

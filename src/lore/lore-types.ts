@@ -36,6 +36,7 @@ export interface LoreService {
   reveal(targetType: 'entry' | 'collection', targetId: string, options?: LoreRevealOptions): Promise<boolean>;
   createScope(id: string): LoreScope;
   setReducedMotion(reduced: boolean): void;
+  clearTransient(): void;
   dispose(): void;
   isEnabled(): boolean;
 }

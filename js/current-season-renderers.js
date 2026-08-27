@@ -318,6 +318,12 @@ function currentSeasonHeroHtml(view) {
           <div class="stat"><div class="label">Saunders</div><div class="value">${escapeHtml(recap?.saunders || 'Pending')}</div></div>
           <div class="stat"><div class="label">Final Table</div><div class="value">${escapeHtml(recap?.finalStandings?.length || 0)}</div><div class="sub">owners</div></div>
         </div>
+        <div class="current-lore-actions" aria-label="Current season lore">
+          <button type="button" class="btn" data-lore-trigger="plot-admin" data-lore-value="${escapeHtml(view.season || '')}">Plot administration</button>
+          <button type="button" class="btn" data-lore-trigger="zook-points-story" data-lore-owner="Zook" data-lore-value="${escapeHtml(view.season || '')}">Zook points mode</button>
+          <button type="button" class="btn" data-lore-trigger="connor-collapse-story" data-lore-owner="Connor" data-lore-value="${escapeHtml(view.season || '')}">Connor collapse</button>
+          <button type="button" class="btn" data-lore-trigger="plot-rankings-story" data-lore-owner="Plot" data-lore-value="${escapeHtml(view.season || '')}">Plot power rankings</button>
+        </div>
       </div>
     `;
   }
@@ -348,6 +354,12 @@ function currentSeasonHeroHtml(view) {
           <div class="value">${biggestMover ? `${escapeHtml(biggestMover.owner)} ${escapeHtml(signedSeedChange(biggestMover.seedChange))}` : commandClose ? nfmt(commandClose.margin, 2) : close ? nfmt(close.margin, 2) : '-'}</div>
           ${biggestMover ? `<div class="sub">Projected seed ${escapeHtml(biggestMover.projectedSeed)}</div>` : commandClose ? `<div class="sub">${escapeHtml(commandClose.game.teamA)} vs ${escapeHtml(commandClose.game.teamB)}</div>` : closeGame ? `<div class="sub">${escapeHtml(closeGame.teamA)} vs ${escapeHtml(closeGame.teamB)}</div>` : ''}
         </div>
+      </div>
+      <div class="current-lore-actions" aria-label="Current season lore">
+        <button type="button" class="btn" data-lore-trigger="plot-admin" data-lore-value="${escapeHtml(view.season || '')}">Plot administration</button>
+        <button type="button" class="btn" data-lore-trigger="zook-points-story" data-lore-owner="Zook" data-lore-value="${escapeHtml(view.season || '')}">Zook points mode</button>
+        <button type="button" class="btn" data-lore-trigger="connor-collapse-story" data-lore-owner="Connor" data-lore-value="${escapeHtml(view.season || '')}">Connor collapse</button>
+        <button type="button" class="btn" data-lore-trigger="plot-rankings-story" data-lore-owner="Plot" data-lore-value="${escapeHtml(view.season || '')}">Plot power rankings</button>
       </div>
     </div>
   `;

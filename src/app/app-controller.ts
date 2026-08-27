@@ -129,7 +129,10 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
     abortController = new AbortController();
     const signal = abortController.signal;
     showPage(id, doc);
-    if (activeController && activeFeature && activeFeature !== id) await activeController.deactivate?.(id);
+    if (activeController && activeFeature && activeFeature !== id) {
+      options.lore.clearTransient();
+      await activeController.deactivate?.(id);
+    }
     status.loading(id, FEATURE_NAVIGATION[id].label);
     const featurePromise = reason === 'retry' ? registry.retry(id) : registry.load(id);
     try {

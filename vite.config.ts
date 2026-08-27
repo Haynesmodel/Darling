@@ -260,8 +260,11 @@ export default defineConfig({
       compress: {
         booleans_as_integers: false,
         ecma: 2022,
-        passes: 16,
+        passes: 32,
+        collapse_vars: true,
+        hoist_props: true,
         pure_getters: true,
+        reduce_vars: true,
       },
       mangle: { toplevel: true },
     },

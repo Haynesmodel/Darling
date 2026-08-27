@@ -1,49 +1,3 @@
-/* One-shot overlays */
-.egg-overlay{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
-    pointer-events:none; animation:egg-fade-in .25s ease forwards}
-   .egg-overlay.hide{animation:egg-fade-out .6s ease forwards}
-   .egg-label{font-size:48px;font-weight:800;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.4)}
-   @keyframes egg-fade-in{from{opacity:0}to{opacity:1}}
-   @keyframes egg-fade-out{from{opacity:1}to{opacity:0}}
-   /* overlay themes */
-   .egg-the-jews{background:rgba(0,102,204,.7)}
-   .egg-churchill-baseball{background:rgba(120,170,120,.7)}
-   .egg-blue-bloods{background:rgba(0,0,120,.7)}
-   .egg-commish{background:rgba(255,180,0,.7);}
-   .egg-fathers{background:rgba(0,120,0,.7)}
-   .egg-hoosiers{background:rgba(140,0,0,.7)}
-   .egg-married{background:rgba(255,105,180,.7)}
-   .egg-birthday-boys{background:rgba(255,140,0,.7)}
-   .egg-former-champions{background:rgba(218,165,32,.7)}
-   .egg-educated{background:rgba(75,0,130,.7)}
-   .egg-birds-clinch{background:rgba(0,0,0,.7)}
-   .egg-sec{background:rgba(0,128,128,.7)}
-   .egg-terps{background:rgba(230,0,0,.7)}
-   .egg-butter-bowl{background:rgba(160,82,45,.75)}
-   .clinch-stamp{font-size:72px;font-weight:900;color:#fff;text-shadow:0 0 10px #f87171,0 0 20px #f87171}
-   
-   /* Persistent backdrop */
-   .egg-backdrop{position:fixed;inset:0;pointer-events:none;z-index:1;overflow:hidden}
-   body.group-active main, body.group-active header, body.group-active .page { position:relative; z-index:2; }
-   .float{position:absolute;bottom:-40px;animation:float-up 6s linear infinite;opacity:.85}
-   @keyframes float-up{to{transform:translateY(-110vh) rotate(10deg);opacity:0}}
-   
-   /* Backdrop themes (distinct gradients per group) */
-   .bg-the-jews{background:linear-gradient(180deg, rgba(0,115,230,.18), rgba(255,255,255,.12))}
-   .bg-churchill-baseball{background:linear-gradient(180deg, rgba(34,139,34,.18), rgba(0,0,0,.1))}
-   .bg-blue-bloods{background:radial-gradient(circle at 50% 30%, rgba(0,0,128,.25), rgba(0,0,0,.25))}
-   .bg-commish{background:linear-gradient(180deg, rgba(255,215,0,.18), rgba(0,0,0,.08))}
-   .bg-fathers{background:linear-gradient(180deg, rgba(0,128,0,.18), rgba(255,255,255,.08))}
-   .bg-hoosiers{background:linear-gradient(180deg, rgba(139,0,0,.2), rgba(0,0,0,.05))}
-   .bg-married{background:linear-gradient(180deg, rgba(255,105,180,.18), rgba(255,255,255,.08))}
-   .bg-birthday-boys{background:linear-gradient(180deg, rgba(255,165,0,.18), rgba(255,255,255,.08))}
-   .bg-former-champions{background:linear-gradient(180deg, rgba(218,165,32,.2), rgba(0,0,0,.05))}
-   .bg-educated{background:linear-gradient(180deg, rgba(75,0,130,.18), rgba(255,255,255,.08))}
-   .bg-birds-clinch{background:linear-gradient(180deg, rgba(0,0,0,.3), rgba(0,0,0,.05))}
-   .bg-sec{background:linear-gradient(180deg, rgba(0,128,128,.2), rgba(255,255,255,.08))}
-   .bg-nuss-rishi{background:linear-gradient(180deg, rgba(255,0,0,.2), rgba(0,0,0,.05))}
-   .bg-singer-nuss{background:linear-gradient(180deg, rgba(160,82,45,.2), rgba(0,0,0,.05))}
-
 @media (prefers-reduced-motion:reduce){
   :root{
     --motion-fast:0ms;
@@ -57,11 +11,6 @@
     scroll-behavior:auto!important;
   }
 
-  .egg-overlay,
-  .float{
-    display:none!important;
-    animation:none!important;
-  }
 
   #funFacts .stat,
   .dynasty-window-card,

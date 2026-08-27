@@ -182,6 +182,8 @@ export function createFeatureController(): DarlingFeatureController {
       button.textContent = view.effectType === 'champion' ? 'Show champion crown' : 'Show Saunders fog';
       button.dataset.loreTrigger = view.effectType === 'champion' ? 'history-champion' : 'history-saunders';
       button.dataset.loreSeason = String(view.season); button.dataset.loreOwner = view.team;
+      const canonical = context.data.seasonSummaries.find(row => row.owner === view.team && row.season === view.season);
+      if (canonical) button.dataset.loreFacts = JSON.stringify({ record: `${canonical.wins}-${canonical.losses}-${canonical.ties || 0}`, finish: canonical.finish, champion: canonical.champion, saunders: canonical.saunders, points_for: canonical.points_for, points_against: canonical.points_against });
       mount.append(button);
     }
     if (selectedTeam === 'Nuss' && selectedSeasons.has(2019)) {

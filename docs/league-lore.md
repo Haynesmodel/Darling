@@ -1,14 +1,15 @@
 # League Lore
 
-`assets/LeagueLore.json` is the editable source for narrative facts and easter-egg metadata. It is an optional, integrity-checked asset: if it is missing or invalid, the statistical pages continue to load.
+League Lore is an optional, verified narrative asset. `assets/LeagueLore.json` owns prose, aliases, search terms, collections, trigger metadata, and presentation labels. It never overrides the numerical assets: scores, records, points, finishes, titles, draft slots, transaction participants, and completed-through weeks are read from the canonical data files named by the entry anchor.
 
-## Authoring rules
+The source policy distinguishes the fantasy `season` from `occurred_year`, `completed_year`, and `almanac_edition`. The reviewed 2024 Almanac supplies narrative context through 2024; later corrections use their explicit season and completion fields. Singer's lawn story is draft-weekend lore, not a punishment, and the 2022 championship context is respectful/static.
 
-- Numbers remain sourced from `H2H.json`, `SeasonSummary.json`, `DraftSpot.json`, `CurrentSeason.json`, and `TransactionHistory.json`. Lore anchors identify those records; prose does not replace them.
-- Keep `season` (fantasy season), `occurred_year`, `completed_year`, and `almanac_edition` distinct. The 2026 Almanac stories use `season: 2025`.
-- Use the closed anchor, activation, presentation, and sensitivity enums in `schemas/league-lore.schema.json`. Do not add selectors, HTML, scripts, or CSS classes to JSON.
-- Strings are rendered as text, and disabled entries/triggers remain valid but are suppressed from production search and reveals.
+## Authoring and validation
 
-Run `npm run test:assets` after editing. The asset manifest, generated TypeScript contracts, browser validator, and public snapshot are regenerated with `npm run generate:data`.
+Entries use stable lowercase kebab-case IDs, bounded paragraphs/search terms, canonical owners, and discriminated anchors. Triggers reference exactly one entry or collection and may reference a registered effect. Run `npm run generate:data`, `npm run check:data-generated`, and `npm run test:assets` after edits. The authored JSON must remain at or below 100 KiB; optional loader failures leave all statistical features available and publish diagnostics.
 
-The presentation module is loaded only after an explicit lore reveal. Every reveal has readable dialog text, a native close control, focus restoration, and a reduced-motion static path. Set `enabled` to `false` for an immediate global disable, or disable an individual entry/trigger for a surgical copy or sensitivity rollback.
+## Runtime behavior
+
+Feature controls are native buttons and share one typed runtime. Explicit search/dialog actions are repeatable; ambient multi-activation effects use scoped counters and a four-second window. The click-loaded presentation owns one dialog/overlay, restores opener focus, handles Escape and focus containment, and removes timers/nodes on route changes and disposal. Reduced motion immediately removes animated decoration while retaining readable dialog content. Do not add DOM selectors, executable expressions, audio, or autoplay media to the JSON.
+
+The presentation module and stylesheet are click-loaded. Keep bundle budgets unchanged and include exact-head build, accessibility, and browser evidence in the pull request.

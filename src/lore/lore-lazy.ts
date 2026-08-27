@@ -1,5 +1,5 @@
 import type { LeagueLore } from '../data/generated/asset-types';
-import type { LoreRevealOptions, LoreScope, LoreSearchDocument, LoreService } from './lore-types';
+import type { LoreRevealOptions, LoreScope, LoreService } from './lore-types';
 
 /** Keeps the presentation/registry out of the entry chunk until lore is used. */
 type LorePresentation = typeof import('./lore-presentation');
@@ -9,7 +9,6 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
   let reducedMotion = false;
   let loading: Promise<LorePresentation> | null = null;
   const states = new Map<string, { at: number; count?: number; value: string; values?: string[] }>();
-  const seen = new Set<string>();
   const scopes = new Set<LoreScope>();
   const load = () => loading ||= presenter?.() || import('./lore-presentation');
   const advance = (id: string, value: string, windowMs: number, expected: string, limit: number) => {
@@ -66,11 +65,7 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
       if (trigger.activation === 'theme-sequence' || id === 'dynasty-joel-elevator') {
         if (!advance(id, value, trigger.activation === 'theme-sequence' ? 5000 : 4000, trigger.activation === 'theme-sequence' ? 'system|light|dark' : '2016|2017', trigger.activation === 'theme-sequence' ? 3 : 2)) return false;
       }
-      if (trigger.activation === 'triple-activate') {
-        const at = now(); const previous = states.get(id); const next = previous && at - previous.at <= 4000 && previous.value === value ? { at, count: (previous.count || 0) + 1, value } : { at, count: 1, value }; states.set(id, next);
-        if (next.count < 3) return false;
-        states.delete(id);
-      }
+      if (trigger.activation === 'triple-activate' && !advance(id, value, 4000, `${value}|${value}|${value}`, 3)) return false;
       if (trigger.once_policy === 'session' && states.has(`seen:${id}`)) return false;
       if (trigger.once_policy === 'session') states.set(`seen:${id}`, { at: now(), value });
       const collection = trigger.collection_id && asset.collections.find(item => item.id === trigger.collection_id);
@@ -86,7 +81,7 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
     reveal,
     createScope: makeScope,
     setReducedMotion(value) { reducedMotion = value; },
-      dispose() { scopes.forEach(scope => scope.clear()); loading = null; asset = null; reducedMotion = false; states.clear(); seen.clear(); },
+      dispose() { scopes.forEach(scope => scope.clear()); loading = null; asset = null; reducedMotion = false; states.clear(); },
     isEnabled() { return !!asset?.enabled; },
   };
 }

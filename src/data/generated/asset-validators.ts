@@ -7063,7 +7063,7 @@ function validate50(data, { instancePath = "", parentData, parentDataProperty, r
 }
 validate50.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 var validateAssetManifest = validate73;
-var schema165 = { "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://darling.example/schemas/asset-manifest.schema.json", "title": "AssetManifest", "description": "Content-addressed inventory for one deployable data snapshot.", "type": "object", "additionalProperties": false, "required": ["manifest_version", "data_version", "derived_generator_version", "schema_versions", "assets", "derived", "media"], "properties": { "manifest_version": { "type": "integer", "minimum": 1 }, "data_version": { "$ref": "common.schema.json#/$defs/sha256" }, "derived_generator_version": { "type": "integer", "minimum": 1 }, "schema_versions": { "type": "object", "additionalProperties": false, "required": ["H2H", "SeasonSummary", "Rivalries", "CurrentSeason", "TransactionHistory", "DraftSpot", "DerivedStats"], "properties": { "H2H": { "type": "integer", "minimum": 1 }, "SeasonSummary": { "type": "integer", "minimum": 1 }, "Rivalries": { "type": "integer", "minimum": 1 }, "CurrentSeason": { "type": "integer", "minimum": 1 }, "TransactionHistory": { "type": "integer", "minimum": 1 }, "DraftSpot": { "type": "integer", "minimum": 1 }, "DerivedStats": { "type": "integer", "minimum": 1 } } }, "assets": { "type": "object", "additionalProperties": false, "required": ["H2H", "SeasonSummary", "Rivalries", "CurrentSeason", "TransactionHistory", "DraftSpot"], "properties": { "H2H": { "$ref": "#/$defs/jsonAsset" }, "SeasonSummary": { "$ref": "#/$defs/jsonAsset" }, "Rivalries": { "$ref": "#/$defs/jsonAsset" }, "CurrentSeason": { "$ref": "#/$defs/jsonAsset" }, "TransactionHistory": { "$ref": "#/$defs/jsonAsset" }, "DraftSpot": { "$ref": "#/$defs/jsonAsset" } } }, "derived": { "type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes", "required", "source_hashes"], "properties": { "path": { "$ref": "common.schema.json#/$defs/relativeAssetPath" }, "sha256": { "$ref": "common.schema.json#/$defs/sha256" }, "bytes": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" }, "required": { "type": "boolean" }, "source_hashes": { "type": "object", "additionalProperties": false, "required": ["H2H", "SeasonSummary", "Rivalries"], "properties": { "H2H": { "$ref": "common.schema.json#/$defs/sha256" }, "SeasonSummary": { "$ref": "common.schema.json#/$defs/sha256" }, "Rivalries": { "$ref": "common.schema.json#/$defs/sha256" } } } } }, "media": { "type": "object", "additionalProperties": false, "required": ["leagueHero", "leagueHeroSource"], "properties": { "leagueHero": { "type": "object", "additionalProperties": false, "required": ["role", "variants"], "properties": { "role": { "const": "runtime-required" }, "variants": { "type": "array", "minItems": 12, "maxItems": 12, "items": { "$ref": "#/$defs/mediaVariant" } } } }, "leagueHeroSource": { "type": "object", "additionalProperties": false, "required": ["role", "path", "fallback"], "properties": { "role": { "const": "regeneration-optional" }, "path": { "$ref": "common.schema.json#/$defs/relativeAssetPath" }, "fallback": { "$ref": "common.schema.json#/$defs/relativeAssetPath" } } } } } }, "$defs": { "jsonAsset": { "type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes", "rows", "season_min", "season_max", "required"], "properties": { "path": { "$ref": "common.schema.json#/$defs/relativeAssetPath" }, "sha256": { "$ref": "common.schema.json#/$defs/sha256" }, "bytes": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" }, "rows": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" }, "season_min": { "type": ["integer", "null"], "minimum": 2014, "maximum": 2100 }, "season_max": { "type": ["integer", "null"], "minimum": 2014, "maximum": 2100 }, "required": { "type": "boolean" } } }, "mediaVariant": { "type": "object", "additionalProperties": false, "required": ["path", "format", "width", "height", "bytes", "sha256", "max_bytes"], "properties": { "path": { "$ref": "common.schema.json#/$defs/relativeAssetPath" }, "format": { "enum": ["avif", "webp", "jpeg"] }, "width": { "enum": [480, 768, 1280, 1920] }, "height": { "type": "integer", "minimum": 1 }, "bytes": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" }, "sha256": { "$ref": "common.schema.json#/$defs/sha256" }, "max_bytes": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" } } } } };
+var schema165 = { "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://darling.example/schemas/asset-manifest.schema.json", "title": "AssetManifest", "description": "Content-addressed inventory for one deployable data snapshot.", "type": "object", "additionalProperties": false, "required": ["manifest_version", "data_version", "derived_generator_version", "schema_versions", "assets", "derived", "media"], "properties": { "manifest_version": { "type": "integer", "minimum": 1 }, "data_version": { "$ref": "common.schema.json#/$defs/sha256" }, "derived_generator_version": { "type": "integer", "minimum": 1 }, "schema_versions": { "type": "object", "additionalProperties": false, "required": ["H2H", "SeasonSummary", "Rivalries", "CurrentSeason", "TransactionHistory", "DraftSpot", "DerivedStats"], "properties": { "H2H": { "type": "integer", "minimum": 1 }, "SeasonSummary": { "type": "integer", "minimum": 1 }, "Rivalries": { "type": "integer", "minimum": 1 }, "CurrentSeason": { "type": "integer", "minimum": 1 }, "TransactionHistory": { "type": "integer", "minimum": 1 }, "LeagueLore": { "type": "integer", "minimum": 1 }, "DraftSpot": { "type": "integer", "minimum": 1 }, "DerivedStats": { "type": "integer", "minimum": 1 } } }, "assets": { "type": "object", "additionalProperties": false, "required": ["H2H", "SeasonSummary", "Rivalries", "CurrentSeason", "TransactionHistory", "LeagueLore", "DraftSpot"], "properties": { "H2H": { "$ref": "#/$defs/jsonAsset" }, "SeasonSummary": { "$ref": "#/$defs/jsonAsset" }, "Rivalries": { "$ref": "#/$defs/jsonAsset" }, "CurrentSeason": { "$ref": "#/$defs/jsonAsset" }, "TransactionHistory": { "$ref": "#/$defs/jsonAsset" }, "LeagueLore": { "$ref": "#/$defs/jsonAsset" }, "DraftSpot": { "$ref": "#/$defs/jsonAsset" } } }, "derived": { "type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes", "required", "source_hashes"], "properties": { "path": { "$ref": "common.schema.json#/$defs/relativeAssetPath" }, "sha256": { "$ref": "common.schema.json#/$defs/sha256" }, "bytes": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" }, "required": { "type": "boolean" }, "source_hashes": { "type": "object", "additionalProperties": false, "required": ["H2H", "SeasonSummary", "Rivalries"], "properties": { "H2H": { "$ref": "common.schema.json#/$defs/sha256" }, "SeasonSummary": { "$ref": "common.schema.json#/$defs/sha256" }, "Rivalries": { "$ref": "common.schema.json#/$defs/sha256" } } } } }, "media": { "type": "object", "additionalProperties": false, "required": ["leagueHero", "leagueHeroSource"], "properties": { "leagueHero": { "type": "object", "additionalProperties": false, "required": ["role", "variants"], "properties": { "role": { "const": "runtime-required" }, "variants": { "type": "array", "minItems": 12, "maxItems": 12, "items": { "$ref": "#/$defs/mediaVariant" } } } }, "leagueHeroSource": { "type": "object", "additionalProperties": false, "required": ["role", "path", "fallback"], "properties": { "role": { "const": "regeneration-optional" }, "path": { "$ref": "common.schema.json#/$defs/relativeAssetPath" }, "fallback": { "$ref": "common.schema.json#/$defs/relativeAssetPath" } } } } } }, "$defs": { "jsonAsset": { "type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes", "rows", "season_min", "season_max", "required"], "properties": { "path": { "$ref": "common.schema.json#/$defs/relativeAssetPath" }, "sha256": { "$ref": "common.schema.json#/$defs/sha256" }, "bytes": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" }, "rows": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" }, "season_min": { "type": ["integer", "null"], "minimum": 2014, "maximum": 2100 }, "season_max": { "type": ["integer", "null"], "minimum": 2014, "maximum": 2100 }, "required": { "type": "boolean" } } }, "mediaVariant": { "type": "object", "additionalProperties": false, "required": ["path", "format", "width", "height", "bytes", "sha256", "max_bytes"], "properties": { "path": { "$ref": "common.schema.json#/$defs/relativeAssetPath" }, "format": { "enum": ["avif", "webp", "jpeg"] }, "width": { "enum": [480, 768, 1280, 1920] }, "height": { "type": "integer", "minimum": 1 }, "bytes": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" }, "sha256": { "$ref": "common.schema.json#/$defs/sha256" }, "max_bytes": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" } } } } };
 var pattern31 = new RegExp("^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$", "u");
 var schema167 = { "type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes", "rows", "season_min", "season_max", "required"], "properties": { "path": { "$ref": "common.schema.json#/$defs/relativeAssetPath" }, "sha256": { "$ref": "common.schema.json#/$defs/sha256" }, "bytes": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" }, "rows": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" }, "season_min": { "type": ["integer", "null"], "minimum": 2014, "maximum": 2100 }, "season_max": { "type": ["integer", "null"], "minimum": 2014, "maximum": 2100 }, "required": { "type": "boolean" } } };
 function validate74(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
@@ -7278,10 +7278,10 @@ function validate74(data, { instancePath = "", parentData, parentDataProperty, r
 }
 validate74.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 var schema178 = { "type": "object", "additionalProperties": false, "required": ["path", "format", "width", "height", "bytes", "sha256", "max_bytes"], "properties": { "path": { "$ref": "common.schema.json#/$defs/relativeAssetPath" }, "format": { "enum": ["avif", "webp", "jpeg"] }, "width": { "enum": [480, 768, 1280, 1920] }, "height": { "type": "integer", "minimum": 1 }, "bytes": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" }, "sha256": { "$ref": "common.schema.json#/$defs/sha256" }, "max_bytes": { "$ref": "common.schema.json#/$defs/nonNegativeInteger" } } };
-function validate81(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+function validate82(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate81.evaluated;
+  const evaluated0 = validate82.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -7471,10 +7471,10 @@ function validate81(data, { instancePath = "", parentData, parentDataProperty, r
     }
     errors++;
   }
-  validate81.errors = vErrors;
+  validate82.errors = vErrors;
   return errors === 0;
 }
-validate81.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+validate82.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 function validate73(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   ;
   let vErrors = null;
@@ -7592,7 +7592,7 @@ function validate73(data, { instancePath = "", parentData, parentDataProperty, r
           }
         }
         for (const key1 in data3) {
-          if (!(key1 === "H2H" || key1 === "SeasonSummary" || key1 === "Rivalries" || key1 === "CurrentSeason" || key1 === "TransactionHistory" || key1 === "DraftSpot" || key1 === "DerivedStats")) {
+          if (!(key1 === "H2H" || key1 === "SeasonSummary" || key1 === "Rivalries" || key1 === "CurrentSeason" || key1 === "TransactionHistory" || key1 === "LeagueLore" || key1 === "DraftSpot" || key1 === "DerivedStats")) {
             const err9 = { instancePath: instancePath + "/schema_versions" };
             if (vErrors === null) {
               vErrors = [err9];
@@ -7717,10 +7717,10 @@ function validate73(data, { instancePath = "", parentData, parentDataProperty, r
             }
           }
         }
-        if (data3.DraftSpot !== void 0) {
-          let data9 = data3.DraftSpot;
+        if (data3.LeagueLore !== void 0) {
+          let data9 = data3.LeagueLore;
           if (!(typeof data9 == "number" && (!(data9 % 1) && !isNaN(data9)) && isFinite(data9))) {
-            const err20 = { instancePath: instancePath + "/schema_versions/DraftSpot" };
+            const err20 = { instancePath: instancePath + "/schema_versions/LeagueLore" };
             if (vErrors === null) {
               vErrors = [err20];
             } else {
@@ -7730,7 +7730,7 @@ function validate73(data, { instancePath = "", parentData, parentDataProperty, r
           }
           if (typeof data9 == "number" && isFinite(data9)) {
             if (data9 < 1 || isNaN(data9)) {
-              const err21 = { instancePath: instancePath + "/schema_versions/DraftSpot" };
+              const err21 = { instancePath: instancePath + "/schema_versions/LeagueLore" };
               if (vErrors === null) {
                 vErrors = [err21];
               } else {
@@ -7740,10 +7740,10 @@ function validate73(data, { instancePath = "", parentData, parentDataProperty, r
             }
           }
         }
-        if (data3.DerivedStats !== void 0) {
-          let data10 = data3.DerivedStats;
+        if (data3.DraftSpot !== void 0) {
+          let data10 = data3.DraftSpot;
           if (!(typeof data10 == "number" && (!(data10 % 1) && !isNaN(data10)) && isFinite(data10))) {
-            const err22 = { instancePath: instancePath + "/schema_versions/DerivedStats" };
+            const err22 = { instancePath: instancePath + "/schema_versions/DraftSpot" };
             if (vErrors === null) {
               vErrors = [err22];
             } else {
@@ -7753,7 +7753,7 @@ function validate73(data, { instancePath = "", parentData, parentDataProperty, r
           }
           if (typeof data10 == "number" && isFinite(data10)) {
             if (data10 < 1 || isNaN(data10)) {
-              const err23 = { instancePath: instancePath + "/schema_versions/DerivedStats" };
+              const err23 = { instancePath: instancePath + "/schema_versions/DraftSpot" };
               if (vErrors === null) {
                 vErrors = [err23];
               } else {
@@ -7763,93 +7763,56 @@ function validate73(data, { instancePath = "", parentData, parentDataProperty, r
             }
           }
         }
+        if (data3.DerivedStats !== void 0) {
+          let data11 = data3.DerivedStats;
+          if (!(typeof data11 == "number" && (!(data11 % 1) && !isNaN(data11)) && isFinite(data11))) {
+            const err24 = { instancePath: instancePath + "/schema_versions/DerivedStats" };
+            if (vErrors === null) {
+              vErrors = [err24];
+            } else {
+              vErrors.push(err24);
+            }
+            errors++;
+          }
+          if (typeof data11 == "number" && isFinite(data11)) {
+            if (data11 < 1 || isNaN(data11)) {
+              const err25 = { instancePath: instancePath + "/schema_versions/DerivedStats" };
+              if (vErrors === null) {
+                vErrors = [err25];
+              } else {
+                vErrors.push(err25);
+              }
+              errors++;
+            }
+          }
+        }
       } else {
-        const err24 = { instancePath: instancePath + "/schema_versions" };
+        const err26 = { instancePath: instancePath + "/schema_versions" };
         if (vErrors === null) {
-          vErrors = [err24];
+          vErrors = [err26];
         } else {
-          vErrors.push(err24);
+          vErrors.push(err26);
         }
         errors++;
       }
     }
     if (data.assets !== void 0) {
-      let data11 = data.assets;
-      if (data11 && typeof data11 == "object" && !Array.isArray(data11)) {
+      let data12 = data.assets;
+      if (data12 && typeof data12 == "object" && !Array.isArray(data12)) {
         for (const prop2 of schema165.properties.assets.required) {
-          if (data11[prop2] === void 0) {
-            const err25 = { instancePath: instancePath + "/assets" };
+          if (data12[prop2] === void 0) {
+            const err27 = { instancePath: instancePath + "/assets" };
             if (vErrors === null) {
-              vErrors = [err25];
+              vErrors = [err27];
             } else {
-              vErrors.push(err25);
+              vErrors.push(err27);
             }
             errors++;
           }
         }
-        for (const key2 in data11) {
-          if (!(key2 === "H2H" || key2 === "SeasonSummary" || key2 === "Rivalries" || key2 === "CurrentSeason" || key2 === "TransactionHistory" || key2 === "DraftSpot")) {
-            const err26 = { instancePath: instancePath + "/assets" };
-            if (vErrors === null) {
-              vErrors = [err26];
-            } else {
-              vErrors.push(err26);
-            }
-            errors++;
-          }
-        }
-        if (data11.H2H !== void 0) {
-          if (!validate74(data11.H2H, { instancePath: instancePath + "/assets/H2H", parentData: data11, parentDataProperty: "H2H", rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate74.errors : vErrors.concat(validate74.errors);
-            errors = vErrors.length;
-          }
-        }
-        if (data11.SeasonSummary !== void 0) {
-          if (!validate74(data11.SeasonSummary, { instancePath: instancePath + "/assets/SeasonSummary", parentData: data11, parentDataProperty: "SeasonSummary", rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate74.errors : vErrors.concat(validate74.errors);
-            errors = vErrors.length;
-          }
-        }
-        if (data11.Rivalries !== void 0) {
-          if (!validate74(data11.Rivalries, { instancePath: instancePath + "/assets/Rivalries", parentData: data11, parentDataProperty: "Rivalries", rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate74.errors : vErrors.concat(validate74.errors);
-            errors = vErrors.length;
-          }
-        }
-        if (data11.CurrentSeason !== void 0) {
-          if (!validate74(data11.CurrentSeason, { instancePath: instancePath + "/assets/CurrentSeason", parentData: data11, parentDataProperty: "CurrentSeason", rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate74.errors : vErrors.concat(validate74.errors);
-            errors = vErrors.length;
-          }
-        }
-        if (data11.TransactionHistory !== void 0) {
-          if (!validate74(data11.TransactionHistory, { instancePath: instancePath + "/assets/TransactionHistory", parentData: data11, parentDataProperty: "TransactionHistory", rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate74.errors : vErrors.concat(validate74.errors);
-            errors = vErrors.length;
-          }
-        }
-        if (data11.DraftSpot !== void 0) {
-          if (!validate74(data11.DraftSpot, { instancePath: instancePath + "/assets/DraftSpot", parentData: data11, parentDataProperty: "DraftSpot", rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate74.errors : vErrors.concat(validate74.errors);
-            errors = vErrors.length;
-          }
-        }
-      } else {
-        const err27 = { instancePath: instancePath + "/assets" };
-        if (vErrors === null) {
-          vErrors = [err27];
-        } else {
-          vErrors.push(err27);
-        }
-        errors++;
-      }
-    }
-    if (data.derived !== void 0) {
-      let data18 = data.derived;
-      if (data18 && typeof data18 == "object" && !Array.isArray(data18)) {
-        for (const prop3 of schema165.properties.derived.required) {
-          if (data18[prop3] === void 0) {
-            const err28 = { instancePath: instancePath + "/derived" };
+        for (const key2 in data12) {
+          if (!(key2 === "H2H" || key2 === "SeasonSummary" || key2 === "Rivalries" || key2 === "CurrentSeason" || key2 === "TransactionHistory" || key2 === "LeagueLore" || key2 === "DraftSpot")) {
+            const err28 = { instancePath: instancePath + "/assets" };
             if (vErrors === null) {
               vErrors = [err28];
             } else {
@@ -7858,31 +7821,75 @@ function validate73(data, { instancePath = "", parentData, parentDataProperty, r
             errors++;
           }
         }
-        for (const key3 in data18) {
-          if (!(key3 === "path" || key3 === "sha256" || key3 === "bytes" || key3 === "required" || key3 === "source_hashes")) {
-            const err29 = { instancePath: instancePath + "/derived" };
+        if (data12.H2H !== void 0) {
+          if (!validate74(data12.H2H, { instancePath: instancePath + "/assets/H2H", parentData: data12, parentDataProperty: "H2H", rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate74.errors : vErrors.concat(validate74.errors);
+            errors = vErrors.length;
+          }
+        }
+        if (data12.SeasonSummary !== void 0) {
+          if (!validate74(data12.SeasonSummary, { instancePath: instancePath + "/assets/SeasonSummary", parentData: data12, parentDataProperty: "SeasonSummary", rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate74.errors : vErrors.concat(validate74.errors);
+            errors = vErrors.length;
+          }
+        }
+        if (data12.Rivalries !== void 0) {
+          if (!validate74(data12.Rivalries, { instancePath: instancePath + "/assets/Rivalries", parentData: data12, parentDataProperty: "Rivalries", rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate74.errors : vErrors.concat(validate74.errors);
+            errors = vErrors.length;
+          }
+        }
+        if (data12.CurrentSeason !== void 0) {
+          if (!validate74(data12.CurrentSeason, { instancePath: instancePath + "/assets/CurrentSeason", parentData: data12, parentDataProperty: "CurrentSeason", rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate74.errors : vErrors.concat(validate74.errors);
+            errors = vErrors.length;
+          }
+        }
+        if (data12.TransactionHistory !== void 0) {
+          if (!validate74(data12.TransactionHistory, { instancePath: instancePath + "/assets/TransactionHistory", parentData: data12, parentDataProperty: "TransactionHistory", rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate74.errors : vErrors.concat(validate74.errors);
+            errors = vErrors.length;
+          }
+        }
+        if (data12.LeagueLore !== void 0) {
+          if (!validate74(data12.LeagueLore, { instancePath: instancePath + "/assets/LeagueLore", parentData: data12, parentDataProperty: "LeagueLore", rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate74.errors : vErrors.concat(validate74.errors);
+            errors = vErrors.length;
+          }
+        }
+        if (data12.DraftSpot !== void 0) {
+          if (!validate74(data12.DraftSpot, { instancePath: instancePath + "/assets/DraftSpot", parentData: data12, parentDataProperty: "DraftSpot", rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate74.errors : vErrors.concat(validate74.errors);
+            errors = vErrors.length;
+          }
+        }
+      } else {
+        const err29 = { instancePath: instancePath + "/assets" };
+        if (vErrors === null) {
+          vErrors = [err29];
+        } else {
+          vErrors.push(err29);
+        }
+        errors++;
+      }
+    }
+    if (data.derived !== void 0) {
+      let data20 = data.derived;
+      if (data20 && typeof data20 == "object" && !Array.isArray(data20)) {
+        for (const prop3 of schema165.properties.derived.required) {
+          if (data20[prop3] === void 0) {
+            const err30 = { instancePath: instancePath + "/derived" };
             if (vErrors === null) {
-              vErrors = [err29];
+              vErrors = [err30];
             } else {
-              vErrors.push(err29);
+              vErrors.push(err30);
             }
             errors++;
           }
         }
-        if (data18.path !== void 0) {
-          let data19 = data18.path;
-          if (typeof data19 === "string") {
-            if (!pattern31.test(data19)) {
-              const err30 = { instancePath: instancePath + "/derived/path" };
-              if (vErrors === null) {
-                vErrors = [err30];
-              } else {
-                vErrors.push(err30);
-              }
-              errors++;
-            }
-          } else {
-            const err31 = { instancePath: instancePath + "/derived/path" };
+        for (const key3 in data20) {
+          if (!(key3 === "path" || key3 === "sha256" || key3 === "bytes" || key3 === "required" || key3 === "source_hashes")) {
+            const err31 = { instancePath: instancePath + "/derived" };
             if (vErrors === null) {
               vErrors = [err31];
             } else {
@@ -7891,11 +7898,11 @@ function validate73(data, { instancePath = "", parentData, parentDataProperty, r
             errors++;
           }
         }
-        if (data18.sha256 !== void 0) {
-          let data20 = data18.sha256;
-          if (typeof data20 === "string") {
-            if (!pattern14.test(data20)) {
-              const err32 = { instancePath: instancePath + "/derived/sha256" };
+        if (data20.path !== void 0) {
+          let data21 = data20.path;
+          if (typeof data21 === "string") {
+            if (!pattern31.test(data21)) {
+              const err32 = { instancePath: instancePath + "/derived/path" };
               if (vErrors === null) {
                 vErrors = [err32];
               } else {
@@ -7904,7 +7911,7 @@ function validate73(data, { instancePath = "", parentData, parentDataProperty, r
               errors++;
             }
           } else {
-            const err33 = { instancePath: instancePath + "/derived/sha256" };
+            const err33 = { instancePath: instancePath + "/derived/path" };
             if (vErrors === null) {
               vErrors = [err33];
             } else {
@@ -7913,32 +7920,32 @@ function validate73(data, { instancePath = "", parentData, parentDataProperty, r
             errors++;
           }
         }
-        if (data18.bytes !== void 0) {
-          let data21 = data18.bytes;
-          if (!(typeof data21 == "number" && (!(data21 % 1) && !isNaN(data21)) && isFinite(data21))) {
-            const err34 = { instancePath: instancePath + "/derived/bytes" };
-            if (vErrors === null) {
-              vErrors = [err34];
-            } else {
-              vErrors.push(err34);
-            }
-            errors++;
-          }
-          if (typeof data21 == "number" && isFinite(data21)) {
-            if (data21 < 0 || isNaN(data21)) {
-              const err35 = { instancePath: instancePath + "/derived/bytes" };
+        if (data20.sha256 !== void 0) {
+          let data22 = data20.sha256;
+          if (typeof data22 === "string") {
+            if (!pattern14.test(data22)) {
+              const err34 = { instancePath: instancePath + "/derived/sha256" };
               if (vErrors === null) {
-                vErrors = [err35];
+                vErrors = [err34];
               } else {
-                vErrors.push(err35);
+                vErrors.push(err34);
               }
               errors++;
             }
+          } else {
+            const err35 = { instancePath: instancePath + "/derived/sha256" };
+            if (vErrors === null) {
+              vErrors = [err35];
+            } else {
+              vErrors.push(err35);
+            }
+            errors++;
           }
         }
-        if (data18.required !== void 0) {
-          if (typeof data18.required !== "boolean") {
-            const err36 = { instancePath: instancePath + "/derived/required" };
+        if (data20.bytes !== void 0) {
+          let data23 = data20.bytes;
+          if (!(typeof data23 == "number" && (!(data23 % 1) && !isNaN(data23)) && isFinite(data23))) {
+            const err36 = { instancePath: instancePath + "/derived/bytes" };
             if (vErrors === null) {
               vErrors = [err36];
             } else {
@@ -7946,46 +7953,46 @@ function validate73(data, { instancePath = "", parentData, parentDataProperty, r
             }
             errors++;
           }
-        }
-        if (data18.source_hashes !== void 0) {
-          let data23 = data18.source_hashes;
-          if (data23 && typeof data23 == "object" && !Array.isArray(data23)) {
-            for (const prop4 of schema165.properties.derived.properties.source_hashes.required) {
-              if (data23[prop4] === void 0) {
-                const err37 = { instancePath: instancePath + "/derived/source_hashes" };
-                if (vErrors === null) {
-                  vErrors = [err37];
-                } else {
-                  vErrors.push(err37);
-                }
-                errors++;
-              }
-            }
-            for (const key4 in data23) {
-              if (!(key4 === "H2H" || key4 === "SeasonSummary" || key4 === "Rivalries")) {
-                const err38 = { instancePath: instancePath + "/derived/source_hashes" };
-                if (vErrors === null) {
-                  vErrors = [err38];
-                } else {
-                  vErrors.push(err38);
-                }
-                errors++;
-              }
-            }
-            if (data23.H2H !== void 0) {
-              let data24 = data23.H2H;
-              if (typeof data24 === "string") {
-                if (!pattern14.test(data24)) {
-                  const err39 = { instancePath: instancePath + "/derived/source_hashes/H2H" };
-                  if (vErrors === null) {
-                    vErrors = [err39];
-                  } else {
-                    vErrors.push(err39);
-                  }
-                  errors++;
-                }
+          if (typeof data23 == "number" && isFinite(data23)) {
+            if (data23 < 0 || isNaN(data23)) {
+              const err37 = { instancePath: instancePath + "/derived/bytes" };
+              if (vErrors === null) {
+                vErrors = [err37];
               } else {
-                const err40 = { instancePath: instancePath + "/derived/source_hashes/H2H" };
+                vErrors.push(err37);
+              }
+              errors++;
+            }
+          }
+        }
+        if (data20.required !== void 0) {
+          if (typeof data20.required !== "boolean") {
+            const err38 = { instancePath: instancePath + "/derived/required" };
+            if (vErrors === null) {
+              vErrors = [err38];
+            } else {
+              vErrors.push(err38);
+            }
+            errors++;
+          }
+        }
+        if (data20.source_hashes !== void 0) {
+          let data25 = data20.source_hashes;
+          if (data25 && typeof data25 == "object" && !Array.isArray(data25)) {
+            for (const prop4 of schema165.properties.derived.properties.source_hashes.required) {
+              if (data25[prop4] === void 0) {
+                const err39 = { instancePath: instancePath + "/derived/source_hashes" };
+                if (vErrors === null) {
+                  vErrors = [err39];
+                } else {
+                  vErrors.push(err39);
+                }
+                errors++;
+              }
+            }
+            for (const key4 in data25) {
+              if (!(key4 === "H2H" || key4 === "SeasonSummary" || key4 === "Rivalries")) {
+                const err40 = { instancePath: instancePath + "/derived/source_hashes" };
                 if (vErrors === null) {
                   vErrors = [err40];
                 } else {
@@ -7994,11 +8001,11 @@ function validate73(data, { instancePath = "", parentData, parentDataProperty, r
                 errors++;
               }
             }
-            if (data23.SeasonSummary !== void 0) {
-              let data25 = data23.SeasonSummary;
-              if (typeof data25 === "string") {
-                if (!pattern14.test(data25)) {
-                  const err41 = { instancePath: instancePath + "/derived/source_hashes/SeasonSummary" };
+            if (data25.H2H !== void 0) {
+              let data26 = data25.H2H;
+              if (typeof data26 === "string") {
+                if (!pattern14.test(data26)) {
+                  const err41 = { instancePath: instancePath + "/derived/source_hashes/H2H" };
                   if (vErrors === null) {
                     vErrors = [err41];
                   } else {
@@ -8007,7 +8014,7 @@ function validate73(data, { instancePath = "", parentData, parentDataProperty, r
                   errors++;
                 }
               } else {
-                const err42 = { instancePath: instancePath + "/derived/source_hashes/SeasonSummary" };
+                const err42 = { instancePath: instancePath + "/derived/source_hashes/H2H" };
                 if (vErrors === null) {
                   vErrors = [err42];
                 } else {
@@ -8016,11 +8023,11 @@ function validate73(data, { instancePath = "", parentData, parentDataProperty, r
                 errors++;
               }
             }
-            if (data23.Rivalries !== void 0) {
-              let data26 = data23.Rivalries;
-              if (typeof data26 === "string") {
-                if (!pattern14.test(data26)) {
-                  const err43 = { instancePath: instancePath + "/derived/source_hashes/Rivalries" };
+            if (data25.SeasonSummary !== void 0) {
+              let data27 = data25.SeasonSummary;
+              if (typeof data27 === "string") {
+                if (!pattern14.test(data27)) {
+                  const err43 = { instancePath: instancePath + "/derived/source_hashes/SeasonSummary" };
                   if (vErrors === null) {
                     vErrors = [err43];
                   } else {
@@ -8029,7 +8036,7 @@ function validate73(data, { instancePath = "", parentData, parentDataProperty, r
                   errors++;
                 }
               } else {
-                const err44 = { instancePath: instancePath + "/derived/source_hashes/Rivalries" };
+                const err44 = { instancePath: instancePath + "/derived/source_hashes/SeasonSummary" };
                 if (vErrors === null) {
                   vErrors = [err44];
                 } else {
@@ -8038,32 +8045,30 @@ function validate73(data, { instancePath = "", parentData, parentDataProperty, r
                 errors++;
               }
             }
-          } else {
-            const err45 = { instancePath: instancePath + "/derived/source_hashes" };
-            if (vErrors === null) {
-              vErrors = [err45];
-            } else {
-              vErrors.push(err45);
+            if (data25.Rivalries !== void 0) {
+              let data28 = data25.Rivalries;
+              if (typeof data28 === "string") {
+                if (!pattern14.test(data28)) {
+                  const err45 = { instancePath: instancePath + "/derived/source_hashes/Rivalries" };
+                  if (vErrors === null) {
+                    vErrors = [err45];
+                  } else {
+                    vErrors.push(err45);
+                  }
+                  errors++;
+                }
+              } else {
+                const err46 = { instancePath: instancePath + "/derived/source_hashes/Rivalries" };
+                if (vErrors === null) {
+                  vErrors = [err46];
+                } else {
+                  vErrors.push(err46);
+                }
+                errors++;
+              }
             }
-            errors++;
-          }
-        }
-      } else {
-        const err46 = { instancePath: instancePath + "/derived" };
-        if (vErrors === null) {
-          vErrors = [err46];
-        } else {
-          vErrors.push(err46);
-        }
-        errors++;
-      }
-    }
-    if (data.media !== void 0) {
-      let data27 = data.media;
-      if (data27 && typeof data27 == "object" && !Array.isArray(data27)) {
-        for (const prop5 of schema165.properties.media.required) {
-          if (data27[prop5] === void 0) {
-            const err47 = { instancePath: instancePath + "/media" };
+          } else {
+            const err47 = { instancePath: instancePath + "/derived/source_hashes" };
             if (vErrors === null) {
               vErrors = [err47];
             } else {
@@ -8072,45 +8077,47 @@ function validate73(data, { instancePath = "", parentData, parentDataProperty, r
             errors++;
           }
         }
-        for (const key5 in data27) {
-          if (!(key5 === "leagueHero" || key5 === "leagueHeroSource")) {
-            const err48 = { instancePath: instancePath + "/media" };
+      } else {
+        const err48 = { instancePath: instancePath + "/derived" };
+        if (vErrors === null) {
+          vErrors = [err48];
+        } else {
+          vErrors.push(err48);
+        }
+        errors++;
+      }
+    }
+    if (data.media !== void 0) {
+      let data29 = data.media;
+      if (data29 && typeof data29 == "object" && !Array.isArray(data29)) {
+        for (const prop5 of schema165.properties.media.required) {
+          if (data29[prop5] === void 0) {
+            const err49 = { instancePath: instancePath + "/media" };
             if (vErrors === null) {
-              vErrors = [err48];
+              vErrors = [err49];
             } else {
-              vErrors.push(err48);
+              vErrors.push(err49);
             }
             errors++;
           }
         }
-        if (data27.leagueHero !== void 0) {
-          let data28 = data27.leagueHero;
-          if (data28 && typeof data28 == "object" && !Array.isArray(data28)) {
+        for (const key5 in data29) {
+          if (!(key5 === "leagueHero" || key5 === "leagueHeroSource")) {
+            const err50 = { instancePath: instancePath + "/media" };
+            if (vErrors === null) {
+              vErrors = [err50];
+            } else {
+              vErrors.push(err50);
+            }
+            errors++;
+          }
+        }
+        if (data29.leagueHero !== void 0) {
+          let data30 = data29.leagueHero;
+          if (data30 && typeof data30 == "object" && !Array.isArray(data30)) {
             for (const prop6 of schema165.properties.media.properties.leagueHero.required) {
-              if (data28[prop6] === void 0) {
-                const err49 = { instancePath: instancePath + "/media/leagueHero" };
-                if (vErrors === null) {
-                  vErrors = [err49];
-                } else {
-                  vErrors.push(err49);
-                }
-                errors++;
-              }
-            }
-            for (const key6 in data28) {
-              if (!(key6 === "role" || key6 === "variants")) {
-                const err50 = { instancePath: instancePath + "/media/leagueHero" };
-                if (vErrors === null) {
-                  vErrors = [err50];
-                } else {
-                  vErrors.push(err50);
-                }
-                errors++;
-              }
-            }
-            if (data28.role !== void 0) {
-              if ("runtime-required" !== data28.role) {
-                const err51 = { instancePath: instancePath + "/media/leagueHero/role" };
+              if (data30[prop6] === void 0) {
+                const err51 = { instancePath: instancePath + "/media/leagueHero" };
                 if (vErrors === null) {
                   vErrors = [err51];
                 } else {
@@ -8119,60 +8126,58 @@ function validate73(data, { instancePath = "", parentData, parentDataProperty, r
                 errors++;
               }
             }
-            if (data28.variants !== void 0) {
-              let data30 = data28.variants;
-              if (Array.isArray(data30)) {
-                if (data30.length > 12) {
-                  const err52 = { instancePath: instancePath + "/media/leagueHero/variants" };
-                  if (vErrors === null) {
-                    vErrors = [err52];
-                  } else {
-                    vErrors.push(err52);
-                  }
-                  errors++;
-                }
-                if (data30.length < 12) {
-                  const err53 = { instancePath: instancePath + "/media/leagueHero/variants" };
-                  if (vErrors === null) {
-                    vErrors = [err53];
-                  } else {
-                    vErrors.push(err53);
-                  }
-                  errors++;
-                }
-                const len0 = data30.length;
-                for (let i0 = 0; i0 < len0; i0++) {
-                  if (!validate81(data30[i0], { instancePath: instancePath + "/media/leagueHero/variants/" + i0, parentData: data30, parentDataProperty: i0, rootData, dynamicAnchors })) {
-                    vErrors = vErrors === null ? validate81.errors : vErrors.concat(validate81.errors);
-                    errors = vErrors.length;
-                  }
-                }
-              } else {
-                const err54 = { instancePath: instancePath + "/media/leagueHero/variants" };
+            for (const key6 in data30) {
+              if (!(key6 === "role" || key6 === "variants")) {
+                const err52 = { instancePath: instancePath + "/media/leagueHero" };
                 if (vErrors === null) {
-                  vErrors = [err54];
+                  vErrors = [err52];
                 } else {
-                  vErrors.push(err54);
+                  vErrors.push(err52);
                 }
                 errors++;
               }
             }
-          } else {
-            const err55 = { instancePath: instancePath + "/media/leagueHero" };
-            if (vErrors === null) {
-              vErrors = [err55];
-            } else {
-              vErrors.push(err55);
+            if (data30.role !== void 0) {
+              if ("runtime-required" !== data30.role) {
+                const err53 = { instancePath: instancePath + "/media/leagueHero/role" };
+                if (vErrors === null) {
+                  vErrors = [err53];
+                } else {
+                  vErrors.push(err53);
+                }
+                errors++;
+              }
             }
-            errors++;
-          }
-        }
-        if (data27.leagueHeroSource !== void 0) {
-          let data32 = data27.leagueHeroSource;
-          if (data32 && typeof data32 == "object" && !Array.isArray(data32)) {
-            for (const prop7 of schema165.properties.media.properties.leagueHeroSource.required) {
-              if (data32[prop7] === void 0) {
-                const err56 = { instancePath: instancePath + "/media/leagueHeroSource" };
+            if (data30.variants !== void 0) {
+              let data32 = data30.variants;
+              if (Array.isArray(data32)) {
+                if (data32.length > 12) {
+                  const err54 = { instancePath: instancePath + "/media/leagueHero/variants" };
+                  if (vErrors === null) {
+                    vErrors = [err54];
+                  } else {
+                    vErrors.push(err54);
+                  }
+                  errors++;
+                }
+                if (data32.length < 12) {
+                  const err55 = { instancePath: instancePath + "/media/leagueHero/variants" };
+                  if (vErrors === null) {
+                    vErrors = [err55];
+                  } else {
+                    vErrors.push(err55);
+                  }
+                  errors++;
+                }
+                const len0 = data32.length;
+                for (let i0 = 0; i0 < len0; i0++) {
+                  if (!validate82(data32[i0], { instancePath: instancePath + "/media/leagueHero/variants/" + i0, parentData: data32, parentDataProperty: i0, rootData, dynamicAnchors })) {
+                    vErrors = vErrors === null ? validate82.errors : vErrors.concat(validate82.errors);
+                    errors = vErrors.length;
+                  }
+                }
+              } else {
+                const err56 = { instancePath: instancePath + "/media/leagueHero/variants" };
                 if (vErrors === null) {
                   vErrors = [err56];
                 } else {
@@ -8181,20 +8186,22 @@ function validate73(data, { instancePath = "", parentData, parentDataProperty, r
                 errors++;
               }
             }
-            for (const key7 in data32) {
-              if (!(key7 === "role" || key7 === "path" || key7 === "fallback")) {
-                const err57 = { instancePath: instancePath + "/media/leagueHeroSource" };
-                if (vErrors === null) {
-                  vErrors = [err57];
-                } else {
-                  vErrors.push(err57);
-                }
-                errors++;
-              }
+          } else {
+            const err57 = { instancePath: instancePath + "/media/leagueHero" };
+            if (vErrors === null) {
+              vErrors = [err57];
+            } else {
+              vErrors.push(err57);
             }
-            if (data32.role !== void 0) {
-              if ("regeneration-optional" !== data32.role) {
-                const err58 = { instancePath: instancePath + "/media/leagueHeroSource/role" };
+            errors++;
+          }
+        }
+        if (data29.leagueHeroSource !== void 0) {
+          let data34 = data29.leagueHeroSource;
+          if (data34 && typeof data34 == "object" && !Array.isArray(data34)) {
+            for (const prop7 of schema165.properties.media.properties.leagueHeroSource.required) {
+              if (data34[prop7] === void 0) {
+                const err58 = { instancePath: instancePath + "/media/leagueHeroSource" };
                 if (vErrors === null) {
                   vErrors = [err58];
                 } else {
@@ -8203,20 +8210,20 @@ function validate73(data, { instancePath = "", parentData, parentDataProperty, r
                 errors++;
               }
             }
-            if (data32.path !== void 0) {
-              let data34 = data32.path;
-              if (typeof data34 === "string") {
-                if (!pattern31.test(data34)) {
-                  const err59 = { instancePath: instancePath + "/media/leagueHeroSource/path" };
-                  if (vErrors === null) {
-                    vErrors = [err59];
-                  } else {
-                    vErrors.push(err59);
-                  }
-                  errors++;
+            for (const key7 in data34) {
+              if (!(key7 === "role" || key7 === "path" || key7 === "fallback")) {
+                const err59 = { instancePath: instancePath + "/media/leagueHeroSource" };
+                if (vErrors === null) {
+                  vErrors = [err59];
+                } else {
+                  vErrors.push(err59);
                 }
-              } else {
-                const err60 = { instancePath: instancePath + "/media/leagueHeroSource/path" };
+                errors++;
+              }
+            }
+            if (data34.role !== void 0) {
+              if ("regeneration-optional" !== data34.role) {
+                const err60 = { instancePath: instancePath + "/media/leagueHeroSource/role" };
                 if (vErrors === null) {
                   vErrors = [err60];
                 } else {
@@ -8225,11 +8232,11 @@ function validate73(data, { instancePath = "", parentData, parentDataProperty, r
                 errors++;
               }
             }
-            if (data32.fallback !== void 0) {
-              let data35 = data32.fallback;
-              if (typeof data35 === "string") {
-                if (!pattern31.test(data35)) {
-                  const err61 = { instancePath: instancePath + "/media/leagueHeroSource/fallback" };
+            if (data34.path !== void 0) {
+              let data36 = data34.path;
+              if (typeof data36 === "string") {
+                if (!pattern31.test(data36)) {
+                  const err61 = { instancePath: instancePath + "/media/leagueHeroSource/path" };
                   if (vErrors === null) {
                     vErrors = [err61];
                   } else {
@@ -8238,7 +8245,7 @@ function validate73(data, { instancePath = "", parentData, parentDataProperty, r
                   errors++;
                 }
               } else {
-                const err62 = { instancePath: instancePath + "/media/leagueHeroSource/fallback" };
+                const err62 = { instancePath: instancePath + "/media/leagueHeroSource/path" };
                 if (vErrors === null) {
                   vErrors = [err62];
                 } else {
@@ -8247,32 +8254,54 @@ function validate73(data, { instancePath = "", parentData, parentDataProperty, r
                 errors++;
               }
             }
+            if (data34.fallback !== void 0) {
+              let data37 = data34.fallback;
+              if (typeof data37 === "string") {
+                if (!pattern31.test(data37)) {
+                  const err63 = { instancePath: instancePath + "/media/leagueHeroSource/fallback" };
+                  if (vErrors === null) {
+                    vErrors = [err63];
+                  } else {
+                    vErrors.push(err63);
+                  }
+                  errors++;
+                }
+              } else {
+                const err64 = { instancePath: instancePath + "/media/leagueHeroSource/fallback" };
+                if (vErrors === null) {
+                  vErrors = [err64];
+                } else {
+                  vErrors.push(err64);
+                }
+                errors++;
+              }
+            }
           } else {
-            const err63 = { instancePath: instancePath + "/media/leagueHeroSource" };
+            const err65 = { instancePath: instancePath + "/media/leagueHeroSource" };
             if (vErrors === null) {
-              vErrors = [err63];
+              vErrors = [err65];
             } else {
-              vErrors.push(err63);
+              vErrors.push(err65);
             }
             errors++;
           }
         }
       } else {
-        const err64 = { instancePath: instancePath + "/media" };
+        const err66 = { instancePath: instancePath + "/media" };
         if (vErrors === null) {
-          vErrors = [err64];
+          vErrors = [err66];
         } else {
-          vErrors.push(err64);
+          vErrors.push(err66);
         }
         errors++;
       }
     }
   } else {
-    const err65 = { instancePath };
+    const err67 = { instancePath };
     if (vErrors === null) {
-      vErrors = [err65];
+      vErrors = [err67];
     } else {
-      vErrors.push(err65);
+      vErrors.push(err67);
     }
     errors++;
   }
@@ -8299,7 +8328,6 @@ export function isCurrentSeason(value: unknown): value is CurrentSeasonData { re
 export function isDraftSpot(value: unknown): value is DraftSpot { return validateDraftSpot(value) as boolean; }
 export function isDerivedStats(value: unknown): value is DerivedStats { return validateDerivedStats(value) as boolean; }
 export function isAssetManifest(value: unknown): value is AssetManifest { return validateAssetManifest(value) as boolean; }
-
 export type ValidatorName = 'H2H' | 'SeasonSummary' | 'Rivalries' | 'CurrentSeason' | 'DraftSpot' | 'DerivedStats' | 'AssetManifest';
 export function getValidatorErrors(name: ValidatorName): Array<{ instancePath?: string; message?: string }> | null {
   const validators = { H2H: validateH2H, SeasonSummary: validateSeasonSummary, Rivalries: validateRivalries, CurrentSeason: validateCurrentSeason, DraftSpot: validateDraftSpot, DerivedStats: validateDerivedStats, AssetManifest: validateAssetManifest };

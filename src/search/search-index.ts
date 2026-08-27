@@ -53,6 +53,7 @@ export function buildSearchIndex(data: SearchHydrationData): BuiltSearchIndex {
     .forEach(pick => add(buildIntentDocument({ kind: 'draft-pick', pick }, data)));
   (['early', 'middle', 'late'] as const)
     .forEach(zone => add(buildIntentDocument({ kind: 'draft-zone', zone }, data)));
+  (data.loreDocuments || []).forEach(document => documents.push(document));
   data.seasonSummaries.forEach(row => add(buildIntentDocument({ kind: 'owner-season', owner: row.owner, season: Number(row.season) }, data)));
   seasons.forEach(season => {
     add(buildIntentDocument({ kind: 'season-type', season, gameType: 'Playoff' }, data));

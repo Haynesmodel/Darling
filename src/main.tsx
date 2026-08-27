@@ -11,6 +11,7 @@ import { createTableRuntime } from './tables/table-runtime';
 import type { DarlingTableRuntime } from './tables/table-types';
 import type { DataDiagnostics } from './data/load-league-assets';
 import { bootstrapDarlingApp } from './app/app-controller';
+import { createLazyLoreService } from './lore/lore-lazy';
 import { bindDropdownChecklists } from './accessibility/dropdown-checklist';
 import { focusableElements } from './accessibility/focus';
 import { prefersReducedMotion, subscribeToReducedMotion } from './accessibility/motion';
@@ -38,7 +39,8 @@ interface BrowserDocument {
 }
 
 const themeRuntime = createDarlingThemeRuntime();
-const searchRuntime = createSearchRuntime();
+const loreRuntime = createLazyLoreService();
+const searchRuntime = createSearchRuntime({ loreAction: action => void loreRuntime.reveal(action.targetType, action.targetId) });
 const tableRuntime = createTableRuntime();
 const freshnessRuntime = createDataFreshnessRuntime();
 const browser = globalThis as unknown as {
@@ -84,8 +86,9 @@ function mountShell() {
   subscribeToReducedMotion((reduced) => {
     document.documentElement.dataset.reducedMotion = reduced ? 'reduce' : 'no-preference';
     window.dispatchEvent(new CustomEvent('darling:motionchange', { detail: { reduced } }));
+    loreRuntime.setReducedMotion(reduced);
   });
-  void bootstrapDarlingApp({ tableRuntime, searchRuntime, freshnessRuntime });
+  void bootstrapDarlingApp({ tableRuntime, searchRuntime, freshnessRuntime, lore: loreRuntime });
 }
 
 if (browser.document?.readyState === 'loading') {

@@ -14,6 +14,7 @@ import type { DarlingSearchRuntime } from '../search/search-types';
 import type { DataFreshnessRuntime } from '../components/data-freshness/DataFreshnessBadge';
 import { isEligiblePrimaryNavigationClick } from '../accessibility/primary-navigation';
 import { buildUrlFromState } from '../../js/state-helpers.js';
+import type { LoreService } from '../lore/lore-types';
 import {
   canonicalOwners as normalizeOwners,
   createOwnerPreferenceService,
@@ -27,6 +28,7 @@ export interface BootstrapOptions {
   freshnessRuntime?: DataFreshnessRuntime;
   win?: Window;
   doc?: Document;
+  lore: LoreService;
 }
 
 export function createFallbackFreshness<T>(assessment: T) {
@@ -92,7 +94,8 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
       dataVersion: data.dataVersion,
       coreVerified: ['H2H', 'SeasonSummary'].every(asset => data.diagnostics.integrity.verifiedAssets.includes(asset)),
     });
-    options.searchRuntime.hydrate({ leagueGames: data.leagueGames, seasonSummaries: data.seasonSummaries, rivalries: data.rivalries, currentSeason: data.currentSeason });
+    options.lore.hydrate(data.leagueLore);
+    options.searchRuntime.hydrate({ leagueGames: data.leagueGames, seasonSummaries: data.seasonSummaries, rivalries: data.rivalries, currentSeason: data.currentSeason, loreDocuments: options.lore.searchDocuments() });
     ownerPreference = createOwnerPreferenceService(canonicalOwners(data), win);
     updateOwnerDestination(doc, win, ownerPreference.getSnapshot());
     ownerPreference.subscribe(snapshot => updateOwnerDestination(doc, win, snapshot));
@@ -107,6 +110,7 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
       tables: options.tableRuntime,
       freshness: options.freshnessRuntime || createFallbackFreshness(data.diagnostics.freshness),
       ownerPreference,
+      lore: options.lore,
       diagnostics,
       document: doc,
       window: win,
@@ -186,5 +190,6 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
     await activeController?.deactivate?.('pulse');
     await registry.dispose();
     ownerPreference?.dispose();
+    options.lore.dispose();
   };
 }

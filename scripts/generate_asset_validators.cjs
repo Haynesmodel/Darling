@@ -75,7 +75,6 @@ export function isCurrentSeason(value: unknown): value is CurrentSeasonData { re
 export function isDraftSpot(value: unknown): value is DraftSpot { return validateDraftSpot(value) as boolean; }
 export function isDerivedStats(value: unknown): value is DerivedStats { return validateDerivedStats(value) as boolean; }
 export function isAssetManifest(value: unknown): value is AssetManifest { return validateAssetManifest(value) as boolean; }
-
 export type ValidatorName = 'H2H' | 'SeasonSummary' | 'Rivalries' | 'CurrentSeason' | 'DraftSpot' | 'DerivedStats' | 'AssetManifest';
 export function getValidatorErrors(name: ValidatorName): Array<{ instancePath?: string; message?: string }> | null {
   const validators = { H2H: validateH2H, SeasonSummary: validateSeasonSummary, Rivalries: validateRivalries, CurrentSeason: validateCurrentSeason, DraftSpot: validateDraftSpot, DerivedStats: validateDerivedStats, AssetManifest: validateAssetManifest };

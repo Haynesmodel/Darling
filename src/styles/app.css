@@ -10,3 +10,4 @@
 @import "../components/data-freshness/data-freshness.css" layer(components);
 @import "./utilities.css" layer(utilities);
 @import "./motion.css" layer(utilities);
+@import "../lore/lore-presentation.css" layer(components);

@@ -1,0 +1,10 @@
+.lore-dialog { border: 2px solid var(--color-border, currentColor); border-radius: .75rem; color: inherit; max-width: min(40rem, calc(100vw - 2rem)); padding: 1.25rem; }
+.lore-dialog::backdrop { background: var(--lore-backdrop, CanvasText); opacity: .55; }
+.lore-dialog-open { overflow: hidden; }
+.lore-dialog-close { float: right; }
+.lore-teaser { font-weight: 600; }
+.lore-overlay { align-items: center; display: flex; font-size: 2rem; inset: 0; justify-content: center; pointer-events: none; position: fixed; z-index: 1000; }
+.lore-effect-overlay { animation: lore-fade 2200ms ease-out both; }
+@keyframes lore-fade { 0% { opacity: 0; transform: translateY(-1rem); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(1rem); } }
+@media (prefers-reduced-motion: reduce) { .lore-effect-overlay { animation: none; } }
+@media (forced-colors: active) { .lore-dialog { background: Canvas; border: 2px solid ButtonText; color: CanvasText; } .lore-dialog button { border: 1px solid ButtonText; } }

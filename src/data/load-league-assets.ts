@@ -17,6 +17,7 @@ import type {
   CurrentSeasonData,
   DerivedStats,
   H2HGame,
+  LeagueLore,
   RivalryDefinition,
   SeasonSummaryRow,
 } from './generated/asset-types';
@@ -30,6 +31,7 @@ import {
   isRivalries,
   isSeasonSummary,
 } from './generated/asset-validators';
+import { isLeagueLore } from './generated/league-lore-validator';
 import type { ValidatorName } from './generated/asset-validators';
 
 export interface DataDiagnostics {
@@ -60,6 +62,7 @@ export interface LoadedLeagueAssets {
   rivalries: RivalryDefinition[];
   currentSeason: CurrentSeasonData | null;
   derivedStats: DerivedStats | null;
+  leagueLore: LeagueLore | null;
   manifest: AssetManifest;
   dataVersion: string;
   diagnostics: DataDiagnostics;
@@ -154,11 +157,11 @@ export async function loadLeagueAssets(options: LoaderOptions = {}): Promise<Loa
     return 'invalid';
   }
 
-  async function optional<T>(name: ValidatorName, entry: JsonAssetDescriptor, guard: (value: unknown) => value is T): Promise<T | null> {
+  async function optional<T>(name: ValidatorName | 'LeagueLore', entry: JsonAssetDescriptor, guard: (value: unknown) => value is T): Promise<T | null> {
     try {
       const result = await verified<unknown>(entry);
       const value = result.value;
-      if (!guard(value)) throw new DataLoadError('INVALID_ASSET', name, formatValidatorErrors(name, getValidatorErrors(name)), version);
+      if (!guard(value)) throw new DataLoadError('INVALID_ASSET', name, name === 'LeagueLore' ? 'LeagueLore: schema validation failed' : formatValidatorErrors(name, getValidatorErrors(name)), version);
       loadedAssets.push(name);
       return value;
     } catch (error) {
@@ -174,11 +177,12 @@ export async function loadLeagueAssets(options: LoaderOptions = {}): Promise<Loa
     }
   }
 
-  const [required, rivalriesValue, currentValue, derivedValue] = await Promise.all([
+  const [required, rivalriesValue, currentValue, derivedValue, leagueLoreValue] = await Promise.all([
     requiredPromise,
     optional('Rivalries', descriptor('Rivalries', manifest.assets.Rivalries), isRivalries),
     optional('CurrentSeason', descriptor('CurrentSeason', manifest.assets.CurrentSeason), isCurrentSeason),
     optional('DerivedStats', descriptor('DerivedStats', manifest.derived), isDerivedStats),
+    optional('LeagueLore', descriptor('LeagueLore', manifest.assets.LeagueLore), isLeagueLore),
   ]);
   const h2h = validateRequired(required[0].value, 'H2H', isH2H, version);
   const seasonSummary = validateRequired(required[1].value, 'SeasonSummary', isSeasonSummary, version);
@@ -251,6 +255,7 @@ export async function loadLeagueAssets(options: LoaderOptions = {}): Promise<Loa
     rivalries: rivalriesValue || [],
     currentSeason,
     derivedStats,
+    leagueLore: leagueLoreValue,
     manifest,
     dataVersion: version,
     diagnostics,

@@ -55,7 +55,8 @@
       "load-league-assets": "src/data/load-league-assets.ts"
     },
     "required_click_loaded_entries": {
-      "share-card-runtime": "src/share/share-card-runtime.ts"
+      "share-card-runtime": "src/share/share-card-runtime.ts",
+      "lore-presentation": "src/lore/lore-presentation.ts"
     },
     "settled_dynamic_entries": {
       "current-season": ["chart-runtime", "current-season-odds"],

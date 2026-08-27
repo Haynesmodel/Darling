@@ -20,6 +20,7 @@
         "Rivalries": { "type": "integer", "minimum": 1 },
         "CurrentSeason": { "type": "integer", "minimum": 1 },
         "TransactionHistory": { "type": "integer", "minimum": 1 },
+        "LeagueLore": { "type": "integer", "minimum": 1 },
         "DraftSpot": { "type": "integer", "minimum": 1 },
         "DerivedStats": { "type": "integer", "minimum": 1 }
       }
@@ -27,13 +28,14 @@
     "assets": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["H2H", "SeasonSummary", "Rivalries", "CurrentSeason", "TransactionHistory", "DraftSpot"],
+      "required": ["H2H", "SeasonSummary", "Rivalries", "CurrentSeason", "TransactionHistory", "LeagueLore", "DraftSpot"],
       "properties": {
         "H2H": { "$ref": "#/$defs/jsonAsset" },
         "SeasonSummary": { "$ref": "#/$defs/jsonAsset" },
         "Rivalries": { "$ref": "#/$defs/jsonAsset" },
         "CurrentSeason": { "$ref": "#/$defs/jsonAsset" },
         "TransactionHistory": { "$ref": "#/$defs/jsonAsset" },
+        "LeagueLore": { "$ref": "#/$defs/jsonAsset" },
         "DraftSpot": { "$ref": "#/$defs/jsonAsset" }
       }
     },

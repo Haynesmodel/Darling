@@ -32,6 +32,7 @@
     "typecheck": "tsc --noEmit && tsc -p tsconfig.strict.json --noEmit && tsc -p tsconfig.node.json --noEmit",
     "test": "npm run test:data && npm run test:scripts",
     "test:assets": "node scripts/validate_assets.cjs",
+    "test:league-lore": "node --test test/league-lore.test.cjs",
     "test:charts": "node --test test/charting-*.test.js test/chart-loader.test.cjs test/deferred-chart.test.cjs test/chart-vendor-generator.test.cjs test/bundle-size.test.cjs",
     "test:search": "node --test test/state-helpers.test.js test/history-game-query.test.js test/history-renderers.test.js",
     "test:tables": "node --test test/table-system.test.cjs",

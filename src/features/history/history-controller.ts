@@ -33,7 +33,6 @@ import {
   updateFacetCountTexts,
 } from '../../../js/history-controls.js';
 import { opponentOptions, teamOptions } from '../../../js/facet-helpers.js';
-import { setGroupBackdrop, triggerGroupEgg } from '../../../js/easter-eggs.js';
 import type { AppContext, AppRoute } from '../../app/app-types';
 import type { DarlingFeatureController, FeatureActivation } from '../../app/feature-contract';
 import { ALL_TEAMS, seasonModeFromLabels } from '../../app/feature-utils';
@@ -44,10 +43,6 @@ const BLOWOUT_MARGIN = 29;
 const HIGH_SCORE_THRESHOLD = 150;
 const SUB_SCORE_THRESHOLD = 70;
 const CLOSE_GAME_MARGIN = 5;
-const NOTES: Record<string, { champs?: Record<number, string>; saunders?: Record<number, string> }> = {
-  Joel: { champs: { 2014: 'Singer not in league', 2020: 'COVID season' } },
-  Joe: { saunders: { 2015: 'Saunders Bowl matchups incorrect' } },
-};
 
 export function createFeatureController(): DarlingFeatureController {
   let context: AppContext;
@@ -66,8 +61,11 @@ export function createFeatureController(): DarlingFeatureController {
   let lastEffectKey: string | null = null;
   let disclosure: SectionDisclosureController | null = null;
 
-  const champNote = (owner: string, season: number) => NOTES[owner]?.champs?.[season] || null;
-  const saundersNote = (owner: string, season: number) => NOTES[owner]?.saunders?.[season] || null;
+  const loreNote = (id: string) => context.lore.entry(id)?.body[0] || null;
+  const champNote = (owner: string, season: number) => owner === 'Joel' && season === 2014
+    ? loreNote('history-note-joel-2014')
+    : owner === 'Joel' && season === 2020 ? loreNote('history-note-joel-2020') : null;
+  const saundersNote = (owner: string, season: number) => owner === 'Joe' && season === 2015 ? loreNote('history-note-joe-2015') : null;
   const facetState = () => snapshotFacetState({ selectedTeam, selectedSeasons, selectedWeeks, selectedOpponents, selectedTypes, selectedRounds, universe, allTeams: ALL_TEAMS });
   const tableUrlState = () => {
     const route = context.router.parse();
@@ -172,26 +170,6 @@ export function createFeatureController(): DarlingFeatureController {
     updateFacetCountTexts({ doc: context.document, selectedSeasons, selectedWeeks, selectedOpponents, selectedTypes, selectedRounds, universe });
   };
 
-  const crownRain = () => {
-    if (context.window.darlingAccessibility?.prefersReducedMotion?.()) return;
-    const wrap = context.document.getElementById('fxCrown');
-    if (!wrap) return;
-    wrap.replaceChildren();
-    wrap.style.display = 'block';
-    for (let index = 0; index < 28; index += 1) {
-      const crown = context.document.createElement('span');
-      crown.className = 'crown'; crown.textContent = '👑'; crown.style.left = `${Math.random() * 100}vw`; crown.style.animationDuration = `${1.8 + Math.random()}s`; crown.style.animationDelay = `${Math.random() * 0.5}s`; crown.style.fontSize = `${20 + Math.random() * 12}px`;
-      wrap.append(crown);
-    }
-    context.window.setTimeout(() => { wrap.style.display = 'none'; wrap.replaceChildren(); }, 3000);
-  };
-  const saundersFog = () => {
-    if (context.window.darlingAccessibility?.prefersReducedMotion?.()) return;
-    const fog = context.document.getElementById('fxSaunders');
-    if (!fog) return;
-    fog.style.display = 'block';
-    context.window.setTimeout(() => { fog.style.display = 'none'; }, 2000);
-  };
 
   const seasonCallout = () => {
     const mount = context.document.getElementById('seasonCallout');
@@ -199,10 +177,7 @@ export function createFeatureController(): DarlingFeatureController {
     const view = seasonCalloutView(selectedTeam, { allTeams: ALL_TEAMS, selectedSeasons, seasonSummaries: context.data.seasonSummaries, champNoteFn: champNote, saundersNoteFn: saundersNote });
     mount.innerHTML = view.html;
     if (view.resetEffect) lastEffectKey = null;
-    if (view.effectKey && view.effectKey !== lastEffectKey) {
-      lastEffectKey = view.effectKey;
-      if (view.effectType === 'champion') crownRain(); else if (view.effectType === 'saunders') saundersFog();
-    }
+      if (view.effectKey && view.effectKey !== lastEffectKey) lastEffectKey = view.effectKey;
   };
 
   const funFacts = (games: any[]) => {
@@ -253,7 +228,7 @@ export function createFeatureController(): DarlingFeatureController {
       const title = context.document.getElementById('oppTableTitle'); if (title) title.textContent = view.title;
       context.tables.render('history-opponents', { rows: opponentBreakdownRows(selectedTeam, games, { allTeams: ALL_TEAMS, selectedWeeks, universeWeeks: universe.weeks }), context: { owner: selectedTeam === ALL_TEAMS ? null : selectedTeam, games, isLeague: selectedTeam === ALL_TEAMS }, urlState: tableUrlState(), onContextChange: tableContextChange, instanceKey: `${selectedTeam}|${games.length}` });
       const callouts = context.document.getElementById('rivalGroupCallouts');
-      if (callouts) { callouts.innerHTML = view.calloutsHtml; if (view.shouldUpdateBackdrop) { if (view.triggerSlug) triggerGroupEgg(view.triggerSlug); setGroupBackdrop(view.backdropSlug || null); } }
+      if (callouts) callouts.innerHTML = view.calloutsHtml;
     });
     renderIfChanged('seasons', keys.seasonRecap, () => {
       const rows = selectedTeam === ALL_TEAMS ? [] : seasonRecapRows(selectedTeam, context.data.seasonSummaries, { selectedSeasons, universeSeasons: universe.seasons }).map((row: any) => ({ ...row, outcome: seasonRecapOutcome(selectedTeam, row, context.data.leagueGames) }));

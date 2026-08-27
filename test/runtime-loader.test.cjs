@@ -287,10 +287,12 @@ test('optional assets fail after the second attempt and diagnostics remain sorte
   assert.equal(attemptsFor('assets/CurrentSeason.json'), 2);
   assert.deepEqual(loaded.diagnostics.optionalFailures.map(failure => failure.asset), [
     'CurrentSeason',
+    'LeagueLore',
     'Rivalries',
   ]);
   assert.deepEqual(loaded.diagnostics.integrity.failedOptionalAssets, [
     'CurrentSeason',
+    'LeagueLore',
     'Rivalries',
   ]);
 });

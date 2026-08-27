@@ -82,14 +82,14 @@ var require_equal = __commonJS({
 });
 
 // transaction-history-validator-runtime.mjs
-var validateTransactionHistory = validate83;
+var validateTransactionHistory = validate84;
 var schema185 = { "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://darling.example/schemas/transaction-history.schema.json", "title": "TransactionHistory", "type": "object", "additionalProperties": false, "required": ["schema_version", "generator_version", "methodology_version", "source", "source_updated_ms", "players", "seasons"], "properties": { "schema_version": { "const": 1 }, "generator_version": { "const": 2 }, "methodology_version": { "const": 2 }, "source": { "const": "sleeper" }, "source_updated_ms": { "type": "integer", "minimum": 0 }, "players": { "type": "array", "items": { "$ref": "#/$defs/player" } }, "seasons": { "type": "array", "minItems": 1, "maxItems": 12, "items": { "$ref": "#/$defs/season" } } }, "$defs": { "nullableString": { "type": ["string", "null"] }, "owner": { "type": "string", "minLength": 1, "maxLength": 100 }, "playerId": { "type": "string", "minLength": 1, "maxLength": 100 }, "points": { "type": "number", "minimum": -1e3, "maximum": 1e4 }, "player": { "type": "object", "additionalProperties": false, "required": ["id", "name", "position", "nfl_team"], "properties": { "id": { "$ref": "#/$defs/playerId" }, "name": { "$ref": "#/$defs/nullableString" }, "position": { "$ref": "#/$defs/nullableString" }, "nfl_team": { "$ref": "#/$defs/nullableString" } } }, "team": { "type": "object", "additionalProperties": false, "required": ["roster_id", "owner"], "properties": { "roster_id": { "type": "integer", "minimum": 1 }, "owner": { "$ref": "#/$defs/owner" } } }, "draftPick": { "type": "object", "additionalProperties": false, "required": ["pick_no", "round", "roster_id", "owner", "player_id", "is_keeper"], "properties": { "pick_no": { "type": "integer", "minimum": 1 }, "round": { "type": "integer", "minimum": 1 }, "roster_id": { "type": "integer", "minimum": 1 }, "owner": { "$ref": "#/$defs/owner" }, "player_id": { "$ref": "#/$defs/playerId" }, "is_keeper": { "type": "boolean" } } }, "draft": { "type": "object", "additionalProperties": false, "required": ["status", "draft_id", "pick_count", "picks"], "properties": { "status": { "enum": ["selected", "unavailable"] }, "draft_id": { "$ref": "#/$defs/nullableString" }, "pick_count": { "type": "integer", "minimum": 0 }, "picks": { "type": "array", "items": { "$ref": "#/$defs/draftPick" } } } }, "playerMovement": { "type": "object", "additionalProperties": false, "required": ["player_id", "owner"], "properties": { "player_id": { "$ref": "#/$defs/playerId" }, "owner": { "$ref": "#/$defs/owner" } } }, "transactionPick": { "type": "object", "additionalProperties": false, "required": ["season", "round", "roster_id", "original_owner", "owner", "previous_owner"], "properties": { "season": { "type": "integer", "minimum": 2025, "maximum": 2100 }, "round": { "type": "integer", "minimum": 1 }, "roster_id": { "type": "integer", "minimum": 1 }, "original_owner": { "$ref": "#/$defs/owner" }, "owner": { "$ref": "#/$defs/owner" }, "previous_owner": { "anyOf": [{ "$ref": "#/$defs/owner" }, { "type": "null" }] } } }, "budgetTransfer": { "type": "object", "additionalProperties": false, "required": ["sender", "receiver", "amount"], "properties": { "sender": { "$ref": "#/$defs/owner" }, "receiver": { "$ref": "#/$defs/owner" }, "amount": { "type": "integer", "minimum": 0 } } }, "transaction": { "type": "object", "additionalProperties": false, "required": ["id", "status", "type", "week", "created_ms", "participants", "adds", "drops", "draft_picks", "faab_bid", "waiver_budget"], "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 100 }, "status": { "type": "string", "minLength": 1, "maxLength": 40 }, "type": { "enum": ["waiver", "free_agent", "trade", "commissioner"] }, "week": { "type": "integer", "minimum": 0, "maximum": 25 }, "created_ms": { "type": "integer", "minimum": 0 }, "participants": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/owner" } }, "adds": { "type": "array", "items": { "$ref": "#/$defs/playerMovement" } }, "drops": { "type": "array", "items": { "$ref": "#/$defs/playerMovement" } }, "draft_picks": { "type": "array", "items": { "$ref": "#/$defs/transactionPick" } }, "faab_bid": { "type": ["integer", "null"], "minimum": 0 }, "waiver_budget": { "type": "array", "items": { "$ref": "#/$defs/budgetTransfer" } } } }, "acquisition": { "type": "object", "additionalProperties": false, "required": ["kind", "week", "transaction_id", "pick_no", "is_keeper"], "properties": { "kind": { "enum": ["draft", "keeper", "add", "trade_in", "commissioner"] }, "week": { "type": "integer", "minimum": 0, "maximum": 25 }, "transaction_id": { "$ref": "#/$defs/nullableString" }, "pick_no": { "type": ["integer", "null"], "minimum": 1 }, "is_keeper": { "type": "boolean" } } }, "release": { "type": "object", "additionalProperties": false, "required": ["kind", "week", "transaction_id"], "properties": { "kind": { "enum": ["drop", "trade_out"] }, "week": { "type": "integer", "minimum": 0, "maximum": 25 }, "transaction_id": { "type": "string", "minLength": 1 } } }, "stint": { "type": "object", "additionalProperties": false, "required": ["owner", "acquisition", "release", "rostered_weeks", "starts", "total_points", "starter_points", "retained"], "properties": { "owner": { "$ref": "#/$defs/owner" }, "acquisition": { "$ref": "#/$defs/acquisition" }, "release": { "anyOf": [{ "$ref": "#/$defs/release" }, { "type": "null" }] }, "rostered_weeks": { "type": "integer", "minimum": 0, "maximum": 25 }, "starts": { "type": "integer", "minimum": 0, "maximum": 25 }, "total_points": { "$ref": "#/$defs/points" }, "starter_points": { "$ref": "#/$defs/points" }, "retained": { "type": "boolean" } } }, "journey": { "type": "object", "additionalProperties": false, "required": ["player_id", "stints"], "properties": { "player_id": { "$ref": "#/$defs/playerId" }, "stints": { "type": "array", "items": { "$ref": "#/$defs/stint" } } } }, "tradeSide": { "type": "object", "additionalProperties": false, "required": ["owner", "players", "picks", "faab", "starts", "starter_points", "total_points", "rostered_weeks", "retained_players"], "properties": { "owner": { "$ref": "#/$defs/owner" }, "players": { "type": "array", "items": { "$ref": "#/$defs/playerId" } }, "picks": { "type": "array", "items": { "$ref": "#/$defs/transactionPick" } }, "faab": { "type": "integer" }, "starts": { "type": "integer", "minimum": 0 }, "starter_points": { "$ref": "#/$defs/points" }, "total_points": { "$ref": "#/$defs/points" }, "rostered_weeks": { "type": "integer", "minimum": 0 }, "retained_players": { "type": "integer", "minimum": 0 } } }, "trade": { "type": "object", "additionalProperties": false, "required": ["transaction_id", "week", "created_ms", "status", "even", "edge_owner", "completed_through_week", "sides"], "properties": { "transaction_id": { "type": "string", "minLength": 1 }, "week": { "type": "integer", "minimum": 0, "maximum": 25 }, "created_ms": { "type": "integer", "minimum": 0 }, "status": { "enum": ["too_early", "incomplete", "provisional", "final"] }, "even": { "type": "boolean" }, "edge_owner": { "anyOf": [{ "$ref": "#/$defs/owner" }, { "type": "null" }] }, "completed_through_week": { "type": "integer", "minimum": 0, "maximum": 25 }, "sides": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/tradeSide" } } } }, "wireFind": { "type": "object", "additionalProperties": false, "required": ["transaction_id", "player_id", "owner", "acquisition_type", "week", "starts", "starter_points", "rostered_weeks", "retained"], "properties": { "transaction_id": { "type": "string", "minLength": 1 }, "player_id": { "$ref": "#/$defs/playerId" }, "owner": { "$ref": "#/$defs/owner" }, "acquisition_type": { "enum": ["waiver", "free_agent"] }, "week": { "type": "integer", "minimum": 0, "maximum": 25 }, "starts": { "type": "integer", "minimum": 0 }, "starter_points": { "$ref": "#/$defs/points" }, "rostered_weeks": { "type": "integer", "minimum": 0 }, "retained": { "type": "boolean" } } }, "movementCount": { "type": "object", "additionalProperties": false, "required": ["player_id", "adds", "drops"], "properties": { "player_id": { "$ref": "#/$defs/playerId" }, "adds": { "type": "integer", "minimum": 0 }, "drops": { "type": "integer", "minimum": 0 } } }, "ownerActivity": { "type": "object", "additionalProperties": false, "required": ["owner", "transactions", "adds", "drops", "trades", "commissioner_moves", "faab_spent", "distinct_incoming_players", "retention", "turnover"], "properties": { "owner": { "$ref": "#/$defs/owner" }, "transactions": { "type": "integer", "minimum": 0 }, "adds": { "type": "integer", "minimum": 0 }, "drops": { "type": "integer", "minimum": 0 }, "trades": { "type": "integer", "minimum": 0 }, "commissioner_moves": { "type": "integer", "minimum": 0 }, "faab_spent": { "type": "integer", "minimum": 0 }, "distinct_incoming_players": { "type": "integer", "minimum": 0 }, "retention": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }, "turnover": { "type": ["number", "null"], "minimum": 0, "maximum": 1 } } }, "retention": { "type": "object", "additionalProperties": false, "required": ["owner", "available", "drafted", "retained", "retention", "turnover"], "properties": { "owner": { "$ref": "#/$defs/owner" }, "available": { "type": "boolean" }, "drafted": { "type": "integer", "minimum": 0 }, "retained": { "type": "integer", "minimum": 0 }, "retention": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }, "turnover": { "type": ["number", "null"], "minimum": 0, "maximum": 1 } } }, "keeperReturn": { "type": "object", "additionalProperties": false, "required": ["player_id", "owner", "round", "starts", "starter_points"], "properties": { "player_id": { "$ref": "#/$defs/playerId" }, "owner": { "$ref": "#/$defs/owner" }, "round": { "type": "integer", "minimum": 1 }, "starts": { "type": "integer", "minimum": 0 }, "starter_points": { "$ref": "#/$defs/points" } } }, "insights": { "type": "object", "additionalProperties": false, "required": ["trades", "wire_finds", "movement_counts", "owner_activity", "draft_retention", "keeper_return"], "properties": { "trades": { "type": "array", "items": { "$ref": "#/$defs/trade" } }, "wire_finds": { "type": "array", "items": { "$ref": "#/$defs/wireFind" } }, "movement_counts": { "type": "array", "items": { "$ref": "#/$defs/movementCount" } }, "owner_activity": { "type": "array", "items": { "$ref": "#/$defs/ownerActivity" } }, "draft_retention": { "type": "array", "items": { "$ref": "#/$defs/retention" } }, "keeper_return": { "type": "array", "items": { "$ref": "#/$defs/keeperReturn" } } } }, "coverage": { "type": "object", "additionalProperties": false, "required": ["completed_week", "transaction_rounds", "matchup_weeks", "transaction_count", "complete_count", "failed_count", "pending_count", "type_counts", "missing_player_metadata", "outcome_methodology_version"], "properties": { "completed_week": { "type": "integer", "minimum": 0, "maximum": 25 }, "transaction_rounds": { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 25 } }, "matchup_weeks": { "type": "array", "items": { "type": "integer", "minimum": 1, "maximum": 25 } }, "transaction_count": { "type": "integer", "minimum": 0 }, "complete_count": { "type": "integer", "minimum": 0 }, "failed_count": { "type": "integer", "minimum": 0 }, "pending_count": { "type": "integer", "minimum": 0 }, "type_counts": { "type": "object", "additionalProperties": false, "required": ["commissioner", "free_agent", "trade", "waiver"], "properties": { "commissioner": { "type": "integer", "minimum": 0 }, "free_agent": { "type": "integer", "minimum": 0 }, "trade": { "type": "integer", "minimum": 0 }, "waiver": { "type": "integer", "minimum": 0 } } }, "missing_player_metadata": { "type": "integer", "minimum": 0 }, "outcome_methodology_version": { "const": 2 } } }, "season": { "type": "object", "additionalProperties": false, "required": ["season", "league_id", "league_status", "max_week", "coverage", "teams", "draft", "transactions", "player_journeys", "insights"], "properties": { "season": { "type": "integer", "minimum": 2025, "maximum": 2100 }, "league_id": { "type": "string", "pattern": "^[0-9]+$" }, "league_status": { "type": "string", "minLength": 1, "maxLength": 40 }, "max_week": { "type": "integer", "minimum": 1, "maximum": 25 }, "coverage": { "$ref": "#/$defs/coverage" }, "teams": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/team" } }, "draft": { "$ref": "#/$defs/draft" }, "transactions": { "type": "array", "items": { "$ref": "#/$defs/transaction" } }, "player_journeys": { "type": "array", "items": { "$ref": "#/$defs/journey" } }, "insights": { "$ref": "#/$defs/insights" } } } } };
 var schema186 = { "type": "object", "additionalProperties": false, "required": ["id", "name", "position", "nfl_team"], "properties": { "id": { "$ref": "#/$defs/playerId" }, "name": { "$ref": "#/$defs/nullableString" }, "position": { "$ref": "#/$defs/nullableString" }, "nfl_team": { "$ref": "#/$defs/nullableString" } } };
 var func4 = require_ucs2length().default;
-function validate84(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+function validate85(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate84.evaluated;
+  const evaluated0 = validate85.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -195,19 +195,19 @@ function validate84(data, { instancePath = "", parentData, parentDataProperty, r
     }
     errors++;
   }
-  validate84.errors = vErrors;
+  validate85.errors = vErrors;
   return errors === 0;
 }
-validate84.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+validate85.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 var schema191 = { "type": "object", "additionalProperties": false, "required": ["season", "league_id", "league_status", "max_week", "coverage", "teams", "draft", "transactions", "player_journeys", "insights"], "properties": { "season": { "type": "integer", "minimum": 2025, "maximum": 2100 }, "league_id": { "type": "string", "pattern": "^[0-9]+$" }, "league_status": { "type": "string", "minLength": 1, "maxLength": 40 }, "max_week": { "type": "integer", "minimum": 1, "maximum": 25 }, "coverage": { "$ref": "#/$defs/coverage" }, "teams": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/team" } }, "draft": { "$ref": "#/$defs/draft" }, "transactions": { "type": "array", "items": { "$ref": "#/$defs/transaction" } }, "player_journeys": { "type": "array", "items": { "$ref": "#/$defs/journey" } }, "insights": { "$ref": "#/$defs/insights" } } };
 var schema192 = { "type": "object", "additionalProperties": false, "required": ["completed_week", "transaction_rounds", "matchup_weeks", "transaction_count", "complete_count", "failed_count", "pending_count", "type_counts", "missing_player_metadata", "outcome_methodology_version"], "properties": { "completed_week": { "type": "integer", "minimum": 0, "maximum": 25 }, "transaction_rounds": { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 25 } }, "matchup_weeks": { "type": "array", "items": { "type": "integer", "minimum": 1, "maximum": 25 } }, "transaction_count": { "type": "integer", "minimum": 0 }, "complete_count": { "type": "integer", "minimum": 0 }, "failed_count": { "type": "integer", "minimum": 0 }, "pending_count": { "type": "integer", "minimum": 0 }, "type_counts": { "type": "object", "additionalProperties": false, "required": ["commissioner", "free_agent", "trade", "waiver"], "properties": { "commissioner": { "type": "integer", "minimum": 0 }, "free_agent": { "type": "integer", "minimum": 0 }, "trade": { "type": "integer", "minimum": 0 }, "waiver": { "type": "integer", "minimum": 0 } } }, "missing_player_metadata": { "type": "integer", "minimum": 0 }, "outcome_methodology_version": { "const": 2 } } };
 var func3 = Object.prototype.hasOwnProperty;
 var pattern10 = new RegExp("^[0-9]+$", "u");
 var schema193 = { "type": "object", "additionalProperties": false, "required": ["roster_id", "owner"], "properties": { "roster_id": { "type": "integer", "minimum": 1 }, "owner": { "$ref": "#/$defs/owner" } } };
-function validate87(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+function validate88(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate87.evaluated;
+  const evaluated0 = validate88.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -300,17 +300,17 @@ function validate87(data, { instancePath = "", parentData, parentDataProperty, r
     }
     errors++;
   }
-  validate87.errors = vErrors;
+  validate88.errors = vErrors;
   return errors === 0;
 }
-validate87.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+validate88.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 var schema195 = { "type": "object", "additionalProperties": false, "required": ["status", "draft_id", "pick_count", "picks"], "properties": { "status": { "enum": ["selected", "unavailable"] }, "draft_id": { "$ref": "#/$defs/nullableString" }, "pick_count": { "type": "integer", "minimum": 0 }, "picks": { "type": "array", "items": { "$ref": "#/$defs/draftPick" } } } };
 var func0 = require_equal().default;
 var schema197 = { "type": "object", "additionalProperties": false, "required": ["pick_no", "round", "roster_id", "owner", "player_id", "is_keeper"], "properties": { "pick_no": { "type": "integer", "minimum": 1 }, "round": { "type": "integer", "minimum": 1 }, "roster_id": { "type": "integer", "minimum": 1 }, "owner": { "$ref": "#/$defs/owner" }, "player_id": { "$ref": "#/$defs/playerId" }, "is_keeper": { "type": "boolean" } } };
-function validate90(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+function validate91(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate90.evaluated;
+  const evaluated0 = validate91.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -491,14 +491,14 @@ function validate90(data, { instancePath = "", parentData, parentDataProperty, r
     }
     errors++;
   }
-  validate90.errors = vErrors;
+  validate91.errors = vErrors;
   return errors === 0;
 }
-validate90.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-function validate89(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+validate91.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+function validate90(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate89.evaluated;
+  const evaluated0 = validate90.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -587,8 +587,8 @@ function validate89(data, { instancePath = "", parentData, parentDataProperty, r
       if (Array.isArray(data3)) {
         const len0 = data3.length;
         for (let i0 = 0; i0 < len0; i0++) {
-          if (!validate90(data3[i0], { instancePath: instancePath + "/picks/" + i0, parentData: data3, parentDataProperty: i0, rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate90.errors : vErrors.concat(validate90.errors);
+          if (!validate91(data3[i0], { instancePath: instancePath + "/picks/" + i0, parentData: data3, parentDataProperty: i0, rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate91.errors : vErrors.concat(validate91.errors);
             errors = vErrors.length;
           }
         }
@@ -611,16 +611,16 @@ function validate89(data, { instancePath = "", parentData, parentDataProperty, r
     }
     errors++;
   }
-  validate89.errors = vErrors;
+  validate90.errors = vErrors;
   return errors === 0;
 }
-validate89.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+validate90.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 var schema200 = { "type": "object", "additionalProperties": false, "required": ["id", "status", "type", "week", "created_ms", "participants", "adds", "drops", "draft_picks", "faab_bid", "waiver_budget"], "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 100 }, "status": { "type": "string", "minLength": 1, "maxLength": 40 }, "type": { "enum": ["waiver", "free_agent", "trade", "commissioner"] }, "week": { "type": "integer", "minimum": 0, "maximum": 25 }, "created_ms": { "type": "integer", "minimum": 0 }, "participants": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/owner" } }, "adds": { "type": "array", "items": { "$ref": "#/$defs/playerMovement" } }, "drops": { "type": "array", "items": { "$ref": "#/$defs/playerMovement" } }, "draft_picks": { "type": "array", "items": { "$ref": "#/$defs/transactionPick" } }, "faab_bid": { "type": ["integer", "null"], "minimum": 0 }, "waiver_budget": { "type": "array", "items": { "$ref": "#/$defs/budgetTransfer" } } } };
 var schema202 = { "type": "object", "additionalProperties": false, "required": ["player_id", "owner"], "properties": { "player_id": { "$ref": "#/$defs/playerId" }, "owner": { "$ref": "#/$defs/owner" } } };
-function validate94(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+function validate95(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate94.evaluated;
+  const evaluated0 = validate95.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -721,15 +721,15 @@ function validate94(data, { instancePath = "", parentData, parentDataProperty, r
     }
     errors++;
   }
-  validate94.errors = vErrors;
+  validate95.errors = vErrors;
   return errors === 0;
 }
-validate94.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+validate95.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 var schema205 = { "type": "object", "additionalProperties": false, "required": ["season", "round", "roster_id", "original_owner", "owner", "previous_owner"], "properties": { "season": { "type": "integer", "minimum": 2025, "maximum": 2100 }, "round": { "type": "integer", "minimum": 1 }, "roster_id": { "type": "integer", "minimum": 1 }, "original_owner": { "$ref": "#/$defs/owner" }, "owner": { "$ref": "#/$defs/owner" }, "previous_owner": { "anyOf": [{ "$ref": "#/$defs/owner" }, { "type": "null" }] } } };
-function validate97(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+function validate98(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate97.evaluated;
+  const evaluated0 = validate98.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -974,15 +974,15 @@ function validate97(data, { instancePath = "", parentData, parentDataProperty, r
     }
     errors++;
   }
-  validate97.errors = vErrors;
+  validate98.errors = vErrors;
   return errors === 0;
 }
-validate97.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+validate98.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 var schema209 = { "type": "object", "additionalProperties": false, "required": ["sender", "receiver", "amount"], "properties": { "sender": { "$ref": "#/$defs/owner" }, "receiver": { "$ref": "#/$defs/owner" }, "amount": { "type": "integer", "minimum": 0 } } };
-function validate99(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+function validate100(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate99.evaluated;
+  const evaluated0 = validate100.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -1106,14 +1106,14 @@ function validate99(data, { instancePath = "", parentData, parentDataProperty, r
     }
     errors++;
   }
-  validate99.errors = vErrors;
+  validate100.errors = vErrors;
   return errors === 0;
 }
-validate99.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-function validate93(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+validate100.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+function validate94(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate93.evaluated;
+  const evaluated0 = validate94.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -1347,8 +1347,8 @@ function validate93(data, { instancePath = "", parentData, parentDataProperty, r
       if (Array.isArray(data7)) {
         const len1 = data7.length;
         for (let i2 = 0; i2 < len1; i2++) {
-          if (!validate94(data7[i2], { instancePath: instancePath + "/adds/" + i2, parentData: data7, parentDataProperty: i2, rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate94.errors : vErrors.concat(validate94.errors);
+          if (!validate95(data7[i2], { instancePath: instancePath + "/adds/" + i2, parentData: data7, parentDataProperty: i2, rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate95.errors : vErrors.concat(validate95.errors);
             errors = vErrors.length;
           }
         }
@@ -1367,8 +1367,8 @@ function validate93(data, { instancePath = "", parentData, parentDataProperty, r
       if (Array.isArray(data9)) {
         const len2 = data9.length;
         for (let i3 = 0; i3 < len2; i3++) {
-          if (!validate94(data9[i3], { instancePath: instancePath + "/drops/" + i3, parentData: data9, parentDataProperty: i3, rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate94.errors : vErrors.concat(validate94.errors);
+          if (!validate95(data9[i3], { instancePath: instancePath + "/drops/" + i3, parentData: data9, parentDataProperty: i3, rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate95.errors : vErrors.concat(validate95.errors);
             errors = vErrors.length;
           }
         }
@@ -1387,8 +1387,8 @@ function validate93(data, { instancePath = "", parentData, parentDataProperty, r
       if (Array.isArray(data11)) {
         const len3 = data11.length;
         for (let i4 = 0; i4 < len3; i4++) {
-          if (!validate97(data11[i4], { instancePath: instancePath + "/draft_picks/" + i4, parentData: data11, parentDataProperty: i4, rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate97.errors : vErrors.concat(validate97.errors);
+          if (!validate98(data11[i4], { instancePath: instancePath + "/draft_picks/" + i4, parentData: data11, parentDataProperty: i4, rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate98.errors : vErrors.concat(validate98.errors);
             errors = vErrors.length;
           }
         }
@@ -1430,8 +1430,8 @@ function validate93(data, { instancePath = "", parentData, parentDataProperty, r
       if (Array.isArray(data14)) {
         const len4 = data14.length;
         for (let i5 = 0; i5 < len4; i5++) {
-          if (!validate99(data14[i5], { instancePath: instancePath + "/waiver_budget/" + i5, parentData: data14, parentDataProperty: i5, rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate99.errors : vErrors.concat(validate99.errors);
+          if (!validate100(data14[i5], { instancePath: instancePath + "/waiver_budget/" + i5, parentData: data14, parentDataProperty: i5, rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate100.errors : vErrors.concat(validate100.errors);
             errors = vErrors.length;
           }
         }
@@ -1454,18 +1454,18 @@ function validate93(data, { instancePath = "", parentData, parentDataProperty, r
     }
     errors++;
   }
-  validate93.errors = vErrors;
+  validate94.errors = vErrors;
   return errors === 0;
 }
-validate93.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+validate94.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 var schema212 = { "type": "object", "additionalProperties": false, "required": ["player_id", "stints"], "properties": { "player_id": { "$ref": "#/$defs/playerId" }, "stints": { "type": "array", "items": { "$ref": "#/$defs/stint" } } } };
 var schema214 = { "type": "object", "additionalProperties": false, "required": ["owner", "acquisition", "release", "rostered_weeks", "starts", "total_points", "starter_points", "retained"], "properties": { "owner": { "$ref": "#/$defs/owner" }, "acquisition": { "$ref": "#/$defs/acquisition" }, "release": { "anyOf": [{ "$ref": "#/$defs/release" }, { "type": "null" }] }, "rostered_weeks": { "type": "integer", "minimum": 0, "maximum": 25 }, "starts": { "type": "integer", "minimum": 0, "maximum": 25 }, "total_points": { "$ref": "#/$defs/points" }, "starter_points": { "$ref": "#/$defs/points" }, "retained": { "type": "boolean" } } };
 var schema218 = { "type": "object", "additionalProperties": false, "required": ["kind", "week", "transaction_id"], "properties": { "kind": { "enum": ["drop", "trade_out"] }, "week": { "type": "integer", "minimum": 0, "maximum": 25 }, "transaction_id": { "type": "string", "minLength": 1 } } };
 var schema216 = { "type": "object", "additionalProperties": false, "required": ["kind", "week", "transaction_id", "pick_no", "is_keeper"], "properties": { "kind": { "enum": ["draft", "keeper", "add", "trade_in", "commissioner"] }, "week": { "type": "integer", "minimum": 0, "maximum": 25 }, "transaction_id": { "$ref": "#/$defs/nullableString" }, "pick_no": { "type": ["integer", "null"], "minimum": 1 }, "is_keeper": { "type": "boolean" } } };
-function validate104(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+function validate105(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate104.evaluated;
+  const evaluated0 = validate105.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -1601,14 +1601,14 @@ function validate104(data, { instancePath = "", parentData, parentDataProperty, 
     }
     errors++;
   }
-  validate104.errors = vErrors;
+  validate105.errors = vErrors;
   return errors === 0;
 }
-validate104.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-function validate103(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+validate105.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+function validate104(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate103.evaluated;
+  const evaluated0 = validate104.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -1670,8 +1670,8 @@ function validate103(data, { instancePath = "", parentData, parentDataProperty, 
       }
     }
     if (data.acquisition !== void 0) {
-      if (!validate104(data.acquisition, { instancePath: instancePath + "/acquisition", parentData: data, parentDataProperty: "acquisition", rootData, dynamicAnchors })) {
-        vErrors = vErrors === null ? validate104.errors : vErrors.concat(validate104.errors);
+      if (!validate105(data.acquisition, { instancePath: instancePath + "/acquisition", parentData: data, parentDataProperty: "acquisition", rootData, dynamicAnchors })) {
+        vErrors = vErrors === null ? validate105.errors : vErrors.concat(validate105.errors);
         errors = vErrors.length;
       }
     }
@@ -1964,14 +1964,14 @@ function validate103(data, { instancePath = "", parentData, parentDataProperty, 
     }
     errors++;
   }
-  validate103.errors = vErrors;
+  validate104.errors = vErrors;
   return errors === 0;
 }
-validate103.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-function validate102(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+validate104.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+function validate103(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate102.evaluated;
+  const evaluated0 = validate103.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -2037,8 +2037,8 @@ function validate102(data, { instancePath = "", parentData, parentDataProperty, 
       if (Array.isArray(data1)) {
         const len0 = data1.length;
         for (let i0 = 0; i0 < len0; i0++) {
-          if (!validate103(data1[i0], { instancePath: instancePath + "/stints/" + i0, parentData: data1, parentDataProperty: i0, rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate103.errors : vErrors.concat(validate103.errors);
+          if (!validate104(data1[i0], { instancePath: instancePath + "/stints/" + i0, parentData: data1, parentDataProperty: i0, rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate104.errors : vErrors.concat(validate104.errors);
             errors = vErrors.length;
           }
         }
@@ -2061,17 +2061,17 @@ function validate102(data, { instancePath = "", parentData, parentDataProperty, 
     }
     errors++;
   }
-  validate102.errors = vErrors;
+  validate103.errors = vErrors;
   return errors === 0;
 }
-validate102.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+validate103.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 var schema221 = { "type": "object", "additionalProperties": false, "required": ["trades", "wire_finds", "movement_counts", "owner_activity", "draft_retention", "keeper_return"], "properties": { "trades": { "type": "array", "items": { "$ref": "#/$defs/trade" } }, "wire_finds": { "type": "array", "items": { "$ref": "#/$defs/wireFind" } }, "movement_counts": { "type": "array", "items": { "$ref": "#/$defs/movementCount" } }, "owner_activity": { "type": "array", "items": { "$ref": "#/$defs/ownerActivity" } }, "draft_retention": { "type": "array", "items": { "$ref": "#/$defs/retention" } }, "keeper_return": { "type": "array", "items": { "$ref": "#/$defs/keeperReturn" } } } };
 var schema222 = { "type": "object", "additionalProperties": false, "required": ["transaction_id", "week", "created_ms", "status", "even", "edge_owner", "completed_through_week", "sides"], "properties": { "transaction_id": { "type": "string", "minLength": 1 }, "week": { "type": "integer", "minimum": 0, "maximum": 25 }, "created_ms": { "type": "integer", "minimum": 0 }, "status": { "enum": ["too_early", "incomplete", "provisional", "final"] }, "even": { "type": "boolean" }, "edge_owner": { "anyOf": [{ "$ref": "#/$defs/owner" }, { "type": "null" }] }, "completed_through_week": { "type": "integer", "minimum": 0, "maximum": 25 }, "sides": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/tradeSide" } } } };
 var schema224 = { "type": "object", "additionalProperties": false, "required": ["owner", "players", "picks", "faab", "starts", "starter_points", "total_points", "rostered_weeks", "retained_players"], "properties": { "owner": { "$ref": "#/$defs/owner" }, "players": { "type": "array", "items": { "$ref": "#/$defs/playerId" } }, "picks": { "type": "array", "items": { "$ref": "#/$defs/transactionPick" } }, "faab": { "type": "integer" }, "starts": { "type": "integer", "minimum": 0 }, "starter_points": { "$ref": "#/$defs/points" }, "total_points": { "$ref": "#/$defs/points" }, "rostered_weeks": { "type": "integer", "minimum": 0 }, "retained_players": { "type": "integer", "minimum": 0 } } };
-function validate110(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+function validate111(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate110.evaluated;
+  const evaluated0 = validate111.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -2182,8 +2182,8 @@ function validate110(data, { instancePath = "", parentData, parentDataProperty, 
       if (Array.isArray(data3)) {
         const len1 = data3.length;
         for (let i1 = 0; i1 < len1; i1++) {
-          if (!validate97(data3[i1], { instancePath: instancePath + "/picks/" + i1, parentData: data3, parentDataProperty: i1, rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate97.errors : vErrors.concat(validate97.errors);
+          if (!validate98(data3[i1], { instancePath: instancePath + "/picks/" + i1, parentData: data3, parentDataProperty: i1, rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate98.errors : vErrors.concat(validate98.errors);
             errors = vErrors.length;
           }
         }
@@ -2349,14 +2349,14 @@ function validate110(data, { instancePath = "", parentData, parentDataProperty, 
     }
     errors++;
   }
-  validate110.errors = vErrors;
+  validate111.errors = vErrors;
   return errors === 0;
 }
-validate110.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-function validate109(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+validate111.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+function validate110(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate109.evaluated;
+  const evaluated0 = validate110.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -2605,8 +2605,8 @@ function validate109(data, { instancePath = "", parentData, parentDataProperty, 
         }
         const len0 = data7.length;
         for (let i0 = 0; i0 < len0; i0++) {
-          if (!validate110(data7[i0], { instancePath: instancePath + "/sides/" + i0, parentData: data7, parentDataProperty: i0, rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate110.errors : vErrors.concat(validate110.errors);
+          if (!validate111(data7[i0], { instancePath: instancePath + "/sides/" + i0, parentData: data7, parentDataProperty: i0, rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate111.errors : vErrors.concat(validate111.errors);
             errors = vErrors.length;
           }
         }
@@ -2629,15 +2629,15 @@ function validate109(data, { instancePath = "", parentData, parentDataProperty, 
     }
     errors++;
   }
-  validate109.errors = vErrors;
+  validate110.errors = vErrors;
   return errors === 0;
 }
-validate109.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+validate110.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 var schema229 = { "type": "object", "additionalProperties": false, "required": ["transaction_id", "player_id", "owner", "acquisition_type", "week", "starts", "starter_points", "rostered_weeks", "retained"], "properties": { "transaction_id": { "type": "string", "minLength": 1 }, "player_id": { "$ref": "#/$defs/playerId" }, "owner": { "$ref": "#/$defs/owner" }, "acquisition_type": { "enum": ["waiver", "free_agent"] }, "week": { "type": "integer", "minimum": 0, "maximum": 25 }, "starts": { "type": "integer", "minimum": 0 }, "starter_points": { "$ref": "#/$defs/points" }, "rostered_weeks": { "type": "integer", "minimum": 0 }, "retained": { "type": "boolean" } } };
-function validate114(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+function validate115(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate114.evaluated;
+  const evaluated0 = validate115.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -2899,15 +2899,15 @@ function validate114(data, { instancePath = "", parentData, parentDataProperty, 
     }
     errors++;
   }
-  validate114.errors = vErrors;
+  validate115.errors = vErrors;
   return errors === 0;
 }
-validate114.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+validate115.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 var schema233 = { "type": "object", "additionalProperties": false, "required": ["player_id", "adds", "drops"], "properties": { "player_id": { "$ref": "#/$defs/playerId" }, "adds": { "type": "integer", "minimum": 0 }, "drops": { "type": "integer", "minimum": 0 } } };
-function validate116(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+function validate117(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate116.evaluated;
+  const evaluated0 = validate117.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -3023,15 +3023,15 @@ function validate116(data, { instancePath = "", parentData, parentDataProperty, 
     }
     errors++;
   }
-  validate116.errors = vErrors;
+  validate117.errors = vErrors;
   return errors === 0;
 }
-validate116.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+validate117.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 var schema235 = { "type": "object", "additionalProperties": false, "required": ["owner", "transactions", "adds", "drops", "trades", "commissioner_moves", "faab_spent", "distinct_incoming_players", "retention", "turnover"], "properties": { "owner": { "$ref": "#/$defs/owner" }, "transactions": { "type": "integer", "minimum": 0 }, "adds": { "type": "integer", "minimum": 0 }, "drops": { "type": "integer", "minimum": 0 }, "trades": { "type": "integer", "minimum": 0 }, "commissioner_moves": { "type": "integer", "minimum": 0 }, "faab_spent": { "type": "integer", "minimum": 0 }, "distinct_incoming_players": { "type": "integer", "minimum": 0 }, "retention": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }, "turnover": { "type": ["number", "null"], "minimum": 0, "maximum": 1 } } };
-function validate118(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+function validate119(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate118.evaluated;
+  const evaluated0 = validate119.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -3326,15 +3326,15 @@ function validate118(data, { instancePath = "", parentData, parentDataProperty, 
     }
     errors++;
   }
-  validate118.errors = vErrors;
+  validate119.errors = vErrors;
   return errors === 0;
 }
-validate118.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+validate119.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 var schema237 = { "type": "object", "additionalProperties": false, "required": ["owner", "available", "drafted", "retained", "retention", "turnover"], "properties": { "owner": { "$ref": "#/$defs/owner" }, "available": { "type": "boolean" }, "drafted": { "type": "integer", "minimum": 0 }, "retained": { "type": "integer", "minimum": 0 }, "retention": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }, "turnover": { "type": ["number", "null"], "minimum": 0, "maximum": 1 } } };
-function validate120(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+function validate121(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate120.evaluated;
+  const evaluated0 = validate121.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -3525,15 +3525,15 @@ function validate120(data, { instancePath = "", parentData, parentDataProperty, 
     }
     errors++;
   }
-  validate120.errors = vErrors;
+  validate121.errors = vErrors;
   return errors === 0;
 }
-validate120.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+validate121.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 var schema239 = { "type": "object", "additionalProperties": false, "required": ["player_id", "owner", "round", "starts", "starter_points"], "properties": { "player_id": { "$ref": "#/$defs/playerId" }, "owner": { "$ref": "#/$defs/owner" }, "round": { "type": "integer", "minimum": 1 }, "starts": { "type": "integer", "minimum": 0 }, "starter_points": { "$ref": "#/$defs/points" } } };
-function validate122(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+function validate123(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate122.evaluated;
+  const evaluated0 = validate123.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -3711,14 +3711,14 @@ function validate122(data, { instancePath = "", parentData, parentDataProperty, 
     }
     errors++;
   }
-  validate122.errors = vErrors;
+  validate123.errors = vErrors;
   return errors === 0;
 }
-validate122.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-function validate108(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+validate123.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+function validate109(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate108.evaluated;
+  const evaluated0 = validate109.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -3753,8 +3753,8 @@ function validate108(data, { instancePath = "", parentData, parentDataProperty, 
       if (Array.isArray(data0)) {
         const len0 = data0.length;
         for (let i0 = 0; i0 < len0; i0++) {
-          if (!validate109(data0[i0], { instancePath: instancePath + "/trades/" + i0, parentData: data0, parentDataProperty: i0, rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate109.errors : vErrors.concat(validate109.errors);
+          if (!validate110(data0[i0], { instancePath: instancePath + "/trades/" + i0, parentData: data0, parentDataProperty: i0, rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate110.errors : vErrors.concat(validate110.errors);
             errors = vErrors.length;
           }
         }
@@ -3773,8 +3773,8 @@ function validate108(data, { instancePath = "", parentData, parentDataProperty, 
       if (Array.isArray(data2)) {
         const len1 = data2.length;
         for (let i1 = 0; i1 < len1; i1++) {
-          if (!validate114(data2[i1], { instancePath: instancePath + "/wire_finds/" + i1, parentData: data2, parentDataProperty: i1, rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate114.errors : vErrors.concat(validate114.errors);
+          if (!validate115(data2[i1], { instancePath: instancePath + "/wire_finds/" + i1, parentData: data2, parentDataProperty: i1, rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate115.errors : vErrors.concat(validate115.errors);
             errors = vErrors.length;
           }
         }
@@ -3793,8 +3793,8 @@ function validate108(data, { instancePath = "", parentData, parentDataProperty, 
       if (Array.isArray(data4)) {
         const len2 = data4.length;
         for (let i2 = 0; i2 < len2; i2++) {
-          if (!validate116(data4[i2], { instancePath: instancePath + "/movement_counts/" + i2, parentData: data4, parentDataProperty: i2, rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate116.errors : vErrors.concat(validate116.errors);
+          if (!validate117(data4[i2], { instancePath: instancePath + "/movement_counts/" + i2, parentData: data4, parentDataProperty: i2, rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate117.errors : vErrors.concat(validate117.errors);
             errors = vErrors.length;
           }
         }
@@ -3813,8 +3813,8 @@ function validate108(data, { instancePath = "", parentData, parentDataProperty, 
       if (Array.isArray(data6)) {
         const len3 = data6.length;
         for (let i3 = 0; i3 < len3; i3++) {
-          if (!validate118(data6[i3], { instancePath: instancePath + "/owner_activity/" + i3, parentData: data6, parentDataProperty: i3, rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate118.errors : vErrors.concat(validate118.errors);
+          if (!validate119(data6[i3], { instancePath: instancePath + "/owner_activity/" + i3, parentData: data6, parentDataProperty: i3, rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate119.errors : vErrors.concat(validate119.errors);
             errors = vErrors.length;
           }
         }
@@ -3833,8 +3833,8 @@ function validate108(data, { instancePath = "", parentData, parentDataProperty, 
       if (Array.isArray(data8)) {
         const len4 = data8.length;
         for (let i4 = 0; i4 < len4; i4++) {
-          if (!validate120(data8[i4], { instancePath: instancePath + "/draft_retention/" + i4, parentData: data8, parentDataProperty: i4, rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate120.errors : vErrors.concat(validate120.errors);
+          if (!validate121(data8[i4], { instancePath: instancePath + "/draft_retention/" + i4, parentData: data8, parentDataProperty: i4, rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate121.errors : vErrors.concat(validate121.errors);
             errors = vErrors.length;
           }
         }
@@ -3853,8 +3853,8 @@ function validate108(data, { instancePath = "", parentData, parentDataProperty, 
       if (Array.isArray(data10)) {
         const len5 = data10.length;
         for (let i5 = 0; i5 < len5; i5++) {
-          if (!validate122(data10[i5], { instancePath: instancePath + "/keeper_return/" + i5, parentData: data10, parentDataProperty: i5, rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate122.errors : vErrors.concat(validate122.errors);
+          if (!validate123(data10[i5], { instancePath: instancePath + "/keeper_return/" + i5, parentData: data10, parentDataProperty: i5, rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate123.errors : vErrors.concat(validate123.errors);
             errors = vErrors.length;
           }
         }
@@ -3877,14 +3877,14 @@ function validate108(data, { instancePath = "", parentData, parentDataProperty, 
     }
     errors++;
   }
-  validate108.errors = vErrors;
+  validate109.errors = vErrors;
   return errors === 0;
 }
-validate108.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-function validate86(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+validate109.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+function validate87(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate86.evaluated;
+  const evaluated0 = validate87.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -4457,8 +4457,8 @@ function validate86(data, { instancePath = "", parentData, parentDataProperty, r
         }
         const len2 = data21.length;
         for (let i2 = 0; i2 < len2; i2++) {
-          if (!validate87(data21[i2], { instancePath: instancePath + "/teams/" + i2, parentData: data21, parentDataProperty: i2, rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate87.errors : vErrors.concat(validate87.errors);
+          if (!validate88(data21[i2], { instancePath: instancePath + "/teams/" + i2, parentData: data21, parentDataProperty: i2, rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate88.errors : vErrors.concat(validate88.errors);
             errors = vErrors.length;
           }
         }
@@ -4473,8 +4473,8 @@ function validate86(data, { instancePath = "", parentData, parentDataProperty, r
       }
     }
     if (data.draft !== void 0) {
-      if (!validate89(data.draft, { instancePath: instancePath + "/draft", parentData: data, parentDataProperty: "draft", rootData, dynamicAnchors })) {
-        vErrors = vErrors === null ? validate89.errors : vErrors.concat(validate89.errors);
+      if (!validate90(data.draft, { instancePath: instancePath + "/draft", parentData: data, parentDataProperty: "draft", rootData, dynamicAnchors })) {
+        vErrors = vErrors === null ? validate90.errors : vErrors.concat(validate90.errors);
         errors = vErrors.length;
       }
     }
@@ -4483,8 +4483,8 @@ function validate86(data, { instancePath = "", parentData, parentDataProperty, r
       if (Array.isArray(data24)) {
         const len3 = data24.length;
         for (let i3 = 0; i3 < len3; i3++) {
-          if (!validate93(data24[i3], { instancePath: instancePath + "/transactions/" + i3, parentData: data24, parentDataProperty: i3, rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate93.errors : vErrors.concat(validate93.errors);
+          if (!validate94(data24[i3], { instancePath: instancePath + "/transactions/" + i3, parentData: data24, parentDataProperty: i3, rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate94.errors : vErrors.concat(validate94.errors);
             errors = vErrors.length;
           }
         }
@@ -4503,8 +4503,8 @@ function validate86(data, { instancePath = "", parentData, parentDataProperty, r
       if (Array.isArray(data26)) {
         const len4 = data26.length;
         for (let i4 = 0; i4 < len4; i4++) {
-          if (!validate102(data26[i4], { instancePath: instancePath + "/player_journeys/" + i4, parentData: data26, parentDataProperty: i4, rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate102.errors : vErrors.concat(validate102.errors);
+          if (!validate103(data26[i4], { instancePath: instancePath + "/player_journeys/" + i4, parentData: data26, parentDataProperty: i4, rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate103.errors : vErrors.concat(validate103.errors);
             errors = vErrors.length;
           }
         }
@@ -4519,8 +4519,8 @@ function validate86(data, { instancePath = "", parentData, parentDataProperty, r
       }
     }
     if (data.insights !== void 0) {
-      if (!validate108(data.insights, { instancePath: instancePath + "/insights", parentData: data, parentDataProperty: "insights", rootData, dynamicAnchors })) {
-        vErrors = vErrors === null ? validate108.errors : vErrors.concat(validate108.errors);
+      if (!validate109(data.insights, { instancePath: instancePath + "/insights", parentData: data, parentDataProperty: "insights", rootData, dynamicAnchors })) {
+        vErrors = vErrors === null ? validate109.errors : vErrors.concat(validate109.errors);
         errors = vErrors.length;
       }
     }
@@ -4533,15 +4533,15 @@ function validate86(data, { instancePath = "", parentData, parentDataProperty, r
     }
     errors++;
   }
-  validate86.errors = vErrors;
+  validate87.errors = vErrors;
   return errors === 0;
 }
-validate86.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-function validate83(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+validate87.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+function validate84(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
   ;
   let vErrors = null;
   let errors = 0;
-  const evaluated0 = validate83.evaluated;
+  const evaluated0 = validate84.evaluated;
   if (evaluated0.dynamicProps) {
     evaluated0.props = void 0;
   }
@@ -4643,8 +4643,8 @@ function validate83(data, { instancePath = "", parentData, parentDataProperty, r
       if (Array.isArray(data5)) {
         const len0 = data5.length;
         for (let i0 = 0; i0 < len0; i0++) {
-          if (!validate84(data5[i0], { instancePath: instancePath + "/players/" + i0, parentData: data5, parentDataProperty: i0, rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate84.errors : vErrors.concat(validate84.errors);
+          if (!validate85(data5[i0], { instancePath: instancePath + "/players/" + i0, parentData: data5, parentDataProperty: i0, rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate85.errors : vErrors.concat(validate85.errors);
             errors = vErrors.length;
           }
         }
@@ -4681,8 +4681,8 @@ function validate83(data, { instancePath = "", parentData, parentDataProperty, r
         }
         const len1 = data7.length;
         for (let i1 = 0; i1 < len1; i1++) {
-          if (!validate86(data7[i1], { instancePath: instancePath + "/seasons/" + i1, parentData: data7, parentDataProperty: i1, rootData, dynamicAnchors })) {
-            vErrors = vErrors === null ? validate86.errors : vErrors.concat(validate86.errors);
+          if (!validate87(data7[i1], { instancePath: instancePath + "/seasons/" + i1, parentData: data7, parentDataProperty: i1, rootData, dynamicAnchors })) {
+            vErrors = vErrors === null ? validate87.errors : vErrors.concat(validate87.errors);
             errors = vErrors.length;
           }
         }
@@ -4705,10 +4705,10 @@ function validate83(data, { instancePath = "", parentData, parentDataProperty, r
     }
     errors++;
   }
-  validate83.errors = vErrors;
+  validate84.errors = vErrors;
   return errors === 0;
 }
-validate83.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
+validate84.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
 export {
   validateTransactionHistory
 };

@@ -8,7 +8,7 @@ function pairEqual(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every(owner => b.includes(owner));
 }
 
-function createScope(id: string, scopes: Set<LoreScope>): LoreScope {
+function createScope(id: string, scopes: Set<LoreScope>, win: Window): LoreScope {
   const timers = new Set<number>();
   const nodes = new Set<Node>();
   const scope: LoreScope = {
@@ -89,14 +89,14 @@ export function createLoreRegistry(win: Window = window): LoreService {
       if (!asset?.enabled) return false;
       const target = targetType === 'entry' ? entries().get(targetId) : collections().get(targetId);
       if (!target) return false;
-      const scope = options.scope || createScope(`reveal:${targetId}`, scopes);
+      const scope = options.scope || createScope(`reveal:${targetId}`, scopes, win);
       const effect = targetType === 'entry' ? effects().get('lore-dialog') || null : effects().get('lore-dialog') || null;
       const module = await loadPresentation();
       if (!asset?.enabled || !scopes.has(scope)) return false;
       module.showLore(target, entries(), effect, { scope, opener: options.opener, reducedMotion });
       return true;
     },
-    createScope(id) { return createScope(id, scopes); },
+    createScope(id) { return createScope(id, scopes, win); },
     setReducedMotion(value) { reducedMotion = value; if (value) scopes.forEach(scope => scope.clear()); },
     dispose() { scopes.forEach(scope => scope.clear()); presentation?.disposeLorePresentation(); presentation = null; presentationPromise = null; once.clear(); activations.clear(); asset = null; },
     isEnabled() { return !!asset?.enabled; },

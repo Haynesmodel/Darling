@@ -8,12 +8,12 @@
 .lore-teaser { font-weight: 600; }
 .lore-overlay { align-items: center; display: flex; font-size: 2rem; inset: 0; justify-content: center; pointer-events: none; position: fixed; z-index: 1000; }
 .lore-effect-overlay { animation: lore-fade 2200ms ease-out both; }
-.lore-effect-static { animation: none !important; opacity: 1 !important; transform: none !important; }
-.lore-effect-crown { color: #f6c453; text-shadow: 0 0 .75rem #f6c453; }
-.lore-effect-fog { background: color-mix(in srgb, #64748b 35%, transparent); filter: blur(.2px); }
-.lore-effect-confetti { color: #e879f9; }
+.lore-effect-static { animation: none; opacity: 1; transform: none; }
+.lore-effect-crown { color: var(--lore-crown, currentColor); text-shadow: 0 0 .75rem var(--lore-crown, currentColor); }
+.lore-effect-fog { background: color-mix(in srgb, CanvasText 35%, transparent); filter: blur(.2px); }
+.lore-effect-confetti { color: currentColor; }
 .lore-effect-chairs { align-items: flex-end; padding-bottom: 12vh; }
-.lore-effect-target { color: #ef4444; transform: scale(1.2); }
+.lore-effect-target { color: currentColor; transform: scale(1.2); }
 .lore-effect-ticket { justify-content: flex-start; padding-left: 10vw; }
 .lore-effect-cake { align-items: flex-end; padding-bottom: 18vh; }
 .lore-effect-rattle { animation-name: lore-rattle; }

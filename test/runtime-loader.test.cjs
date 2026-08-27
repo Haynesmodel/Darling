@@ -207,6 +207,18 @@ test('runtime loader fails closed for malformed optional LeagueLore while requir
     assert.equal(loaded.leagueLore, null);
     assert.equal(loaded.diagnostics.optionalFailures.find(failure => failure.asset === 'LeagueLore')?.reason, 'integrity');
   });
+  await t.test('size limit', async () => {
+    const lore = clone(assetValues['assets/LeagueLore.json']);
+    lore.entries[0].body = ['x'.repeat(102401)];
+    const manifest = manifestWithValue('LeagueLore', lore);
+    const { logger } = quietLogger();
+    const loaded = await loadLeagueAssets({ basePath: '/', logger, fetchFn: createFetch({
+      'assets/asset-manifest.json': manifest,
+      'assets/LeagueLore.json': lore,
+    }) });
+    assert.equal(loaded.leagueLore, null);
+    assert.equal(loaded.diagnostics.optionalFailures.find(failure => failure.asset === 'LeagueLore')?.code, 'SIZE_MISMATCH');
+  });
 });
 
 test('runtime loader rejects stale DerivedStats dependencies and uses fallbacks', async () => {

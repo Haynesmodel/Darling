@@ -30,6 +30,16 @@ test('commissioner display labels and Plot slogan remain exact', () => {
   assert.match(byId.get('2025-plot-administration').body.join(' '), /^Joel was a snake, Zubs was a flake, but Plot- he let them eat cake$/);
 });
 
+test('presentation catalog keeps each migrated effect on its native treatment', () => {
+  const presentations = new Map(lore.effects.map(effect => [effect.id, effect.presentation]));
+  for (const [id, presentation] of [
+    ['blue-bloods', 'rattle'], ['commish', 'cake'], ['bagel-shower', 'bagel-shower'],
+    ['flies', 'flies'], ['suitcase', 'suitcase'], ['podium', 'podium'],
+    ['snake-tail', 'snake-tail'], ['chairs', 'chairs'], ['crown', 'crown'], ['saunders-fog', 'fog'],
+  ]) assert.equal(presentations.get(id), presentation);
+  assert.equal(lore.effects.find(effect => effect.id === 'respectful-static')?.presentation, 'static');
+});
+
 function runtimeFactory() {
   const source = fs.readFileSync(path.join(__dirname, '../src/lore/lore-lazy.ts'), 'utf8');
   const { code } = esbuild.transformSync(source, { loader: 'ts', format: 'cjs', target: 'node24' });

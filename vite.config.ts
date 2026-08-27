@@ -209,7 +209,7 @@ function createPropertyCompactionPlugin() {
           (code.match(/\b[$A-Z_a-z][$\w]*\b/g) || []).filter(name => name.length <= 3),
         )];
         const result = await minify(code, {
-          compress: preactChunk ? false : {
+          compress: chunk.isEntry || preactChunk ? false : {
             // Plot writes boolean ARIA values through setAttribute. Preserve
             // "true"/"false" in its shared chunk instead of emitting invalid
             // aria-hidden="1" values.
@@ -222,6 +222,10 @@ function createPropertyCompactionPlugin() {
             passes: 8,
             pure_getters: 'strict',
             toplevel: true,
+            unsafe: true,
+            unsafe_arrows: true,
+            unsafe_comps: true,
+            unsafe_methods: true,
           },
           mangle: {
             reserved: shortIdentifiers,

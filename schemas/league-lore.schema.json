@@ -52,7 +52,7 @@
       "type": "object", "additionalProperties": false, "required": ["id", "label", "symbol", "presentation", "tone", "duration_ms", "motion_policy", "enabled"],
       "properties": {
         "id": { "$ref": "#/$defs/id" }, "label": { "type": "string", "minLength": 1, "maxLength": 100 }, "symbol": { "type": "string", "minLength": 1, "maxLength": 12 },
-        "presentation": { "enum": ["dialog", "overlay", "callout", "crown", "fog", "confetti", "chairs", "target", "ticket", "cake", "rattle", "bagel-shower", "flies", "suitcase", "podium", "snake-tail", "static"] },
+        "presentation": { "enum": ["dialog", "overlay", "callout", "crown", "fog", "confetti", "chairs", "target", "ticket", "blank-document", "cake", "rattle", "bagel-shower", "flies", "suitcase", "podium", "snake-tail", "static"] },
         "tone": { "enum": ["playful", "celebratory", "restrained", "respectful", "informational"] },
         "duration_ms": { "type": "integer", "minimum": 0, "maximum": 2500 }, "motion_policy": { "enum": ["animate", "static", "reduce-to-static"] }, "enabled": { "type": "boolean" }
       }

@@ -40,7 +40,12 @@ interface BrowserDocument {
 
 const themeRuntime = createDarlingThemeRuntime();
 const loreRuntime = createLazyLoreService();
-const searchRuntime = createSearchRuntime({ loreAction: action => void loreRuntime.reveal(action.targetType, action.targetId) });
+const searchRuntime = createSearchRuntime({ loreAction: action => {
+  requestAnimationFrame(() => window.setTimeout(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    void loreRuntime.reveal(action.targetType, action.targetId, { opener });
+  }, 0));
+} });
 const tableRuntime = createTableRuntime();
 const freshnessRuntime = createDataFreshnessRuntime();
 const browser = globalThis as unknown as {

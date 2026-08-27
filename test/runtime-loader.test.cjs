@@ -219,6 +219,29 @@ test('runtime loader fails closed for malformed optional LeagueLore while requir
     assert.equal(loaded.leagueLore, null);
     assert.equal(loaded.diagnostics.optionalFailures.find(failure => failure.asset === 'LeagueLore')?.code, 'SIZE_MISMATCH');
   });
+  for (const [label, mutate] of [
+    ['invalid presentation', value => { value.effects[0].presentation = 'surprise'; }],
+    ['invalid activation', value => { value.triggers[0].activation = 'always'; }],
+    ['duration over limit', value => { value.effects[0].duration_ms = 2501; }],
+    ['extra match property', value => { value.triggers.find(item => item.match).match.extra = true; }],
+    ['extra entry property', value => { value.entries[0].unexpected = true; }],
+    ['malformed date', value => { value.updated_at = '2024/01/01'; }],
+    ['overlong copy', value => { value.entries[0].body = ['x'.repeat(24001)]; }],
+  ]) {
+    await t.test(label, async () => {
+      const value = clone(assetValues['assets/LeagueLore.json']);
+      mutate(value);
+      const manifest = manifestWithValue('LeagueLore', value);
+      const { logger } = quietLogger();
+      const loaded = await loadLeagueAssets({ basePath: '/', logger, fetchFn: createFetch({
+        'assets/asset-manifest.json': manifest,
+        'assets/LeagueLore.json': value,
+      }) });
+      assert.ok(loaded.leagueGames.length > 0);
+      assert.equal(loaded.leagueLore, null);
+      assert.ok(['invalid', 'integrity'].includes(loaded.diagnostics.optionalFailures.find(failure => failure.asset === 'LeagueLore')?.reason));
+    });
+  }
 });
 
 test('runtime loader rejects stale DerivedStats dependencies and uses fallbacks', async () => {

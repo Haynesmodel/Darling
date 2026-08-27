@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
 test('owner emblem is keyboard-operable and loads lore only after the third activation', async ({ page }) => {
   const loreRequests = [];
   page.on('request', request => {
-    if (request.url().endsWith(`/${loreChunk}`)) loreRequests.push(request.url());
+    if (request.url().includes(`/${loreChunk}`)) loreRequests.push(request.url());
   });
   await page.goto('/?tab=owner&owner=Connor');
   const trigger = page.locator('[data-lore-trigger="owner-emblem"]');

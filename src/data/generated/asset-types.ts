@@ -434,6 +434,7 @@ export interface Effect {
     | 'chairs'
     | 'target'
     | 'ticket'
+    | 'blank-document'
     | 'cake'
     | 'rattle'
     | 'bagel-shower'

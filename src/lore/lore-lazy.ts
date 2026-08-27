@@ -11,6 +11,7 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
   const states = new Map<string, { at: number; count?: number; value: string; values?: string[] }>();
   const sessionSeen = new Set<string>();
   const scopes = new Set<LoreScope>();
+  let generation = 0;
   const load = () => loading ||= presenter?.() || import('./lore-presentation');
   const advance = (id: string, value: string, windowMs: number, expected: string, limit: number) => {
     const at = now(); const previous = states.get(id);
@@ -45,9 +46,13 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
     if (!asset?.enabled) return false;
     const target = type === 'entry' ? asset.entries.find(entry => entry.enabled && entry.id === id) : asset.collections.find(collection => collection.enabled && collection.id === id);
     if (!target) return false;
-    const module = await load();
     const scope = options?.scope || makeScope(`reveal:${id}`);
-    if (!asset?.enabled || !scopes.has(scope)) return false;
+    const revealGeneration = generation;
+    const module = await load();
+    if (revealGeneration !== generation || !asset?.enabled || !scopes.has(scope)) {
+      if (!options?.scope) scope.clear();
+      return false;
+    }
     module.showLore(target, new Map(asset.entries.filter(entry => entry.enabled).map(entry => [entry.id, entry])), asset.effects.find(effect => effect.id === (options?.effectId || 'lore-dialog') && effect.enabled) || null, { scope, opener: options?.opener, context: options?.context, reducedMotion });
     return true;
   };
@@ -90,7 +95,7 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
     reveal,
     createScope: makeScope,
     setReducedMotion(value) { reducedMotion = value; if (loading) void loading.then(module => module.setReducedMotion?.(value)); },
-    clearTransient() { scopes.forEach(scope => scope.clear()); states.clear(); },
-    dispose() { scopes.forEach(scope => scope.clear()); loading = null; asset = null; reducedMotion = false; states.clear(); sessionSeen.clear(); },
+    clearTransient() { generation += 1; scopes.forEach(scope => scope.clear()); states.clear(); },
+    dispose() { generation += 1; scopes.forEach(scope => scope.clear()); loading = null; asset = null; reducedMotion = false; states.clear(); sessionSeen.clear(); },
   };
 }

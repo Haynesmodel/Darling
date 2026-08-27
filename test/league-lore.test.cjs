@@ -12,11 +12,16 @@ test('League Lore preserves the supplied year and sensitivity corrections', () =
   assert.equal(byId.get('punishment-connor-cheesesteak').completed_year, 2026);
   assert.equal(byId.get('2022-championship-context').sensitivity, 'respectful');
   const championship = byId.get('2022-championship-context').body.join(' ');
-  assert.match(championship, /101\.08/);
-  assert.match(championship, /100\.40/);
+  assert.doesNotMatch(championship, /101\.08|100\.40/);
   assert.match(championship, /Tee Higgins/);
   assert.match(championship, /active players/);
   assert.equal(byId.get('almanac-nuss-saunders').category, 'league-moment');
+  assert.equal(byId.get('almanac-nuss-saunders').season, 2014);
+  assert.deepEqual(byId.get('almanac-nuss-saunders').anchors, [{ type: 'season', season: 2014 }]);
+  assert.equal(byId.get('punishment-nuss-standup').season, 2019);
+  assert.equal(byId.get('punishment-rishi-ihop').season, 2020);
+  assert.match(byId.get('punishment-rishi-ihop').body.join(' '), /8 hours.*16 pancakes/i);
+  assert.equal(byId.get('punishment-joe-lochte').season, 2015);
   assert.match(byId.get('almanac-nuss-draft-defense').body.join(' '), /took the first defense.*responsible for the second defense/i);
   assert.equal(byId.get('almanac-connor-leveon').category, 'league-moment');
   assert.match(byId.get('almanac-connor-leveon').provenance, /factual narrative detail/);
@@ -71,6 +76,11 @@ test('presentation catalog keeps each migrated effect on its native treatment', 
     ['flies', 'flies'], ['suitcase', 'suitcase'], ['podium', 'podium'],
     ['snake-tail', 'snake-tail'], ['chairs', 'chairs'], ['crown', 'crown'], ['saunders-fog', 'fog'],
   ]) assert.equal(presentations.get(id), presentation);
+  assert.equal(presentations.get('target'), 'target');
+  assert.equal(presentations.get('ticket'), 'ticket');
+  assert.equal(presentations.get('blank-document'), 'blank-document');
+  assert.equal(lore.triggers.find(trigger => trigger.id === 'draft-podium').effect_id, 'target');
+  assert.equal(lore.triggers.find(trigger => trigger.id === 'connor-collapse-story').effect_id, 'ticket');
   assert.equal(lore.effects.find(effect => effect.id === 'respectful-static')?.presentation, 'static');
 });
 
@@ -171,6 +181,24 @@ test('reveal forwards canonical facts to the presentation boundary', async () =>
   await service.reveal('entry', 'record-42', { context: { facts: { score: '42.00' } } });
   assert.equal(received[0].id, 'record-42');
   assert.deepEqual(received[3].context, { facts: { score: '42.00' } });
+});
+
+test('pending presentation cannot reopen lore after transient clear', async () => {
+  let resolve;
+  let shown = 0;
+  const presenter = () => new Promise(done => { resolve = done; });
+  const source = fs.readFileSync(path.join(__dirname, '../src/lore/lore-lazy.ts'), 'utf8');
+  const { code } = esbuild.transformSync(source, { loader: 'ts', format: 'cjs', target: 'node24' });
+  const module = { exports: {} };
+  new Function('module', 'exports', code)(module, module.exports);
+  const service = module.exports.createLazyLoreService(presenter);
+  service.hydrate(lore);
+  assert.equal(service.trigger('record-42-history'), true);
+  service.clearTransient();
+  resolve({ showLore() { shown += 1; } });
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(shown, 0);
 });
 
 test('dynasty and theme sequences require the complete ordered gesture', () => {

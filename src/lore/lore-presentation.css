@@ -9,6 +9,15 @@
 .lore-overlay { align-items: center; display: flex; font-size: 2rem; inset: 0; justify-content: center; pointer-events: none; position: fixed; z-index: 1000; }
 .lore-effect-overlay { animation: lore-fade 2200ms ease-out both; }
 .lore-effect-static { animation: none; opacity: 1; transform: none; }
+.lore-decoration { position: absolute; left: var(--lore-x); top: var(--lore-y); animation: lore-decoration-in 1800ms ease-out var(--lore-delay) both; font-size: 2rem; }
+.lore-effect-static .lore-decoration { animation: none; opacity: 1; }
+.lore-decoration-bagel-shower { font-size: 1.6rem; }
+.lore-decoration-flies { font-size: 1.25rem; }
+.lore-decoration-chairs { top: auto; bottom: 12vh; }
+.lore-decoration-target { font-size: 2.5rem; }
+.lore-decoration-ticket { left: 12vw; top: 45%; transform: rotate(-8deg); }
+.lore-decoration-blank-document { background: Canvas; border: 2px solid currentColor; color: CanvasText; padding: 1.4rem 2rem; }
+@keyframes lore-decoration-in { 0% { opacity: 0; transform: scale(.7) rotate(-10deg); } 25% { opacity: 1; } 100% { opacity: 0; transform: scale(1) rotate(10deg); } }
 .lore-effect-crown { color: var(--lore-crown, currentColor); text-shadow: 0 0 .75rem var(--lore-crown, currentColor); }
 .lore-effect-fog { background: color-mix(in srgb, CanvasText 35%, transparent); filter: blur(.2px); }
 .lore-effect-confetti { color: currentColor; }

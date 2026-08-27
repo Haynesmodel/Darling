@@ -38,7 +38,13 @@
     { "id": "nuss-rishi", "label": "Terps 🐢", "symbol": "🐢", "presentation": "overlay", "tone": "playful", "duration_ms": 2200, "motion_policy": "reduce-to-static", "enabled": true },
     { "id": "singer-nuss", "label": "Butter Bowl 🧈", "symbol": "🧈", "presentation": "overlay", "tone": "playful", "duration_ms": 2200, "motion_policy": "reduce-to-static", "enabled": true },
     { "id": "respectful-static", "label": "League moment", "symbol": "•", "presentation": "static", "tone": "respectful", "duration_ms": 0, "motion_policy": "static", "enabled": true },
-    { "id": "lore-dialog", "label": "League lore", "symbol": "✦", "presentation": "dialog", "tone": "informational", "duration_ms": 0, "motion_policy": "static", "enabled": true }
+    { "id": "lore-dialog", "label": "League lore", "symbol": "✦", "presentation": "dialog", "tone": "informational", "duration_ms": 0, "motion_policy": "static", "enabled": true },
+    { "id": "bagel-shower", "label": "Bagel shower", "symbol": "🥯", "presentation": "overlay", "tone": "playful", "duration_ms": 2200, "motion_policy": "reduce-to-static", "enabled": true },
+    { "id": "flies", "label": "Saunders flies", "symbol": "🪰", "presentation": "overlay", "tone": "playful", "duration_ms": 2200, "motion_policy": "reduce-to-static", "enabled": true },
+    { "id": "suitcase", "label": "Passport trail", "symbol": "🧳", "presentation": "overlay", "tone": "playful", "duration_ms": 2200, "motion_policy": "reduce-to-static", "enabled": true },
+    { "id": "podium", "label": "Draft podium", "symbol": "🏆", "presentation": "callout", "tone": "celebratory", "duration_ms": 2200, "motion_policy": "reduce-to-static", "enabled": true },
+    { "id": "snake-tail", "label": "Snake tail", "symbol": "🐍", "presentation": "callout", "tone": "playful", "duration_ms": 2200, "motion_policy": "reduce-to-static", "enabled": true },
+    { "id": "chairs", "label": "Beach chairs", "symbol": "🏖️", "presentation": "overlay", "tone": "playful", "duration_ms": 2200, "motion_policy": "reduce-to-static", "enabled": true }
   ],
   "entries": [
     { "id": "commissioner-haynes-story", "category": "commissioner", "title": "Haynes, 2014–2017", "teaser": "SEC expansion and the first in-person draft.", "body": ["Joe led the league through SEC expansion and started the in-person draft."], "season": null, "occurred_year": 2014, "completed_year": null, "almanac_edition": 2024, "owners": ["Joe"], "anchors": [], "search_terms": ["commissioner", "Haynes", "SEC"], "provenance": "Supplied league timeline; Almanac context through 2024.", "sensitivity": "ordinary", "enabled": true },
@@ -87,6 +93,19 @@
     { "id": "championship-context", "surface": "history", "activation": "selection", "entry_id": "2022-championship-context", "effect_id": "respectful-static", "once_policy": "repeatable", "enabled": true },
     { "id": "curse-triple", "surface": "curse-tracker", "activation": "triple-activate", "entry_id": "record-42", "effect_id": "respectful-static", "once_policy": "scope", "enabled": true },
     { "id": "owner-emblem", "surface": "owner-hub", "activation": "owner-emblem", "collection_id": "owner-cabinet", "effect_id": "lore-dialog", "once_policy": "repeatable", "enabled": true },
-    { "id": "plot-admin", "surface": "current-season", "activation": "selection", "entry_id": "2025-plot-administration", "effect_id": "commish", "once_policy": "session", "enabled": true }
+    { "id": "plot-admin", "surface": "current-season", "activation": "selection", "entry_id": "2025-plot-administration", "effect_id": "commish", "once_policy": "session", "enabled": true },
+    { "id": "trophy-championship", "surface": "trophy", "activation": "triple-activate", "entry_id": "2025-zook-points-mode", "effect_id": "blue-bloods", "once_policy": "scope", "enabled": true },
+    { "id": "trophy-bagel", "surface": "trophy", "activation": "triple-activate", "entry_id": "record-42", "effect_id": "bagel-shower", "once_policy": "scope", "enabled": true },
+    { "id": "trophy-saunders", "surface": "trophy", "activation": "triple-activate", "entry_id": "punishment-rishi-pie", "effect_id": "flies", "once_policy": "scope", "enabled": true },
+    { "id": "history-curse-flame", "surface": "curse-tracker", "activation": "triple-activate", "entry_id": "record-42", "effect_id": "respectful-static", "once_policy": "scope", "enabled": true },
+    { "id": "rivalry-terps", "surface": "rivalry", "activation": "selection", "entry_id": "2022-championship-context", "effect_id": "nuss-rishi", "once_policy": "repeatable", "enabled": true },
+    { "id": "rivalry-butter", "surface": "rivalry", "activation": "selection", "entry_id": "singer-lawn-story", "effect_id": "singer-nuss", "once_policy": "repeatable", "enabled": true },
+    { "id": "dynasty-last-standing", "surface": "dynasty", "activation": "selection", "entry_id": "2025-zook-points-mode", "effect_id": "lore-dialog", "once_policy": "session", "enabled": true },
+    { "id": "dynasty-dissolved", "surface": "dynasty", "activation": "selection", "entry_id": "asterisk-2020", "effect_id": "lore-dialog", "once_policy": "session", "enabled": true },
+    { "id": "gauntlet-mirror", "surface": "gauntlet", "activation": "selection", "entry_id": "record-42", "effect_id": "lore-dialog", "once_policy": "repeatable", "enabled": true },
+    { "id": "transactions-suitcase", "surface": "transactions", "activation": "selection", "entry_id": "2025-rashid-shaheed", "effect_id": "suitcase", "once_policy": "session", "enabled": true },
+    { "id": "draft-podium", "surface": "draft-spot", "activation": "selection", "entry_id": "2025-draft-order-snare", "effect_id": "podium", "once_policy": "repeatable", "enabled": true },
+    { "id": "draft-snake-tail", "surface": "draft-spot", "activation": "selection", "entry_id": "2025-draft-order-rishi", "effect_id": "snake-tail", "once_policy": "repeatable", "enabled": true },
+    { "id": "current-eliminated", "surface": "current-season", "activation": "selection", "entry_id": "2025-connor-choke", "effect_id": "chairs", "once_policy": "repeatable", "enabled": true }
   ]
 }

@@ -31,7 +31,6 @@ import {
   isRivalries,
   isSeasonSummary,
 } from './generated/asset-validators';
-import { isLeagueLore } from './generated/league-lore-validator';
 import type { ValidatorName } from './generated/asset-validators';
 
 export interface DataDiagnostics {
@@ -108,6 +107,16 @@ function normalizeCurrentSeason(current: CurrentSeasonData): CurrentSeasonData {
 function runtimeRequiredSemanticCheck(games: H2HGame[], version: string): void {
   const invalid = games.find(game => game.teamA === game.teamB);
   if (invalid) throw new DataLoadError('SEMANTIC_ERROR', 'H2H', `Invalid self-matchup in ${invalid.season} week ${invalid.week}`, version);
+}
+
+// Keep the optional browser guard intentionally tiny; full structural and
+// semantic validation runs in scripts/data/schema-validation.cjs.
+function isLeagueLore(value: unknown): value is LeagueLore {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value)
+    && (value as any).schema_version === 1
+    && typeof (value as any).enabled === 'boolean'
+    && Array.isArray((value as any).entries)
+    && Array.isArray((value as any).triggers));
 }
 
 export async function loadLeagueAssets(options: LoaderOptions = {}): Promise<LoadedLeagueAssets> {

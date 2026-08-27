@@ -790,7 +790,7 @@ export interface AssetManifest {
     Rivalries: number;
     CurrentSeason: number;
     TransactionHistory: number;
-    LeagueLore?: number;
+    LeagueLore: number;
     DraftSpot: number;
     DerivedStats: number;
   };

@@ -25,6 +25,8 @@ function Headline({ view }: { view: RivalryViewModel }) {
   const current = streak ? `${formatLeaderText(view.teamA, view.teamB, streak.result, streak.len)} from ${streak.start.date} to ${streak.end.date}` : 'No current streak';
   const last = view.summary.lastMeeting;
   const lastMeeting = last ? `${last.winner === 'Tie' ? 'Tied' : last.winner} ${formatScoreline(last.pf, last.pa)} on ${last.date}` : 'No meeting';
+  const pair = new Set([view.teamA, view.teamB]);
+  const loreTrigger = pair.has('Nuss') && pair.has('Rishi') ? 'rivalry-terps' : pair.has('Singer') && pair.has('Nuss') ? 'rivalry-butter' : null;
   return <div class="card" id="rivalryHeadline">
     <div class="rivalry-headline">
       <div class="rivalry-headline-top">
@@ -32,6 +34,7 @@ function Headline({ view }: { view: RivalryViewModel }) {
         <div id="rivalryShareCard" class="share-card-action-host" data-share-rivalry="1" />
       </div>
       <div class="rivalry-subtitle">{series}</div>
+      {loreTrigger && <button type="button" class="btn rivalry-lore-trigger" data-lore-trigger={loreTrigger} data-lore-owners={`${view.teamA},${view.teamB}`}>Rivalry lore</button>}
       <div class="rivalry-line">{formatScoreline(overall.pf, overall.pa)} total points</div>
       <div class="rivalry-line">Regular {view.summary.regular.recordText} | Playoffs {view.summary.playoffs.recordText} | Saunders {view.summary.saunders.recordText}</div>
       <div class="rivalry-line">Current streak: {current} | Last meeting: {lastMeeting}</div>

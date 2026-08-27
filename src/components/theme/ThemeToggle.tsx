@@ -27,7 +27,10 @@ export default function ThemeToggle({ runtime }: ThemeToggleProps) {
           data-theme-preference={option.value}
           aria-pressed={theme.colorSchemePreference === option.value}
           title={option.title}
-          onClick={() => runtime.setColorSchemePreference(option.value)}
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent('darling:theme-selection', { detail: { preference: option.value } }));
+            runtime.setColorSchemePreference(option.value);
+          }}
         >
           {option.label}
         </button>

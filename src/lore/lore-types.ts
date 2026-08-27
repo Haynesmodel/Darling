@@ -23,6 +23,7 @@ export interface LoreRevealOptions {
   scope?: LoreScope;
   opener?: HTMLElement | null;
   context?: Record<string, unknown>;
+  effectId?: string;
 }
 
 export interface LoreService {

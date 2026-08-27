@@ -83,6 +83,23 @@ function mountShell() {
   mountDataFreshness();
   bindPrimaryNavigation(document);
   bindDropdownChecklists(document);
+  document.addEventListener('click', event => {
+    const source = event.target instanceof HTMLElement ? event.target.closest<HTMLElement>('[data-lore-trigger]') : null;
+    const trigger = source?.dataset.loreTrigger;
+    if (!trigger) return;
+    loreRuntime.trigger(trigger, {
+      owner: source.dataset.loreOwner,
+      season: source.dataset.loreSeason,
+      value: source.dataset.loreValue,
+      activation_value: source.dataset.loreValue,
+      owners: source.dataset.loreOwners?.split(',').map(owner => owner.trim()).filter(Boolean),
+      opener: source,
+    });
+  });
+  window.addEventListener('darling:theme-selection', event => {
+    const value = (event as CustomEvent<{ preference?: string }>).detail?.preference;
+    if (value) loreRuntime.trigger('theme-sunday-night', { value });
+  });
   subscribeToReducedMotion((reduced) => {
     document.documentElement.dataset.reducedMotion = reduced ? 'reduce' : 'no-preference';
     window.dispatchEvent(new CustomEvent('darling:motionchange', { detail: { reduced } }));

@@ -130,11 +130,13 @@ function TradeCard({ trade, model }: { trade: Trade; model: TransactionModel }) 
     <p class="transaction-method">
       Method: starter fantasy points actually produced for each receiving owner after the trade through the last completed scoring week.
     </p>
+    {trade.status === 'final' && !trade.even && trade.edge_owner && <button type="button" class="btn transaction-lore-receipt" data-lore-trigger="transactions-receipt" data-lore-value={trade.transaction_id}>Open on-field receipt</button>}
   </article>;
 }
 
 function JourneyView({ journey, model }: { journey: Journey | null; model: TransactionModel }) {
   if (!journey) return <Empty>Choose a player to see an ownership journey.</Empty>;
+  const distinctOwners = new Set(journey.stints.map(stint => stint.owner));
   return <div class="transaction-journey" id={`transaction-player-${journey.player_id}`} tabindex={-1}>
     <h4>{name(model, journey.player_id)}</h4>
     <ol>
@@ -151,6 +153,7 @@ function JourneyView({ journey, model }: { journey: Journey | null; model: Trans
         >Source move</StateLink>}
       </li>)}
     </ol>
+    {distinctOwners.size >= 3 && <button type="button" class="btn transaction-lore-journey" data-lore-trigger="transactions-suitcase" data-lore-value={journey.player_id}>Reveal passport trail</button>}
   </div>;
 }
 

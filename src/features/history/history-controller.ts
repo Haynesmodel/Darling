@@ -176,6 +176,12 @@ export function createFeatureController(): DarlingFeatureController {
     if (!mount) return;
     const view = seasonCalloutView(selectedTeam, { allTeams: ALL_TEAMS, selectedSeasons, seasonSummaries: context.data.seasonSummaries, champNoteFn: champNote, saundersNoteFn: saundersNote });
     mount.innerHTML = view.html;
+    if (selectedTeam !== ALL_TEAMS && selectedSeasons.has(2022) && (selectedTeam === 'Zubs' || selectedTeam === 'Rishi')) {
+      const button = context.document.createElement('button');
+      button.type = 'button'; button.className = 'btn history-lore-trigger'; button.textContent = 'Open 2022 championship context';
+      button.dataset.loreTrigger = 'championship-context'; button.dataset.loreSeason = '2022'; button.dataset.loreOwner = selectedTeam;
+      mount.append(button);
+    }
     if (view.resetEffect) lastEffectKey = null;
       if (view.effectKey && view.effectKey !== lastEffectKey) lastEffectKey = view.effectKey;
   };

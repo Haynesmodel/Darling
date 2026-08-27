@@ -13,6 +13,10 @@ export function showLore(target: Entry | Collection, entries: Map<string, Entry>
   dialog.append(p(doc, 'entry_ids' in target ? target.summary : target.teaser));
   if ('entry_ids' in target) target.entry_ids.forEach(id => { const entry = entries.get(id); if (entry) dialog!.append(p(doc, `${entry.title}: ${entry.teaser}`)); }); else target.body.forEach(value => dialog!.append(p(doc, value)));
   dialog.addEventListener('cancel', event => { event.preventDefault(); close(); }); doc.body.append(dialog); doc.body.classList.add('lore-dialog-open');
+  if (effect && effect.presentation !== 'dialog' && effect.presentation !== 'static') {
+    const overlay = doc.createElement('div'); overlay.className = `lore-overlay lore-effect-overlay${options.reducedMotion ? ' lore-effect-static' : ''}`; overlay.setAttribute('aria-hidden', 'true'); overlay.textContent = `${effect.symbol} ${effect.label}`; doc.body.append(overlay); options.scope?.add(overlay);
+    (options.scope?.timer || ((callback: () => void, duration: number) => window.setTimeout(callback, Math.min(2500, Math.max(0, duration)))))(() => overlay.remove(), effect.duration_ms);
+  }
   if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open', ''); title.focus(); options.scope?.add(dialog);
 }
 export function disposeLorePresentation() { close(); }

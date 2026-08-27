@@ -12,6 +12,8 @@ export default function DraftSpotHero({ model }: { model: DraftSpotViewModel }) 
     [DRAFT_METRICS[state.metric].label, rankedPicks[0] ? draftPositionLabel(rankedPicks[0].draft_pick, state.normalize) : '—', rankedPicks[0] ? `Selected metric leader · n=${rankedPicks[0].n}` : 'No sample'],
     ['Correlation', formatSigned(hero.correlation), `Draft percentile to finish score · points r ${formatSigned(hero.pointCorrelation)}`],
   ];
+  const first = model.picks.length ? Math.min(...model.picks) : null;
+  const last = model.picks.length ? Math.max(...model.picks) : null;
   return (
     <div class="draft-hero-inner">
       <div>
@@ -28,6 +30,8 @@ export default function DraftSpotHero({ model }: { model: DraftSpotViewModel }) 
           </div>
         ))}
       </div>
+      {state.mode === 'pick' && state.selectedPick === first && <button type="button" class="btn draft-lore-trigger" data-lore-trigger="draft-podium" data-lore-value={first}>Reveal first-slot lore</button>}
+      {state.mode === 'pick' && state.selectedPick === last && last !== first && <button type="button" class="btn draft-lore-trigger" data-lore-trigger="draft-snake-tail" data-lore-value={last}>Reveal last-slot lore</button>}
     </div>
   );
 }

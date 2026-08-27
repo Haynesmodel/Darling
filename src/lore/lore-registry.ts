@@ -82,7 +82,7 @@ export function createLoreRegistry(win: Window = window): LoreService {
       }
       if (trigger.once_policy === 'session' && once.has(id)) return false;
       if (trigger.once_policy === 'session') once.add(id);
-      void service.reveal(entry ? 'entry' : 'collection', entry?.id || collection!.id, { context });
+      void service.reveal(entry ? 'entry' : 'collection', entry?.id || collection!.id, { context, effectId: trigger.effect_id });
       return true;
     },
     async reveal(targetType, targetId, options = {}) {
@@ -90,7 +90,7 @@ export function createLoreRegistry(win: Window = window): LoreService {
       const target = targetType === 'entry' ? entries().get(targetId) : collections().get(targetId);
       if (!target) return false;
       const scope = options.scope || createScope(`reveal:${targetId}`, scopes, win);
-      const effect = targetType === 'entry' ? effects().get('lore-dialog') || null : effects().get('lore-dialog') || null;
+      const effect = effects().get(options.effectId || 'lore-dialog') || null;
       const module = await loadPresentation();
       if (!asset?.enabled || !scopes.has(scope)) return false;
       module.showLore(target, entries(), effect, { scope, opener: options.opener, reducedMotion });

@@ -1476,6 +1476,7 @@ test('interactive tables mount across rivalry, current season, and trophy pages'
   await rivalryGames.getByRole('button', { name: 'Last five meetings' }).click();
   await expect(rivalryGames.locator('tbody > tr:not(.table-expanded-row)')).toHaveCount(5);
   await rivalryGames.locator('.table-expand-button').first().click();
+  await expect(rivalryGames.locator('.table-expanded-row')).toHaveCount(1);
   await expect(rivalryGames.locator('.table-expanded-row')).toContainText('Running series record');
 
   await page.goto('/?tab=current&currentOwner=Joe&currentView=standings');

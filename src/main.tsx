@@ -93,6 +93,7 @@ function mountShell() {
       season: data.loreSeason,
       value: data.loreValue,
       owners: data.loreOwners?.split(',').map(owner => owner.trim()).filter(Boolean),
+      facts: (() => { try { return data.loreFacts ? JSON.parse(data.loreFacts) : undefined; } catch { return undefined; } })(),
       opener: source,
     });
   });

@@ -13,6 +13,46 @@ export type SeasonSummary = SeasonSummaryRow[];
  */
 export type RivalryDefinitions = RivalryDefinition[];
 export type SearchTerms = string[];
+export type Trigger = {
+  id: string;
+  surface:
+    | 'global-search'
+    | 'history'
+    | 'curse-tracker'
+    | 'trophy'
+    | 'rivalry'
+    | 'dynasty'
+    | 'gauntlet'
+    | 'transactions'
+    | 'draft-spot'
+    | 'current-season'
+    | 'owner-hub'
+    | 'theme';
+  activation:
+    | 'search'
+    | 'triple-activate'
+    | 'selection'
+    | 'filter-state'
+    | 'render-condition'
+    | 'theme-sequence'
+    | 'owner-emblem'
+    | 'collection-open';
+  entry_id?: string;
+  collection_id?: string;
+  effect_id?: string;
+  match?: Match;
+  once_policy: 'session' | 'repeatable' | 'scope';
+  enabled: boolean;
+} & (
+  | {
+      entry_id: string;
+      [k: string]: any;
+    }
+  | {
+      collection_id: string;
+      [k: string]: any;
+    }
+);
 
 export interface LeagueAssetBundle {
   h2h: H2HGameHistory;
@@ -494,37 +534,6 @@ export interface Entry {
   search_terms: SearchTerms;
   provenance: string;
   sensitivity: 'ordinary' | 'sensitive' | 'respectful';
-  enabled: boolean;
-}
-export interface Trigger {
-  id: string;
-  surface:
-    | 'global-search'
-    | 'history'
-    | 'curse-tracker'
-    | 'trophy'
-    | 'rivalry'
-    | 'dynasty'
-    | 'gauntlet'
-    | 'transactions'
-    | 'draft-spot'
-    | 'current-season'
-    | 'owner-hub'
-    | 'theme';
-  activation:
-    | 'search'
-    | 'triple-activate'
-    | 'selection'
-    | 'filter-state'
-    | 'render-condition'
-    | 'theme-sequence'
-    | 'owner-emblem'
-    | 'collection-open';
-  entry_id?: string;
-  collection_id?: string;
-  effect_id?: string;
-  match?: Match;
-  once_policy: 'session' | 'repeatable' | 'scope';
   enabled: boolean;
 }
 export interface Match {

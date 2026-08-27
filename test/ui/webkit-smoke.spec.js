@@ -15,6 +15,7 @@ test.afterEach(async ({ page }) => {
 });
 
 test('WEBKIT-01 boots the verified Pulse snapshot without overflow', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-08-14T12:00:00Z'));
   const jsonResponses = [];
   page.on('response', response => {
     if (new URL(response.url()).pathname.includes('/assets/') && response.url().includes('.json')) {

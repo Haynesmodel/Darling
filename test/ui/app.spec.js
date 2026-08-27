@@ -92,6 +92,9 @@ test('theme context helpers cover owner, rivalry, postseason, and league fallbac
 });
 
 test('verified JSON transport rejects malformed and oversized browser responses', async ({ page }) => {
+  if (process.env.PLAYWRIGHT_SERVER === 'preview') {
+    await page.clock.setFixedTime(new Date('2026-08-14T12:00:00Z'));
+  }
   await page.goto('/');
   if (process.env.PLAYWRIGHT_SERVER === 'preview') {
     await expect(page.locator('.data-freshness summary')).toContainText('2025 season final');

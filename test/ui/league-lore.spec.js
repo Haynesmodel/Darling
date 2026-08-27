@@ -3,8 +3,10 @@ import path from 'node:path';
 import { expect, test } from './coverage-fixture.js';
 import { createSnapshotFixture } from './snapshot-fixture.js';
 
-const manifest = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'dist/.vite/manifest.json'), 'utf8'));
-const loreChunk = path.basename(manifest['src/lore/lore-presentation.ts'].file);
+const preview = process.env.PLAYWRIGHT_SERVER === 'preview';
+const loreRequest = preview
+  ? `/${path.basename(JSON.parse(fs.readFileSync(path.join(process.cwd(), 'dist/.vite/manifest.json'), 'utf8'))['src/lore/lore-presentation.ts'].file)}`
+  : '/src/lore/lore-presentation.ts';
 
 test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-08-14T23:59:00Z'));
@@ -13,7 +15,7 @@ test.beforeEach(async ({ page }) => {
 test('owner emblem is keyboard-operable and loads lore only after the third activation', async ({ page }) => {
   const loreRequests = [];
   page.on('request', request => {
-    if (request.url().includes(`/${loreChunk}`)) loreRequests.push(request.url());
+    if (request.url().includes(loreRequest)) loreRequests.push(request.url());
   });
   await page.goto('/?tab=owner&owner=Connor');
   const trigger = page.locator('[data-lore-trigger="owner-emblem"]');
@@ -163,4 +165,24 @@ test('2022 championship lore follows a mutated canonical H2H fixture', async ({ 
   await expect(dialog).toContainText('Zubs 123.45 – Rishi 67.89');
   await expect(dialog).not.toContainText('Zubs 101.08 – Rishi 100.40');
   await dialog.locator('button[aria-label="Close league lore"]').click();
+});
+
+test('lore presentation primitives render bounded distinct decorations and clean up', async ({ page }) => {
+  const reveal = async (url, trigger, presentation, count, activations = 1) => {
+    await page.goto(url);
+    const button = page.locator(`[data-lore-trigger="${trigger}"]`);
+    await expect(button).toBeVisible();
+    for (let index = 0; index < activations; index += 1) await button.click();
+    const overlay = page.locator(`.lore-overlay[data-lore-presentation="${presentation}"]`);
+    await expect(overlay).toHaveCount(1);
+    await expect(overlay.locator('.lore-decoration')).toHaveCount(count);
+    await page.locator('dialog button[aria-label="Close league lore"]').click();
+    await expect(page.locator('.lore-overlay, dialog')).toHaveCount(0);
+  };
+
+  await reveal('/?tab=draft&draftMode=pick&draftPick=4', 'draft-rishi-pick-four', 'target', 3);
+  await reveal('/?tab=draft&draftMode=pick&draftPick=1', 'expansion-story', 'chairs', 2);
+  await reveal('/?tab=history&team=Connor&seasons=2025', 'connor-collapse-story', 'ticket', 1);
+  await reveal('/?tab=history&team=Plot&seasons=2025', 'plot-rankings-story', 'blank-document', 1);
+  await reveal('/?tab=trophy&team=Zook', 'trophy-bagel', 'bagel-shower', 14, 3);
 });

@@ -5,9 +5,9 @@ let openDialog: HTMLDialogElement | null = null;
 let restoreFocus: HTMLElement | null = null;
 let openDocument: Document | null = null;
 let openScope: LoreScope | null = null;
-const activeOverlays = new Set<HTMLElement>();
+let openOverlay: HTMLElement | null = null;
 const p = (doc: Document, value: string) => Object.assign(doc.createElement('p'), { textContent: value });
-function close() { const doc = openDocument || openDialog?.ownerDocument; const scope = openScope; openScope = null; if (openDialog?.open) openDialog.close(); openDialog?.remove(); activeOverlays.forEach(node => node.remove()); activeOverlays.clear(); openDialog = null; scope?.clear(); if (doc) doc.body.classList.remove('lore-dialog-open'); restoreFocus?.focus(); restoreFocus = null; openDocument = null; }
+function close() { const doc = openDocument || openDialog?.ownerDocument; const scope = openScope; openScope = null; if (openDialog?.open) openDialog.close(); openDialog?.remove(); openOverlay?.remove(); openOverlay = null; openDialog = null; scope?.clear(); if (doc) doc.body.classList.remove('lore-dialog-open'); restoreFocus?.focus(); restoreFocus = null; openDocument = null; }
 export function showLore(target: Entry | Collection, entries: Map<string, Entry>, effect: Effect | null, options: { scope?: LoreScope; opener?: HTMLElement | null; reducedMotion?: boolean; context?: Record<string, unknown> } = {}) {
   close(); const doc = options.opener?.ownerDocument || document; openDocument = doc; openScope = options.scope || null; restoreFocus = options.opener || null;
   options.scope?.onClear(close);
@@ -38,10 +38,10 @@ export function showLore(target: Entry | Collection, entries: Map<string, Entry>
   doc.body.append(dialog); doc.body.classList.add('lore-dialog-open');
   if (effect && effect.presentation !== 'dialog' && effect.presentation !== 'static') {
     const presentation = effect.presentation.replace(/[^a-z0-9-]/g, '-');
-    const overlay = doc.createElement('div'); overlay.className = `lore-overlay lore-effect-overlay lore-effect-${presentation}${options.reducedMotion ? ' lore-effect-static' : ''}`; overlay.dataset.lorePresentation = presentation; overlay.setAttribute('aria-hidden', 'true'); overlay.textContent = `${effect.symbol} ${effect.label}`; doc.body.append(overlay); activeOverlays.add(overlay); options.scope?.add(overlay);
-    (options.scope?.timer || ((callback: () => void, duration: number) => window.setTimeout(callback, Math.min(2500, Math.max(0, duration)))))(() => { overlay.remove(); activeOverlays.delete(overlay); }, effect.duration_ms);
+    const overlay = doc.createElement('div'); overlay.className = `lore-overlay lore-effect-overlay lore-effect-${presentation}${options.reducedMotion ? ' lore-effect-static' : ''}`; overlay.dataset.lorePresentation = presentation; overlay.setAttribute('aria-hidden', 'true'); overlay.textContent = `${effect.symbol} ${effect.label}`; doc.body.append(overlay); openOverlay = overlay; options.scope?.add(overlay);
+    (options.scope?.timer || ((callback: () => void, duration: number) => window.setTimeout(callback, Math.min(2500, Math.max(0, duration)))))(() => { if (openOverlay === overlay) openOverlay = null; overlay.remove(); }, effect.duration_ms);
   }
   if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open', ''); title.focus(); options.scope?.add(dialog);
 }
 export function disposeLorePresentation() { close(); }
-export function setReducedMotion(reduced: boolean) { if (reduced) { activeOverlays.forEach(node => node.remove()); activeOverlays.clear(); } }
+export function setReducedMotion(reduced: boolean) { if (reduced) { openOverlay?.remove(); openOverlay = null; } }

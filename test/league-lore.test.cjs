@@ -16,6 +16,40 @@ test('League Lore preserves the supplied year and sensitivity corrections', () =
   assert.match(championship, /100\.40/);
   assert.match(championship, /Tee Higgins/);
   assert.match(championship, /active players/);
+  assert.equal(byId.get('almanac-nuss-saunders').category, 'league-moment');
+  assert.match(byId.get('almanac-nuss-draft-defense').body.join(' '), /took the first defense.*responsible for the second defense/i);
+  assert.equal(byId.get('almanac-connor-leveon').category, 'league-moment');
+  assert.match(byId.get('almanac-connor-leveon').provenance, /factual narrative detail/);
+});
+
+test('Almanac inventory covers all ten owner sections and reviewed narrative clusters', () => {
+  const almanac = lore.entries.filter(entry => entry.almanac_edition === 2024 && entry.provenance.includes('Darling 2024 Almanac'));
+  const owners = ['Joe', 'Joel', 'Shap', 'Singer', 'Nuss', 'Plot', 'Zubs', 'Connor', 'Rishi', 'Zook'];
+  for (const owner of owners) {
+    const entries = almanac.filter(entry => entry.owners.includes(owner));
+    assert.ok(entries.length >= 2, `${owner} needs distinct reviewed Almanac entries`);
+    assert.ok(entries.some(entry => entry.anchors.length > 0), `${owner} needs a canonical or season anchor`);
+    assert.ok(entries.every(entry => entry.provenance.includes('Darling 2024 Almanac')), `${owner} entry provenance is incomplete`);
+  }
+  for (const id of [
+    'almanac-shap-scheduling', 'almanac-shap-first-pick', 'almanac-singer-relay',
+    'almanac-singer-counterfactual', 'almanac-nuss-saunders', 'almanac-nuss-baldwin',
+    'almanac-nuss-draft-defense', 'almanac-nuss-relay', 'almanac-plot-controversy', 'almanac-plot-vpc-trade',
+    'almanac-connor-profile', 'almanac-connor-leveon', 'almanac-connor-saunders',
+    'almanac-zubs-run', 'almanac-zook-draft-absence', 'almanac-joe-commissioner',
+    'almanac-joel-commissioner', 'almanac-rishi-keys', 'almanac-joe-collapse',
+    'almanac-rishi-beerpong',
+  ]) {
+    const entry = byId.get(id);
+    assert.ok(entry, `missing Almanac cluster ${id}`);
+    assert.ok(lore.collections.some(collection => collection.entry_ids.includes(id)), `${id} is not reachable from a collection`);
+    assert.ok(entry.search_terms.length >= 2, `${id} needs deterministic search terms`);
+    assert.match(entry.provenance, /reviewed page/);
+  }
+  assert.match(byId.get('almanac-nuss-relay').body.join(' '), /tree.*dizzy bat.*three spins/i);
+  assert.match(byId.get('almanac-rishi-keys').body.join(' '), /intentional.*Vive.*first five/i);
+  assert.match(byId.get('almanac-zook-draft-absence').body.join(' '), /did not try.*2015–18.*missing/i);
+  assert.match(byId.get('almanac-plot-controversy').body.join(' '), /kicked out of the J.*three later one-sided trades/i);
 });
 
 test('Singer lawn story is in Draft Weekend, never Punishment Museum', () => {

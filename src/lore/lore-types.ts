@@ -30,8 +30,6 @@ export interface LoreRevealOptions {
 export interface LoreService {
   hydrate(asset: LeagueLore | null): void;
   entry(id: string): Entry | null;
-  collection(id: string): Collection | null;
-  effect(id: string): Effect | null;
   searchDocuments(): LoreSearchDocument[];
   trigger(id: string, context?: Record<string, unknown>): boolean;
   reveal(targetType: 'entry' | 'collection', targetId: string, options?: LoreRevealOptions): Promise<boolean>;
@@ -39,7 +37,6 @@ export interface LoreService {
   setReducedMotion(reduced: boolean): void;
   clearTransient(): void;
   dispose(): void;
-  isEnabled(): boolean;
 }
 
 export type LoreTrigger = Trigger;

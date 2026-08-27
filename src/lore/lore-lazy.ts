@@ -55,8 +55,6 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
   return {
     hydrate(next) { asset = next; },
     entry(id) { return asset?.entries.find(entry => entry.enabled && entry.id === id) || null; },
-    collection(id) { return asset?.collections.find(collection => collection.enabled && collection.id === id) || null; },
-    effect(id) { return asset?.effects.find(effect => effect.enabled && effect.id === id) || null; },
     searchDocuments: docs,
     trigger(id, context = {}) {
       if (!asset?.enabled) return false;
@@ -94,6 +92,5 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
     setReducedMotion(value) { reducedMotion = value; if (loading) void loading.then(module => module.setReducedMotion?.(value)); },
     clearTransient() { scopes.forEach(scope => scope.clear()); states.clear(); },
     dispose() { scopes.forEach(scope => scope.clear()); loading = null; asset = null; reducedMotion = false; states.clear(); sessionSeen.clear(); },
-    isEnabled() { return !!asset?.enabled; },
   };
 }

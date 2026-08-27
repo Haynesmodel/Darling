@@ -60,27 +60,27 @@ test('lore incantations index the authored catalog and execute a result', async 
     await expect(result).toBeVisible();
     await page.keyboard.press('Escape');
   };
-  await search('42', 'League Moments');
-  await search('bagel', 'League Moments');
+  await search('42', '42.00 Record');
+  await search('bagel', 'Bagel Shower');
   await search('receipts', 'Hall of Asterisks');
-  await search('birds clinch', 'League Moments');
+  await search('birds clinch', 'Clinched');
   await search('who is the darling', 'League Moments');
   await search('what if', 'Hall of Asterisks');
-  await search('Rashid Shaheed', 'Draft Weekend Museum');
-  await search('Plot power rankings', 'League Moments');
+  await search('Rashid Shaheed', 'The Rashid Shaheed Declaration');
+  await search('Plot power rankings', "Plot's Missing Power Rankings");
   await search('commissioner', 'Commissioner Office');
 
   await page.locator('.search-trigger').click();
   const palette = page.getByRole('dialog', { name: 'Search The Darling' });
   await palette.getByRole('combobox').fill('42');
-  await palette.getByRole('option').filter({ hasText: 'League Moments' }).first().click();
-  await expect(page.getByRole('dialog', { name: /League Moments/ })).toBeVisible();
+  await palette.getByRole('option').filter({ hasText: '42.00 Record' }).first().click();
+  await expect(page.getByRole('dialog', { name: /42\.00 Record/ })).toBeVisible();
   await expect(page.locator('#global-search-dialog')).toHaveCount(0);
 });
 
 test('draft lore controls are limited to their canonical 2025 boundaries', async ({ page }) => {
   await page.goto('/?tab=draft&draftMode=pick&draftPick=1');
-  await expect(page.locator('[data-lore-trigger="draft-boundary-first"]')).toHaveAttribute('data-lore-season', '2025');
+  await expect(page.locator('[data-lore-trigger="draft-boundary-first"]')).not.toHaveAttribute('data-lore-season', '2025');
   await expect(page.locator('[data-lore-trigger="draft-boundary-first"]')).toHaveAttribute('data-lore-facts', /"draft_slot":1/);
   await expect(page.locator('[data-lore-trigger="draft-podium"]')).toHaveAttribute('data-lore-owner', 'Snare');
   await expect(page.locator('[data-lore-trigger="draft-rishi-pick-four"]')).toHaveCount(0);
@@ -93,4 +93,21 @@ test('draft lore controls are limited to their canonical 2025 boundaries', async
   await page.goto('/?tab=draft&draftMode=pick&draftPick=12');
   await expect(page.locator('[data-lore-trigger="draft-snake-tail"]')).toHaveAttribute('data-lore-facts', /"draft_slot":12/);
   await expect(page.locator('[data-lore-trigger="draft-podium"], [data-lore-trigger="draft-rishi-pick-four"]')).toHaveCount(0);
+
+  await page.goto('/?tab=draft&draftMode=pick&draftPick=10&draftStart=2017&draftEnd=2024');
+  await expect(page.locator('[data-lore-trigger="draft-snake-tail"]')).toHaveAttribute('data-lore-facts', /"range":"2017-2024"/);
+  await expect(page.locator('[data-lore-trigger="expansion-story"], [data-lore-trigger="draft-podium"], [data-lore-trigger="draft-rishi-pick-four"]')).toHaveCount(0);
+});
+
+test('2025 current stories remain reachable from History with canonical facts', async ({ page }) => {
+  for (const [owner, trigger] of [['Zook', 'zook-points-story'], ['Connor', 'connor-collapse-story'], ['Plot', 'plot-rankings-story']]) {
+    await page.goto(`/?tab=history&team=${owner}&seasons=2025`);
+    const button = page.locator(`[data-lore-trigger="${trigger}"]`);
+    await expect(button).toHaveAttribute('data-lore-season', '2025');
+    await expect(button).toHaveAttribute('data-lore-owner', owner);
+    await expect(button).toHaveAttribute('data-lore-facts', /"record":"/);
+  }
+  await expect(page.locator('[data-lore-trigger="plot-admin"]')).toBeVisible();
+  await page.goto('/?tab=history&team=Plot&seasons=2024');
+  await expect(page.locator('[data-lore-trigger="plot-rankings-story"], [data-lore-trigger="plot-admin"]')).toHaveCount(0);
 });

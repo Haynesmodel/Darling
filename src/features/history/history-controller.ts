@@ -183,7 +183,7 @@ export function createFeatureController(): DarlingFeatureController {
       button.dataset.loreTrigger = view.effectType === 'champion' ? 'history-champion' : 'history-saunders';
       button.dataset.loreSeason = String(view.season); button.dataset.loreOwner = view.team;
       const canonical = context.data.seasonSummaries.find(row => row.owner === view.team && row.season === view.season);
-      if (canonical) button.dataset.loreFacts = JSON.stringify({ record: `${canonical.wins}-${canonical.losses}-${canonical.ties || 0}`, finish: canonical.finish, champion: canonical.champion, saunders: canonical.saunders, points_for: canonical.points_for, points_against: canonical.points_against });
+      if (canonical) button.dataset.loreFacts = JSON.stringify({ record: `${canonical.wins}-${canonical.losses}${canonical.ties ? `-${canonical.ties}` : ''}`, finish: canonical.finish, champion: canonical.champion, saunders: canonical.saunders, points_for: canonical.points_for, points_against: canonical.points_against });
       mount.append(button);
     }
     if (selectedTeam === 'Nuss' && selectedSeasons.has(2019)) {
@@ -197,6 +197,22 @@ export function createFeatureController(): DarlingFeatureController {
       button.type = 'button'; button.className = 'btn history-lore-trigger'; button.textContent = 'Open 2022 championship context';
       button.dataset.loreTrigger = 'championship-context'; button.dataset.loreSeason = '2022'; button.dataset.loreOwner = selectedTeam;
       mount.append(button);
+    }
+    if (selectedTeam !== ALL_TEAMS && selectedSeasons.has(2025) && (selectedTeam === 'Zook' || selectedTeam === 'Connor' || selectedTeam === 'Plot')) {
+      const trigger = selectedTeam === 'Zook' ? 'zook-points-story' : selectedTeam === 'Connor' ? 'connor-collapse-story' : 'plot-rankings-story';
+      const label = selectedTeam === 'Zook' ? 'Reveal points-mode title run' : selectedTeam === 'Connor' ? 'Reveal 2025 collapse' : 'Reveal missing power rankings';
+      const summary = context.data.seasonSummaries.find(row => row.owner === selectedTeam && row.season === 2025);
+      if (summary) {
+        const facts = JSON.stringify({ record: `${summary.wins}-${summary.losses}${summary.ties ? `-${summary.ties}` : ''}`, finish: summary.finish, champion: summary.champion, saunders: summary.saunders, points_for: summary.points_for, points_against: summary.points_against, team_count: context.data.seasonSummaries.filter(row => row.season === 2025).length });
+        const buttons: Array<readonly [string, string]> = [[trigger, label]];
+        if (selectedTeam === 'Plot') buttons.push(['plot-admin', 'Reveal Plot administration'] as const);
+        buttons.forEach(([buttonTrigger, buttonLabel]) => {
+          const button = context.document.createElement('button');
+          button.type = 'button'; button.className = 'btn history-lore-trigger'; button.textContent = buttonLabel;
+          button.dataset.loreTrigger = buttonTrigger; button.dataset.loreSeason = '2025'; button.dataset.loreOwner = selectedTeam; button.dataset.loreFacts = facts;
+          mount.append(button);
+        });
+      }
     }
     if (view.resetEffect) lastEffectKey = null;
       if (view.effectKey && view.effectKey !== lastEffectKey) lastEffectKey = view.effectKey;

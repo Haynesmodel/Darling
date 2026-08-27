@@ -85,13 +85,14 @@ function mountShell() {
   bindDropdownChecklists(document);
   document.addEventListener('click', event => {
     const source = event.target instanceof HTMLElement ? event.target.closest<HTMLElement>('[data-lore-trigger]') : null;
-    const trigger = source?.dataset.loreTrigger;
+    const data = source?.dataset;
+    const trigger = data?.loreTrigger;
     if (!trigger) return;
     loreRuntime.trigger(trigger, {
-      owner: source.dataset.loreOwner,
-      season: source.dataset.loreSeason,
-      value: source.dataset.loreValue,
-      owners: source.dataset.loreOwners?.split(',').map(owner => owner.trim()).filter(Boolean),
+      owner: data.loreOwner,
+      season: data.loreSeason,
+      value: data.loreValue,
+      owners: data.loreOwners?.split(',').map(owner => owner.trim()).filter(Boolean),
       opener: source,
     });
   });

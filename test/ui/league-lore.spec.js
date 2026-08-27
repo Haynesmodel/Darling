@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test } from './coverage-fixture.js';
+import { createSnapshotFixture } from './snapshot-fixture.js';
 
 const manifest = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'dist/.vite/manifest.json'), 'utf8'));
 const loreChunk = path.basename(manifest['src/lore/lore-presentation.ts'].file);
@@ -78,6 +79,26 @@ test('lore incantations index the authored catalog and execute a result', async 
   await expect(page.locator('#global-search-dialog')).toHaveCount(0);
 });
 
+test('cached lore search action keeps modal focus and restores the search opener', async ({ page }) => {
+  await page.goto('/?tab=owner&owner=Connor');
+  const emblem = page.locator('[data-lore-trigger="owner-emblem"]');
+  await emblem.press('Enter'); await emblem.press('Enter'); await emblem.press('Enter');
+  await expect(page.locator('dialog h2')).toBeFocused();
+  await page.locator('dialog button[aria-label="Close league lore"]').click();
+  await expect(page.locator('dialog')).toHaveCount(0);
+  const searchTrigger = page.locator('.search-trigger');
+  await searchTrigger.click();
+  const palette = page.getByRole('dialog', { name: 'Search The Darling' });
+  await palette.getByRole('combobox').fill('42');
+  const result = palette.getByRole('option').filter({ hasText: '42.00 Record' }).first();
+  await result.click();
+  const loreDialog = page.locator('dialog[aria-labelledby="lore-dialog-title"]');
+  await expect(loreDialog).toBeVisible();
+  await expect(loreDialog.locator('h2')).toBeFocused();
+  await loreDialog.locator('button[aria-label="Close league lore"]').click();
+  await expect(searchTrigger).toBeFocused();
+});
+
 test('draft lore controls are limited to their canonical 2025 boundaries', async ({ page }) => {
   await page.goto('/?tab=draft&draftMode=pick&draftPick=1');
   await expect(page.locator('[data-lore-trigger="draft-boundary-first"]')).not.toHaveAttribute('data-lore-season', '2025');
@@ -110,4 +131,36 @@ test('2025 current stories remain reachable from History with canonical facts', 
   await expect(page.locator('[data-lore-trigger="plot-admin"]')).toBeVisible();
   await page.goto('/?tab=history&team=Plot&seasons=2024');
   await expect(page.locator('[data-lore-trigger="plot-rankings-story"], [data-lore-trigger="plot-admin"]')).toHaveCount(0);
+});
+
+test('2022 championship lore displays owner-oriented canonical H2H scores', async ({ page }) => {
+  await page.goto('/?tab=history&team=Zubs&seasons=2022');
+  const button = page.locator('[data-lore-trigger="championship-context"]');
+  await expect(button).toBeVisible();
+  await button.click();
+  const dialog = page.locator('dialog');
+  await expect(dialog).toContainText('Zubs 101.08 – Rishi 100.40');
+  await expect(dialog).toContainText('record');
+  await dialog.locator('button[aria-label="Close league lore"]').click();
+});
+
+test('2022 championship lore follows a mutated canonical H2H fixture', async ({ page }) => {
+  const fixture = createSnapshotFixture({
+    mutations: {
+      H2H: games => {
+        const championship = games.find(game => game.season === 2022 && game.week === 17 && game.round === 'Championship' && game.teamA === 'Zubs' && game.teamB === 'Rishi');
+        championship.scoreA = 123.45;
+        championship.scoreB = 67.89;
+      },
+    },
+  });
+  await fixture.install(page);
+  await page.goto('/?tab=history&team=Zubs&seasons=2022');
+  const button = page.locator('[data-lore-trigger="championship-context"]');
+  await expect(button).toBeVisible();
+  await button.click();
+  const dialog = page.locator('dialog');
+  await expect(dialog).toContainText('Zubs 123.45 – Rishi 67.89');
+  await expect(dialog).not.toContainText('Zubs 101.08 – Rishi 100.40');
+  await dialog.locator('button[aria-label="Close league lore"]').click();
 });

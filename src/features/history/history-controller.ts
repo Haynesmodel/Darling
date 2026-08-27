@@ -197,7 +197,12 @@ export function createFeatureController(): DarlingFeatureController {
       button.type = 'button'; button.className = 'btn history-lore-trigger'; button.textContent = 'Open 2022 championship context';
       button.dataset.loreTrigger = 'championship-context'; button.dataset.loreSeason = '2022'; button.dataset.loreOwner = selectedTeam;
       const summary = context.data.seasonSummaries.find(row => row.owner === selectedTeam && row.season === 2022);
-      if (summary) button.dataset.loreFacts = JSON.stringify({ record: `${summary.wins}-${summary.losses}${summary.ties ? `-${summary.ties}` : ''}`, finish: summary.finish, champion: summary.champion, saunders: summary.saunders, points_for: summary.points_for, points_against: summary.points_against, team_count: context.data.seasonSummaries.filter(row => row.season === 2022).length });
+      const championship = context.data.leagueGames.find(game => game.season === 2022 && game.week === 17 && game.round === 'Championship' && (game.teamA === 'Zubs' && game.teamB === 'Rishi' || game.teamA === 'Rishi' && game.teamB === 'Zubs'));
+      if (summary) {
+        const score = championship && (championship.teamA === selectedTeam ? championship.scoreA : championship.scoreB);
+        const opponent = championship && (championship.teamA === selectedTeam ? championship.teamB : championship.teamA);
+        button.dataset.loreFacts = JSON.stringify({ record: `${summary.wins}-${summary.losses}${summary.ties ? `-${summary.ties}` : ''}`, finish: summary.finish, champion: summary.champion, saunders: summary.saunders, points_for: summary.points_for, points_against: summary.points_against, team_count: context.data.seasonSummaries.filter(row => row.season === 2022).length, championship_score: score === undefined ? undefined : `${selectedTeam} ${Number(score).toFixed(2)} – ${opponent} ${Number(championship?.teamA === selectedTeam ? championship.scoreB : championship?.scoreA).toFixed(2)}` });
+      }
       mount.append(button);
     }
     if (selectedTeam !== ALL_TEAMS && selectedSeasons.has(2025) && (selectedTeam === 'Zook' || selectedTeam === 'Connor' || selectedTeam === 'Plot')) {

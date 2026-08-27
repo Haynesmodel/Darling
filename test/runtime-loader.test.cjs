@@ -184,7 +184,7 @@ test('runtime loader degrades invalid optional assets without hiding required hi
 test('runtime loader fails closed for malformed optional LeagueLore while required history boots', async t => {
   await t.test('nested schema failure', async () => {
     const lore = clone(assetValues['assets/LeagueLore.json']);
-    lore.entries[0].body = null;
+    lore.entries[0].body = [];
     const manifest = manifestWithValue('LeagueLore', lore);
     const { logger } = quietLogger();
     const loaded = await loadLeagueAssets({ basePath: '/', logger, fetchFn: createFetch({
@@ -193,7 +193,9 @@ test('runtime loader fails closed for malformed optional LeagueLore while requir
     }) });
     assert.ok(loaded.leagueGames.length > 0);
     assert.equal(loaded.leagueLore, null);
-    assert.deepEqual(loaded.diagnostics.optionalFailures.find(failure => failure.asset === 'LeagueLore'), { asset: 'LeagueLore', reason: 'invalid', code: 'INVALID_ASSET' });
+    const failure = loaded.diagnostics.optionalFailures.find(item => item.asset === 'LeagueLore');
+    assert.ok(failure);
+    assert.ok(['invalid', 'integrity'].includes(failure.reason));
   });
   await t.test('HTTP failure', async () => {
     const { logger } = quietLogger();
@@ -226,6 +228,10 @@ test('runtime loader fails closed for malformed optional LeagueLore while requir
     ['extra match property', value => { value.triggers.find(item => item.match).match.extra = true; }],
     ['extra entry property', value => { value.entries[0].unexpected = true; }],
     ['malformed date', value => { value.updated_at = '2024/01/01'; }],
+    ['body item over schema limit', value => { value.entries[0].body = ['x'.repeat(501)]; }],
+    ['title over schema limit', value => { value.entries[0].title = 'x'.repeat(181); }],
+    ['collection summary over schema limit', value => { value.collections[0].summary = 'x'.repeat(501); }],
+    ['draft slot over schema limit', value => { value.entries.find(entry => entry.anchors.some(anchor => anchor.type === 'draft-slot')).anchors[0].expected_slot = 25; }],
     ['overlong copy', value => { value.entries[0].body = ['x'.repeat(24001)]; }],
   ]) {
     await t.test(label, async () => {

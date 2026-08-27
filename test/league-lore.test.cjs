@@ -81,6 +81,7 @@ test('presentation catalog keeps each migrated effect on its native treatment', 
   assert.equal(presentations.get('blank-document'), 'blank-document');
   assert.equal(lore.triggers.find(trigger => trigger.id === 'draft-podium').effect_id, 'target');
   assert.equal(lore.triggers.find(trigger => trigger.id === 'connor-collapse-story').effect_id, 'ticket');
+  for (const id of ['plot-admin', 'zook-points-story', 'connor-collapse-story', 'plot-rankings-story']) assert.equal(lore.triggers.find(trigger => trigger.id === id).surface, 'history');
   assert.equal(lore.effects.find(effect => effect.id === 'respectful-static')?.presentation, 'static');
 });
 
@@ -104,6 +105,52 @@ function runtimeWithClock(clock, onReveal = () => {}) {
   service.hydrate(lore);
   return service;
 }
+
+function loreGuard() {
+  const source = fs.readFileSync(path.join(__dirname, '../src/data/generated/league-lore-validator.ts'), 'utf8');
+  const { code } = esbuild.transformSync(source, { loader: 'ts', format: 'cjs', target: 'node24' });
+  const module = { exports: {} };
+  new Function('module', 'exports', code)(module, module.exports);
+  return module.exports.isLeagueLore;
+}
+
+test('generated LeagueLore guard accepts schema boundaries and rejects empty required arrays', () => {
+  const isLeagueLore = loreGuard();
+  const edge = JSON.parse(JSON.stringify(lore));
+  edge.updated_at = '2100-12-31';
+  edge.source_policy.numeric_authority = ['x'];
+  edge.collections[0].title = 't'.repeat(180);
+  edge.collections[0].summary = 's'.repeat(500);
+  edge.entries[0].title = 't'.repeat(180);
+  edge.entries[0].teaser = 't'.repeat(180);
+  edge.entries[0].body = ['b'.repeat(500)];
+  edge.effects[0].label = 'l'.repeat(100);
+  edge.effects[0].symbol = 's'.repeat(12);
+  edge.effects[0].duration_ms = 2500;
+  assert.equal(isLeagueLore(edge), true);
+  // These cases deliberately mirror schema allowances: top-level arrays and
+  // match owners are not uniqueItems, while referenced ID lists are.
+  edge.source_policy.numeric_authority = [' '];
+  edge.owners.push({ owner: 'Joe', aliases: [] });
+  const matched = edge.triggers.find(trigger => trigger.match);
+  if (matched?.match) matched.match.owners = ['Nuss', 'Nuss'];
+  edge.collections[0].entry_ids = ['a'.repeat(100)];
+  assert.equal(isLeagueLore(edge), true);
+  edge.collections[0].entry_ids = [];
+  assert.equal(isLeagueLore(edge), false);
+  edge.collections[0].entry_ids = ['a'.repeat(100)];
+  const rivalry = edge.entries.find(entry => entry.anchors.some(anchor => anchor.type === 'rivalry'))?.anchors.find(anchor => anchor.type === 'rivalry');
+  if (rivalry) rivalry.slug = 'both-is-invalid';
+  assert.equal(isLeagueLore(edge), false);
+  if (rivalry) delete rivalry.slug;
+  edge.entries[0].body = [];
+  assert.equal(isLeagueLore(edge), false);
+  edge.entries[0].body = ['b'.repeat(501)];
+  assert.equal(isLeagueLore(edge), false);
+  edge.entries[0].body = ['b'.repeat(500)];
+  edge.entries[0].title = 't'.repeat(181);
+  assert.equal(isLeagueLore(edge), false);
+});
 
 test('typed trigger runtime accepts valid facts and rejects wrong contexts', () => {
   const featureTriggers = lore.triggers.filter(trigger => !['search', 'collection-open'].includes(trigger.activation));
@@ -243,4 +290,11 @@ test('every migrated legacy group effect has a data-driven History trigger', () 
     assert.equal(trigger?.effect_id, effect);
     assert.equal(trigger?.surface, 'history');
   }
+});
+
+test('rivalry lore targets the selected owner pair', () => {
+  assert.equal(lore.triggers.find(trigger => trigger.id === 'rivalry-terps').entry_id, 'rivalry-nuss-rishi');
+  assert.equal(lore.triggers.find(trigger => trigger.id === 'rivalry-butter').entry_id, 'rivalry-singer-nuss');
+  assert.deepEqual(byId.get('rivalry-nuss-rishi').owners, ['Nuss', 'Rishi']);
+  assert.deepEqual(byId.get('rivalry-singer-nuss').owners, ['Singer', 'Nuss']);
 });

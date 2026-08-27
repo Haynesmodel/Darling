@@ -1,7 +1,13 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { expect, test } from './coverage-fixture.js';
 import { activateFeature } from './navigation-helpers.js';
 
+const manifest = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'assets/asset-manifest.json'), 'utf8'));
+
 test.beforeEach(async ({ page }) => {
+  // Keep the canonical 2025 snapshot assertions stable as the calendar advances.
+  await page.clock.setFixedTime(new Date('2026-08-14T23:59:00Z'));
   // The legacy end-to-end suite is the open-everything parity pass: disclosure
   // behavior itself is covered in navigation-progressive-disclosure.spec.js.
   await page.addInitScript(() => {
@@ -334,7 +340,7 @@ test('page loads and renders the history tables', async ({ page }) => {
   expect(weekCount).toBe(historyCount);
   const diagnostics = await page.evaluate(() => window.darlingDataDiagnostics);
   expect(diagnostics.dataVersion).toMatch(/^sha256:[a-f0-9]{64}$/);
-  expect(diagnostics.manifestVersion).toBe(3);
+  expect(diagnostics.manifestVersion).toBe(manifest.manifest_version);
   expect(diagnostics.loadedAssets).toContain('DerivedStats');
   expect(diagnostics.optionalAssetFailures).toEqual([]);
 });

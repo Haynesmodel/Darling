@@ -176,6 +176,12 @@ export function createFeatureController(): DarlingFeatureController {
     if (!mount) return;
     const view = seasonCalloutView(selectedTeam, { allTeams: ALL_TEAMS, selectedSeasons, seasonSummaries: context.data.seasonSummaries, champNoteFn: champNote, saundersNoteFn: saundersNote });
     mount.innerHTML = view.html;
+    if (selectedTeam === 'Nuss' && selectedSeasons.has(2019)) {
+      const button = context.document.createElement('button');
+      button.type = 'button'; button.className = 'btn history-lore-trigger'; button.textContent = 'Reveal 42.00 record lore';
+      button.dataset.loreTrigger = 'record-42-history'; button.dataset.loreSeason = '2019'; button.dataset.loreOwner = 'Nuss';
+      mount.append(button);
+    }
     if (selectedTeam !== ALL_TEAMS && selectedSeasons.has(2022) && (selectedTeam === 'Zubs' || selectedTeam === 'Rishi')) {
       const button = context.document.createElement('button');
       button.type = 'button'; button.className = 'btn history-lore-trigger'; button.textContent = 'Open 2022 championship context';
@@ -234,7 +240,15 @@ export function createFeatureController(): DarlingFeatureController {
       const title = context.document.getElementById('oppTableTitle'); if (title) title.textContent = view.title;
       context.tables.render('history-opponents', { rows: opponentBreakdownRows(selectedTeam, games, { allTeams: ALL_TEAMS, selectedWeeks, universeWeeks: universe.weeks }), context: { owner: selectedTeam === ALL_TEAMS ? null : selectedTeam, games, isLeague: selectedTeam === ALL_TEAMS }, urlState: tableUrlState(), onContextChange: tableContextChange, instanceKey: `${selectedTeam}|${games.length}` });
       const callouts = context.document.getElementById('rivalGroupCallouts');
-      if (callouts) callouts.innerHTML = view.calloutsHtml;
+      if (callouts) {
+        callouts.innerHTML = view.calloutsHtml;
+        if (view.triggerSlug) {
+          const button = context.document.createElement('button');
+          button.type = 'button'; button.className = 'btn history-group-lore-trigger'; button.textContent = 'Reveal group lore';
+          button.dataset.loreTrigger = `history-group-${view.triggerSlug}`; button.dataset.loreValue = view.triggerSlug;
+          callouts.append(button);
+        }
+      }
     });
     renderIfChanged('seasons', keys.seasonRecap, () => {
       const rows = selectedTeam === ALL_TEAMS ? [] : seasonRecapRows(selectedTeam, context.data.seasonSummaries, { selectedSeasons, universeSeasons: universe.seasons }).map((row: any) => ({ ...row, outcome: seasonRecapOutcome(selectedTeam, row, context.data.leagueGames) }));

@@ -2,24 +2,47 @@ import type { LeagueLore } from '../data/generated/asset-types';
 import type { LoreRevealOptions, LoreScope, LoreSearchDocument, LoreService } from './lore-types';
 
 /** Keeps the presentation/registry out of the entry chunk until lore is used. */
-export function createLazyLoreService(): LoreService {
+type LorePresentation = typeof import('./lore-presentation');
+
+export function createLazyLoreService(presenter?: () => Promise<LorePresentation>): LoreService {
   let asset: LeagueLore | null = null;
   let reducedMotion = false;
-  let loading: Promise<typeof import('./lore-presentation')> | null = null;
+  let loading: Promise<LorePresentation> | null = null;
   const states = new Map<string, { at: number; count?: number; value: string; values?: string[] }>();
   const seen = new Set<string>();
-  const load = () => loading ||= import('./lore-presentation');
+  const scopes = new Set<LoreScope>();
+  const load = () => loading ||= presenter?.() || import('./lore-presentation');
+  const advance = (id: string, value: string, windowMs: number, expected: string, limit: number) => {
+    const at = now(); const previous = states.get(id);
+    const values = previous && at - previous.at <= windowMs ? [...(previous.values || []), value] : [value];
+    states.set(id, { at, value, values: values.slice(-limit) });
+    if (values.slice(-limit).join('|') !== expected) return false;
+    states.delete(id); return true;
+  };
   const docs = () => !asset?.enabled ? [] : [
     ...asset.entries.filter(entry => entry.enabled).map(entry => ({ id: `lore:entry:${entry.id}`, category: 'lore' as const, title: entry.title, subtitle: entry.teaser, keywords: [...entry.search_terms, ...entry.owners], priority: 125, action: { kind: 'lore' as const, targetType: 'entry' as const, targetId: entry.id } })),
     ...asset.collections.filter(collection => collection.enabled).map(collection => ({ id: `lore:collection:${collection.id}`, category: 'lore' as const, title: collection.title, subtitle: collection.summary, keywords: collection.search_terms, priority: 130, action: { kind: 'lore' as const, targetType: 'collection' as const, targetId: collection.id } })),
   ];
-  const noScope: LoreScope = { id: 'lazy', clear() {}, timer() { return 0; }, add() {} };
+  const makeScope = (id: string): LoreScope => {
+    const timers = new Set<number>(), nodes = new Set<Node>();
+    const scope: LoreScope = { id, clear() {
+      timers.forEach(timer => globalThis.clearTimeout(timer));
+      nodes.forEach(node => node.parentNode?.removeChild(node));
+      timers.clear(); nodes.clear(); scopes.delete(scope);
+    }, timer(callback, duration) {
+      const timer = globalThis.setTimeout(() => { timers.delete(timer); callback(); }, Math.min(2500, Math.max(0, duration))) as unknown as number;
+      timers.add(timer); return timer;
+    }, add: node => void nodes.add(node) };
+    scopes.add(scope); return scope;
+  };
   const reveal = async (type: 'entry' | 'collection', id: string, options?: LoreRevealOptions) => {
     if (!asset?.enabled) return false;
     const target = type === 'entry' ? asset.entries.find(entry => entry.enabled && entry.id === id) : asset.collections.find(collection => collection.enabled && collection.id === id);
     if (!target) return false;
     const module = await load();
-    module.showLore(target, new Map(asset.entries.filter(entry => entry.enabled).map(entry => [entry.id, entry])), asset.effects.find(effect => effect.id === (options?.effectId || 'lore-dialog') && effect.enabled) || null, { scope: options?.scope, opener: options?.opener, reducedMotion });
+    const scope = options?.scope || makeScope(`reveal:${id}`);
+    if (!asset?.enabled || !scopes.has(scope)) return false;
+    module.showLore(target, new Map(asset.entries.filter(entry => entry.enabled).map(entry => [entry.id, entry])), asset.effects.find(effect => effect.id === (options?.effectId || 'lore-dialog') && effect.enabled) || null, { scope, opener: options?.opener, reducedMotion });
     return true;
   };
   const now = () => typeof performance?.now === 'function' ? performance.now() : Date.now();
@@ -41,13 +64,7 @@ export function createLazyLoreService(): LoreService {
       if (match?.owners && (!owners || owners.length !== match.owners.length || !match.owners.every(owner => owners.includes(owner)))) return false;
       const value = String(context.value ?? '');
       if (trigger.activation === 'theme-sequence' || id === 'dynasty-joel-elevator') {
-        const at = now(); const previous = states.get(id); const values = previous && at - previous.at <= (trigger.activation === 'theme-sequence' ? 5000 : 4000) ? [...(previous.values || []), value] : [value];
-        states.set(id, { at, value, values: values.slice(-3) });
-        const complete = trigger.activation === 'theme-sequence'
-          ? values.slice(-3).join('|') === 'system|light|dark'
-          : values.slice(-2).join('|') === '2016|2017';
-        if (!complete) return false;
-        states.delete(id);
+        if (!advance(id, value, trigger.activation === 'theme-sequence' ? 5000 : 4000, trigger.activation === 'theme-sequence' ? 'system|light|dark' : '2016|2017', trigger.activation === 'theme-sequence' ? 3 : 2)) return false;
       }
       if (trigger.activation === 'triple-activate') {
         const at = now(); const previous = states.get(id); const next = previous && at - previous.at <= 4000 && previous.value === value ? { at, count: (previous.count || 0) + 1, value } : { at, count: 1, value }; states.set(id, next);
@@ -67,9 +84,9 @@ export function createLazyLoreService(): LoreService {
       return true;
     },
     reveal,
-    createScope(id) { return { ...noScope, id }; },
+    createScope: makeScope,
     setReducedMotion(value) { reducedMotion = value; },
-      dispose() { loading = null; asset = null; reducedMotion = false; states.clear(); },
+      dispose() { scopes.forEach(scope => scope.clear()); loading = null; asset = null; reducedMotion = false; states.clear(); seen.clear(); },
     isEnabled() { return !!asset?.enabled; },
   };
 }

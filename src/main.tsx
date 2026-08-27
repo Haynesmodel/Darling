@@ -91,7 +91,6 @@ function mountShell() {
       owner: source.dataset.loreOwner,
       season: source.dataset.loreSeason,
       value: source.dataset.loreValue,
-      activation_value: source.dataset.loreValue,
       owners: source.dataset.loreOwners?.split(',').map(owner => owner.trim()).filter(Boolean),
       opener: source,
     });

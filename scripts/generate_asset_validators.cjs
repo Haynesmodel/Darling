@@ -33,6 +33,146 @@ function compactValidatorErrors(standaloneModule) {
   return compacted;
 }
 
+// Browser validation only needs a fail-closed boolean.  AJV's standalone
+// output otherwise allocates an error object for every failed keyword and
+// carries those objects through every nested validator, even though runtime
+// callers turn them into the same generic optional-asset diagnostic.  Keep the
+// validation branches and counters intact while dropping that diagnostics-only
+// allocation from shipped browser code.  Build-time AJV still reports full
+// errors through the Node validation path.
+function stripValidatorErrorConstruction(standaloneModule) {
+  return standaloneModule.replace(
+    /\s*const err\d+ = \{ instancePath(?:[^}]*) \};\s*if \(vErrors === null\) \{\s*vErrors = \[err\d+\];\s*\} else \{\s*vErrors\.push\(err\d+\);\s*\}/g,
+    '',
+  ).replace(/\s*validate\d+\.errors = \[\{[^;]*\}\];/g, '');
+}
+
+function stripValidatorBookkeeping(standaloneModule) {
+  return standaloneModule
+    .replace(/\s*vErrors = vErrors === null \? validate\d+\.errors : vErrors\.concat\(validate\d+\.errors\);\n(\s*)errors = vErrors\.length;/g, '\n$1errors++;')
+    .replace(/\s*let vErrors = null;/g, '')
+    .replace(/\s*validate\d+\.errors = vErrors;/g, '')
+    .replace(/\s*const evaluated\d+ = validate\d+\.evaluated;\s*if \(evaluated\d+\.dynamicProps\) \{\s*evaluated\d+\.props = void 0;\s*\}\s*if \(evaluated\d+\.dynamicItems\) \{\s*evaluated\d+\.items = void 0;\s*\}/g, '')
+    .replace(/\s*validate\d+\.evaluated = [^\n]*;\n/g, '')
+    .replace(/function (validate\d+)\(data, \{[^)]*\} = \{\}\)/g, 'function $1(data)')
+    .replace(/, \{ instancePath[^}]*\}/g, '')
+    .replace(/\s*if \(vErrors !== null\) \{\s*if \(_errs\d+\) \{\s*vErrors\.length = _errs\d+;\s*\} else \{\s*vErrors = null;\s*\}\s*\}/g, '');
+}
+
+function compactGeneratedSchemas(source) {
+  // AJV's generated checks only read a handful of schema metadata paths at
+  // runtime (mostly `required` for nested array objects). Retain those exact
+  // item paths, while dropping the otherwise-unused item schema descriptions.
+  // The validation branches themselves remain untouched.
+  const neededItemFields = new Map();
+  const fullProperties = new Set();
+  const neededFields = new Map();
+  const addField = (path, field) => {
+    if (!neededFields.has(path)) neededFields.set(path, new Set());
+    neededFields.get(path).add(field);
+  };
+  const propertyMapReference = /((?:schema\d+)(?:(?:\.allOf\[\d+\]))*)\.properties\s*,/g;
+  for (const match of source.matchAll(propertyMapReference)) fullProperties.add(`${match[1]}.properties`);
+  const fieldReference = /((?:schema\d+)(?:(?:\.properties\.[A-Za-z0-9_]+)|(?:\.allOf\[\d+\]))+)\.(required|enum|properties|items|allOf)/g;
+  for (const match of source.matchAll(fieldReference)) {
+    addField(match[1], match[2]);
+    const segments = match[1].split('.');
+    for (let index = 0; index < segments.length; index += 1) {
+      if (segments[index] === 'properties' || segments[index].startsWith('allOf[')) {
+        addField(segments.slice(0, index).join('.'), segments[index] === 'properties' ? 'properties' : 'allOf');
+      }
+    }
+  }
+  const itemReference = /((?:schema\d+)(?:(?:\.properties\.[A-Za-z0-9_]+)|(?:\.allOf\[\d+\]))+\.items)\.(required|enum|properties|items|allOf)/g;
+  for (const match of source.matchAll(itemReference)) {
+    if (!neededItemFields.has(match[1])) neededItemFields.set(match[1], new Set());
+    neededItemFields.get(match[1]).add(match[2]);
+  }
+  const keep = (schema, path = '') => {
+    if (!schema || typeof schema !== 'object' || Array.isArray(schema)) return schema;
+    const result = {};
+    const itemFields = neededItemFields.get(path);
+    const root = /^schema\d+(?:\.allOf\[\d+\])*$/.test(path);
+    const fields = neededFields.get(path);
+    if (schema.required && (!itemFields || itemFields.has('required')) && (root || fields?.has('required') || itemFields?.has('required'))) result.required = schema.required;
+    if (schema.enum && (!itemFields || itemFields.has('enum')) && (root || fields?.has('enum') || itemFields?.has('enum'))) result.enum = schema.enum;
+    if (schema.properties && (!itemFields || itemFields.has('properties')) && (root || fields?.has('properties') || fullProperties.has(path))) {
+      const properties = Object.entries(schema.properties);
+      const keys = fullProperties.has(path) || root
+        ? properties
+        : properties.filter(([key]) => [...neededFields.keys()].some(reference => reference === `${path}.properties.${key}` || reference.startsWith(`${path}.properties.${key}.`)));
+      result.properties = Object.fromEntries(keys.map(([key, value]) => [key, keep(value, `${path}.properties.${key}`)]));
+    }
+    const itemPath = `${path}.items`;
+    if (schema.items && (!itemFields || itemFields.has('items')) && neededItemFields.has(itemPath)) {
+      result.items = keep(schema.items, itemPath);
+    }
+    if (schema.allOf && (!itemFields || itemFields.has('allOf'))) {
+      result.allOf = schema.allOf.map((value, index) => keep(value, `${path}.allOf[${index}]`));
+    }
+    return result;
+  };
+  const declaration = /var (schema\d+) = /g;
+  let match;
+  let output = '';
+  let cursor = 0;
+  while ((match = declaration.exec(source))) {
+    const start = declaration.lastIndex;
+    let index = start;
+    let depth = 0;
+    let quote = false;
+    let escaped = false;
+    for (; index < source.length; index += 1) {
+      const character = source[index];
+      if (quote) {
+        if (escaped) escaped = false;
+        else if (character === '\\') escaped = true;
+        else if (character === '"') quote = false;
+      } else if (character === '"') quote = true;
+      else if (character === '{') depth += 1;
+      else if (character === '}' && --depth === 0) break;
+    }
+    if (depth !== 0 || source[index + 1] !== ';') continue;
+    let parsed;
+    try { parsed = JSON.parse(source.slice(start, index + 1)); } catch { continue; }
+    output += source.slice(cursor, start) + JSON.stringify(keep(parsed, match[1]));
+    cursor = index + 1;
+    declaration.lastIndex = cursor;
+  }
+  return output ? output + source.slice(cursor) : source;
+}
+
+function compactBundledRuntime(source) {
+  const formats = source.match(/var require_standalone_formats = __commonJS\(\{\n  "scripts\/data\/standalone-formats\.cjs"\(exports, module\) \{([\s\S]*?)\n    module\.exports = \{[\s\S]*?\n    \};\n  \}\n\}\);/);
+  let compacted = source;
+  if (formats) {
+    const body = formats[1].replace(/^ {4}/gm, '');
+    compacted = compacted
+      .replace(/var __getOwnPropNames = Object\.getOwnPropertyNames;\nvar __commonJS = \(cb, mod\) => function __require\(\) \{[\s\S]*?\n\};\n\n/, '')
+      .replace(formats[0], `${body}\nvar formats0 = { validate: date }, formats2 = { validate: dateTime };`)
+      .replace(/var formats\d+ = require_standalone_formats\(\)\.fullFormats(?:\.date|\["date-time"\]);\n?/g, '');
+  }
+  return compacted
+    // These assets use uniqueItems only for primitive arrays, so strict
+    // equality is sufficient and AJV's deep-equality helper is unnecessary.
+    .replace(/\/\/ node_modules\/fast-deep-equal\/index\.js[\s\S]*?\/\/ scripts\/data\/standalone-formats\.cjs/, '// scripts/data/standalone-formats.cjs')
+    .replace(/var func0 = require_equal\(\)\.default;/g, 'var func0 = (a, b) => a === b;')
+    // Native code-point length matches AJV's ucs2 helper for these modern
+    // browser targets and avoids shipping another CommonJS wrapper.
+    .replace(/\/\/ node_modules\/ajv\/dist\/runtime\/ucs2length\.js[\s\S]*?\/\/ scripts\/data\/standalone-formats\.cjs/, '// scripts/data/standalone-formats.cjs')
+    .replace(/var func4 = require_ucs2length\(\)\.default;/g, 'var func4 = value => [...value].length;');
+}
+
+function compactGeneratedChecks(source) {
+  return source
+    .replace(/func3\.call\(([^,]+), ([^)]+)\)/g, 'func3($1, $2)')
+    .replace(/var func3 = Object\.prototype\.hasOwnProperty;/g, 'var func3 = Object.hasOwn;')
+    .replace(/typeof (data\d+) == "number" && \(!\(\1 % 1\) && !isNaN\(\1\)\) && isFinite\(\1\)/g, 'Number.isInteger($1)')
+    .replace(/typeof (data\d+) === "number" && isFinite\(\1\)/g, 'Number.isFinite($1)')
+    .replace(/typeof (data\d+) == "number" && isFinite\(\1\)/g, 'Number.isFinite($1)')
+    .replace(/return errors === 0;/g, 'return !errors;');
+}
+
 function generateAssetValidators({ sourceRoot = process.cwd(), outputRoot = sourceRoot } = {}) {
   const ajv = createAjv(sourceRoot, {
     loopEnum: 0,
@@ -48,9 +188,10 @@ function generateAssetValidators({ sourceRoot = process.cwd(), outputRoot = sour
     validateDraftSpot: schemaId('draft-spot.schema.json'),
     validateDerivedStats: schemaId('derived-stats.schema.json'),
     validateAssetManifest: schemaId('asset-manifest.schema.json'),
+    validateTransactionHistory: schemaId('transaction-history.schema.json'),
   });
-  const standaloneModule = specializeFormatRuntime(compactValidatorErrors(ajvStandaloneModule));
-  const moduleCode = esbuild.buildSync({
+  const standaloneModule = specializeFormatRuntime(stripValidatorErrorConstruction(compactValidatorErrors(ajvStandaloneModule)));
+  const moduleCode = compactGeneratedChecks(compactBundledRuntime(compactGeneratedSchemas(stripValidatorBookkeeping(stripValidatorErrorConstruction(esbuild.buildSync({
     stdin: {
       contents: standaloneModule,
       loader: 'js',
@@ -63,10 +204,10 @@ function generateAssetValidators({ sourceRoot = process.cwd(), outputRoot = sour
     target: 'es2022',
     write: false,
     legalComments: 'none',
-  }).outputFiles[0].text;
+  }).outputFiles[0].text)))));
   const wrappers = `
 
-import type { AssetManifest, CurrentSeasonData, DerivedStats, DraftSpot, H2HGame, RivalryDefinition, SeasonSummaryRow } from './asset-types';
+import type { AssetManifest, CurrentSeasonData, DerivedStats, DraftSpot, H2HGame, RivalryDefinition, SeasonSummaryRow, TransactionHistory } from './asset-types';
 
 export function isH2H(value: unknown): value is H2HGame[] { return validateH2H(value) as boolean; }
 export function isSeasonSummary(value: unknown): value is SeasonSummaryRow[] { return validateSeasonSummary(value) as boolean; }
@@ -75,17 +216,12 @@ export function isCurrentSeason(value: unknown): value is CurrentSeasonData { re
 export function isDraftSpot(value: unknown): value is DraftSpot { return validateDraftSpot(value) as boolean; }
 export function isDerivedStats(value: unknown): value is DerivedStats { return validateDerivedStats(value) as boolean; }
 export function isAssetManifest(value: unknown): value is AssetManifest { return validateAssetManifest(value) as boolean; }
-export type ValidatorName = 'H2H' | 'SeasonSummary' | 'Rivalries' | 'CurrentSeason' | 'DraftSpot' | 'DerivedStats' | 'AssetManifest';
-export function getValidatorErrors(name: ValidatorName): Array<{ instancePath?: string; message?: string }> | null {
-  const validators = { H2H: validateH2H, SeasonSummary: validateSeasonSummary, Rivalries: validateRivalries, CurrentSeason: validateCurrentSeason, DraftSpot: validateDraftSpot, DerivedStats: validateDerivedStats, AssetManifest: validateAssetManifest };
-  return (validators[name] as any).errors || null;
-}
+export function isTransactionHistory(value: unknown): value is TransactionHistory { return validateTransactionHistory(value) as boolean; }
+export type ValidatorName = 'H2H' | 'SeasonSummary' | 'Rivalries' | 'CurrentSeason' | 'DraftSpot' | 'DerivedStats' | 'AssetManifest' | 'TransactionHistory';
+export function getValidatorErrors(_name: ValidatorName): Array<{ instancePath?: string; message?: string }> | null { return null; }
 
-export function formatValidatorErrors(assetPath: string, errors: Array<{ instancePath?: string; message?: string }> | null | undefined): string {
-  const error = errors?.[0];
-  if (!error) return \`\${assetPath}: schema validation failed\`;
-  const location = error.instancePath ? error.instancePath.replace(/^\\//, '').replaceAll('/', '.') : 'root';
-  return \`\${assetPath}: field "\${location}": \${error.message || 'schema validation failed'}\`;
+export function formatValidatorErrors(assetPath: string, _errors: Array<{ instancePath?: string; message?: string }> | null | undefined): string {
+  return \`\${assetPath}: schema validation failed\`;
 }
 `;
   const outputPath = path.join(outputRoot, GENERATED_ASSETS.AssetValidators.path);
@@ -143,37 +279,18 @@ export function isLeagueLore(value: unknown): value is LeagueLore {
   fs.mkdirSync(path.dirname(loreOutputPath), { recursive: true });
   fs.writeFileSync(loreOutputPath, `// This file is generated by scripts/generate_asset_validators.cjs. Do not edit manually.\n// @ts-nocheck\n${loreValidator.trim()}\n`);
 
-  const transactionStandaloneModule = specializeFormatRuntime(compactValidatorErrors(standaloneCode(ajv, {
-    validateTransactionHistory: schemaId('transaction-history.schema.json'),
-  })));
-  const transactionModuleCode = esbuild.buildSync({
-    stdin: {
-      contents: transactionStandaloneModule,
-      loader: 'js',
-      resolveDir: sourceRoot,
-      sourcefile: 'transaction-history-validator-runtime.mjs',
-    },
-    bundle: true,
-    platform: 'browser',
-    format: 'esm',
-    target: 'es2022',
-    write: false,
-    legalComments: 'none',
-  }).outputFiles[0].text;
   const transactionWrappers = `
-
-import type { TransactionHistory } from './asset-types';
-
-export function isTransactionHistory(value: unknown): value is TransactionHistory { return validateTransactionHistory(value) as boolean; }
-export function getTransactionHistoryValidatorErrors(): Array<{ instancePath?: string; message?: string }> | null {
-  return (validateTransactionHistory as any).errors || null;
-}
+// TransactionHistory shares the browser validator runtime so its support code
+// is emitted once while the JSON asset remains loaded only by Transactions.
+import { isTransactionHistory, getValidatorErrors } from './asset-validators';
+export { isTransactionHistory };
+export const getTransactionHistoryValidatorErrors = () => getValidatorErrors('TransactionHistory');
 `;
   const transactionOutputPath = path.join(outputRoot, GENERATED_ASSETS.TransactionHistoryValidator.path);
   fs.mkdirSync(path.dirname(transactionOutputPath), { recursive: true });
   fs.writeFileSync(
     transactionOutputPath,
-    `// This file is generated by scripts/generate_asset_validators.cjs. Do not edit manually.\n// @ts-nocheck\n${transactionModuleCode.trim()}${transactionWrappers}`,
+    `// This file is generated by scripts/generate_asset_validators.cjs. Do not edit manually.\n${transactionWrappers}`,
   );
   return outputPath;
 }
@@ -191,6 +308,7 @@ if (require.main === module) {
 module.exports = {
   generateAssetValidators,
   compactValidatorErrors,
+  stripValidatorErrorConstruction,
   outputRootFromArgs,
   specializeFormatRuntime,
 };

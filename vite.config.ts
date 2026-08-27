@@ -262,6 +262,7 @@ export default defineConfig({
         ecma: 2022,
         pure_getters: true,
         passes: 8,
+        keep_fargs: false,
       },
       mangle: { toplevel: true },
     },

@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const esbuild = require('esbuild');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -28,6 +29,14 @@ const bundle = {
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+function loadBrowserValidators() {
+  const source = fs.readFileSync(path.join(root, 'src/data/generated/asset-validators.ts'), 'utf8');
+  const { code } = esbuild.transformSync(source, { loader: 'ts', format: 'cjs', target: 'node24' });
+  const module = { exports: {} };
+  new Function('module', 'exports', code)(module, module.exports);
+  return module.exports;
 }
 
 function sortBy(rows, key) {
@@ -106,6 +115,53 @@ test('Draft 2020-12 schemas accept representative data and locate invalid fields
       'TransactionHistory.json',
     ).some(error => error.includes('must NOT have fewer than 1 items')),
   );
+});
+
+test('generated browser guards agree with AJV across canonical assets and mutation matrix', () => {
+  const browser = loadBrowserValidators();
+  const ajv = createAjv(root);
+  const cases = [
+    { name: 'H2H', schema: 'h2h.schema.json', value: bundle.H2H, validate: browser.isH2H,
+      mutations: [v => { delete v[0].season; }, v => { v[0].scoreA = '68.1'; }, v => { v[0].date = '2014-02-31'; }, v => { v[0].unexpected = true; }],
+      validMutations: [v => { v[0].round = null; }, v => { v[0].scoreA = 0; }] },
+    { name: 'SeasonSummary', schema: 'season-summary.schema.json', value: bundle.SeasonSummary, validate: browser.isSeasonSummary,
+      mutations: [v => { v[0].wins = -1; }, v => { v[0].owner = 42; }, v => { v[0].unexpected = true; }, v => { v[0].season = 2013; }],
+      validMutations: [v => { v[0].wins = 0; }] },
+    { name: 'Rivalries', schema: 'rivalries.schema.json', value: bundle.Rivalries, validate: browser.isRivalries,
+      mutations: [v => { v[0].slug = 'Not A Slug'; }, v => { v[0].members = [v[0].members[0], v[0].members[0]]; }, v => { v[0].unexpected = true; }, v => { v[0].type = 'unknown'; }],
+      validMutations: [v => { v[0].members = [...v[0].members]; }] },
+    { name: 'CurrentSeason', schema: 'current-season.schema.json', value: bundle.CurrentSeason, validate: browser.isCurrentSeason,
+      mutations: [v => { v.season = 2013; }, v => { v.generated_at = 'not-a-date'; }, v => { v.playoff_rules.playoff_slots = 0; }, v => { v.unexpected = true; }],
+      validMutations: [] },
+    { name: 'DraftSpot', schema: 'draft-spot.schema.json', value: readJson(path.join(root, 'assets/DraftSpot.json')), validate: browser.isDraftSpot,
+      mutations: [v => { v.schema_version = 0; }, v => { v.generated_at = 'not-a-date'; }, v => { v.rows[0].draft_pick = 25; }, v => { v.unexpected = true; }],
+      validMutations: [] },
+    { name: 'DerivedStats', schema: 'derived-stats.schema.json', value: readJson(path.join(root, 'assets/DerivedStats.json')), validate: browser.isDerivedStats,
+      mutations: [v => { v.schema_version = 2; }, v => { v.owner_careers[0].owner = ''; }, v => { v.team_seasons[0].season = 2013; }, v => { v.unexpected = true; }],
+      validMutations: [v => { v.owners = [...v.owners]; }] },
+    { name: 'AssetManifest', schema: 'asset-manifest.schema.json', value: readJson(path.join(root, 'assets/asset-manifest.json')), validate: browser.isAssetManifest,
+      mutations: [v => { v.manifest_version = 0; }, v => { v.assets.H2H.bytes = -1; }, v => { v.assets.H2H.path = '../escape.json'; }, v => { v.unexpected = true; }],
+      validMutations: [] },
+    { name: 'TransactionHistory', schema: 'transaction-history.schema.json', value: bundle.TransactionHistory, validate: browser.isTransactionHistory,
+      mutations: [v => { v.schema_version = 0; }, v => { v.players[0].id = ''; }, v => { v.seasons[0].coverage.completed_week = -1; }, v => { v.unexpected = true; }],
+      validMutations: [v => { v.seasons[0].coverage.completed_week = 0; }] },
+  ];
+  for (const entry of cases) {
+    const schemaValidate = ajv.getSchema(`https://darling.example/schemas/${entry.schema}`);
+    assert.equal(entry.validate(entry.value), Boolean(schemaValidate(entry.value)), `${entry.name} canonical parity`);
+    for (const mutator of entry.mutations) {
+      const mutation = clone(entry.value);
+      mutator(mutation);
+      assert.equal(entry.validate(mutation), Boolean(schemaValidate(mutation)), `${entry.name} mutation parity`);
+      assert.equal(entry.validate(mutation), false, `${entry.name} mutation must fail closed`);
+    }
+    for (const mutator of entry.validMutations) {
+      const candidate = clone(entry.value);
+      mutator(candidate);
+      assert.equal(entry.validate(candidate), Boolean(schemaValidate(candidate)), `${entry.name} accepted edge parity`);
+      assert.equal(entry.validate(candidate), true, `${entry.name} accepted edge must pass`);
+    }
+  }
 });
 
 test('semantic validation accepts the canonical bundle and reports stable rule IDs', () => {

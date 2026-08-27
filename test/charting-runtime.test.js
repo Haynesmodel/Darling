@@ -138,3 +138,26 @@ test('chart data availability is uniform across every request kind', () => {
     assert.equal(chartRequestHasData(empty), false);
   }
 });
+
+test('draft pick charts preserve numeric pick order for ordinal labels', () => {
+  const host = { child: null, replaceChildren(child) { this.child = child; } };
+  const requestWithNumericPicks = {
+    kind: 'draft-picks',
+    data: {
+      rows: [
+        { label: 'P1', value: 1, title: 'P1: 1' },
+        { label: 'P2', value: 2, title: 'P2: 2' },
+        { label: 'P10', value: 10, title: 'P10: 10' },
+        { label: 'P11', value: 11, title: 'P11: 11' },
+      ],
+      xLabel: 'Draft pick',
+      yLabel: 'Metric',
+      ariaLabel: 'Draft pick comparison',
+    },
+  };
+
+  renderChart(host, requestWithNumericPicks);
+
+  assert.deepEqual(host.child.options.x.domain, ['P1', 'P2', 'P10', 'P11']);
+  assert.equal(host.child.options.x.type, 'band');
+});

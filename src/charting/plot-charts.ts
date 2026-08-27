@@ -194,7 +194,14 @@ function draftSpec(request: Extract<ChartRequest, { kind: 'draft-picks' | 'draft
     marginLeft: pick ? 48 : 56,
     ariaLabel: request.data.ariaLabel,
     rows: request.data.rows,
-    x: { label: pick ? request.data.xLabel : 'Draft zone' },
+    // Plot uses a band scale for barY. Keep its domain in the caller's
+    // semantic order so P10/P11 cannot sort beside P1 lexicographically
+    // ahead of P2.
+    x: {
+      label: pick ? request.data.xLabel : 'Draft zone',
+      type: 'band',
+      domain: request.data.rows.map(row => row.label),
+    },
     y: { label: request.data.yLabel },
     marks: [{ type: 'barY', data: request.data.rows, x: 'label', y: 'value', fill: 'var(--accent-primary)', title: 'title' }],
   };

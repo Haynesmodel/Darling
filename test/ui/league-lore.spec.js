@@ -48,3 +48,49 @@ test('lore dialog traps focus, closes on Escape, and survives motion/forced-colo
   await expect(page.locator('.lore-overlay')).toHaveCount(0);
   await expect(trigger).toBeFocused();
 });
+
+test('lore incantations index the authored catalog and execute a result', async ({ page }) => {
+  await page.goto('/?tab=history');
+  await page.waitForLoadState('networkidle');
+  const search = async (query, expectedTitle) => {
+    await page.locator('.search-trigger').click();
+    const palette = page.getByRole('dialog', { name: 'Search The Darling' });
+    await palette.getByRole('combobox').fill(query);
+    const result = palette.getByRole('option').filter({ hasText: expectedTitle }).first();
+    await expect(result).toBeVisible();
+    await page.keyboard.press('Escape');
+  };
+  await search('42', 'League Moments');
+  await search('bagel', 'League Moments');
+  await search('receipts', 'Hall of Asterisks');
+  await search('birds clinch', 'League Moments');
+  await search('who is the darling', 'League Moments');
+  await search('what if', 'Hall of Asterisks');
+  await search('Rashid Shaheed', 'Draft Weekend Museum');
+  await search('Plot power rankings', 'League Moments');
+  await search('commissioner', 'Commissioner Office');
+
+  await page.locator('.search-trigger').click();
+  const palette = page.getByRole('dialog', { name: 'Search The Darling' });
+  await palette.getByRole('combobox').fill('42');
+  await palette.getByRole('option').filter({ hasText: 'League Moments' }).first().click();
+  await expect(page.getByRole('dialog', { name: /League Moments/ })).toBeVisible();
+  await expect(page.locator('#global-search-dialog')).toHaveCount(0);
+});
+
+test('draft lore controls are limited to their canonical 2025 boundaries', async ({ page }) => {
+  await page.goto('/?tab=draft&draftMode=pick&draftPick=1');
+  await expect(page.locator('[data-lore-trigger="draft-boundary-first"]')).toHaveAttribute('data-lore-season', '2025');
+  await expect(page.locator('[data-lore-trigger="draft-boundary-first"]')).toHaveAttribute('data-lore-facts', /"draft_slot":1/);
+  await expect(page.locator('[data-lore-trigger="draft-podium"]')).toHaveAttribute('data-lore-owner', 'Snare');
+  await expect(page.locator('[data-lore-trigger="draft-rishi-pick-four"]')).toHaveCount(0);
+
+  await page.goto('/?tab=draft&draftMode=pick&draftPick=4');
+  await expect(page.locator('[data-lore-trigger="draft-rishi-pick-four"]')).toHaveAttribute('data-lore-season', '2025');
+  await expect(page.locator('[data-lore-trigger="draft-rishi-pick-four"]')).toHaveAttribute('data-lore-owner', 'Rishi');
+  await expect(page.locator('[data-lore-trigger="draft-rishi-pick-four"]')).toHaveAttribute('data-lore-facts', /"draft_slot":4/);
+
+  await page.goto('/?tab=draft&draftMode=pick&draftPick=12');
+  await expect(page.locator('[data-lore-trigger="draft-snake-tail"]')).toHaveAttribute('data-lore-facts', /"draft_slot":12/);
+  await expect(page.locator('[data-lore-trigger="draft-podium"], [data-lore-trigger="draft-rishi-pick-four"]')).toHaveCount(0);
+});

@@ -162,7 +162,7 @@ test('native feature surfaces expose the intended lore trigger controls', () => 
     'src/features/dynasty/DynastyPage.tsx': ['dynasty-joel-elevator', 'dynasty-dissolved', 'dynasty-last-standing'],
     'js/gauntlet-renderers.js': ['gauntlet-mirror'],
     'src/features/transactions/TransactionsPage.tsx': ['transactions-suitcase', 'transactions-receipt'],
-    'src/features/draft-spot/DraftSpotHero.tsx': ['draft-podium', 'draft-snake-tail'],
+    'src/features/draft-spot/DraftSpotHero.tsx': ['draft-boundary-first', 'draft-podium', 'draft-snake-tail', 'draft-rishi-pick-four'],
     'js/current-season-renderers.js': ['current-clinched', 'current-eliminated'],
     'src/features/owner-hub/OwnerHubPage.tsx': ['owner-emblem'],
   };

@@ -93,6 +93,11 @@ function TradeCard({ trade, model }: { trade: Trade; model: TransactionModel }) 
       : trade.even
         ? `Even through Week ${trade.completed_through_week}`
         : `On-field edge through Week ${trade.completed_through_week}: ${trade.edge_owner}`;
+  const loreFacts = JSON.stringify({
+    completed_through_week: trade.completed_through_week,
+    edge_owner: trade.edge_owner,
+    trade_side_points: trade.sides.map(side => `${side.owner}: ${side.starter_points.toFixed(2)}`).join(' · '),
+  });
   return <article
     id={`transaction-${trade.transaction_id}`}
     class="transaction-trade-card"
@@ -130,13 +135,18 @@ function TradeCard({ trade, model }: { trade: Trade; model: TransactionModel }) 
     <p class="transaction-method">
       Method: starter fantasy points actually produced for each receiving owner after the trade through the last completed scoring week.
     </p>
-    {trade.status === 'final' && !trade.even && trade.edge_owner && <button type="button" class="btn transaction-lore-receipt" data-lore-trigger="transactions-receipt" data-lore-value={trade.transaction_id}>Open on-field receipt</button>}
+    {trade.status === 'final' && !trade.even && trade.edge_owner && <button type="button" class="btn transaction-lore-receipt" data-lore-trigger="transactions-receipt" data-lore-value={trade.transaction_id} data-lore-facts={loreFacts}>Open on-field receipt</button>}
   </article>;
 }
 
 function JourneyView({ journey, model }: { journey: Journey | null; model: TransactionModel }) {
   if (!journey) return <Empty>Choose a player to see an ownership journey.</Empty>;
   const distinctOwners = new Set(journey.stints.map(stint => stint.owner));
+  const loreFacts = JSON.stringify({
+    owners: [...distinctOwners].join(' · '),
+    completed_through_week: model.season.coverage.completed_week,
+    starter_points: journey.stints.reduce((total, stint) => total + stint.starter_points, 0).toFixed(2),
+  });
   return <div class="transaction-journey" id={`transaction-player-${journey.player_id}`} tabindex={-1}>
     <h4>{name(model, journey.player_id)}</h4>
     <ol>
@@ -153,8 +163,8 @@ function JourneyView({ journey, model }: { journey: Journey | null; model: Trans
         >Source move</StateLink>}
       </li>)}
     </ol>
-    {distinctOwners.size >= 3 && <button type="button" class="btn transaction-lore-journey" data-lore-trigger="transactions-suitcase" data-lore-value={journey.player_id}>Reveal passport trail</button>}
-    {name(model, journey.player_id).toLocaleLowerCase().includes('rashid shaheed') && <button type="button" class="btn transaction-lore-rashid" data-lore-trigger="rashid-shaheed-story" data-lore-value={journey.player_id}>Reveal Rashid Shaheed lore</button>}
+    {distinctOwners.size >= 3 && <button type="button" class="btn transaction-lore-journey" data-lore-trigger="transactions-suitcase" data-lore-value={journey.player_id} data-lore-facts={loreFacts}>Reveal passport trail</button>}
+    {name(model, journey.player_id).toLocaleLowerCase().includes('rashid shaheed') && <button type="button" class="btn transaction-lore-rashid" data-lore-trigger="rashid-shaheed-story" data-lore-value={journey.player_id} data-lore-facts={loreFacts}>Reveal Rashid Shaheed lore</button>}
   </div>;
 }
 

@@ -43,6 +43,30 @@ test('League Lore preserves the supplied year and sensitivity corrections', () =
   assert.match(byId.get('almanac-connor-leveon').provenance, /factual narrative detail/);
 });
 
+test('Draft Journey covers every season exactly once with reviewed eras', () => {
+  const locations = lore.draft_locations;
+  assert.deepEqual(locations.map(location => location.id), ['remote-virtual', 'bethany-beach', 'college-park', 'washington-dc']);
+  assert.deepEqual(locations.map(location => [location.season_start, location.season_end]), [[2014, 2016], [2017, 2022], [2023, 2024], [2025, 2026]]);
+  assert.deepEqual(locations.map(location => location.entry_id), [
+    'draft-location-remote-virtual', 'draft-location-bethany-beach', 'draft-location-college-park', 'draft-location-washington-dc',
+  ]);
+  const seasons = locations.flatMap(location => Array.from({ length: location.season_end - location.season_start + 1 }, (_, index) => location.season_start + index));
+  assert.deepEqual(seasons, Array.from({ length: 13 }, (_, index) => 2014 + index));
+  assert.equal(new Set(seasons).size, seasons.length);
+  const collection = lore.collections.find(item => item.id === 'draft-weekend-museum');
+  assert.ok(collection);
+  assert.deepEqual(locations.map(location => location.entry_id).every(id => collection.entry_ids.includes(id)), true);
+  for (const location of locations) {
+    const entry = byId.get(location.entry_id);
+    assert.equal(entry.category, 'draft-weekend');
+    assert.equal(entry.enabled, true);
+    assert.equal(entry.season, null);
+    assert.equal(entry.occurred_year, null);
+    assert.equal(entry.completed_year, null);
+    assert.match(entry.provenance, /User-supplied draft journey history/);
+  }
+});
+
 test('disabled lore root suppresses every optional lore surface', async () => {
   const disabled = JSON.parse(JSON.stringify(lore));
   disabled.enabled = false;

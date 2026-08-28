@@ -3,7 +3,13 @@ import { mountDraftSpot, unmountDraftSpot } from './draft-spot-controller';
 import { registerDraftSpotTables } from './draft-spot-tables';
 import type { AppContext } from '../../app/app-types';
 import type { DarlingFeatureController, FeatureActivation } from '../../app/feature-contract';
+import type { DraftLocation } from '../../data/generated/asset-types';
 import { ownerOrNull } from '../../app/feature-utils';
+
+function enabledLoreDraftLocations(context: AppContext): DraftLocation[] {
+  const locations = context.data.leagueLore?.enabled ? context.data.leagueLore.draft_locations || [] : [];
+  return locations.filter(location => location.enabled && Boolean(context.lore.entry(location.entry_id)));
+}
 
 export function createFeatureController(): DarlingFeatureController {
   let context: AppContext;
@@ -45,9 +51,7 @@ export function createFeatureController(): DarlingFeatureController {
         const explicit = Object.entries(input.route)
           .some(([key, value]) => key.startsWith('draft') && value !== null && value !== undefined);
         const favorite = !explicit ? context.ownerPreference.getSnapshot().owner : null;
-        const availableLocations = context.data.leagueLore?.enabled
-          ? ((context.data.leagueLore.draft_locations || []) as any[]).filter(location => location.enabled && Boolean(context.lore.entry(location.entry_id)))
-          : [];
+        const availableLocations = enabledLoreDraftLocations(context);
         const requestedLocation = input.route.draftLocation;
         const selectedLocation = typeof requestedLocation === 'string' && availableLocations.some(location => location.id === requestedLocation)
           ? requestedLocation
@@ -85,9 +89,7 @@ export function createFeatureController(): DarlingFeatureController {
         state: selected,
         onStateChange: updateForActivation,
         onReady: updateForActivation,
-        locations: context.data.leagueLore?.enabled
-          ? ((context.data.leagueLore.draft_locations || []) as any[]).filter(location => location.enabled && Boolean(context.lore.entry(location.entry_id)))
-          : [],
+        locations: enabledLoreDraftLocations(context),
         onRevealLocation: (entryId, opener) => { void context.lore.reveal('entry', entryId, { opener }); },
       });
     },

@@ -1,4 +1,5 @@
 import { expect, test } from './coverage-fixture.js';
+import { expectNoViolations } from './accessibility-helpers.js';
 
 test.describe('Draft Journey', () => {
   test.beforeEach(async ({ page }) => {
@@ -44,4 +45,11 @@ test.describe('Draft Journey', () => {
     await page.waitForLoadState('networkidle');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });
+
+  for (const theme of ['light', 'dark']) {
+    test(`has no automated violations in ${theme} theme`, async ({ page }) => {
+      await page.locator(`[data-theme-preference="${theme}"]`).click();
+      await expectNoViolations(page, '#draftJourneyDisclosure');
+    });
+  }
 });

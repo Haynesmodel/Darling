@@ -238,10 +238,11 @@ test('url helpers parse and rebuild gauntlet state', () => {
 });
 
 test('url helpers parse and rebuild Draft Spot state', () => {
-  const parsed = parseUrlState('?tab=draft&draftMode=pick&draftOwner=Joe&draftStart=2021&draftEnd=2025&draftMetric=playoffRate&draftMinSample=3&draftNormalize=percentile&draftPick=10');
+  const parsed = parseUrlState('?tab=draft&draftMode=pick&draftOwner=Joe&draftStart=2021&draftEnd=2025&draftMetric=playoffRate&draftMinSample=3&draftNormalize=percentile&draftPick=10&draftLocation=college-park');
   assert.equal(parsed.hasDraft, true);
   assert.equal(parsed.draftOwner, 'Joe');
   assert.equal(parsed.draftPick, 10);
+  assert.equal(parsed.draftLocation, 'college-park');
   const url = buildUrlFromState({
     pathname: '/Darling/',
     tab: 'draft',
@@ -253,8 +254,9 @@ test('url helpers parse and rebuild Draft Spot state', () => {
     selectedDraftMinSample: parsed.draftMinSample,
     selectedDraftNormalize: parsed.draftNormalize,
     selectedDraftPick: parsed.draftPick,
+    selectedDraftLocation: parsed.draftLocation,
   });
-  assert.equal(url, '/Darling/?tab=draft&draftMode=pick&draftOwner=Joe&draftStart=2021&draftEnd=2025&draftMetric=playoffRate&draftMinSample=3&draftNormalize=percentile&draftPick=10');
+  assert.equal(url, '/Darling/?tab=draft&draftMode=pick&draftOwner=Joe&draftStart=2021&draftEnd=2025&draftMetric=playoffRate&draftMinSample=3&draftNormalize=percentile&draftPick=10&draftLocation=college-park');
 });
 
 test('url helpers preserve opponent selections with spaces and punctuation', () => {

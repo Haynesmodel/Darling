@@ -57,7 +57,7 @@ export function createFeatureController(): DarlingFeatureController {
         if (state.mode === 'calculator' && state.owner !== ALL_DYNASTY_TEAMS) lastIndividualOwner = state.owner;
         renderCurrent();
       },
-      onToggleTrend(owner: string) { if (!isActive()) return; context.lore.clearTransient(); const hidden = new Set(state.chartHiddenOwners); if (hidden.has(owner)) hidden.delete(owner); else hidden.add(owner); state = { ...state, chartHiddenOwners: [...hidden].sort() }; renderCurrent(); },
+      onToggleTrend(owner: string) { if (!isActive()) return; context.lore?.clearTransient(); const hidden = new Set(state.chartHiddenOwners); if (hidden.has(owner)) hidden.delete(owner); else hidden.add(owner); state = { ...state, chartHiddenOwners: [...hidden].sort() }; renderCurrent(); },
       onSelectWindow(row: DynastyScore, kind: 'playoffs' | 'saunders' = 'playoffs') { if (!isActive()) return; state = { ...state, selectedWindowKey: `${row.owner}|${row.windowStartSeason}|${row.windowEndSeason}|${row.windowSize || ''}`, selectedWindowKind: kind }; renderCurrent(); },
       onCloseWindow() { if (!isActive()) return; state = { ...state, selectedWindowKey: null, selectedWindowKind: null }; renderCurrent(); },
     }), root);

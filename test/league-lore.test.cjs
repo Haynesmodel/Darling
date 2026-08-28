@@ -28,6 +28,8 @@ test('League Lore preserves the supplied year and sensitivity corrections', () =
   const championship = byId.get('2022-championship-context').body.join(' ');
   assert.doesNotMatch(championship, /101\.08|100\.40/);
   assert.match(championship, /Tee Higgins/);
+  assert.match(championship, /Zubs took the lead/);
+  assert.match(championship, /because he had Tee Higgins/);
   assert.match(championship, /active players/);
   assert.equal(byId.get('almanac-nuss-saunders').category, 'league-moment');
   assert.equal(byId.get('almanac-nuss-saunders').season, 2014);
@@ -154,6 +156,11 @@ test('generated LeagueLore guard accepts schema boundaries and rejects empty req
   if (matched?.match) matched.match.owners = ['Nuss', 'Nuss'];
   edge.collections[0].entry_ids = ['a'.repeat(100)];
   assert.equal(isLeagueLore(edge), true);
+  const record = edge.entries.find(entry => entry.id === 'record-42');
+  record.anchors[0].game = { type: 'season', season: 2019 };
+  assert.equal(isLeagueLore(edge), false);
+  record.anchors[0].game = { type: 'game', season: 2019, week: 12, game_type: 'Regular', owners: ['Joe', 'Nuss'] };
+  assert.equal(isLeagueLore(edge), true);
   edge.collections[0].entry_ids = [];
   assert.equal(isLeagueLore(edge), false);
   edge.collections[0].entry_ids = ['a'.repeat(100)];
@@ -221,6 +228,7 @@ test('trigger runtime enforces monotonic windows, target signatures, and lifecyc
   assert.equal(service.trigger('owner-emblem', ownerContext), false);
   assert.equal(service.trigger('owner-emblem', ownerContext), false);
   assert.equal(service.trigger('owner-emblem', ownerContext), true);
+  await Promise.resolve();
   await Promise.resolve();
   assert.equal(reveals, 1);
   at += 4001;
@@ -312,12 +320,30 @@ test('pending presentation cannot reopen lore after transient clear', async () =
   assert.equal(shown, 0);
 });
 
+test('loaded presenter cleanup is synchronous at lifecycle boundaries', async () => {
+  let transientClears = 0; let motionUpdates = 0; let disposals = 0;
+  const service = createLazyLoreService(async () => ({
+    showLore() {},
+    clearLoreTransient() { transientClears += 1; },
+    setReducedMotion() { motionUpdates += 1; },
+    disposeLorePresentation() { disposals += 1; },
+  }));
+  service.hydrate(lore);
+  await service.reveal('entry', 'record-42');
+  service.clearTransient();
+  assert.equal(transientClears, 1);
+  service.setReducedMotion(true);
+  assert.equal(motionUpdates, 1);
+  service.dispose();
+  assert.equal(disposals, 1);
+});
+
 test('presentation DOM contract covers replacement, reduced motion, collections, and dialog fallback', () => {
   class FakeElement {
     constructor(tagName, ownerDocument) {
       this.tagName = tagName.toUpperCase(); this.ownerDocument = ownerDocument; this.children = []; this.attributes = new Map(); this.listeners = new Map(); this.open = false;
       this.classList = { add: value => { this.className = `${this.className || ''} ${value}`.trim(); } };
-      this.style = { setProperty() {} };
+      this.style = { values: new Map(), setProperty: (name, value) => this.style.values.set(name, value) };
     }
     append(...nodes) { nodes.forEach(node => { node.parentNode = this; this.children.push(node); }); }
     removeChild(node) { this.children = this.children.filter(child => child !== node); node.parentNode = null; }
@@ -356,16 +382,25 @@ test('presentation DOM contract covers replacement, reduced motion, collections,
   lorePresentation.disposeLorePresentation();
   assert.equal(doc.activeElement, opener);
 
-  const overlayEffect = { ...effect, presentation: 'overlay' };
-  lorePresentation.showLore(entry, new Map(), overlayEffect, { opener, scope, context: {} });
+  const terps = byId.get('rivalry-nuss-rishi');
+  const butter = byId.get('rivalry-singer-nuss');
+  const terpsEffect = lore.effects.find(item => item.id === 'nuss-rishi');
+  const butterEffect = lore.effects.find(item => item.id === 'singer-nuss');
+  lorePresentation.showLore(terps, new Map(byId), terpsEffect, { opener, scope, context: {} });
   const firstBackdrop = doc.body.children.find(node => node.className?.includes('lore-backdrop'));
-  assert.equal(firstBackdrop.attributes.get('data-lore-effect'), 'test');
+  assert.equal(firstBackdrop.attributes.get('data-lore-effect'), 'nuss-rishi');
+  assert.equal(firstBackdrop.children.length, 14);
   doc.body.children.find(node => node.tagName === 'DIALOG').children[0].dispatch('click');
   assert.equal(doc.body.children.some(node => node.className?.includes('lore-backdrop')), true);
-  lorePresentation.showLore(entry, new Map(), { ...overlayEffect, id: 'butter-bowl', symbol: '🧈' }, { opener, scope, context: {} });
+  lorePresentation.showLore(butter, new Map(byId), butterEffect, { opener, scope, context: {} });
   const secondBackdrop = doc.body.children.find(node => node.className?.includes('lore-backdrop'));
-  assert.equal(secondBackdrop.attributes.get('data-lore-effect'), 'butter-bowl');
-  assert.notEqual(firstBackdrop.textContent, secondBackdrop.textContent);
+  assert.equal(secondBackdrop.attributes.get('data-lore-effect'), 'singer-nuss');
+  assert.notEqual(firstBackdrop.children[0].textContent, secondBackdrop.children[0].textContent);
+  lorePresentation.clearLoreTransient();
+  assert.equal(doc.body.children.some(node => node.className?.includes('lore-backdrop')), false);
+  lorePresentation.showLore(terps, new Map(byId), terpsEffect, { opener, scope, context: {} });
+  lorePresentation.setReducedMotion(true);
+  assert.equal(doc.body.children.some(node => node.className?.includes('lore-backdrop')), false);
   lorePresentation.disposeLorePresentation();
   assert.equal(doc.body.children.some(node => node.className?.includes('lore-backdrop')), false);
 

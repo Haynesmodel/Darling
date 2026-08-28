@@ -16,9 +16,7 @@ export default function DraftSpotHero({ model }: { model: DraftSpotViewModel }) 
   const rangeStart = state.startSeason ?? Math.min(...availableSeasons);
   const rangeEnd = state.endSeason ?? Math.max(...availableSeasons);
   const includes2025 = rangeStart <= 2025 && rangeEnd >= 2025;
-  const activeRows = model.baseRows.length
-    ? model.baseRows
-    : model.asset.rows.filter(row => row.season >= rangeStart && row.season <= rangeEnd);
+  const activeRows = model.baseRows;
   const selectedRows = state.selectedPick === null ? [] : activeRows.filter(row => row.draft_pick === state.selectedPick);
   const first = selectedRows.some(row => row.draft_pick === 1) ? state.selectedPick : null;
   const last = selectedRows.some(row => row.draft_pick === row.team_count) ? state.selectedPick : null;
@@ -27,8 +25,8 @@ export default function DraftSpotHero({ model }: { model: DraftSpotViewModel }) 
   // the 2025 expansion ends at 12).
   const firstRow = first !== null;
   const lastRow = last !== null;
-  const snareRow = includes2025 ? model.asset.rows.find(row => row.season === 2025 && row.owner === 'Snare' && row.draft_pick === 1) || null : null;
-  const rishiRow = includes2025 ? model.asset.rows.find(row => row.season === 2025 && row.owner === 'Rishi' && row.draft_pick === 4) || null : null;
+  const snareRow = includes2025 ? activeRows.find(row => row.season === 2025 && row.owner === 'Snare' && row.draft_pick === 1) || null : null;
+  const rishiRow = includes2025 ? activeRows.find(row => row.season === 2025 && row.owner === 'Rishi' && row.draft_pick === 4) || null : null;
   const expansionRows = model.asset.rows.filter(row => row.season === 2024 || row.season === 2025);
   const teamCounts = new Map(expansionRows.map(row => [row.season, row.team_count]));
   const firstFacts = JSON.stringify({ draft_slot: first, range: `${rangeStart}-${rangeEnd}` });

@@ -90,15 +90,15 @@ function mountShell() {
   bindDropdownChecklists(document);
   document.addEventListener('click', event => {
     const source = event.target instanceof HTMLElement ? event.target.closest<HTMLElement>('[data-lore-trigger]') : null;
-    const data = source?.dataset;
-    const trigger = data?.loreTrigger;
+    const attr = (name: string) => source?.getAttribute(`data-lore-${name}`) || undefined;
+    const trigger = attr('trigger');
     if (!trigger) return;
     loreRuntime.trigger(trigger, {
-      owner: data.loreOwner,
-      season: data.loreSeason,
-      value: data.loreValue,
-      owners: data.loreOwners?.split(',').map(owner => owner.trim()).filter(Boolean),
-      facts: (() => { try { return data.loreFacts ? JSON.parse(data.loreFacts) : undefined; } catch { return undefined; } })(),
+      owner: attr('owner'),
+      season: attr('season'),
+      value: attr('value'),
+      owners: attr('owners')?.split(',').map(owner => owner.trim()).filter(Boolean),
+      facts: (() => { try { const value = attr('facts'); return value ? JSON.parse(value) : undefined; } catch { return undefined; } })(),
       opener: source,
     });
   });

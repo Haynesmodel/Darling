@@ -230,6 +230,7 @@ test('runtime loader fails closed for malformed optional LeagueLore while requir
     ['duration over limit', value => { value.effects[0].duration_ms = 2501; }],
     ['extra match property', value => { value.triggers.find(item => item.match).match.extra = true; }],
     ['extra entry property', value => { value.entries[0].unexpected = true; }],
+    ['record anchor requires a game anchor', value => { value.entries.find(entry => entry.id === 'record-42').anchors[0].game = { type: 'season', season: 2019 }; }],
     ['malformed date', value => { value.updated_at = '2024/01/01'; }],
     ['body item over schema limit', value => { value.entries[0].body = ['x'.repeat(501)]; }],
     ['title over schema limit', value => { value.entries[0].title = 'x'.repeat(181); }],

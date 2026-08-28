@@ -43,6 +43,7 @@ const BLOWOUT_MARGIN = 29;
 const HIGH_SCORE_THRESHOLD = 150;
 const SUB_SCORE_THRESHOLD = 70;
 const CLOSE_GAME_MARGIN = 5;
+const setLoreAttribute = (button: HTMLElement, name: string, value: string) => button.setAttribute(`data-lore-${name}`, value);
 
 export function createFeatureController(): DarlingFeatureController {
   let context: AppContext;
@@ -180,28 +181,28 @@ export function createFeatureController(): DarlingFeatureController {
       const button = context.document.createElement('button');
       button.type = 'button'; button.className = 'btn history-lore-trigger';
       button.textContent = view.effectType === 'champion' ? 'Show champion crown' : 'Show Saunders fog';
-      button.dataset.loreTrigger = view.effectType === 'champion' ? 'history-champion' : 'history-saunders';
-      button.dataset.loreSeason = String(view.season); button.dataset.loreOwner = view.team;
+      setLoreAttribute(button, 'trigger', view.effectType === 'champion' ? 'history-champion' : 'history-saunders');
+      setLoreAttribute(button, 'season', String(view.season)); setLoreAttribute(button, 'owner', view.team);
       const canonical = context.data.seasonSummaries.find(row => row.owner === view.team && row.season === view.season);
-      if (canonical) button.dataset.loreFacts = JSON.stringify({ record: `${canonical.wins}-${canonical.losses}${canonical.ties ? `-${canonical.ties}` : ''}`, finish: canonical.finish, champion: canonical.champion, saunders: canonical.saunders, points_for: canonical.points_for, points_against: canonical.points_against });
+      if (canonical) setLoreAttribute(button, 'facts', JSON.stringify({ record: `${canonical.wins}-${canonical.losses}${canonical.ties ? `-${canonical.ties}` : ''}`, finish: canonical.finish, champion: canonical.champion, saunders: canonical.saunders, points_for: canonical.points_for, points_against: canonical.points_against }));
       mount.append(button);
     }
     if (selectedTeam === 'Nuss' && selectedSeasons.has(2019)) {
       const button = context.document.createElement('button');
       button.type = 'button'; button.className = 'btn history-lore-trigger'; button.textContent = 'Reveal low-score record lore';
-      button.dataset.loreTrigger = 'record-42-history'; button.dataset.loreSeason = '2019'; button.dataset.loreOwner = 'Nuss';
+      setLoreAttribute(button, 'trigger', 'record-42-history'); setLoreAttribute(button, 'season', '2019'); setLoreAttribute(button, 'owner', 'Nuss');
       mount.append(button);
     }
     if (selectedTeam !== ALL_TEAMS && selectedSeasons.has(2022) && (selectedTeam === 'Zubs' || selectedTeam === 'Rishi')) {
       const button = context.document.createElement('button');
       button.type = 'button'; button.className = 'btn history-lore-trigger'; button.textContent = 'Open 2022 championship context';
-      button.dataset.loreTrigger = 'championship-context'; button.dataset.loreSeason = '2022'; button.dataset.loreOwner = selectedTeam;
+      setLoreAttribute(button, 'trigger', 'championship-context'); setLoreAttribute(button, 'season', '2022'); setLoreAttribute(button, 'owner', selectedTeam);
       const summary = context.data.seasonSummaries.find(row => row.owner === selectedTeam && row.season === 2022);
       const championship = context.data.leagueGames.find(game => game.season === 2022 && game.week === 17 && game.round === 'Championship' && (game.teamA === 'Zubs' && game.teamB === 'Rishi' || game.teamA === 'Rishi' && game.teamB === 'Zubs'));
       if (summary) {
         const score = championship && (championship.teamA === selectedTeam ? championship.scoreA : championship.scoreB);
         const opponent = championship && (championship.teamA === selectedTeam ? championship.teamB : championship.teamA);
-        button.dataset.loreFacts = JSON.stringify({ record: `${summary.wins}-${summary.losses}${summary.ties ? `-${summary.ties}` : ''}`, finish: summary.finish, champion: summary.champion, saunders: summary.saunders, points_for: summary.points_for, points_against: summary.points_against, team_count: context.data.seasonSummaries.filter(row => row.season === 2022).length, championship_score: score === undefined ? undefined : `${selectedTeam} ${Number(score).toFixed(2)} – ${opponent} ${Number(championship?.teamA === selectedTeam ? championship.scoreB : championship?.scoreA).toFixed(2)}` });
+        setLoreAttribute(button, 'facts', JSON.stringify({ record: `${summary.wins}-${summary.losses}${summary.ties ? `-${summary.ties}` : ''}`, finish: summary.finish, champion: summary.champion, saunders: summary.saunders, points_for: summary.points_for, points_against: summary.points_against, team_count: context.data.seasonSummaries.filter(row => row.season === 2022).length, championship_score: score === undefined ? undefined : `${selectedTeam} ${Number(score).toFixed(2)} – ${opponent} ${Number(championship?.teamA === selectedTeam ? championship.scoreB : championship?.scoreA).toFixed(2)}` }));
       }
       mount.append(button);
     }
@@ -220,7 +221,7 @@ export function createFeatureController(): DarlingFeatureController {
         buttons.forEach(([buttonTrigger, buttonLabel]) => {
           const button = context.document.createElement('button');
           button.type = 'button'; button.className = 'btn history-lore-trigger'; button.textContent = buttonLabel;
-          button.dataset.loreTrigger = buttonTrigger; button.dataset.loreSeason = '2025'; button.dataset.loreOwner = selectedTeam; button.dataset.loreFacts = facts;
+          setLoreAttribute(button, 'trigger', buttonTrigger); setLoreAttribute(button, 'season', '2025'); setLoreAttribute(button, 'owner', selectedTeam); setLoreAttribute(button, 'facts', facts);
           mount.append(button);
         });
       }
@@ -282,7 +283,7 @@ export function createFeatureController(): DarlingFeatureController {
         if (view.triggerSlug) {
           const button = context.document.createElement('button');
           button.type = 'button'; button.className = 'btn history-group-lore-trigger'; button.textContent = 'Reveal group lore';
-          button.dataset.loreTrigger = `history-group-${view.triggerSlug}`; button.dataset.loreValue = view.triggerSlug;
+          setLoreAttribute(button, 'trigger', `history-group-${view.triggerSlug}`); setLoreAttribute(button, 'value', view.triggerSlug);
           callouts.append(button);
         }
       }

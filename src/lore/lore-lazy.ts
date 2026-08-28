@@ -9,6 +9,7 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
   let canonical: { leagueGames: H2HGame[]; seasonSummaries: SeasonSummaryRow[] } | null = null;
   let reducedMotion = false;
   let loading: Promise<LorePresentation> | null = null;
+  let presentation: LorePresentation | null = null;
   const states = new Map<string, { at: number; count?: number; value: string; values?: string[] }>();
   const tripleSignatures = new Map<string, string>();
   const sessionSeen = new Set<string>();
@@ -61,7 +62,8 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
     }
     if (target.id === '2022-championship-context' && gameAnchor) {
       const game = gameFor(gameAnchor);
-      const owner = typeof context?.owner === 'string' ? context.owner : 'Zubs';
+      const requestedOwner = typeof context?.owner === 'string' && game && [game.teamA, game.teamB].includes(context.owner) ? context.owner : null;
+      const owner = requestedOwner || (game && target.owners.find(candidate => [game.teamA, game.teamB].includes(candidate))) || 'Zubs';
       const summary = canonical.seasonSummaries.find(item => item.owner === owner && item.season === gameAnchor.season);
       if (!game || !summary) return {};
       const ownerScore = game.teamA === owner ? game.scoreA : game.scoreB;
@@ -82,6 +84,7 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
       if (!options?.scope) scope.clear();
       return false;
     }
+    presentation = module;
     const context = { ...options?.context, facts: { ...(options?.context?.facts as Record<string, unknown> | undefined), ...canonicalFacts(type === 'entry' ? target as LeagueLore['entries'][number] : null, options?.context) } };
     module.showLore(target, new Map(asset.entries.filter(entry => entry.enabled).map(entry => [entry.id, entry])), asset.effects.find(effect => effect.id === (options?.effectId || 'lore-dialog') && effect.enabled) || null, { scope, opener: options?.opener, context, reducedMotion });
     return true;
@@ -134,8 +137,8 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
     },
     reveal,
     createScope: makeScope,
-    setReducedMotion(value) { reducedMotion = value; if (loading) void loading.then(module => module.setReducedMotion?.(value)); },
-    clearTransient() { generation += 1; scopes.forEach(scope => scope.clear()); loading?.then(module => module.clearLoreTransient?.()); states.clear(); tripleSignatures.clear(); scopeSeen.clear(); },
-    dispose() { generation += 1; scopes.forEach(scope => scope.clear()); loading?.then(module => module.clearLoreTransient?.()); loading = null; asset = null; canonical = null; reducedMotion = false; states.clear(); tripleSignatures.clear(); scopeSeen.clear(); sessionSeen.clear(); },
+    setReducedMotion(value) { reducedMotion = value; if (presentation) presentation.setReducedMotion?.(value); },
+    clearTransient() { generation += 1; scopes.forEach(scope => scope.clear()); if (presentation) presentation.clearLoreTransient?.(); states.clear(); tripleSignatures.clear(); scopeSeen.clear(); },
+    dispose() { generation += 1; scopes.forEach(scope => scope.clear()); if (presentation) presentation.disposeLorePresentation?.(); loading = null; presentation = null; asset = null; canonical = null; reducedMotion = false; states.clear(); tripleSignatures.clear(); scopeSeen.clear(); sessionSeen.clear(); },
   };
 }

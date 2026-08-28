@@ -120,6 +120,39 @@ test('same-feature route changes clear an open lore presentation', async ({ page
   await expect(page.locator('.owner-hub-emblem[data-lore-owner="Rishi"]')).toBeVisible();
 });
 
+test('rivalry backdrop persists through close and clears on pair or motion changes', async ({ page }) => {
+  await page.goto('/?tab=rivalry&rivalryTeamA=Nuss&rivalryTeamB=Rishi');
+  await page.locator('.rivalry-lore-trigger').click();
+  await expect(page.locator('.lore-backdrop[data-lore-effect="nuss-rishi"]')).toHaveCount(1);
+  await expect(page.locator('.lore-backdrop[data-lore-effect="nuss-rishi"] .lore-decoration')).toHaveCount(14);
+  await page.locator('dialog button[aria-label="Close league lore"]').click();
+  await expect(page.locator('.lore-backdrop[data-lore-effect="nuss-rishi"]')).toHaveCount(1);
+  await page.locator('#rivalryTeamB').selectOption('Singer');
+  await expect(page.locator('.lore-backdrop')).toHaveCount(0);
+
+  await page.goto('/?tab=rivalry&rivalryTeamA=Nuss&rivalryTeamB=Rishi');
+  await page.locator('.rivalry-lore-trigger').click();
+  await expect(page.locator('.lore-backdrop')).toHaveCount(1);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(page.locator('.lore-backdrop')).toHaveCount(0);
+  await expect(page.locator('dialog')).toBeVisible();
+});
+
+test('Dynasty trend selection clears lore presentation on local filter change', async ({ page }) => {
+  await page.goto('/?tab=dynasty');
+  await page.locator('#dynastyTrendDisclosure summary').click();
+  const toggles = page.locator('[data-dynasty-trend-toggle="1"]');
+  await expect(toggles.first()).toBeVisible();
+  const toggleCount = await toggles.count();
+  for (let index = 1; index < toggleCount; index += 1) await toggles.nth(index).click();
+  const lore = page.locator('[data-lore-trigger="dynasty-last-standing"]');
+  await expect(lore).toBeVisible();
+  await lore.click();
+  await expect(page.locator('dialog[aria-labelledby="lore-dialog-title"]')).toBeVisible();
+  await page.locator('[data-dynasty-trend-toggle="1"][aria-pressed="true"]').first().evaluate(button => button.click());
+  await expect(page.locator('dialog[aria-labelledby="lore-dialog-title"], .lore-overlay, .lore-backdrop')).toHaveCount(0);
+});
+
 test('draft lore controls are limited to their canonical 2025 boundaries', async ({ page }) => {
   await page.goto('/?tab=draft&draftMode=pick&draftPick=1');
   await expect(page.locator('[data-lore-trigger="draft-boundary-first"]')).not.toHaveAttribute('data-lore-season', '2025');
@@ -142,6 +175,11 @@ test('draft lore controls are limited to their canonical 2025 boundaries', async
 
   await page.goto('/?tab=draft&draftMode=pick&draftPick=1&draftOwner=Snare');
   await expect(page.locator('[data-lore-trigger="draft-snake-tail"]')).toHaveCount(0);
+  await expect(page.locator('[data-lore-trigger="draft-podium"]')).toHaveCount(1);
+  await page.goto('/?tab=draft&draftMode=pick&draftPick=1&draftOwner=Joe');
+  await expect(page.locator('[data-lore-trigger="draft-podium"]')).toHaveCount(0);
+  await page.goto('/?tab=draft&draftMode=pick&draftPick=1&draftOwner=Snare&draftStart=2017&draftEnd=2024');
+  await expect(page.locator('[data-lore-trigger="draft-podium"]')).toHaveCount(0);
   await page.goto('/?tab=draft&draftMode=pick&draftPick=8&draftOwner=Connor');
   await expect(page.locator('[data-lore-trigger="draft-snake-tail"]')).toHaveCount(0);
 });

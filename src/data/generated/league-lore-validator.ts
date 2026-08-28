@@ -15,15 +15,16 @@ const OWN = (v: unknown) => C(v);
 const STRS = (v: unknown, max = 80) => A(v, x => S(x, max));
 const YEAR = (v: any) => I(v) && v >= 2014 && v <= 2100;
 const DATE = (v: any) => { if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false; const [year, month, day] = v.split('-').map(Number); const date = new Date(Date.UTC(year, month - 1, day)); return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day; };
+const GAME_ANCHOR = (v: unknown): boolean => O(v) && K(v, ['type','season','week','game_type','owners']) && v.type === 'game' && YEAR(v.season) && I(v.week) && v.week >= 1 && v.week <= 30 && S(v.game_type, 30) && Array.isArray(v.owners) && v.owners.length === 2 && v.owners.every(OWN) && U(v.owners, x => x);
 const ANCHOR = (v: unknown): boolean => {
   if (!O(v)) return false;
   if (v.type === 'owner-season') return K(v, ['type','owner','season']) && OWN(v.owner) && YEAR(v.season);
   if (v.type === 'season') return K(v, ['type','season']) && YEAR(v.season);
-  if (v.type === 'game') return K(v, ['type','season','week','game_type','owners']) && YEAR(v.season) && I(v.week) && v.week >= 1 && v.week <= 30 && S(v.game_type, 30) && Array.isArray(v.owners) && v.owners.length === 2 && v.owners.every(OWN) && U(v.owners, x => x);
+  if (v.type === 'game') return GAME_ANCHOR(v);
   if (v.type === 'draft-slot') return K(v, ['type','season','owner','expected_slot']) && YEAR(v.season) && OWN(v.owner) && (v.expected_slot === undefined || I(v.expected_slot) && v.expected_slot > 0 && v.expected_slot <= 24);
   if (v.type === 'draft-selection') return K(v, ['type','season','owner','player_id']) && YEAR(v.season) && OWN(v.owner) && S(v.player_id, 40);
   if (v.type === 'transaction') return K(v, ['type','season','transaction_id']) && YEAR(v.season) && S(v.transaction_id, 120);
-  if (v.type === 'record') return K(v, ['type','selector','game']) && v.selector === 'lowest-score' && ANCHOR(v.game);
+  if (v.type === 'record') return K(v, ['type','selector','game']) && v.selector === 'lowest-score' && GAME_ANCHOR(v.game);
   if (v.type === 'rivalry') return K(v, ['type','owners','slug']) && ((Array.isArray(v.owners) && v.owners.length === 2 && v.owners.every(OWN) && U(v.owners, x => x) && !('slug' in v)) || (S(v.slug, 120) && !('owners' in v)));
   return false;
 };

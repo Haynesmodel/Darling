@@ -51,6 +51,7 @@ export function createFeatureController(): DarlingFeatureController {
       active: isActive(),
       onChange(next: RivalryState) {
         if (!isActive()) return;
+        context.lore?.clearTransient();
         state = resolveRivalryState(teams, buildPairOptions(context.data.rivalries), {
           ...next,
           scope: normalizeRivalryScope(next.scope),

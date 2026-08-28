@@ -12,9 +12,10 @@ const p = (doc: Document, value: string) => Object.assign(doc.createElement('p')
 const seed = (value: string) => [...value].reduce((sum, character) => (sum * 31 + character.charCodeAt(0)) >>> 0, 7);
 const decorationCounts: Readonly<Record<string, number>> = { 'bagel-shower': 14, flies: 9, chairs: 2, target: 3 };
 const decorationSymbols: Readonly<Record<string, string>> = { chairs: '🪑', ticket: '🎟️', 'blank-document': '▧' };
-function decorate(doc: Document, overlay: HTMLElement, effect: Effect, target: Entry | Collection) {
+const backdropPalette = ['#06f', '#b50'] as const;
+function decorate(doc: Document, overlay: HTMLElement, effect: Effect, target: Entry | Collection, countOverride?: number) {
   const name = effect.presentation;
-  const count = decorationCounts[name] ?? 1;
+  const count = countOverride ?? decorationCounts[name] ?? 1;
   const base = seed(`${target.id}:${name}`);
   for (let index = 0; index < count; index += 1) {
     const part = doc.createElement('span');
@@ -25,7 +26,6 @@ function decorate(doc: Document, overlay: HTMLElement, effect: Effect, target: E
     const y = (base >>> 3 ^ index * 29) % 72 + 10;
     part.style.setProperty('--lore-x', `${x}%`);
     part.style.setProperty('--lore-y', `${y}%`);
-    part.style.setProperty('--lore-delay', `${(index * 73) % 500}ms`);
     overlay.append(part);
   }
   overlay.setAttribute('data-lore-count', String(count));
@@ -64,12 +64,12 @@ export function showLore(target: Entry | Collection, entries: Map<string, Entry>
     const presentation = effect.presentation.replace(/[^a-z0-9-]/g, '-');
     if (effect.presentation === 'overlay') {
       const backdrop = doc.createElement('div');
-      backdrop.className = 'lore-backdrop lore-backdrop-group';
+      backdrop.className = 'lore-backdrop';
       backdrop.setAttribute('aria-hidden', 'true');
-      backdrop.setAttribute('role', 'presentation');
-      backdrop.setAttribute('data-lore-backdrop', '1');
       backdrop.setAttribute('data-lore-effect', effect.id);
-      backdrop.textContent = effect.symbol;
+      const base = seed(`${target.id}:${effect.id}`);
+      backdrop.style.setProperty('--lore-backdrop-accent', backdropPalette[base % backdropPalette.length]);
+      decorate(doc, backdrop, effect, target, 14);
       doc.body.append(backdrop);
       openBackdrop = backdrop;
     }

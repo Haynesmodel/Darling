@@ -1,3 +1,4 @@
+const fs = require('node:fs');
 const path = require('node:path');
 const { canonicalJson, readJson } = require('./canonical-json.cjs');
 
@@ -617,7 +618,8 @@ function validateSemanticBundle(bundle, opts = {}) {
   if (lore) {
     // Runtime and manifest limits apply to the authored JSON payload served to
     // browsers, rather than the pretty-printed key-sorted validation form.
-    const loreBytes = Buffer.byteLength(JSON.stringify(lore));
+    const lorePath = path.join(root, 'assets', 'LeagueLore.json');
+    const loreBytes = fs.existsSync(lorePath) ? fs.statSync(lorePath).size : Buffer.byteLength(JSON.stringify(lore));
     if (loreBytes > 100 * 1024) report('LORE_ASSET_SIZE', 'assets/LeagueLore.json', 'asset', `asset is ${loreBytes} bytes; maximum is 102400`);
     const draftLocations = Array.isArray(lore.draft_locations) ? lore.draft_locations : [];
     const namespaces = [lore.owners, lore.commissioner_terms, lore.collections, lore.effects, lore.entries, lore.triggers, draftLocations];

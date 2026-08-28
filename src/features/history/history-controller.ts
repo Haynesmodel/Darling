@@ -59,7 +59,6 @@ export function createFeatureController(): DarlingFeatureController {
   let filteredValue: any[] = [];
   const renderCache = new Map<string, string>();
   const metrics = { filterRuns: 0 };
-  let lastEffectKey: string | null = null;
   let disclosure: SectionDisclosureController | null = null;
 
   const loreNote = (id: string) => context.lore.entry(id)?.body[0] || null;
@@ -183,8 +182,6 @@ export function createFeatureController(): DarlingFeatureController {
       button.textContent = view.effectType === 'champion' ? 'Show champion crown' : 'Show Saunders fog';
       setLoreAttribute(button, 'trigger', view.effectType === 'champion' ? 'history-champion' : 'history-saunders');
       setLoreAttribute(button, 'season', String(view.season)); setLoreAttribute(button, 'owner', view.team);
-      const canonical = context.data.seasonSummaries.find(row => row.owner === view.team && row.season === view.season);
-      if (canonical) setLoreAttribute(button, 'facts', JSON.stringify({ record: `${canonical.wins}-${canonical.losses}${canonical.ties ? `-${canonical.ties}` : ''}`, finish: canonical.finish, champion: canonical.champion, saunders: canonical.saunders, points_for: canonical.points_for, points_against: canonical.points_against }));
       mount.append(button);
     }
     if (selectedTeam === 'Nuss' && selectedSeasons.has(2019)) {
@@ -197,13 +194,6 @@ export function createFeatureController(): DarlingFeatureController {
       const button = context.document.createElement('button');
       button.type = 'button'; button.className = 'btn history-lore-trigger'; button.textContent = 'Open 2022 championship context';
       setLoreAttribute(button, 'trigger', 'championship-context'); setLoreAttribute(button, 'season', '2022'); setLoreAttribute(button, 'owner', selectedTeam);
-      const summary = context.data.seasonSummaries.find(row => row.owner === selectedTeam && row.season === 2022);
-      const championship = context.data.leagueGames.find(game => game.season === 2022 && game.week === 17 && game.round === 'Championship' && (game.teamA === 'Zubs' && game.teamB === 'Rishi' || game.teamA === 'Rishi' && game.teamB === 'Zubs'));
-      if (summary) {
-        const score = championship && (championship.teamA === selectedTeam ? championship.scoreA : championship.scoreB);
-        const opponent = championship && (championship.teamA === selectedTeam ? championship.teamB : championship.teamA);
-        setLoreAttribute(button, 'facts', JSON.stringify({ record: `${summary.wins}-${summary.losses}${summary.ties ? `-${summary.ties}` : ''}`, finish: summary.finish, champion: summary.champion, saunders: summary.saunders, points_for: summary.points_for, points_against: summary.points_against, team_count: context.data.seasonSummaries.filter(row => row.season === 2022).length, championship_score: score === undefined ? undefined : `${selectedTeam} ${Number(score).toFixed(2)} – ${opponent} ${Number(championship?.teamA === selectedTeam ? championship.scoreB : championship?.scoreA).toFixed(2)}` }));
-      }
       mount.append(button);
     }
     if (selectedTeam !== ALL_TEAMS && selectedSeasons.has(2025) && (selectedTeam === 'Zook' || selectedTeam === 'Connor' || selectedTeam === 'Plot')) {
@@ -213,21 +203,15 @@ export function createFeatureController(): DarlingFeatureController {
         Plot: ['plot-rankings-story', 'Reveal missing power rankings'],
       } as const;
       const story = stories[selectedTeam as keyof typeof stories];
-      const summary = context.data.seasonSummaries.find(row => row.owner === selectedTeam && row.season === 2025);
-      if (summary) {
-        const facts = JSON.stringify({ record: `${summary.wins}-${summary.losses}${summary.ties ? `-${summary.ties}` : ''}`, finish: summary.finish, champion: summary.champion, saunders: summary.saunders, points_for: summary.points_for, points_against: summary.points_against, team_count: context.data.seasonSummaries.filter(row => row.season === 2025).length });
-        const buttons: Array<readonly [string, string]> = [story];
-        if (selectedTeam === 'Plot') buttons.push(['plot-admin', 'Reveal Plot administration'] as const);
-        buttons.forEach(([buttonTrigger, buttonLabel]) => {
-          const button = context.document.createElement('button');
-          button.type = 'button'; button.className = 'btn history-lore-trigger'; button.textContent = buttonLabel;
-          setLoreAttribute(button, 'trigger', buttonTrigger); setLoreAttribute(button, 'season', '2025'); setLoreAttribute(button, 'owner', selectedTeam); setLoreAttribute(button, 'facts', facts);
-          mount.append(button);
-        });
-      }
+      const buttons: Array<readonly [string, string]> = [story];
+      if (selectedTeam === 'Plot') buttons.push(['plot-admin', 'Reveal Plot administration'] as const);
+      buttons.forEach(([buttonTrigger, buttonLabel]) => {
+        const button = context.document.createElement('button');
+        button.type = 'button'; button.className = 'btn history-lore-trigger'; button.textContent = buttonLabel;
+        setLoreAttribute(button, 'trigger', buttonTrigger); setLoreAttribute(button, 'season', '2025'); setLoreAttribute(button, 'owner', selectedTeam);
+        mount.append(button);
+      });
     }
-    if (view.resetEffect) lastEffectKey = null;
-      if (view.effectKey && view.effectKey !== lastEffectKey) lastEffectKey = view.effectKey;
   };
 
   const funFacts = (games: any[]) => {

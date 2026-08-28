@@ -10,7 +10,7 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
   let reducedMotion = false;
   let loading: Promise<LorePresentation> | null = null;
   let presentation: LorePresentation | null = null;
-  const states = new Map<string, { at: number; count?: number; value: string; values?: string[] }>();
+  const states = new Map<string, { at: number; values?: string[] }>();
   const tripleSignatures = new Map<string, string>();
   const sessionSeen = new Set<string>();
   const scopeSeen = new Set<string>();
@@ -20,7 +20,7 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
   const advance = (id: string, value: string, windowMs: number, expected: string, limit: number) => {
     const at = now(); const previous = states.get(id);
     const values = previous && at - previous.at <= windowMs ? [...(previous.values || []), value] : [value];
-    states.set(id, { at, value, values: values.slice(-limit) });
+    states.set(id, { at, values: values.slice(-limit) });
     if (values.slice(-limit).join('|') !== expected) return false;
     states.delete(id); return true;
   };
@@ -71,7 +71,11 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
       const opponentScore = game.teamA === owner ? game.scoreB : game.scoreA;
       return { record: `${summary.wins}-${summary.losses}${summary.ties ? `-${summary.ties}` : ''}`, finish: summary.finish, champion: summary.champion, team_count: canonical.seasonSummaries.filter(item => item.season === gameAnchor.season).length, championship_score: `${owner} ${ownerScore.toFixed(2)} – ${opponent} ${opponentScore.toFixed(2)}` };
     }
-    return {};
+    const seasonAnchor = target.anchors.find(item => item.type === 'owner-season' || item.type === 'season') as { season?: number } | undefined;
+    const owner = typeof context?.owner === 'string' ? context.owner : target.owners[0];
+    const season = seasonAnchor?.season ?? Number(context?.season);
+    const summary = owner && Number.isFinite(season) ? canonical.seasonSummaries.find(item => item.owner === owner && item.season === season) : null;
+    return summary ? { record: `${summary.wins}-${summary.losses}${summary.ties ? `-${summary.ties}` : ''}`, finish: summary.finish, champion: summary.champion, saunders: summary.saunders, points_for: summary.points_for, points_against: summary.points_against, team_count: canonical.seasonSummaries.filter(item => item.season === season).length } : {};
   };
   const reveal = async (type: 'entry' | 'collection', id: string, options?: LoreRevealOptions) => {
     if (!asset?.enabled) return false;
@@ -113,7 +117,6 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
       if (match?.owners && (!owners || owners.length !== match.owners.length || !match.owners.every(owner => owners.includes(owner)))) return false;
       const value = String(context.value ?? '');
       const signature = [id, context.owner, context.season, context.activation_value, value, ...(owners || []).slice().sort()].join('|');
-      const stateId = trigger.activation === 'triple-activate' ? signature : id;
       if (trigger.activation === 'theme-sequence' || id === 'dynasty-joel-elevator') {
         const sequenceId = id === 'dynasty-joel-elevator' ? [id, context.owner, context.season, context.activation_value, ...(owners || []).slice().sort()].join('|') : id;
         if (!advance(sequenceId, value, trigger.activation === 'theme-sequence' ? 5000 : 4000, trigger.activation === 'theme-sequence' ? 'system|light|dark|system|light|dark' : '2016|2017', trigger.activation === 'theme-sequence' ? 6 : 2)) return false;
@@ -122,7 +125,7 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
         const previousSignature = tripleSignatures.get(id);
         if (previousSignature && previousSignature !== signature) states.delete(previousSignature);
         tripleSignatures.set(id, signature);
-        if (!advance(stateId, value, 4000, `${value}|${value}|${value}`, 3)) return false;
+        if (!advance(signature, value, 4000, `${value}|${value}|${value}`, 3)) return false;
         tripleSignatures.delete(id);
       }
       const onceId = id.startsWith('dynasty-') ? `${id}:${[context.owner, context.season, context.activation_value, value, ...(owners || []).slice().sort()].join('|')}` : id;

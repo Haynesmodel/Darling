@@ -190,7 +190,11 @@ test('2025 current stories remain reachable from History with canonical facts', 
     const button = page.locator(`[data-lore-trigger="${trigger}"]`);
     await expect(button).toHaveAttribute('data-lore-season', '2025');
     await expect(button).toHaveAttribute('data-lore-owner', owner);
-    await expect(button).toHaveAttribute('data-lore-facts', /"record":"/);
+    await button.click();
+    const dialog = page.locator('dialog[aria-labelledby="lore-dialog-title"]');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator('.lore-canonical-facts')).toContainText('record');
+    await dialog.locator('button[aria-label="Close league lore"]').click();
   }
   await expect(page.locator('[data-lore-trigger="plot-admin"]')).toBeVisible();
   await page.goto('/?tab=history&team=Plot&seasons=2024');

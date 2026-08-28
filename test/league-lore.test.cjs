@@ -362,6 +362,23 @@ test('failed trigger reveals roll back session and scope once markers', async ()
   assert.equal(shown, 2);
 });
 
+test('clearing a pending session reveal rolls back its once marker for retry', async () => {
+  const resolvers = [];
+  let shown = 0;
+  const service = createLazyLoreService(() => new Promise(resolve => resolvers.push(resolve)));
+  service.hydrate(lore);
+  const context = { owner: 'Plot', season: 2025 };
+  assert.equal(service.trigger('plot-admin', context), true);
+  assert.equal(service.trigger('plot-admin', context), false);
+  service.clearTransient();
+  resolvers.shift()({ showLore() { shown += 1; } });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(shown, 0);
+  assert.equal(service.trigger('plot-admin', context), true);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(shown, 1);
+});
+
 test('loaded presenter cleanup is synchronous at lifecycle boundaries', async () => {
   let transientClears = 0; let motionUpdates = 0; let disposals = 0;
   const service = createLazyLoreService(async () => ({

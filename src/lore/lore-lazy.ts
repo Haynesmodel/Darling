@@ -14,7 +14,10 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
   const tripleSignatures = new Map<string, string>();
   const sessionSeen = new Set<string>();
   const scopeSeen = new Set<string>();
+  const pendingSession = new Map<string, number>();
+  const pendingScope = new Map<string, number>();
   const scopes = new Set<LoreScope>();
+  let pendingToken = 0;
   let generation = 0;
   const load = () => loading ||= presenter?.() || import('./lore-presentation');
   const advance = (id: string, value: string, windowMs: number, expected: string, limit: number) => {
@@ -132,7 +135,6 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
       const scopedId = `${id}:${signature}`;
       if (trigger.once_policy === 'session' && sessionSeen.has(onceId)) return false;
       if (trigger.once_policy === 'scope' && scopeSeen.has(scopedId)) return false;
-      if (trigger.once_policy === 'session') sessionSeen.add(onceId);
       const collection = trigger.collection_id && asset.collections.find(item => item.id === trigger.collection_id);
       const ownerEntry = id === 'owner-emblem' && collection && context.owner
         ? asset.entries.find(entry => collection.entry_ids.includes(entry.id) && entry.enabled && entry.owners.includes(String(context.owner)))
@@ -141,14 +143,20 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
       const type = trigger.entry_id || ownerEntry ? 'entry' : 'collection';
       const target = trigger.entry_id || ownerEntry?.id || trigger.collection_id;
       if (!target) return false;
-      if (trigger.once_policy === 'scope') scopeSeen.add(scopedId);
-      void reveal(type, target, { opener: context.opener as HTMLElement | null, context, effectId: trigger.effect_id });
+      const token = ++pendingToken;
+      if (trigger.once_policy === 'session') { sessionSeen.add(onceId); pendingSession.set(onceId, token); }
+      if (trigger.once_policy === 'scope') { scopeSeen.add(scopedId); pendingScope.set(scopedId, token); }
+      const rollback = () => {
+        if (pendingSession.get(onceId) === token) { pendingSession.delete(onceId); sessionSeen.delete(onceId); }
+        if (pendingScope.get(scopedId) === token) { pendingScope.delete(scopedId); scopeSeen.delete(scopedId); }
+      };
+      void reveal(type, target, { opener: context.opener as HTMLElement | null, context, effectId: trigger.effect_id }).then(ok => { if (!ok) rollback(); }, rollback);
       return true;
     },
     reveal,
     createScope: makeScope,
     setReducedMotion(value) { reducedMotion = value; if (presentation) presentation.setReducedMotion?.(value); },
-    clearTransient() { generation += 1; scopes.forEach(scope => scope.clear()); if (presentation) presentation.clearLoreTransient?.(); states.clear(); tripleSignatures.clear(); scopeSeen.clear(); },
-    dispose() { generation += 1; scopes.forEach(scope => scope.clear()); if (presentation) presentation.disposeLorePresentation?.(); loading = null; presentation = null; asset = null; canonical = null; reducedMotion = false; states.clear(); tripleSignatures.clear(); scopeSeen.clear(); sessionSeen.clear(); },
+    clearTransient() { generation += 1; scopes.forEach(scope => scope.clear()); if (presentation) presentation.clearLoreTransient?.(); states.clear(); tripleSignatures.clear(); scopeSeen.clear(); pendingScope.clear(); pendingSession.clear(); },
+    dispose() { generation += 1; scopes.forEach(scope => scope.clear()); if (presentation) presentation.disposeLorePresentation?.(); loading = null; presentation = null; asset = null; canonical = null; reducedMotion = false; states.clear(); tripleSignatures.clear(); scopeSeen.clear(); sessionSeen.clear(); pendingScope.clear(); pendingSession.clear(); },
   };
 }

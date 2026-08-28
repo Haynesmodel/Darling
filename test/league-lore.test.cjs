@@ -334,6 +334,34 @@ test('presentation import failure clears internal scope and retries cleanly', as
   assert.equal(shown, 1);
 });
 
+test('failed trigger reveals roll back session and scope once markers', async () => {
+  let attempts = 0; let shown = 0;
+  const service = createLazyLoreService(async () => {
+    attempts += 1;
+    if (attempts === 1) throw new Error('trigger import failure');
+    return { showLore() { shown += 1; } };
+  });
+  service.hydrate(lore);
+  assert.equal(service.trigger('plot-admin', { owner: 'Plot', season: 2025 }), true);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(service.trigger('plot-admin', { owner: 'Plot', season: 2025 }), true);
+  await new Promise(resolve => setImmediate(resolve));
+  let scopeAttempts = 0;
+  const scopeService = createLazyLoreService(async () => {
+    scopeAttempts += 1;
+    if (scopeAttempts === 1) throw new Error('scope import failure');
+    return { showLore() { shown += 1; } };
+  });
+  scopeService.hydrate(lore);
+  assert.equal(scopeService.trigger('history-group-commish', { value: 'commish' }), true);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(scopeService.trigger('history-group-commish', { value: 'commish' }), true);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(attempts, 2);
+  assert.equal(scopeAttempts, 2);
+  assert.equal(shown, 2);
+});
+
 test('loaded presenter cleanup is synchronous at lifecycle boundaries', async () => {
   let transientClears = 0; let motionUpdates = 0; let disposals = 0;
   const service = createLazyLoreService(async () => ({

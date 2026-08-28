@@ -12,6 +12,7 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
   const states = new Map<string, { at: number; count?: number; value: string; values?: string[] }>();
   const tripleSignatures = new Map<string, string>();
   const sessionSeen = new Set<string>();
+  const scopeSeen = new Set<string>();
   const scopes = new Set<LoreScope>();
   let generation = 0;
   const load = () => loading ||= presenter?.() || import('./lore-presentation');
@@ -44,23 +45,29 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
     }, add: node => { if (!cleared) nodes.add(node); }, onClear: callback => { if (cleared) callback(); else cleanups.add(callback); } };
     scopes.add(scope); return scope;
   };
-  const canonicalFacts = (id: string, context?: Record<string, unknown>): Record<string, unknown> => {
-    if (!canonical) return {};
-    if (id === 'record-42') {
-      const game = canonical.leagueGames.find(item => item.season === 2019 && item.week === 12 && item.type === 'Regular' && new Set([item.teamA, item.teamB]).size === 2 && [item.teamA, item.teamB].includes('Joe') && [item.teamA, item.teamB].includes('Nuss'));
+  const canonicalFacts = (target: LeagueLore['entries'][number] | null, context?: Record<string, unknown>): Record<string, unknown> => {
+    if (!canonical || !target) return {};
+    const rawAnchor = target.anchors.find(item => item.type === 'game' || item.type === 'record') as any;
+    const gameAnchor = rawAnchor?.type === 'record' ? rawAnchor.game : rawAnchor;
+    const gameFor = (anchor: any) => canonical!.leagueGames.find(item => item.season === anchor.season && item.week === anchor.week && (item.round || item.type) === anchor.game_type && item.teamA !== item.teamB && anchor.owners.includes(item.teamA) && anchor.owners.includes(item.teamB));
+    if (target.id === 'record-42' && gameAnchor) {
+      const game = gameFor(gameAnchor);
       if (!game) return {};
-      const score = game.teamA === 'Nuss' ? game.scoreA : game.scoreB;
-      return { score: `Nuss ${score.toFixed(2)}`, opponent: 'Joe', season: game.season, week: game.week, game_type: game.type };
+      const preferredOwner = typeof context?.owner === 'string' && [game.teamA, game.teamB].includes(context.owner) ? context.owner : target.owners.find(owner => [game.teamA, game.teamB].includes(owner));
+      const subject = preferredOwner || game.teamA;
+      const score = game.teamA === subject ? game.scoreA : game.scoreB;
+      const opponent = game.teamA === subject ? game.teamB : game.teamA;
+      return { score: `${subject} ${score.toFixed(2)}`, opponent, season: game.season, week: game.week, game_type: game.type };
     }
-    if (id === '2022-championship-context') {
-      const game = canonical.leagueGames.find(item => item.season === 2022 && item.week === 17 && item.round === 'Championship' && ((item.teamA === 'Zubs' && item.teamB === 'Rishi') || (item.teamA === 'Rishi' && item.teamB === 'Zubs')));
+    if (target.id === '2022-championship-context' && gameAnchor) {
+      const game = gameFor(gameAnchor);
       const owner = typeof context?.owner === 'string' ? context.owner : 'Zubs';
-      const summary = canonical.seasonSummaries.find(item => item.owner === owner && item.season === 2022);
+      const summary = canonical.seasonSummaries.find(item => item.owner === owner && item.season === gameAnchor.season);
       if (!game || !summary) return {};
       const ownerScore = game.teamA === owner ? game.scoreA : game.scoreB;
       const opponent = game.teamA === owner ? game.teamB : game.teamA;
       const opponentScore = game.teamA === owner ? game.scoreB : game.scoreA;
-      return { record: `${summary.wins}-${summary.losses}${summary.ties ? `-${summary.ties}` : ''}`, finish: summary.finish, champion: summary.champion, team_count: canonical.seasonSummaries.filter(item => item.season === 2022).length, championship_score: `${owner} ${ownerScore.toFixed(2)} – ${opponent} ${opponentScore.toFixed(2)}` };
+      return { record: `${summary.wins}-${summary.losses}${summary.ties ? `-${summary.ties}` : ''}`, finish: summary.finish, champion: summary.champion, team_count: canonical.seasonSummaries.filter(item => item.season === gameAnchor.season).length, championship_score: `${owner} ${ownerScore.toFixed(2)} – ${opponent} ${opponentScore.toFixed(2)}` };
     }
     return {};
   };
@@ -75,14 +82,14 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
       if (!options?.scope) scope.clear();
       return false;
     }
-    const context = { ...options?.context, facts: { ...(options?.context?.facts as Record<string, unknown> | undefined), ...canonicalFacts(id, options?.context) } };
+    const context = { ...options?.context, facts: { ...(options?.context?.facts as Record<string, unknown> | undefined), ...canonicalFacts(type === 'entry' ? target as LeagueLore['entries'][number] : null, options?.context) } };
     module.showLore(target, new Map(asset.entries.filter(entry => entry.enabled).map(entry => [entry.id, entry])), asset.effects.find(effect => effect.id === (options?.effectId || 'lore-dialog') && effect.enabled) || null, { scope, opener: options?.opener, context, reducedMotion });
     return true;
   };
   const now = clock || (() => typeof performance?.now === 'function' ? performance.now() : Date.now());
   return {
     hydrate(next, nextCanonical) { asset = next; canonical = nextCanonical || null; },
-    entry(id) { return asset?.entries.find(entry => entry.enabled && entry.id === id) || null; },
+    entry(id) { return !asset?.enabled ? null : asset.entries.find(entry => entry.enabled && entry.id === id) || null; },
     searchDocuments: docs,
     trigger(id, context = {}) {
       if (!asset?.enabled) return false;
@@ -109,7 +116,9 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
         tripleSignatures.delete(id);
       }
       const onceId = id.startsWith('dynasty-') ? `${id}:${[context.owner, context.season, context.activation_value, value, ...(owners || []).slice().sort()].join('|')}` : id;
+      const scopedId = `${id}:${signature}`;
       if (trigger.once_policy === 'session' && sessionSeen.has(onceId)) return false;
+      if (trigger.once_policy === 'scope' && scopeSeen.has(scopedId)) return false;
       if (trigger.once_policy === 'session') sessionSeen.add(onceId);
       const collection = trigger.collection_id && asset.collections.find(item => item.id === trigger.collection_id);
       const ownerEntry = id === 'owner-emblem' && collection && context.owner
@@ -119,13 +128,14 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
       const type = trigger.entry_id || ownerEntry ? 'entry' : 'collection';
       const target = trigger.entry_id || ownerEntry?.id || trigger.collection_id;
       if (!target) return false;
+      if (trigger.once_policy === 'scope') scopeSeen.add(scopedId);
       void reveal(type, target, { opener: context.opener as HTMLElement | null, context, effectId: trigger.effect_id });
       return true;
     },
     reveal,
     createScope: makeScope,
     setReducedMotion(value) { reducedMotion = value; if (loading) void loading.then(module => module.setReducedMotion?.(value)); },
-    clearTransient() { generation += 1; scopes.forEach(scope => scope.clear()); states.clear(); tripleSignatures.clear(); },
-    dispose() { generation += 1; scopes.forEach(scope => scope.clear()); loading = null; asset = null; canonical = null; reducedMotion = false; states.clear(); tripleSignatures.clear(); sessionSeen.clear(); },
+    clearTransient() { generation += 1; scopes.forEach(scope => scope.clear()); loading?.then(module => module.clearLoreTransient?.()); states.clear(); tripleSignatures.clear(); scopeSeen.clear(); },
+    dispose() { generation += 1; scopes.forEach(scope => scope.clear()); loading?.then(module => module.clearLoreTransient?.()); loading = null; asset = null; canonical = null; reducedMotion = false; states.clear(); tripleSignatures.clear(); scopeSeen.clear(); sessionSeen.clear(); },
   };
 }

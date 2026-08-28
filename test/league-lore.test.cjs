@@ -41,6 +41,17 @@ test('League Lore preserves the supplied year and sensitivity corrections', () =
   assert.match(byId.get('almanac-connor-leveon').provenance, /factual narrative detail/);
 });
 
+test('disabled lore root suppresses every optional lore surface', async () => {
+  const disabled = JSON.parse(JSON.stringify(lore));
+  disabled.enabled = false;
+  const service = runtimeFactory();
+  service.hydrate(disabled);
+  assert.equal(service.entry('record-42'), null);
+  assert.deepEqual(service.searchDocuments(), []);
+  assert.equal(service.trigger('record-42-history'), false);
+  assert.equal(await service.reveal('entry', 'record-42'), false);
+});
+
 test('Almanac inventory covers all ten owner sections and reviewed narrative clusters', () => {
   const almanac = lore.entries.filter(entry => entry.almanac_edition === 2024 && entry.provenance.includes('Darling 2024 Almanac'));
   const owners = ['Joe', 'Joel', 'Shap', 'Singer', 'Nuss', 'Plot', 'Zubs', 'Connor', 'Rishi', 'Zook'];
@@ -80,6 +91,7 @@ test('Singer lawn story is in Draft Weekend, never Punishment Museum', () => {
 
 test('commissioner display labels and Plot slogan remain exact', () => {
   assert.deepEqual(lore.commissioner_terms.map(term => term.display_term), ['Haynes, 2014–2017', 'Joel, 2017–2023', 'Zubs, 2023–2025', 'Plotnick, 2025–Present']);
+  assert.match(byId.get('2025-plot-administration').teaser, /Plotnick, 2025–Present/);
   assert.match(byId.get('2025-plot-administration').body.join(' '), /^Joel was a snake, Zubs was a flake, but Plot- he let them eat cake$/);
 });
 
@@ -242,6 +254,21 @@ test('triple activation resets when its target signature changes', () => {
   assert.equal(service.trigger('trophy-bagel', { value: 'A' }), true);
 });
 
+test('scope-once triggers suppress repeats until the route scope clears', () => {
+  const service = runtimeWithClock(() => 0);
+  assert.equal(service.trigger('trophy-bagel', { value: 'Zook' }), false);
+  assert.equal(service.trigger('trophy-bagel', { value: 'Zook' }), false);
+  assert.equal(service.trigger('trophy-bagel', { value: 'Zook' }), true);
+  assert.equal(service.trigger('trophy-bagel', { value: 'Zook' }), false);
+  service.clearTransient();
+  assert.equal(service.trigger('trophy-bagel', { value: 'Zook' }), false);
+  assert.equal(service.trigger('trophy-bagel', { value: 'Zook' }), false);
+  assert.equal(service.trigger('trophy-bagel', { value: 'Zook' }), true);
+  assert.equal(service.trigger('trophy-bagel', { value: 'Zook' }), false);
+  assert.equal(service.trigger('trophy-bagel', { value: 'Zook' }), false);
+  assert.equal(service.trigger('trophy-bagel', { value: 'Zook' }), false);
+});
+
 test('reveal forwards canonical facts to the presentation boundary', async () => {
   let received;
   const service = runtimeWithClock(() => 0, (...args) => { received = args; });
@@ -256,6 +283,18 @@ test('anchored numeric lore derives facts from canonical games', async () => {
   service.hydrate(lore, { leagueGames: [{ season: 2019, date: '2019-11-17', teamA: 'Joe', teamB: 'Nuss', scoreA: 1, scoreB: 2, week: 12, round: null, type: 'Regular' }], seasonSummaries: [] });
   await service.reveal('entry', 'record-42', { context: { facts: { score: '42.00' } } });
   assert.equal(received[3].context.facts.score, 'Nuss 2.00');
+  assert.equal(received[3].context.facts.opponent, 'Joe');
+});
+
+test('anchored record selector follows the entry anchor and owner orientation', async () => {
+  let received;
+  const altered = JSON.parse(JSON.stringify(lore));
+  altered.entries.find(entry => entry.id === 'record-42').anchors[0].game.season = 2018;
+  altered.entries.find(entry => entry.id === 'record-42').anchors[0].game.week = 1;
+  const service = createLazyLoreService(async () => ({ showLore: (...args) => { received = args; } }));
+  service.hydrate(altered, { leagueGames: [{ season: 2018, date: '2018-09-09', teamA: 'Nuss', teamB: 'Joe', scoreA: 3.21, scoreB: 88, week: 1, round: null, type: 'Regular' }], seasonSummaries: [] });
+  await service.reveal('entry', 'record-42', { context: { owner: 'Nuss', facts: { score: 'stale' } } });
+  assert.equal(received[3].context.facts.score, 'Nuss 3.21');
   assert.equal(received[3].context.facts.opponent, 'Joe');
 });
 
@@ -303,7 +342,7 @@ test('presentation DOM contract covers replacement, reduced motion, collections,
   const entry = byId.get('record-42');
   const effect = { id: 'test', label: 'Rattle', presentation: 'rattle', tone: 'playful', symbol: '✨', duration_ms: 2500 };
   const timers = [];
-  const scope = { id: 'test', add() {}, onClear(callback) { this.cleanup = callback; }, timer(callback) { timers.push(callback); return 1; }, clear() {} };
+  const scope = { id: 'test', clears: 0, add() {}, onClear(callback) { this.cleanup = callback; }, timer(callback) { timers.push(callback); return 1; }, clear() { this.clears += 1; } };
   const opener = doc.createElement('button');
   lorePresentation.showLore(entry, new Map(), effect, { opener, scope, context: { facts: { score: '42.00', blank: null } } });
   const renderedDialog = doc.body.children.find(node => node.tagName === 'DIALOG');
@@ -311,15 +350,22 @@ test('presentation DOM contract covers replacement, reduced motion, collections,
   assert.equal(doc.body.children.some(node => node.className?.includes('lore-overlay')), true);
   timers[0]();
   assert.equal(doc.body.children.some(node => node.className?.includes('lore-overlay')), false);
+  renderedDialog.children[0].dispatch('click');
+  assert.equal(scope.clears, 1);
   lorePresentation.setReducedMotion(true);
   lorePresentation.disposeLorePresentation();
   assert.equal(doc.activeElement, opener);
 
   const overlayEffect = { ...effect, presentation: 'overlay' };
   lorePresentation.showLore(entry, new Map(), overlayEffect, { opener, scope, context: {} });
-  assert.equal(doc.body.children.some(node => node.className?.includes('lore-backdrop')), true);
+  const firstBackdrop = doc.body.children.find(node => node.className?.includes('lore-backdrop'));
+  assert.equal(firstBackdrop.attributes.get('data-lore-effect'), 'test');
   doc.body.children.find(node => node.tagName === 'DIALOG').children[0].dispatch('click');
   assert.equal(doc.body.children.some(node => node.className?.includes('lore-backdrop')), true);
+  lorePresentation.showLore(entry, new Map(), { ...overlayEffect, id: 'butter-bowl', symbol: '🧈' }, { opener, scope, context: {} });
+  const secondBackdrop = doc.body.children.find(node => node.className?.includes('lore-backdrop'));
+  assert.equal(secondBackdrop.attributes.get('data-lore-effect'), 'butter-bowl');
+  assert.notEqual(firstBackdrop.textContent, secondBackdrop.textContent);
   lorePresentation.disposeLorePresentation();
   assert.equal(doc.body.children.some(node => node.className?.includes('lore-backdrop')), false);
 

@@ -19,9 +19,9 @@ export default function DraftSpotHero({ model }: { model: DraftSpotViewModel }) 
   const activeRows = model.baseRows.length
     ? model.baseRows
     : model.asset.rows.filter(row => row.season >= rangeStart && row.season <= rangeEnd);
-  const activeSlots = activeRows.map(row => row.draft_pick);
-  const first = activeSlots.length ? Math.min(...activeSlots) : null;
-  const last = activeSlots.length ? Math.max(...activeSlots) : null;
+  const selectedRows = state.selectedPick === null ? [] : activeRows.filter(row => row.draft_pick === state.selectedPick);
+  const first = selectedRows.some(row => row.draft_pick === 1) ? state.selectedPick : null;
+  const last = selectedRows.some(row => row.draft_pick === row.team_count) ? state.selectedPick : null;
   // Draft-weekend stories are tied to canonical rows, while the boundary
   // markers follow the active season/owner range (10-team years end at 10;
   // the 2025 expansion ends at 12).

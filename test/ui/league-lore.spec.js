@@ -139,6 +139,11 @@ test('draft lore controls are limited to their canonical 2025 boundaries', async
   await page.goto('/?tab=draft&draftMode=pick&draftPick=10&draftStart=2017&draftEnd=2024');
   await expect(page.locator('[data-lore-trigger="draft-snake-tail"]')).toHaveAttribute('data-lore-facts', /"range":"2017-2024"/);
   await expect(page.locator('[data-lore-trigger="expansion-story"], [data-lore-trigger="draft-podium"], [data-lore-trigger="draft-rishi-pick-four"]')).toHaveCount(0);
+
+  await page.goto('/?tab=draft&draftMode=pick&draftPick=1&draftOwner=Snare');
+  await expect(page.locator('[data-lore-trigger="draft-snake-tail"]')).toHaveCount(0);
+  await page.goto('/?tab=draft&draftMode=pick&draftPick=8&draftOwner=Connor');
+  await expect(page.locator('[data-lore-trigger="draft-snake-tail"]')).toHaveCount(0);
 });
 
 test('2025 current stories remain reachable from History with canonical facts', async ({ page }) => {
@@ -213,6 +218,20 @@ test('low-score lore follows the anchored canonical H2H fixture', async ({ page 
   await button.click();
   const dialog = page.locator('dialog');
   await expect(dialog).toContainText('Nuss 77.77');
+  await expect(dialog).not.toContainText('42.00');
+  await dialog.locator('button[aria-label="Close league lore"]').click();
+});
+
+test('global search low-score incantation uses canonical mutated H2H facts', async ({ page }) => {
+  const fixture = createSnapshotFixture({ mutations: { H2H: games => { const record = games.find(game => game.season === 2019 && game.week === 12 && game.teamA === 'Joe' && game.teamB === 'Nuss'); record.scoreB = 66.66; } } });
+  await fixture.install(page);
+  await page.goto('/?tab=history');
+  await page.locator('.search-trigger').click();
+  const palette = page.getByRole('dialog', { name: 'Search The Darling' });
+  await palette.getByRole('combobox').fill('42');
+  await palette.getByRole('option').filter({ hasText: 'Lowest-Score Record' }).first().click();
+  const dialog = page.locator('dialog[aria-labelledby="lore-dialog-title"]');
+  await expect(dialog).toContainText('Nuss 66.66');
   await expect(dialog).not.toContainText('42.00');
   await dialog.locator('button[aria-label="Close league lore"]').click();
 });

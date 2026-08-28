@@ -7,6 +7,7 @@ let openDocument: Document | null = null;
 let openScope: LoreScope | null = null;
 let openOverlay: HTMLElement | null = null;
 let openBackdrop: HTMLElement | null = null;
+let preserveBackdropWhileClearing = false;
 const p = (doc: Document, value: string) => Object.assign(doc.createElement('p'), { textContent: value });
 const seed = (value: string) => [...value].reduce((sum, character) => (sum * 31 + character.charCodeAt(0)) >>> 0, 7);
 const decorationCounts: Readonly<Record<string, number>> = { 'bagel-shower': 14, flies: 9, chairs: 2, target: 3 };
@@ -29,12 +30,12 @@ function decorate(doc: Document, overlay: HTMLElement, effect: Effect, target: E
   }
   overlay.setAttribute('data-lore-count', String(count));
 }
-function close(removeBackdrop = true, clearScope = true) { const doc = openDocument || openDialog?.ownerDocument; const scope = openScope; if (clearScope) openScope = null; if (openDialog?.open) openDialog.close(); openDialog?.remove(); openOverlay?.remove(); openOverlay = null; if (removeBackdrop) { openBackdrop?.remove(); openBackdrop = null; } openDialog = null; if (clearScope) scope?.clear(); if (doc) doc.body.classList.remove('lore-dialog-open'); restoreFocus?.focus(); restoreFocus = null; if (clearScope) openDocument = null; }
+function close(removeBackdrop = !preserveBackdropWhileClearing, clearScope = true) { const doc = openDocument || openDialog?.ownerDocument; const scope = openScope; if (clearScope) openScope = null; if (openDialog?.open) openDialog.close(); openDialog?.remove(); openOverlay?.remove(); openOverlay = null; if (removeBackdrop) { openBackdrop?.remove(); openBackdrop = null; } openDialog = null; if (clearScope) { preserveBackdropWhileClearing = !removeBackdrop; scope?.clear(); preserveBackdropWhileClearing = false; } if (doc) doc.body.classList.remove('lore-dialog-open'); restoreFocus?.focus(); restoreFocus = null; if (clearScope) openDocument = null; }
 export function showLore(target: Entry | Collection, entries: Map<string, Entry>, effect: Effect | null, options: { scope?: LoreScope; opener?: HTMLElement | null; reducedMotion?: boolean; context?: Record<string, unknown> } = {}) {
   close(); const doc = options.opener?.ownerDocument || document; openDocument = doc; openScope = options.scope || null; restoreFocus = options.opener || null;
   options.scope?.onClear(close);
   const dialog = doc.createElement('dialog'); openDialog = dialog; dialog.className = `lore-dialog lore-tone-${effect?.tone || 'informational'}`; dialog.setAttribute('aria-labelledby', 'lore-dialog-title');
-  const button = doc.createElement('button'); button.type = 'button'; button.textContent = 'Close'; button.setAttribute('aria-label', 'Close league lore'); button.addEventListener('click', () => close(false, false)); dialog.append(button);
+  const button = doc.createElement('button'); button.type = 'button'; button.textContent = 'Close'; button.setAttribute('aria-label', 'Close league lore'); button.addEventListener('click', () => close(!openBackdrop, true)); dialog.append(button);
   const title = doc.createElement('h2'); title.id = 'lore-dialog-title'; title.tabIndex = -1; title.textContent = target.title; dialog.append(title);
   dialog.append(p(doc, 'entry_ids' in target ? target.summary : target.teaser));
   if (effect?.label) dialog.append(p(doc, effect.label));
@@ -49,7 +50,7 @@ export function showLore(target: Entry | Collection, entries: Map<string, Entry>
     if (list.children.length) dialog.append(list);
   }
   if ('entry_ids' in target) target.entry_ids.forEach(id => { const entry = entries.get(id); if (entry) dialog!.append(p(doc, `${entry.title}: ${entry.teaser}`)); }); else target.body.forEach(value => dialog!.append(p(doc, value)));
-  dialog.addEventListener('cancel', event => { event.preventDefault(); close(false, false); });
+  dialog.addEventListener('cancel', event => { event.preventDefault(); close(!openBackdrop, true); });
   dialog.addEventListener('keydown', event => {
     if (event.key !== 'Tab') return;
     const focusables = [...dialog.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')].filter(node => !node.hasAttribute('disabled'));
@@ -63,10 +64,12 @@ export function showLore(target: Entry | Collection, entries: Map<string, Entry>
     const presentation = effect.presentation.replace(/[^a-z0-9-]/g, '-');
     if (effect.presentation === 'overlay') {
       const backdrop = doc.createElement('div');
-      backdrop.className = 'lore-backdrop';
+      backdrop.className = 'lore-backdrop lore-backdrop-group';
       backdrop.setAttribute('aria-hidden', 'true');
       backdrop.setAttribute('role', 'presentation');
       backdrop.setAttribute('data-lore-backdrop', '1');
+      backdrop.setAttribute('data-lore-effect', effect.id);
+      backdrop.textContent = effect.symbol;
       doc.body.append(backdrop);
       openBackdrop = backdrop;
     }
@@ -76,4 +79,5 @@ export function showLore(target: Entry | Collection, entries: Map<string, Entry>
   if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open', ''); title.focus(); options.scope?.add(dialog);
 }
 export function disposeLorePresentation() { close(); }
+export function clearLoreTransient() { openBackdrop?.remove(); openBackdrop = null; }
 export function setReducedMotion(reduced: boolean) { if (reduced) { openOverlay?.remove(); openOverlay = null; openBackdrop?.remove(); openBackdrop = null; } }

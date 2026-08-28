@@ -31,9 +31,10 @@ test.describe('Draft Journey', () => {
   });
 
   test('invalid direct location is removed without an error', async ({ page }) => {
-    await page.goto('/?tab=draft&draftLocation=unknown');
+    await page.goto('/?tab=draft&draftStart=2017&draftLocation=unknown');
     await page.waitForLoadState('networkidle');
     await expect(page).not.toHaveURL(/draftLocation=unknown/);
+    await expect(page).toHaveURL(/draftStart=2017/);
     await expect(page.locator('select[aria-label="Filter draft journey by location"]')).toHaveValue('');
   });
 

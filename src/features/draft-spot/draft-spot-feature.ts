@@ -69,7 +69,19 @@ export function createFeatureController(): DarlingFeatureController {
           selectedLocation,
         };
         if (requestedLocation && !selectedLocation) {
-          const canonical = context.router.update({ tab: 'draft', selectedDraftLocation: null });
+          const canonical = context.router.update({
+            tab: 'draft',
+            selectedDraftOwner: input.route.draftOwner,
+            selectedDraftMode: input.route.draftMode,
+            selectedDraftStartSeason: input.route.draftStart,
+            selectedDraftEndSeason: input.route.draftEnd,
+            selectedDraftMetric: input.route.draftMetric,
+            selectedDraftMinSample: input.route.draftMinSample,
+            selectedDraftNormalize: input.route.draftNormalize,
+            selectedDraftPick: input.route.draftPick,
+            selectedDraftZone: input.route.draftZone,
+            selectedDraftLocation: null,
+          });
           context.window.history.replaceState(null, '', canonical);
         }
       }

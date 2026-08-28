@@ -27,6 +27,7 @@ export function createFeatureController(): DarlingFeatureController {
       selectedDraftNormalize: next.normalize,
       selectedDraftPick: next.selectedPick,
       selectedDraftZone: next.selectedZone,
+      selectedDraftLocation: next.selectedLocation,
     });
   };
 
@@ -44,6 +45,13 @@ export function createFeatureController(): DarlingFeatureController {
         const explicit = Object.entries(input.route)
           .some(([key, value]) => key.startsWith('draft') && value !== null && value !== undefined);
         const favorite = !explicit ? context.ownerPreference.getSnapshot().owner : null;
+        const availableLocations = context.data.leagueLore?.enabled
+          ? ((context.data.leagueLore.draft_locations || []) as any[]).filter(location => location.enabled && Boolean(context.lore.entry(location.entry_id)))
+          : [];
+        const requestedLocation = input.route.draftLocation;
+        const selectedLocation = typeof requestedLocation === 'string' && availableLocations.some(location => location.id === requestedLocation)
+          ? requestedLocation
+          : null;
         selected = {
           owner: input.route.draftOwner || favorite,
           mode: input.route.draftMode || (input.route.draftOwner || favorite ? 'owner' : null),
@@ -54,7 +62,12 @@ export function createFeatureController(): DarlingFeatureController {
           normalize: input.route.draftNormalize,
           selectedPick: input.route.draftPick,
           selectedZone: input.route.draftZone,
+          selectedLocation,
         };
+        if (requestedLocation && !selectedLocation) {
+          const canonical = context.router.update({ tab: 'draft', selectedDraftLocation: null });
+          context.window.history.replaceState(null, '', canonical);
+        }
       }
       const entry = context.data.manifest.assets.DraftSpot;
       const sourceHash = context.data.manifest.assets.SeasonSummary.sha256;
@@ -72,6 +85,10 @@ export function createFeatureController(): DarlingFeatureController {
         state: selected,
         onStateChange: updateForActivation,
         onReady: updateForActivation,
+        locations: context.data.leagueLore?.enabled
+          ? ((context.data.leagueLore.draft_locations || []) as any[]).filter(location => location.enabled && Boolean(context.lore.entry(location.entry_id)))
+          : [],
+        onRevealLocation: (entryId, opener) => { void context.lore.reveal('entry', entryId, { opener }); },
       });
     },
     deactivate() {

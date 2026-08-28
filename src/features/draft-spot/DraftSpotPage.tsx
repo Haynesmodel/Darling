@@ -11,6 +11,8 @@ import {
   type DraftSpotViewModel,
 } from './draft-spot-types';
 import type { DraftSpot } from '../../data/generated/asset-types';
+import type { DraftLocation } from '../../data/generated/asset-types';
+import DraftJourney from './DraftJourney';
 import DraftSpotControls from './DraftSpotControls';
 import DraftSpotHero from './DraftSpotHero';
 import DraftPickBoard from './DraftPickBoard';
@@ -34,6 +36,8 @@ interface Props {
   dataVersion: string;
   onStateChange?: DraftSpotMountOptions['onStateChange'];
   onReady?: DraftSpotMountOptions['onReady'];
+  locations?: DraftLocation[];
+  onRevealLocation?: DraftSpotMountOptions['onRevealLocation'];
 }
 
 function DraftShareAction({ result }: { result: ShareCardBuildResult | null }) {
@@ -142,6 +146,7 @@ export function buildDraftShareResult(
     selectedDraftNormalize: model.state.normalize,
     selectedDraftPick: model.state.selectedPick,
     selectedDraftZone: model.state.selectedZone,
+    selectedDraftLocation: model.state.selectedLocation,
   });
   return buildFeatureShareCard('draft', {
     id: [
@@ -151,6 +156,7 @@ export function buildDraftShareResult(
       model.state.endSeason,
       model.state.selectedPick || '',
       model.state.selectedZone || '',
+      model.state.selectedLocation || '',
     ].join('|'),
     eyebrow: 'Draft Spot Explorer',
     title,
@@ -169,10 +175,12 @@ export default function DraftSpotPage({
   dataVersion,
   onStateChange,
   onReady,
+  locations = [],
+  onRevealLocation,
 }: Props) {
-  const initial = useMemo(() => buildDraftSpotModel(asset, requestedState), [asset, requestedState]);
+  const initial = useMemo(() => buildDraftSpotModel(asset, requestedState, {}, locations), [asset, requestedState, locations]);
   const [state, setState] = useState(initial.state);
-  const model = useMemo(() => buildDraftSpotModel(asset, state, state), [asset, state]);
+  const model = useMemo(() => buildDraftSpotModel(asset, state, state, locations), [asset, state, locations]);
   const disclosure = useRef<SectionDisclosureController | null>(null);
   const disclosureNav = useRef<HTMLDivElement>(null);
   const pickDisclosure = useRef<HTMLDetailsElement>(null);
@@ -181,6 +189,7 @@ export default function DraftSpotPage({
   const timelineDisclosure = useRef<HTMLDetailsElement>(null);
   const selectionDisclosure = useRef<HTMLDetailsElement>(null);
   const ledgerDisclosure = useRef<HTMLDetailsElement>(null);
+  const journeyDisclosure = useRef<HTMLDetailsElement>(null);
   const disclosureSignature = [
     model.state.mode,
     model.state.owner,
@@ -194,8 +203,8 @@ export default function DraftSpotPage({
     [dataVersion, disclosureSignature, model],
   );
 
-  const update = (requested: Partial<DraftSpotState>) => {
-    const next = buildDraftSpotModel(asset, requested, state).state;
+  const update = (requested: Partial<DraftSpotState> & DraftSpotUrlState) => {
+    const next = buildDraftSpotModel(asset, requested, state, locations).state;
     setState(next);
     onStateChange?.(next);
   };
@@ -231,6 +240,7 @@ export default function DraftSpotPage({
       defaults.add('draft-selection');
     }
     const definitions = [
+      { id: 'draft-journey', label: 'Draft Journey', details: journeyDisclosure.current, available: locations.length > 0 },
       { id: 'draft-picks', label: 'Pick Board', details: pickDisclosure.current, available: model.pickSummary.length > 0 },
       { id: 'draft-zones', label: 'Zone Comparison', details: zoneDisclosure.current, available: model.zoneSummary.length > 0 },
       { id: 'draft-owner-recommendations', label: 'Owner Recommendations', details: recommendationsDisclosure.current, available: model.ownerRecommendations.length > 0 || Boolean(model.ownerProfile) },
@@ -247,7 +257,7 @@ export default function DraftSpotPage({
         defaultOpen: defaults.has(definition.id),
       }] : []),
     });
-  }, [disclosureSignature, model.pickSummary.length, model.zoneSummary.length, model.ownerRecommendations.length, model.baseRows.length, model.rows.length, model.selectedPickSummary, model.selectedZoneSummary, model.ownerProfile]);
+  }, [disclosureSignature, model.pickSummary.length, model.zoneSummary.length, model.ownerRecommendations.length, model.baseRows.length, model.rows.length, model.selectedPickSummary, model.selectedZoneSummary, model.ownerProfile, locations.length]);
 
   useEffect(() => {
     window.darlingTables?.render('draft-rows', {
@@ -283,6 +293,10 @@ export default function DraftSpotPage({
         <DraftShareAction result={shareResult} />
       </section>
       <div ref={disclosureNav} />
+      {locations.length > 0 && <details ref={journeyDisclosure} id="draftJourneyDisclosure" class="card feature-disclosure">
+        <summary>Draft Journey</summary>
+        <section class="feature-section-content" aria-labelledby="draftJourneyHeading"><DraftJourney locations={locations} selectedLocation={model.state.selectedLocation} onSelect={id => update({ ...model.state, selectedLocation: id, draftLocation: id })} onReveal={onRevealLocation} /></section>
+      </details>}
       <details ref={pickDisclosure} id="draftPickDisclosure" class="card feature-disclosure">
         <summary>Pick Board</summary>
         <section class="feature-section-content" aria-label="Draft pick comparison">

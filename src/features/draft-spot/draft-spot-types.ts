@@ -3,6 +3,7 @@ import type {
   DraftSpotOwnerRecommendation,
   DraftSpotRow,
 } from '../../data/generated/asset-types';
+import type { DraftLocation } from '../../data/generated/asset-types';
 
 export const DRAFT_ALL_OWNERS = '__ALL__';
 export const DRAFT_MODES = ['league', 'owner', 'pick', 'zone'] as const;
@@ -41,6 +42,7 @@ export interface DraftSpotState {
   normalize: DraftNormalization;
   selectedPick: number | null;
   selectedZone: DraftZoneKey | null;
+  selectedLocation: string | null;
 }
 
 export interface DraftSpotUrlState {
@@ -53,6 +55,7 @@ export interface DraftSpotUrlState {
   draftNormalize?: string | null;
   draftPick?: number | null;
   draftZone?: string | null;
+  draftLocation?: string | null;
 }
 
 export interface DraftSummary {
@@ -120,6 +123,8 @@ export interface DraftSpotMountOptions {
   state?: Partial<DraftSpotState> & DraftSpotUrlState;
   onStateChange?: (state: DraftSpotState) => void;
   onReady?: (state: DraftSpotState) => void;
+  locations?: DraftLocation[];
+  onRevealLocation?: (entryId: string, opener: HTMLElement) => void;
 }
 
 export interface DarlingDraftSpotRuntime {

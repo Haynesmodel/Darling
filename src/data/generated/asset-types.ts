@@ -53,6 +53,33 @@ export type Trigger = {
       [k: string]: any;
     }
 );
+export type DraftLocation = {
+  [k: string]: any;
+} & {
+  [k: string]: any;
+} & {
+  id: string;
+  label: string;
+  location_type: 'virtual' | 'physical';
+  season_start: number;
+  season_end: number;
+  venue: string | null;
+  coordinates: Coordinates | null;
+  coordinate_precision: 'none' | 'municipality' | 'venue';
+  entry_id: string;
+  enabled: boolean;
+} & {
+  id: string;
+  label: string;
+  location_type: 'virtual' | 'physical';
+  season_start: number;
+  season_end: number;
+  venue: string | null;
+  coordinates: Coordinates | null;
+  coordinate_precision: 'none' | 'municipality' | 'venue';
+  entry_id: string;
+  enabled: boolean;
+};
 
 export interface LeagueAssetBundle {
   h2h: H2HGameHistory;
@@ -395,6 +422,10 @@ export interface LeagueLore {
   effects: Effect[];
   entries: Entry[];
   triggers: Trigger[];
+  /**
+   * @minItems 1
+   */
+  draft_locations?: [DraftLocation, ...DraftLocation[]];
 }
 export interface Owner {
   owner: string;
@@ -549,6 +580,10 @@ export interface Match {
    * @maxItems 2
    */
   owners?: [] | [string] | [string, string];
+}
+export interface Coordinates {
+  latitude: number;
+  longitude: number;
 }
 /**
  * Deterministic draft-position observations generated from SeasonSummary.

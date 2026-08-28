@@ -4,6 +4,8 @@ League Lore is an optional, verified narrative asset. `assets/LeagueLore.json` o
 
 The source policy distinguishes the fantasy `season` from `occurred_year`, `completed_year`, and `almanac_edition`. The reviewed 2024 Almanac supplies narrative context through 2024; later corrections use their explicit season and completion fields. Singer's lawn story is draft-weekend lore, not a punishment, and the 2022 championship context is respectful/static.
 
+`draft_locations` is an optional, validated location-history array. Each enabled row owns an inclusive season range, location type, coordinates (or `null` for the virtual era), precision (`municipality` or `venue`), and a normal lore-entry reference. Draft Journey renders these rows from the verified snapshot; missing, disabled, or invalid optional lore suppresses the journey without affecting Draft Spot statistics. Municipality coordinates are approximate reference points and do not imply an exact venue.
+
 ## Authoring and validation
 
 Entries use stable lowercase kebab-case IDs, bounded paragraphs/search terms, canonical owners, and discriminated anchors. Triggers reference exactly one entry or collection and may reference a registered effect. Run `npm run generate:data`, `npm run check:data-generated`, and `npm run test:assets` after edits. The authored JSON must remain at or below 100 KiB; optional loader failures leave all statistical features available and publish diagnostics.

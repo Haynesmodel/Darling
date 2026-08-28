@@ -1,5 +1,9 @@
 # Production JavaScript bundle budgets
 
+## Draft Journey measurement — 2026-08-28
+
+Measured from `93ad02e` with Vite 8.1.4, `VITE_BASE_PATH=/Darling/`, gzip level 9, and the available Node 23.10.0/npm 11.18.0 environment (repository requires Node 24). Aggregate JavaScript increased from 297,081 to 298,935 gzip bytes (+1,854), remaining below the 301,000 hard maximum; the 297,868 target is exceeded by 1,067 bytes. Draft Spot static/settled closures measured 95,501/190,208 gzip, both below their 115,000/205,000 ceilings. League Lore is 83,505 authored bytes (manifest hash/bytes regenerated), below the 102,400-byte cap. No production dependency, chart export, or budget value changed.
+
 ## Deferred charts and strict Preact migration — PR A
 
 The first migration slice was measured from clean base `de9f11d42cc79e31f9cc3d5a8a80dfc3a33b451c` with Node 24.18.0, npm 11.18.0, Vite 8.1.4, gzip level 9, and `VITE_BASE_PATH=/Darling/`. The implementation SHA and exact CI run are recorded in the pull request because documentation-only commits do not change the production graph.

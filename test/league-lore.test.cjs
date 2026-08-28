@@ -306,6 +306,16 @@ test('anchored record selector follows the entry anchor and owner orientation', 
   assert.equal(received[3].context.facts.opponent, 'Joe');
 });
 
+test('season-only lore does not invent an owner summary', async () => {
+  let received;
+  const service = createLazyLoreService(async () => ({ showLore: (...args) => { received = args; } }));
+  service.hydrate(lore, { leagueGames: [], seasonSummaries: [{ owner: 'Shemer', season: 2025, wins: 9, losses: 5, ties: 0, finish: 2, champion: false, points_for: 100, points_against: 90 }, { owner: 'Zook', season: 2025, wins: 8, losses: 6, ties: 0, finish: 4, champion: false, points_for: 100, points_against: 90 }] });
+  await service.reveal('entry', '2025-expansion');
+  assert.deepEqual(received[3].context.facts, {});
+  await service.reveal('entry', 'trophy-championship-story', { context: { owner: 'Zook', season: 2025 } });
+  assert.equal(received[3].context.facts.record, '8-6');
+});
+
 test('pending presentation cannot reopen lore after transient clear', async () => {
   let resolve;
   let shown = 0;

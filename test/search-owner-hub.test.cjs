@@ -4,6 +4,7 @@ const esbuild = require('esbuild');
 const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const loreAsset = JSON.parse(fs.readFileSync(path.join(__dirname, '../assets/LeagueLore.json')));
 
 let temp;
 let search;
@@ -83,6 +84,20 @@ test('authored League Lore owner aliases participate in structured owner intents
   const historical = runtime.search('The Commissioner 2025')[0];
   assert.equal(historical.action.url, '/Darling/?tab=history&team=Joe');
   assert.match(historical.title, /^Joe/);
+});
+
+test('exact 42 search ranks the canonical record entry and executes its lore action', () => {
+  const runtime = search.createSearchRuntime({ loreAction: action => { runtime.loreAction = action; } });
+  runtime.hydrate({
+    leagueGames: [{ season: 2019, date: '2019-11-17', teamA: 'Joe', teamB: 'Nuss', scoreA: 42, scoreB: 88 }],
+    seasonSummaries: [{ owner: 'Joe', season: 2019 }, { owner: 'Nuss', season: 2019 }],
+    currentSeason: null,
+    loreDocuments: loreAsset.entries.map(entry => ({ id: `lore:entry:${entry.id}`, category: 'lore', title: entry.title, subtitle: entry.teaser, keywords: [...entry.search_terms, ...entry.owners], priority: 125, action: { kind: 'lore', targetType: 'entry', targetId: entry.id } })).concat(loreAsset.collections.map(collection => ({ id: `lore:collection:${collection.id}`, category: 'lore', title: collection.title, subtitle: collection.summary, keywords: collection.search_terms, priority: 130, action: { kind: 'lore', targetType: 'collection', targetId: collection.id } }))),
+  });
+  const result = runtime.search('42')[0];
+  assert.equal(result.id, 'lore:entry:record-42');
+  runtime.execute(result);
+  assert.equal(runtime.loreAction.targetId, 'record-42');
 });
 
 test('transaction destinations are generic and owner-scoped without transaction data hydration', () => {

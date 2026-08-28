@@ -74,9 +74,9 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
       const opponentScore = game.teamA === owner ? game.scoreB : game.scoreA;
       return { record: `${summary.wins}-${summary.losses}${summary.ties ? `-${summary.ties}` : ''}`, finish: summary.finish, champion: summary.champion, team_count: canonical.seasonSummaries.filter(item => item.season === gameAnchor.season).length, championship_score: `${owner} ${ownerScore.toFixed(2)} – ${opponent} ${opponentScore.toFixed(2)}` };
     }
-    const seasonAnchor = target.anchors.find(item => item.type === 'owner-season' || item.type === 'season') as { season?: number } | undefined;
-    const owner = typeof context?.owner === 'string' ? context.owner : target.owners[0];
-    const season = seasonAnchor?.season ?? Number(context?.season);
+    const ownerAnchor = target.anchors.find(item => item.type === 'owner-season') as { owner?: string; season?: number } | undefined;
+    const owner = ownerAnchor?.owner || (typeof context?.owner === 'string' ? context.owner : undefined);
+    const season = ownerAnchor?.season ?? (owner ? Number(context?.season) : Number.NaN);
     const summary = owner && Number.isFinite(season) ? canonical.seasonSummaries.find(item => item.owner === owner && item.season === season) : null;
     return summary ? { record: `${summary.wins}-${summary.losses}${summary.ties ? `-${summary.ties}` : ''}`, finish: summary.finish, champion: summary.champion, saunders: summary.saunders, points_for: summary.points_for, points_against: summary.points_against, team_count: canonical.seasonSummaries.filter(item => item.season === season).length } : {};
   };

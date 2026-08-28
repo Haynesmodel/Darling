@@ -1,13 +1,13 @@
-const DATE = /^(\d\d\d\d)-(\d\d)-(\d\d)$/;
+const DATE = /^(\d{4})-(\d\d)-(\d\d)$/;
 const DAYS = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 const TIME = /^(\d\d):(\d\d):(\d\d(?:\.\d+)?)(z|([+-])(\d\d)(?::?(\d\d))?)?$/i;
 
 function date(value) {
   const match = DATE.exec(value);
   if (!match) return false;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
+  const year = +match[1];
+  const month = +match[2];
+  const day = +match[3];
   const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
   return month >= 1 && month <= 12 && day >= 1 && day <= (month === 2 && leap ? 29 : DAYS[month]);
 }
@@ -15,12 +15,12 @@ function date(value) {
 function time(value) {
   const match = TIME.exec(value);
   if (!match || !match[4]) return false;
-  const hour = Number(match[1]);
-  const minute = Number(match[2]);
-  const second = Number(match[3]);
+  const hour = +match[1];
+  const minute = +match[2];
+  const second = +match[3];
   const zoneSign = match[5] === '-' ? -1 : 1;
-  const zoneHour = Number(match[6] || 0);
-  const zoneMinute = Number(match[7] || 0);
+  const zoneHour = +(match[6] || 0);
+  const zoneMinute = +(match[7] || 0);
   if (zoneHour > 23 || zoneMinute > 59) return false;
   if (hour <= 23 && minute <= 59 && second < 60) return true;
   const utcMinute = minute - zoneMinute * zoneSign;

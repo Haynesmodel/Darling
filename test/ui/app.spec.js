@@ -1,7 +1,13 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { expect, test } from './coverage-fixture.js';
 import { activateFeature } from './navigation-helpers.js';
 
+const manifest = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'assets/asset-manifest.json'), 'utf8'));
+
 test.beforeEach(async ({ page }) => {
+  // Keep the canonical 2025 snapshot assertions stable as the calendar advances.
+  await page.clock.setFixedTime(new Date('2026-08-14T23:59:00Z'));
   // The legacy end-to-end suite is the open-everything parity pass: disclosure
   // behavior itself is covered in navigation-progressive-disclosure.spec.js.
   await page.addInitScript(() => {
@@ -334,7 +340,7 @@ test('page loads and renders the history tables', async ({ page }) => {
   expect(weekCount).toBe(historyCount);
   const diagnostics = await page.evaluate(() => window.darlingDataDiagnostics);
   expect(diagnostics.dataVersion).toMatch(/^sha256:[a-f0-9]{64}$/);
-  expect(diagnostics.manifestVersion).toBe(3);
+  expect(diagnostics.manifestVersion).toBe(manifest.manifest_version);
   expect(diagnostics.loadedAssets).toContain('DerivedStats');
   expect(diagnostics.optionalAssetFailures).toEqual([]);
 });
@@ -1469,7 +1475,12 @@ test('interactive tables mount across rivalry, current season, and trophy pages'
   await expect(rivalryGames.locator('tbody tr')).not.toHaveCount(0);
   await rivalryGames.getByRole('button', { name: 'Last five meetings' }).click();
   await expect(rivalryGames.locator('tbody > tr:not(.table-expanded-row)')).toHaveCount(5);
-  await rivalryGames.locator('.table-expand-button').first().click();
+  const expandRivalry = rivalryGames.locator('.table-expand-button').first();
+  await expect.poll(async () => {
+    if (await rivalryGames.locator('.table-expanded-row').count()) return 1;
+    await expandRivalry.click();
+    return rivalryGames.locator('.table-expanded-row').count();
+  }).toBe(1);
   await expect(rivalryGames.locator('.table-expanded-row')).toContainText('Running series record');
 
   await page.goto('/?tab=current&currentOwner=Joe&currentView=standings');

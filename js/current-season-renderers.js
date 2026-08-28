@@ -602,7 +602,7 @@ function currentPlayoffPictureHtml(view) {
             <span>${escapeHtml(row.record)} &middot; PF rank ${escapeHtml(row.pointsForRank || '-')}</span>
           </div>
           <div class="current-seed-meta">
-            <span class="${statusClass(row.status)}">${escapeHtml(row.status.label)}</span>
+            ${row.status.tone === 'clinched' ? `<button type="button" class="${statusClass(row.status)} current-lore-status" data-lore-trigger="current-clinched" data-lore-owner="${escapeHtml(row.owner)}">${escapeHtml(row.status.label)}</button>` : row.status.tone === 'eliminated' ? `<button type="button" class="${statusClass(row.status)} current-lore-status" data-lore-trigger="current-eliminated" data-lore-owner="${escapeHtml(row.owner)}">${escapeHtml(row.status.label)}</button>` : `<span class="${statusClass(row.status)}">${escapeHtml(row.status.label)}</span>`}
             <span>${escapeHtml(gapText(row.playoffGap))}</span>
             ${estimatesMeaningful ? `<span>Projected ${escapeHtml(row.projectedSeed)} (${escapeHtml(signedSeedChange(row.seedChange))})</span>` : '<span>Deterministic final status</span>'}
             ${estimatesMeaningful && row.odds ? `

@@ -49,6 +49,18 @@ function importedCssFiles(root, appPath, files) {
   return { ast, imported, layers };
 }
 
+function dynamicallyImportedCssFiles(root, files) {
+  const dynamic = new Set();
+  files.forEach(file => {
+    const sibling = path.join(root, file.replace(/\.css$/, '.ts'));
+    const siblingTsx = path.join(root, file.replace(/\.css$/, '.tsx'));
+    for (const sourcePath of [sibling, siblingTsx]) {
+      if (fs.existsSync(sourcePath) && fs.readFileSync(sourcePath, 'utf8').includes(path.basename(file))) dynamic.add(file);
+    }
+  });
+  return dynamic;
+}
+
 function selectorContext(rule) {
   const contexts = [];
   let parent = rule.parent;
@@ -66,6 +78,7 @@ function checkCssHygiene(root = process.cwd()) {
   const failures = [];
   const appPath = 'src/styles/app.css';
   const { ast: appAst, imported, layers } = importedCssFiles(root, appPath, files);
+  const dynamicallyImported = dynamicallyImportedCssFiles(root, files);
   const layeredSelectors = new Map();
 
   appAst.nodes.forEach(node => {
@@ -123,7 +136,7 @@ function checkCssHygiene(root = process.cwd()) {
 
   for (const file of files) {
     if (file === appPath) continue;
-    if (!imported.has(file)) failures.push(`${file} is not imported by ${appPath}.`);
+    if (!imported.has(file) && !dynamicallyImported.has(file)) failures.push(`${file} is not imported by ${appPath}.`);
   }
 
   return failures;

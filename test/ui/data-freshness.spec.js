@@ -4,6 +4,11 @@ import { expect, test } from './coverage-fixture.js';
 import { createSnapshotFixture } from './snapshot-fixture.js';
 import { activateFeature } from './navigation-helpers.js';
 
+test.beforeEach(async ({ page }) => {
+  // Assertions use the finalized 2025 snapshot; freeze before the next-season gap.
+  await page.clock.setFixedTime(new Date('2026-08-14T23:59:00Z'));
+});
+
 const manifest = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'assets/asset-manifest.json'), 'utf8'));
 
 test.beforeEach(async ({ page }) => {

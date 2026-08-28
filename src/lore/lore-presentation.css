@@ -1,0 +1,39 @@
+.lore-dialog { border: 2px solid var(--color-border, currentColor); border-radius: .75rem; color: inherit; max-width: min(40rem, calc(100vw - 2rem)); padding: 1.25rem; }
+.lore-dialog::backdrop { background: var(--lore-backdrop, CanvasText); opacity: .55; }
+.lore-dialog-open { overflow: hidden; }
+.lore-backdrop { background: color-mix(in srgb, var(--lore-backdrop-accent, CanvasText) 9%, transparent); inset: 0; overflow: hidden; pointer-events: none; position: fixed; z-index: 999; }
+.lore-backdrop .lore-decoration { animation: none; color: var(--lore-backdrop-accent, CanvasText); font-size: 1.35rem; opacity: .16; position: absolute; transform: none; }
+.lore-canonical-facts { display: grid; gap: .25rem .75rem; grid-template-columns: max-content 1fr; margin: 1rem 0 0; }
+.lore-canonical-facts dt { font-weight: 700; text-transform: capitalize; }
+.lore-canonical-facts dd { margin: 0; }
+.lore-dialog-close { float: right; }
+.lore-teaser { font-weight: 600; }
+.lore-overlay { align-items: center; display: flex; font-size: 2rem; inset: 0; justify-content: center; pointer-events: none; position: fixed; z-index: 1000; }
+.lore-effect-overlay { animation: lore-fade 2200ms ease-out both; }
+.lore-effect-static { animation: none; opacity: 1; transform: none; }
+.lore-decoration { position: absolute; left: var(--lore-x); top: var(--lore-y); animation: lore-decoration-in 1800ms ease-out both; font-size: 2rem; }
+.lore-effect-static .lore-decoration { animation: none; opacity: 1; }
+.lore-decoration-bagel-shower { font-size: 1.6rem; }
+.lore-decoration-flies { font-size: 1.25rem; }
+.lore-decoration-chairs { top: auto; bottom: 12vh; }
+.lore-decoration-target { font-size: 2.5rem; }
+.lore-decoration-ticket { left: 12vw; top: 45%; transform: rotate(-8deg); }
+.lore-decoration-blank-document { background: Canvas; border: 2px solid currentColor; color: CanvasText; padding: 1.4rem 2rem; }
+@keyframes lore-decoration-in { 0% { opacity: 0; transform: scale(.7) rotate(-10deg); } 25% { opacity: 1; } 100% { opacity: 0; transform: scale(1) rotate(10deg); } }
+.lore-effect-crown { color: var(--lore-crown, currentColor); text-shadow: 0 0 .75rem var(--lore-crown, currentColor); }
+.lore-effect-fog { background: color-mix(in srgb, CanvasText 35%, transparent); filter: blur(.2px); }
+.lore-effect-confetti { color: currentColor; }
+.lore-effect-chairs { align-items: flex-end; padding-bottom: 12vh; }
+.lore-effect-target { color: currentColor; transform: scale(1.2); }
+.lore-effect-ticket { justify-content: flex-start; padding-left: 10vw; }
+.lore-effect-cake { align-items: flex-end; padding-bottom: 18vh; }
+.lore-effect-rattle { animation-name: lore-rattle; }
+.lore-effect-bagel-shower { align-items: flex-start; padding-top: 15vh; }
+.lore-effect-flies { filter: contrast(.8); }
+.lore-effect-suitcase { justify-content: flex-end; padding-right: 12vw; }
+.lore-effect-podium { align-items: flex-end; padding-bottom: 10vh; }
+.lore-effect-snake-tail { justify-content: flex-start; padding-left: 14vw; }
+@keyframes lore-rattle { 0%,100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+@keyframes lore-fade { 0% { opacity: 0; transform: translateY(-1rem); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(1rem); } }
+@media (prefers-reduced-motion: reduce) { .lore-effect-overlay { animation: none; } }
+@media (forced-colors: active) { .lore-dialog { background: Canvas; border: 2px solid ButtonText; color: CanvasText; } .lore-dialog button { border: 1px solid ButtonText; } .lore-backdrop { background: CanvasText; opacity: .08; } }

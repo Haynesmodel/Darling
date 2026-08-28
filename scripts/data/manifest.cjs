@@ -79,6 +79,7 @@ async function buildManifest(root = process.cwd(), opts = {}) {
     Rivalries: SCHEMA_VERSION,
     CurrentSeason: SCHEMA_VERSION,
     TransactionHistory: SCHEMA_VERSION,
+    LeagueLore: SCHEMA_VERSION,
     DraftSpot: SCHEMA_VERSION,
     DerivedStats: SCHEMA_VERSION,
   };

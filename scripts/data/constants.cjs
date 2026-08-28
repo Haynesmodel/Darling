@@ -1,7 +1,7 @@
 const path = require('node:path');
 
 const SCHEMA_VERSION = 1;
-const MANIFEST_VERSION = 3;
+const MANIFEST_VERSION = 4;
 const DERIVED_GENERATOR_VERSION = 1;
 
 const SOURCE_ASSETS = Object.freeze({
@@ -10,6 +10,7 @@ const SOURCE_ASSETS = Object.freeze({
   Rivalries: { path: 'assets/Rivalries.json', schema: 'rivalries.schema.json', required: false },
   CurrentSeason: { path: 'assets/CurrentSeason.json', schema: 'current-season.schema.json', required: false },
   TransactionHistory: { path: 'assets/TransactionHistory.json', schema: 'transaction-history.schema.json', required: false },
+  LeagueLore: { path: 'assets/LeagueLore.json', schema: 'league-lore.schema.json', required: false },
 });
 
 const GENERATED_ASSETS = Object.freeze({

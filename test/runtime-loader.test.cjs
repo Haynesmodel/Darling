@@ -1,7 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const esbuild = require('esbuild');
@@ -15,6 +14,7 @@ const assetValues = Object.fromEntries([
   'assets/Rivalries.json',
   'assets/CurrentSeason.json',
   'assets/DerivedStats.json',
+  'assets/LeagueLore.json',
 ].map(relativePath => [
   relativePath,
   JSON.parse(fs.readFileSync(path.join(root, relativePath), 'utf8')),
@@ -53,10 +53,10 @@ function createFetch(overrides = {}, requests = []) {
     const attempt = attempts.get(relativePath) || 0;
     attempts.set(relativePath, attempt + 1);
     const override = configured?.sequence ? configured.sequence[Math.min(attempt, configured.sequence.length - 1)] : configured;
-    if (override?.status) return jsonResponse(override.body || {}, override.status);
+    if (override?.status) return jsonResponse(override.body || {}, override.status, override.rawBody || null);
     return override === undefined
       ? jsonResponse(assetValues[relativePath], 200, assetBodies[relativePath])
-      : jsonResponse(override);
+      : jsonResponse(override, 200, configured?.rawBody || null);
   };
 }
 
@@ -83,7 +83,9 @@ function quietLogger() {
 }
 
 test.before(async () => {
-  tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-runtime-loader-'));
+  const coverageBundles = path.join(root, 'coverage', 'test-bundles');
+  fs.mkdirSync(coverageBundles, { recursive: true });
+  tempDir = fs.mkdtempSync(path.join(coverageBundles, 'runtime-loader-'));
   const outfile = path.join(tempDir, 'load-league-assets.mjs');
   await esbuild.build({
     entryPoints: [path.join(root, 'src/data/load-league-assets.ts')],
@@ -92,6 +94,8 @@ test.before(async () => {
     platform: 'node',
     format: 'esm',
     target: 'node20',
+    sourcemap: 'inline',
+    sourcesContent: true,
     logLevel: 'silent',
   });
   ({ loadLeagueAssets } = await import(`${pathToFileURL(outfile).href}?${Date.now()}`));
@@ -180,6 +184,76 @@ test('runtime loader degrades invalid optional assets without hiding required hi
   assert.ok(warnings.some(message => message.includes('Optional CurrentSeason unavailable')));
 });
 
+test('runtime loader fails closed for malformed optional LeagueLore while required history boots', async t => {
+  await t.test('nested schema failure', async () => {
+    const lore = clone(assetValues['assets/LeagueLore.json']);
+    lore.entries[0].body = [];
+    const manifest = manifestWithValue('LeagueLore', lore);
+    const { logger } = quietLogger();
+    const loaded = await loadLeagueAssets({ basePath: '/', logger, fetchFn: createFetch({
+      'assets/asset-manifest.json': manifest,
+      'assets/LeagueLore.json': lore,
+    }) });
+    assert.ok(loaded.leagueGames.length > 0);
+    assert.equal(loaded.leagueLore, null);
+    const failure = loaded.diagnostics.optionalFailures.find(item => item.asset === 'LeagueLore');
+    assert.ok(failure);
+    assert.ok(['invalid', 'integrity'].includes(failure.reason));
+  });
+  await t.test('HTTP failure', async () => {
+    const { logger } = quietLogger();
+    const loaded = await loadLeagueAssets({ basePath: '/', logger, fetchFn: createFetch({ 'assets/LeagueLore.json': { status: 503 } }) });
+    assert.equal(loaded.leagueLore, null);
+    assert.equal(loaded.diagnostics.optionalFailures.find(failure => failure.asset === 'LeagueLore')?.reason, 'http');
+  });
+  await t.test('integrity failure', async () => {
+    const { logger } = quietLogger();
+    const loaded = await loadLeagueAssets({ basePath: '/', logger, fetchFn: createFetch({ 'assets/LeagueLore.json': { rawBody: Buffer.from('{"tampered":true}') } }) });
+    assert.equal(loaded.leagueLore, null);
+    assert.equal(loaded.diagnostics.optionalFailures.find(failure => failure.asset === 'LeagueLore')?.reason, 'integrity');
+  });
+  await t.test('size limit', async () => {
+    const lore = clone(assetValues['assets/LeagueLore.json']);
+    lore.entries[0].body = ['x'.repeat(102401)];
+    const manifest = manifestWithValue('LeagueLore', lore);
+    const { logger } = quietLogger();
+    const loaded = await loadLeagueAssets({ basePath: '/', logger, fetchFn: createFetch({
+      'assets/asset-manifest.json': manifest,
+      'assets/LeagueLore.json': lore,
+    }) });
+    assert.equal(loaded.leagueLore, null);
+    assert.equal(loaded.diagnostics.optionalFailures.find(failure => failure.asset === 'LeagueLore')?.code, 'SIZE_MISMATCH');
+  });
+  for (const [label, mutate] of [
+    ['invalid presentation', value => { value.effects[0].presentation = 'surprise'; }],
+    ['invalid activation', value => { value.triggers[0].activation = 'always'; }],
+    ['duration over limit', value => { value.effects[0].duration_ms = 2501; }],
+    ['extra match property', value => { value.triggers.find(item => item.match).match.extra = true; }],
+    ['extra entry property', value => { value.entries[0].unexpected = true; }],
+    ['record anchor requires a game anchor', value => { value.entries.find(entry => entry.id === 'record-42').anchors[0].game = { type: 'season', season: 2019 }; }],
+    ['malformed date', value => { value.updated_at = '2024/01/01'; }],
+    ['body item over schema limit', value => { value.entries[0].body = ['x'.repeat(501)]; }],
+    ['title over schema limit', value => { value.entries[0].title = 'x'.repeat(181); }],
+    ['collection summary over schema limit', value => { value.collections[0].summary = 'x'.repeat(501); }],
+    ['draft slot over schema limit', value => { value.entries.find(entry => entry.anchors.some(anchor => anchor.type === 'draft-slot')).anchors[0].expected_slot = 25; }],
+    ['overlong copy', value => { value.entries[0].body = ['x'.repeat(24001)]; }],
+  ]) {
+    await t.test(label, async () => {
+      const value = clone(assetValues['assets/LeagueLore.json']);
+      mutate(value);
+      const manifest = manifestWithValue('LeagueLore', value);
+      const { logger } = quietLogger();
+      const loaded = await loadLeagueAssets({ basePath: '/', logger, fetchFn: createFetch({
+        'assets/asset-manifest.json': manifest,
+        'assets/LeagueLore.json': value,
+      }) });
+      assert.ok(loaded.leagueGames.length > 0);
+      assert.equal(loaded.leagueLore, null);
+      assert.ok(['invalid', 'integrity'].includes(loaded.diagnostics.optionalFailures.find(failure => failure.asset === 'LeagueLore')?.reason));
+    });
+  }
+});
+
 test('runtime loader rejects stale DerivedStats dependencies and uses fallbacks', async () => {
   const derived = clone(assetValues['assets/DerivedStats.json']);
   derived.source_hashes.H2H = `sha256:${'0'.repeat(64)}`;
@@ -224,7 +298,7 @@ test('runtime loader prefixes every request with the configured base path', asyn
     fetchFn: createFetch({}, requests),
   });
   assert.ok(loaded.leagueGames.length > 0);
-  assert.ok(requests.length >= 6);
+  assert.ok(requests.length >= 7);
   assert.ok(requests.every(request => request.url.startsWith('/Darling/assets/')), requests.map(request => request.url).join('\n'));
 });
 
@@ -243,7 +317,7 @@ test('runtime loader revalidates the manifest and versions assets with full hash
     assert.ok(name, request.url);
     assert.equal(new URL(request.url, 'https://darling.test').searchParams.get('v'), entry.sha256.replace('sha256:', ''));
   }
-  assert.deepEqual(loaded.diagnostics.integrity.verifiedAssets, ['CurrentSeason', 'DerivedStats', 'H2H', 'Rivalries', 'SeasonSummary']);
+  assert.deepEqual(loaded.diagnostics.integrity.verifiedAssets, ['CurrentSeason', 'DerivedStats', 'H2H', 'LeagueLore', 'Rivalries', 'SeasonSummary']);
 });
 
 test('runtime loader retries a mismatched cached asset once and records recovery', async () => {

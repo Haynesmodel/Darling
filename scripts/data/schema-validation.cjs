@@ -12,6 +12,7 @@ const SCHEMA_FILES = Object.freeze([
   'rivalries.schema.json',
   'current-season.schema.json',
   'transaction-history.schema.json',
+  'league-lore.schema.json',
   'draft-spot.schema.json',
   'derived-stats.schema.json',
   'asset-manifest.schema.json',

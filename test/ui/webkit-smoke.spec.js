@@ -2,6 +2,7 @@ import { expect, test } from './coverage-fixture.js';
 import { activateFeature, featureDestination } from './navigation-helpers.js';
 
 test.beforeEach(async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-08-14T23:59:00Z'));
   const errors = [];
   page.on('console', message => {
     if (message.type() === 'error') errors.push(`console.error: ${message.text()}`);

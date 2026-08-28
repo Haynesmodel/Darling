@@ -222,6 +222,7 @@ function renderGauntlet(view, opts = {}) {
         <div class="gauntlet-vs">vs</div>
         ${gauntletTeamSeasonCardHtml(view.teamSeasonB)}
       </div>
+      ${view.teamSeasonA && view.teamSeasonB && view.teamSeasonA.owner === view.teamSeasonB.owner && view.teamSeasonA.season === view.teamSeasonB.season && view.result ? `<button type="button" class="btn gauntlet-lore-trigger" data-lore-trigger="gauntlet-mirror" data-lore-value="mirror" data-lore-facts="${escapeHtml(JSON.stringify({ mirrored_probability: `${(view.result.pctA * 100).toFixed(1)}% / ${(view.result.pctB * 100).toFixed(1)}%`, simulations: view.result.simulations, model: gauntletModelLabel(view.result.model, view.result.includePostseason) }))}">Reveal mirrored simulation</button>` : ''}
     `;
   }
 

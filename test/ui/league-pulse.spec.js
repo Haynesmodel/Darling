@@ -9,9 +9,7 @@ import {
 } from './season-phase-fixtures.js';
 
 test.beforeEach(async ({ page }) => {
-  // The canonical snapshot is 2025 offseason data. Freeze the default clock
-  // before the season-gap boundary so these assertions do not age with time.
-  await page.clock.setFixedTime(new Date('2026-08-14T12:00:00Z'));
+  await page.clock.setFixedTime(new Date('2026-08-14T23:59:00Z'));
 });
 
 test('bare route renders the canonical 2025 year in review', async ({ page }) => {

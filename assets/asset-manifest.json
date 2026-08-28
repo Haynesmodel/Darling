@@ -27,6 +27,15 @@
       "season_min": 2014,
       "sha256": "sha256:ca8155035573c00dc8922d3f6de90772869a2baec9a16909c5d6562bae371d18"
     },
+    "LeagueLore": {
+      "bytes": 79320,
+      "path": "assets/LeagueLore.json",
+      "required": false,
+      "rows": 0,
+      "season_max": null,
+      "season_min": null,
+      "sha256": "sha256:9a98e74c0b27e9bbf4262596b58b149376f4c189f50e16be839ed3c5f9a63b8a"
+    },
     "Rivalries": {
       "bytes": 2668,
       "path": "assets/Rivalries.json",
@@ -55,7 +64,7 @@
       "sha256": "sha256:1dc2ad97f69bfd444c55ceb4d29243dc8dc96ca96f6b86142dfaad96cca61618"
     }
   },
-  "data_version": "sha256:f62143a14f1f844c1a00395b92239a6b4d0c590f83fd49a3c6a77103ccf575ee",
+  "data_version": "sha256:020d3c7aac5e7b4774b1121fc405011d0479fbe5ebbc87b313ff3058ffdef946",
   "derived": {
     "bytes": 180308,
     "path": "assets/DerivedStats.json",
@@ -68,7 +77,7 @@
     }
   },
   "derived_generator_version": 1,
-  "manifest_version": 3,
+  "manifest_version": 4,
   "media": {
     "leagueHero": {
       "role": "runtime-required",
@@ -194,6 +203,7 @@
     "DerivedStats": 1,
     "DraftSpot": 1,
     "H2H": 1,
+    "LeagueLore": 1,
     "Rivalries": 1,
     "SeasonSummary": 1,
     "TransactionHistory": 1

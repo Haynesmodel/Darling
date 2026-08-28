@@ -12,6 +12,47 @@ export type SeasonSummary = SeasonSummaryRow[];
  * Curated named rivalry groups.
  */
 export type RivalryDefinitions = RivalryDefinition[];
+export type SearchTerms = string[];
+export type Trigger = {
+  id: string;
+  surface:
+    | 'global-search'
+    | 'history'
+    | 'curse-tracker'
+    | 'trophy'
+    | 'rivalry'
+    | 'dynasty'
+    | 'gauntlet'
+    | 'transactions'
+    | 'draft-spot'
+    | 'current-season'
+    | 'owner-hub'
+    | 'theme';
+  activation:
+    | 'search'
+    | 'triple-activate'
+    | 'selection'
+    | 'filter-state'
+    | 'render-condition'
+    | 'theme-sequence'
+    | 'owner-emblem'
+    | 'collection-open';
+  entry_id?: string;
+  collection_id?: string;
+  effect_id?: string;
+  match?: Match;
+  once_policy: 'session' | 'repeatable' | 'scope';
+  enabled: boolean;
+} & (
+  | {
+      entry_id: string;
+      [k: string]: any;
+    }
+  | {
+      collection_id: string;
+      [k: string]: any;
+    }
+);
 
 export interface LeagueAssetBundle {
   h2h: H2HGameHistory;
@@ -19,6 +60,7 @@ export interface LeagueAssetBundle {
   rivalries: RivalryDefinitions;
   currentSeason: CurrentSeasonData;
   transactionHistory: TransactionHistory;
+  leagueLore: LeagueLore;
   draftSpot: DraftSpot;
   derivedStats: DerivedStats;
   assetManifest: AssetManifest;
@@ -334,6 +376,181 @@ export interface KeeperReturn {
   starter_points: number;
 }
 /**
+ * Validated narrative facts and user-activated league easter eggs.
+ */
+export interface LeagueLore {
+  schema_version: 1;
+  enabled: boolean;
+  updated_at: string;
+  source_policy: {
+    /**
+     * @minItems 1
+     */
+    numeric_authority: [string, ...string[]];
+    almanac_narrative_through: number;
+  };
+  owners: Owner[];
+  commissioner_terms: Commissioner[];
+  collections: Collection[];
+  effects: Effect[];
+  entries: Entry[];
+  triggers: Trigger[];
+}
+export interface Owner {
+  owner: string;
+  aliases: string[];
+}
+export interface Commissioner {
+  id: string;
+  owner: string;
+  term_start: number;
+  term_end: number | null;
+  display_term: string;
+  summary: string;
+  entry_ids: string[];
+}
+export interface Collection {
+  id: string;
+  title: string;
+  summary: string;
+  /**
+   * @minItems 1
+   */
+  entry_ids: [string, ...string[]];
+  search_terms: SearchTerms;
+  enabled: boolean;
+}
+export interface Effect {
+  id: string;
+  label: string;
+  symbol: string;
+  presentation:
+    | 'dialog'
+    | 'overlay'
+    | 'callout'
+    | 'crown'
+    | 'fog'
+    | 'confetti'
+    | 'chairs'
+    | 'target'
+    | 'ticket'
+    | 'blank-document'
+    | 'cake'
+    | 'rattle'
+    | 'bagel-shower'
+    | 'flies'
+    | 'suitcase'
+    | 'podium'
+    | 'snake-tail'
+    | 'static';
+  tone: 'playful' | 'celebratory' | 'restrained' | 'respectful' | 'informational';
+  duration_ms: number;
+  motion_policy: 'animate' | 'static' | 'reduce-to-static';
+  enabled: boolean;
+}
+export interface Entry {
+  id: string;
+  category:
+    | 'season-moment'
+    | 'punishment'
+    | 'commissioner'
+    | 'draft-weekend'
+    | 'hall-of-asterisks'
+    | 'league-moment'
+    | 'micro-entry'
+    | 'record';
+  title: string;
+  teaser: string;
+  /**
+   * @minItems 1
+   */
+  body: [string, ...string[]];
+  season: number | null;
+  occurred_year: number | null;
+  completed_year: number | null;
+  almanac_edition: number | null;
+  owners: string[];
+  anchors: (
+    | {
+        type: 'owner-season';
+        owner: string;
+        season: number;
+      }
+    | {
+        type: 'game';
+        season: number;
+        week: number;
+        game_type: string;
+        /**
+         * @minItems 2
+         * @maxItems 2
+         */
+        owners: [string, string];
+      }
+    | {
+        type: 'draft-slot';
+        season: number;
+        owner: string;
+        expected_slot?: number;
+      }
+    | {
+        type: 'draft-selection';
+        season: number;
+        owner: string;
+        player_id: string;
+      }
+    | {
+        type: 'transaction';
+        season: number;
+        transaction_id: string;
+      }
+    | {
+        type: 'season';
+        season: number;
+      }
+    | {
+        type: 'record';
+        selector: 'lowest-score';
+        game: {
+          type: 'game';
+          season: number;
+          week: number;
+          game_type: string;
+          /**
+           * @minItems 2
+           * @maxItems 2
+           */
+          owners: [string, string];
+        };
+      }
+    | {
+        type: 'rivalry';
+        /**
+         * @minItems 2
+         * @maxItems 2
+         */
+        owners: [string, string];
+      }
+    | {
+        type: 'rivalry';
+        slug: string;
+      }
+  )[];
+  search_terms: SearchTerms;
+  provenance: string;
+  sensitivity: 'ordinary' | 'sensitive' | 'respectful';
+  enabled: boolean;
+}
+export interface Match {
+  owner?: string;
+  season?: number;
+  activation_value?: string;
+  /**
+   * @maxItems 2
+   */
+  owners?: [] | [string] | [string, string];
+}
+/**
  * Deterministic draft-position observations generated from SeasonSummary.
  */
 export interface DraftSpot {
@@ -587,6 +804,7 @@ export interface AssetManifest {
     Rivalries: number;
     CurrentSeason: number;
     TransactionHistory: number;
+    LeagueLore: number;
     DraftSpot: number;
     DerivedStats: number;
   };
@@ -596,6 +814,7 @@ export interface AssetManifest {
     Rivalries: JsonAsset;
     CurrentSeason: JsonAsset;
     TransactionHistory: JsonAsset;
+    LeagueLore: JsonAsset;
     DraftSpot: JsonAsset;
   };
   derived: {

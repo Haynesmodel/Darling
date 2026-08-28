@@ -98,8 +98,10 @@ test('Trophy season adapter covers empty, singular, and complete game-log detail
   for (const [index, expected] of [[0, 'No games recorded'], [1, 'Opponent: —'], [2, 'Round: Final']]) {
     const row = table.locator('tbody > tr:not(.table-expanded-row)').nth(index);
     await row.locator('.table-expand-button').click();
+    await expect(table.locator('.table-expanded-row')).toHaveCount(1);
     await expect(table.locator('.table-expanded-row').first()).toContainText(expected);
     await row.locator('.table-expand-button').click();
+    await expect(row.locator('.table-expand-button')).toHaveAttribute('aria-expanded', 'false');
   }
   if (process.env.COLLECT_COVERAGE && process.env.PLAYWRIGHT_SERVER !== 'preview') {
     const defaultDetails = await page.evaluate(async () => {

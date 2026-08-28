@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://darling.example/schemas/league-lore.schema.json",
+  "title": "LeagueLore",
+  "description": "Validated narrative facts and user-activated league easter eggs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "enabled", "updated_at", "source_policy", "owners", "commissioner_terms", "collections", "effects", "entries", "triggers"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "enabled": { "type": "boolean" },
+    "updated_at": { "type": "string", "format": "date" },
+    "source_policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["numeric_authority", "almanac_narrative_through"],
+      "properties": {
+        "numeric_authority": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 },
+        "almanac_narrative_through": { "type": "integer", "minimum": 2014, "maximum": 2100 }
+      }
+    },
+    "owners": { "type": "array", "items": { "$ref": "#/$defs/owner" } },
+    "commissioner_terms": { "type": "array", "items": { "$ref": "#/$defs/commissioner" } },
+    "collections": { "type": "array", "items": { "$ref": "#/$defs/collection" } },
+    "effects": { "type": "array", "items": { "$ref": "#/$defs/effect" } },
+    "entries": { "type": "array", "items": { "$ref": "#/$defs/entry" } },
+    "triggers": { "type": "array", "items": { "$ref": "#/$defs/trigger" } }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 100 },
+    "owner": {
+      "type": "object", "additionalProperties": false, "required": ["owner", "aliases"],
+      "properties": { "owner": { "$ref": "common.schema.json#/$defs/owner" }, "aliases": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 80 }, "uniqueItems": true } }
+    },
+    "commissioner": {
+      "type": "object", "additionalProperties": false, "required": ["id", "owner", "term_start", "term_end", "display_term", "summary", "entry_ids"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "owner": { "$ref": "common.schema.json#/$defs/owner" },
+        "term_start": { "type": "integer", "minimum": 2014, "maximum": 2100 }, "term_end": { "type": ["integer", "null"], "minimum": 2014, "maximum": 2100 },
+        "display_term": { "type": "string", "minLength": 1, "maxLength": 100 }, "summary": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "entry_ids": { "type": "array", "items": { "$ref": "#/$defs/id" }, "uniqueItems": true }
+      }
+    },
+    "collection": {
+      "type": "object", "additionalProperties": false, "required": ["id", "title", "summary", "entry_ids", "search_terms", "enabled"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "title": { "type": "string", "minLength": 1, "maxLength": 180 }, "summary": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "entry_ids": { "type": "array", "items": { "$ref": "#/$defs/id" }, "minItems": 1, "uniqueItems": true },
+        "search_terms": { "$ref": "#/$defs/searchTerms" }, "enabled": { "type": "boolean" }
+      }
+    },
+    "effect": {
+      "type": "object", "additionalProperties": false, "required": ["id", "label", "symbol", "presentation", "tone", "duration_ms", "motion_policy", "enabled"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "label": { "type": "string", "minLength": 1, "maxLength": 100 }, "symbol": { "type": "string", "minLength": 1, "maxLength": 12 },
+        "presentation": { "enum": ["dialog", "overlay", "callout", "crown", "fog", "confetti", "chairs", "target", "ticket", "blank-document", "cake", "rattle", "bagel-shower", "flies", "suitcase", "podium", "snake-tail", "static"] },
+        "tone": { "enum": ["playful", "celebratory", "restrained", "respectful", "informational"] },
+        "duration_ms": { "type": "integer", "minimum": 0, "maximum": 2500 }, "motion_policy": { "enum": ["animate", "static", "reduce-to-static"] }, "enabled": { "type": "boolean" }
+      }
+    },
+    "anchor": {
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["type", "owner", "season"], "properties": { "type": { "const": "owner-season" }, "owner": { "$ref": "common.schema.json#/$defs/owner" }, "season": { "$ref": "common.schema.json#/$defs/season" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "season", "week", "game_type", "owners"], "properties": { "type": { "const": "game" }, "season": { "$ref": "common.schema.json#/$defs/season" }, "week": { "type": "integer", "minimum": 1, "maximum": 30 }, "game_type": { "type": "string", "minLength": 1, "maxLength": 30 }, "owners": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/owner" }, "minItems": 2, "maxItems": 2, "uniqueItems": true } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "season", "owner"], "properties": { "type": { "const": "draft-slot" }, "season": { "$ref": "common.schema.json#/$defs/season" }, "owner": { "$ref": "common.schema.json#/$defs/owner" }, "expected_slot": { "type": "integer", "minimum": 1, "maximum": 24 } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "season", "owner", "player_id"], "properties": { "type": { "const": "draft-selection" }, "season": { "$ref": "common.schema.json#/$defs/season" }, "owner": { "$ref": "common.schema.json#/$defs/owner" }, "player_id": { "type": "string", "minLength": 1, "maxLength": 40 } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "season", "transaction_id"], "properties": { "type": { "const": "transaction" }, "season": { "$ref": "common.schema.json#/$defs/season" }, "transaction_id": { "type": "string", "minLength": 1, "maxLength": 120 } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "season"], "properties": { "type": { "const": "season" }, "season": { "$ref": "common.schema.json#/$defs/season" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "selector", "game"], "properties": { "type": { "const": "record" }, "selector": { "enum": ["lowest-score"] }, "game": { "type": "object", "additionalProperties": false, "required": ["type", "season", "week", "game_type", "owners"], "properties": { "type": { "const": "game" }, "season": { "$ref": "common.schema.json#/$defs/season" }, "week": { "type": "integer", "minimum": 1, "maximum": 30 }, "game_type": { "type": "string", "minLength": 1, "maxLength": 30 }, "owners": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/owner" }, "minItems": 2, "maxItems": 2, "uniqueItems": true } } } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "owners"], "properties": { "type": { "const": "rivalry" }, "owners": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/owner" }, "minItems": 2, "maxItems": 2, "uniqueItems": true } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "slug"], "properties": { "type": { "const": "rivalry" }, "slug": { "type": "string", "minLength": 1, "maxLength": 120 } } }
+      ]
+    },
+    "entry": {
+      "type": "object", "additionalProperties": false, "required": ["id", "category", "title", "teaser", "body", "season", "occurred_year", "completed_year", "almanac_edition", "owners", "anchors", "search_terms", "provenance", "sensitivity", "enabled"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "category": { "enum": ["season-moment", "punishment", "commissioner", "draft-weekend", "hall-of-asterisks", "league-moment", "micro-entry", "record"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 180 }, "teaser": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "body": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 500 }, "minItems": 1 },
+        "season": { "type": ["integer", "null"], "minimum": 2014, "maximum": 2100 }, "occurred_year": { "type": ["integer", "null"], "minimum": 2014, "maximum": 2100 }, "completed_year": { "type": ["integer", "null"], "minimum": 2014, "maximum": 2100 }, "almanac_edition": { "type": ["integer", "null"], "minimum": 2014, "maximum": 2100 },
+        "owners": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/owner" }, "uniqueItems": true }, "anchors": { "type": "array", "items": { "$ref": "#/$defs/anchor" } },
+        "search_terms": { "$ref": "#/$defs/searchTerms" }, "provenance": { "type": "string", "minLength": 1, "maxLength": 300 }, "sensitivity": { "enum": ["ordinary", "sensitive", "respectful"] }, "enabled": { "type": "boolean" }
+      }
+    },
+    "match": { "type": "object", "additionalProperties": false, "properties": { "owner": { "$ref": "common.schema.json#/$defs/owner" }, "season": { "$ref": "common.schema.json#/$defs/season" }, "activation_value": { "type": "string", "maxLength": 100 }, "owners": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/owner" }, "maxItems": 2 } } },
+    "searchTerms": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 80 }, "uniqueItems": true },
+    "trigger": {
+      "type": "object", "additionalProperties": false, "required": ["id", "surface", "activation", "once_policy", "enabled"],
+      "oneOf": [{ "properties": { "entry_id": { "$ref": "#/$defs/id" } }, "required": ["entry_id"], "not": { "type": "object", "properties": { "collection_id": {} }, "required": ["collection_id"] } }, { "properties": { "collection_id": { "$ref": "#/$defs/id" } }, "required": ["collection_id"], "not": { "type": "object", "properties": { "entry_id": {} }, "required": ["entry_id"] } }],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "surface": { "type": "string", "enum": ["global-search", "history", "curse-tracker", "trophy", "rivalry", "dynasty", "gauntlet", "transactions", "draft-spot", "current-season", "owner-hub", "theme"] }, "activation": { "enum": ["search", "triple-activate", "selection", "filter-state", "render-condition", "theme-sequence", "owner-emblem", "collection-open"] },
+        "entry_id": { "$ref": "#/$defs/id" }, "collection_id": { "$ref": "#/$defs/id" }, "effect_id": { "$ref": "#/$defs/id" }, "match": { "$ref": "#/$defs/match" }, "once_policy": { "enum": ["session", "repeatable", "scope"] }, "enabled": { "type": "boolean" }
+      }
+    }
+  }
+}

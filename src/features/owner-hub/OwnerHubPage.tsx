@@ -33,6 +33,7 @@ function HubContent({ model }: { model: OwnerHubModel }) {
   return <>
     <div class="owner-hub-lead">
       <Card title={model.identity.owner}>
+        <button type="button" class="btn owner-hub-emblem" data-lore-trigger="owner-emblem" data-lore-owner={model.identity.owner}>Owner emblem</button>
         {model.identity.displayName && <p>{model.identity.displayName}</p>}
         {model.identity.teamName && <p>{model.identity.teamName}</p>}
         <p>{model.identity.completedSeasons} completed seasons · {model.identity.phase.replaceAll('-', ' ')}</p>

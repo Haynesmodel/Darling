@@ -14,6 +14,7 @@ import type { DarlingSearchRuntime } from '../search/search-types';
 import type { DataFreshnessRuntime } from '../components/data-freshness/DataFreshnessBadge';
 import { isEligiblePrimaryNavigationClick } from '../accessibility/primary-navigation';
 import { buildUrlFromState } from '../../js/state-helpers.js';
+import type { LoreService } from '../lore/lore-types';
 import {
   canonicalOwners as normalizeOwners,
   createOwnerPreferenceService,
@@ -27,6 +28,7 @@ export interface BootstrapOptions {
   freshnessRuntime?: DataFreshnessRuntime;
   win?: Window;
   doc?: Document;
+  lore: LoreService;
 }
 
 export function createFallbackFreshness<T>(assessment: T) {
@@ -66,6 +68,7 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
   const status = createFeatureStatusService(doc);
   let activeFeature: FeatureId | null = null;
   let activeController: DarlingFeatureController | null = null;
+  let activeRouteKey: string | null = null;
   let activationCount = 0;
   let abortController: AbortController | null = null;
   let ownerPreference: OwnerPreferenceService | null = null;
@@ -92,7 +95,8 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
       dataVersion: data.dataVersion,
       coreVerified: ['H2H', 'SeasonSummary'].every(asset => data.diagnostics.integrity.verifiedAssets.includes(asset)),
     });
-    options.searchRuntime.hydrate({ leagueGames: data.leagueGames, seasonSummaries: data.seasonSummaries, rivalries: data.rivalries, currentSeason: data.currentSeason });
+    options.lore.hydrate(data.leagueLore, { leagueGames: data.leagueGames, seasonSummaries: data.seasonSummaries });
+    options.searchRuntime.hydrate({ leagueGames: data.leagueGames, seasonSummaries: data.seasonSummaries, rivalries: data.rivalries, currentSeason: data.currentSeason, loreDocuments: options.lore.searchDocuments(), loreOwnerAliases: data.leagueLore?.owners.map(owner => ({ owner: owner.owner, aliases: owner.aliases })) });
     ownerPreference = createOwnerPreferenceService(canonicalOwners(data), win);
     updateOwnerDestination(doc, win, ownerPreference.getSnapshot());
     ownerPreference.subscribe(snapshot => updateOwnerDestination(doc, win, snapshot));
@@ -107,6 +111,7 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
       tables: options.tableRuntime,
       freshness: options.freshnessRuntime || createFallbackFreshness(data.diagnostics.freshness),
       ownerPreference,
+      lore: options.lore,
       diagnostics,
       document: doc,
       window: win,
@@ -125,7 +130,12 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
     abortController = new AbortController();
     const signal = abortController.signal;
     showPage(id, doc);
-    if (activeController && activeFeature && activeFeature !== id) await activeController.deactivate?.(id);
+    const routeKey = `${win.location.pathname}${win.location.search}${win.location.hash}`;
+    const routeChanged = activeRouteKey !== null && activeRouteKey !== routeKey;
+    if (activeController && activeFeature && (activeFeature !== id || routeChanged)) {
+      options.lore.clearTransient();
+      if (activeFeature !== id) await activeController.deactivate?.(id);
+    }
     status.loading(id, FEATURE_NAVIGATION[id].label);
     const featurePromise = reason === 'retry' ? registry.retry(id) : registry.load(id);
     try {
@@ -138,6 +148,7 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
       if (disposed || signal.aborted || activationId !== activationCount) return;
       activeFeature = id;
       activeController = controller;
+      activeRouteKey = routeKey;
       registry.recordActivation(id);
       status.clearGlobal();
       status.ready(id);
@@ -175,16 +186,20 @@ export async function bootstrapDarlingApp(options: BootstrapOptions): Promise<()
     void request(route, 'tab');
   };
   const onPopState = () => void request(router.parse(), 'popstate');
+  const onRouteUpdate = () => options.lore.clearTransient();
   doc.getElementById('primaryNavigation')?.addEventListener('click', onNavigationClick);
   win.addEventListener('popstate', onPopState);
+  win.addEventListener('darling:route-update', onRouteUpdate);
 
   return async () => {
     disposed = true;
     abortController?.abort();
     doc.getElementById('primaryNavigation')?.removeEventListener('click', onNavigationClick);
     win.removeEventListener('popstate', onPopState);
+    win.removeEventListener('darling:route-update', onRouteUpdate);
     await activeController?.deactivate?.('pulse');
     await registry.dispose();
     ownerPreference?.dispose();
+    options.lore.dispose();
   };
 }

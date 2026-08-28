@@ -19,10 +19,12 @@ export function buildSearchIndex(data: SearchHydrationData): BuiltSearchIndex {
   const ownerAliases = new Map<string, string[]>();
   owners.forEach(owner => {
     const sleeperTeam = data.currentSeason?.teams?.find(team => team.owner === owner);
+    const authored = data.loreOwnerAliases?.find(item => item.owner === owner)?.aliases || [];
     ownerAliases.set(owner, [
       owner,
       sleeperTeam?.display_name,
       sleeperTeam?.sleeper_team_name,
+      ...authored,
     ].filter(Boolean).map(value => normalizeSearchText(value)));
   });
 
@@ -53,6 +55,7 @@ export function buildSearchIndex(data: SearchHydrationData): BuiltSearchIndex {
     .forEach(pick => add(buildIntentDocument({ kind: 'draft-pick', pick }, data)));
   (['early', 'middle', 'late'] as const)
     .forEach(zone => add(buildIntentDocument({ kind: 'draft-zone', zone }, data)));
+  (data.loreDocuments || []).forEach(document => documents.push(document));
   data.seasonSummaries.forEach(row => add(buildIntentDocument({ kind: 'owner-season', owner: row.owner, season: Number(row.season) }, data)));
   seasons.forEach(season => {
     add(buildIntentDocument({ kind: 'season-type', season, gameType: 'Playoff' }, data));

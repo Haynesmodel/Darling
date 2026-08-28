@@ -188,7 +188,7 @@ export function createFeatureController(): DarlingFeatureController {
     }
     if (selectedTeam === 'Nuss' && selectedSeasons.has(2019)) {
       const button = context.document.createElement('button');
-      button.type = 'button'; button.className = 'btn history-lore-trigger'; button.textContent = 'Reveal 42.00 record lore';
+      button.type = 'button'; button.className = 'btn history-lore-trigger'; button.textContent = 'Reveal low-score record lore';
       button.dataset.loreTrigger = 'record-42-history'; button.dataset.loreSeason = '2019'; button.dataset.loreOwner = 'Nuss';
       mount.append(button);
     }
@@ -206,12 +206,16 @@ export function createFeatureController(): DarlingFeatureController {
       mount.append(button);
     }
     if (selectedTeam !== ALL_TEAMS && selectedSeasons.has(2025) && (selectedTeam === 'Zook' || selectedTeam === 'Connor' || selectedTeam === 'Plot')) {
-      const trigger = selectedTeam === 'Zook' ? 'zook-points-story' : selectedTeam === 'Connor' ? 'connor-collapse-story' : 'plot-rankings-story';
-      const label = selectedTeam === 'Zook' ? 'Reveal points-mode title run' : selectedTeam === 'Connor' ? 'Reveal 2025 collapse' : 'Reveal missing power rankings';
+      const stories = {
+        Zook: ['zook-points-story', 'Reveal points-mode title run'],
+        Connor: ['connor-collapse-story', 'Reveal 2025 collapse'],
+        Plot: ['plot-rankings-story', 'Reveal missing power rankings'],
+      } as const;
+      const story = stories[selectedTeam as keyof typeof stories];
       const summary = context.data.seasonSummaries.find(row => row.owner === selectedTeam && row.season === 2025);
       if (summary) {
         const facts = JSON.stringify({ record: `${summary.wins}-${summary.losses}${summary.ties ? `-${summary.ties}` : ''}`, finish: summary.finish, champion: summary.champion, saunders: summary.saunders, points_for: summary.points_for, points_against: summary.points_against, team_count: context.data.seasonSummaries.filter(row => row.season === 2025).length });
-        const buttons: Array<readonly [string, string]> = [[trigger, label]];
+        const buttons: Array<readonly [string, string]> = [story];
         if (selectedTeam === 'Plot') buttons.push(['plot-admin', 'Reveal Plot administration'] as const);
         buttons.forEach(([buttonTrigger, buttonLabel]) => {
           const button = context.document.createElement('button');

@@ -164,7 +164,7 @@ function JourneyView({ journey, model }: { journey: Journey | null; model: Trans
       </li>)}
     </ol>
     {distinctOwners.size >= 3 && <button type="button" class="btn transaction-lore-journey" data-lore-trigger="transactions-suitcase" data-lore-value={journey.player_id} data-lore-facts={loreFacts}>Reveal passport trail</button>}
-    {name(model, journey.player_id).toLocaleLowerCase().includes('rashid shaheed') && <button type="button" class="btn transaction-lore-rashid" data-lore-trigger="rashid-shaheed-story" data-lore-value={journey.player_id} data-lore-facts={loreFacts}>Reveal Rashid Shaheed lore</button>}
+    {journey.player_id === '8676' && <button type="button" class="btn transaction-lore-rashid" data-lore-trigger="rashid-shaheed-story" data-lore-value={journey.player_id} data-lore-facts={loreFacts}>Reveal Rashid Shaheed lore</button>}
   </div>;
 }
 

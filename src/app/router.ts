@@ -41,6 +41,7 @@ export function createNavigationService(win: Window): NavigationService {
       return parsed;
     },
     update(options) {
+      const previous = `${win.location.pathname}${win.location.search}${win.location.hash}`;
       const next = updateUrlFromState({
         pathname: win.location.pathname,
         ...options,
@@ -49,6 +50,8 @@ export function createNavigationService(win: Window): NavigationService {
       if (replacementDepth > 0 && `${win.location.pathname}${win.location.search}` !== next) {
         win.history.replaceState(null, '', next);
       }
+      const current = `${win.location.pathname}${win.location.search}${win.location.hash}`;
+      if (previous !== current) win.dispatchEvent(new CustomEvent('darling:route-update', { detail: { previous, next: current } }));
       return next;
     },
     async runWithoutPush<T>(callback: () => T | Promise<T>): Promise<T> {

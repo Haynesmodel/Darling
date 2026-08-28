@@ -1,4 +1,4 @@
-import type { Entry, Collection, Effect, LeagueLore, Trigger } from '../data/generated/asset-types';
+import type { Entry, Collection, Effect, H2HGame, LeagueLore, SeasonSummaryRow, Trigger } from '../data/generated/asset-types';
 
 export type { Collection, Effect, Entry, LeagueLore, Trigger };
 
@@ -28,7 +28,7 @@ export interface LoreRevealOptions {
 }
 
 export interface LoreService {
-  hydrate(asset: LeagueLore | null): void;
+  hydrate(asset: LeagueLore | null, canonical?: { leagueGames: H2HGame[]; seasonSummaries: SeasonSummaryRow[] }): void;
   entry(id: string): Entry | null;
   searchDocuments(): LoreSearchDocument[];
   trigger(id: string, context?: Record<string, unknown>): boolean;

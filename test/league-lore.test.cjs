@@ -6,6 +6,20 @@ const esbuild = require('esbuild');
 
 const lore = JSON.parse(fs.readFileSync(path.join(__dirname, '../assets/LeagueLore.json')));
 const byId = new Map(lore.entries.map(entry => [entry.id, entry]));
+const coverageBundles = path.join(process.cwd(), 'coverage', 'test-bundles');
+fs.mkdirSync(coverageBundles, { recursive: true });
+const loreBundleDir = fs.mkdtempSync(path.join(coverageBundles, 'league-lore-'));
+const loreRuntimePath = path.join(loreBundleDir, 'lore-lazy.cjs');
+const buildLoreModule = (entryPoint, outfile) => esbuild.buildSync({
+  entryPoints: [entryPoint], outfile, bundle: true, platform: 'node', format: 'cjs', target: 'node24',
+  loader: { '.css': 'empty' }, sourcemap: 'inline', sourcesContent: true, logLevel: 'silent',
+});
+buildLoreModule(path.join(__dirname, '../src/lore/lore-lazy.ts'), loreRuntimePath);
+const lorePresentationPath = path.join(loreBundleDir, 'lore-presentation.cjs');
+buildLoreModule(path.join(__dirname, '../src/lore/lore-presentation.ts'), lorePresentationPath);
+const { createLazyLoreService } = require(loreRuntimePath);
+const lorePresentation = require(lorePresentationPath);
+test.after(() => fs.rmSync(loreBundleDir, { recursive: true, force: true }));
 
 test('League Lore preserves the supplied year and sensitivity corrections', () => {
   assert.equal(byId.get('punishment-connor-cheesesteak').season, 2025);
@@ -86,22 +100,14 @@ test('presentation catalog keeps each migrated effect on its native treatment', 
 });
 
 function runtimeFactory() {
-  const source = fs.readFileSync(path.join(__dirname, '../src/lore/lore-lazy.ts'), 'utf8');
-  const { code } = esbuild.transformSync(source, { loader: 'ts', format: 'cjs', target: 'node24' });
-  const module = { exports: {} };
-  new Function('module', 'exports', code)(module, module.exports);
   const presenter = async () => ({ showLore() {} });
-  const service = module.exports.createLazyLoreService(presenter);
+  const service = createLazyLoreService(presenter);
   service.hydrate(lore);
   return service;
 }
 
 function runtimeWithClock(clock, onReveal = () => {}) {
-  const source = fs.readFileSync(path.join(__dirname, '../src/lore/lore-lazy.ts'), 'utf8');
-  const { code } = esbuild.transformSync(source, { loader: 'ts', format: 'cjs', target: 'node24' });
-  const module = { exports: {} };
-  new Function('module', 'exports', code)(module, module.exports);
-  const service = module.exports.createLazyLoreService(async () => ({ showLore: onReveal }), clock);
+  const service = createLazyLoreService(async () => ({ showLore: onReveal }), clock);
   service.hydrate(lore);
   return service;
 }
@@ -158,7 +164,7 @@ test('typed trigger runtime accepts valid facts and rejects wrong contexts', () 
     const service = runtimeFactory();
     const match = trigger.match || {};
     const positive = {
-      owner: match.owner,
+      owner: trigger.id === 'owner-emblem' ? 'Connor' : match.owner,
       season: match.season,
       value: match.activation_value || (trigger.id === 'dynasty-joel-elevator' ? '2016' : 'value'),
       activation_value: match.activation_value,
@@ -210,6 +216,10 @@ test('trigger runtime enforces monotonic windows, target signatures, and lifecyc
   assert.equal(service.trigger('owner-emblem', { owner: 'Rishi', value: '' }), false);
   assert.equal(service.trigger('owner-emblem', { owner: 'Rishi', value: '' }), false);
   assert.equal(service.trigger('owner-emblem', { owner: 'Rishi', value: '' }), true);
+  const missingOwner = runtimeWithClock(() => at);
+  assert.equal(missingOwner.trigger('owner-emblem', { owner: 'Plot', value: '' }), false);
+  assert.equal(missingOwner.trigger('owner-emblem', { owner: 'Plot', value: '' }), false);
+  assert.equal(missingOwner.trigger('owner-emblem', { owner: 'Plot', value: '' }), false);
   const session = runtimeWithClock(() => at);
   assert.equal(session.trigger('theme-sunday-night', { value: 'system' }), false);
   session.clearTransient();
@@ -222,6 +232,16 @@ test('trigger runtime enforces monotonic windows, target signatures, and lifecyc
   assert.equal(cleared, 1);
 });
 
+test('triple activation resets when its target signature changes', () => {
+  const service = runtimeWithClock(() => 0);
+  assert.equal(service.trigger('trophy-bagel', { value: 'A' }), false);
+  assert.equal(service.trigger('trophy-bagel', { value: 'A' }), false);
+  assert.equal(service.trigger('trophy-bagel', { value: 'B' }), false);
+  assert.equal(service.trigger('trophy-bagel', { value: 'A' }), false);
+  assert.equal(service.trigger('trophy-bagel', { value: 'A' }), false);
+  assert.equal(service.trigger('trophy-bagel', { value: 'A' }), true);
+});
+
 test('reveal forwards canonical facts to the presentation boundary', async () => {
   let received;
   const service = runtimeWithClock(() => 0, (...args) => { received = args; });
@@ -230,15 +250,20 @@ test('reveal forwards canonical facts to the presentation boundary', async () =>
   assert.deepEqual(received[3].context, { facts: { score: '42.00' } });
 });
 
+test('anchored numeric lore derives facts from canonical games', async () => {
+  let received;
+  const service = createLazyLoreService(async () => ({ showLore: (...args) => { received = args; } }));
+  service.hydrate(lore, { leagueGames: [{ season: 2019, date: '2019-11-17', teamA: 'Joe', teamB: 'Nuss', scoreA: 1, scoreB: 2, week: 12, round: null, type: 'Regular' }], seasonSummaries: [] });
+  await service.reveal('entry', 'record-42', { context: { facts: { score: '42.00' } } });
+  assert.equal(received[3].context.facts.score, 'Nuss 2.00');
+  assert.equal(received[3].context.facts.opponent, 'Joe');
+});
+
 test('pending presentation cannot reopen lore after transient clear', async () => {
   let resolve;
   let shown = 0;
   const presenter = () => new Promise(done => { resolve = done; });
-  const source = fs.readFileSync(path.join(__dirname, '../src/lore/lore-lazy.ts'), 'utf8');
-  const { code } = esbuild.transformSync(source, { loader: 'ts', format: 'cjs', target: 'node24' });
-  const module = { exports: {} };
-  new Function('module', 'exports', code)(module, module.exports);
-  const service = module.exports.createLazyLoreService(presenter);
+  const service = createLazyLoreService(presenter);
   service.hydrate(lore);
   assert.equal(service.trigger('record-42-history'), true);
   service.clearTransient();
@@ -246,6 +271,70 @@ test('pending presentation cannot reopen lore after transient clear', async () =
   await Promise.resolve();
   await Promise.resolve();
   assert.equal(shown, 0);
+});
+
+test('presentation DOM contract covers replacement, reduced motion, collections, and dialog fallback', () => {
+  class FakeElement {
+    constructor(tagName, ownerDocument) {
+      this.tagName = tagName.toUpperCase(); this.ownerDocument = ownerDocument; this.children = []; this.attributes = new Map(); this.listeners = new Map(); this.open = false;
+      this.classList = { add: value => { this.className = `${this.className || ''} ${value}`.trim(); } };
+      this.style = { setProperty() {} };
+    }
+    append(...nodes) { nodes.forEach(node => { node.parentNode = this; this.children.push(node); }); }
+    removeChild(node) { this.children = this.children.filter(child => child !== node); node.parentNode = null; }
+    remove() { this.parentNode?.removeChild(this); }
+    setAttribute(name, value) { this.attributes.set(name, String(value)); if (name === 'open') this.open = true; }
+    hasAttribute(name) { return this.attributes.has(name); }
+    addEventListener(type, listener) { this.listeners.set(type, listener); }
+    dispatch(type, event = {}) { this.listeners.get(type)?.({ preventDefault() {}, shiftKey: false, key: type === 'keydown' ? 'Tab' : '', ...event }); }
+    showModal() { this.open = true; }
+    close() { this.open = false; }
+    focus() { this.ownerDocument.activeElement = this; }
+    querySelectorAll() { return this.children.filter(child => child.tagName === 'BUTTON'); }
+  }
+  class FakeDocument {
+    constructor() {
+      this.body = new FakeElement('body', this); this.body.classList = { add() {}, remove() {} }; this.activeElement = null;
+    }
+    createElement(tagName) { return new FakeElement(tagName, this); }
+  }
+  const doc = new FakeDocument();
+  global.document = doc;
+  const entry = byId.get('record-42');
+  const effect = { id: 'test', label: 'Rattle', presentation: 'rattle', tone: 'playful', symbol: '✨', duration_ms: 2500 };
+  const timers = [];
+  const scope = { id: 'test', add() {}, onClear(callback) { this.cleanup = callback; }, timer(callback) { timers.push(callback); return 1; }, clear() {} };
+  const opener = doc.createElement('button');
+  lorePresentation.showLore(entry, new Map(), effect, { opener, scope, context: { facts: { score: '42.00', blank: null } } });
+  const renderedDialog = doc.body.children.find(node => node.tagName === 'DIALOG');
+  assert.equal(renderedDialog.children.some(node => node.textContent === 'Rattle'), true);
+  assert.equal(doc.body.children.some(node => node.className?.includes('lore-overlay')), true);
+  timers[0]();
+  assert.equal(doc.body.children.some(node => node.className?.includes('lore-overlay')), false);
+  lorePresentation.setReducedMotion(true);
+  lorePresentation.disposeLorePresentation();
+  assert.equal(doc.activeElement, opener);
+
+  const overlayEffect = { ...effect, presentation: 'overlay' };
+  lorePresentation.showLore(entry, new Map(), overlayEffect, { opener, scope, context: {} });
+  assert.equal(doc.body.children.some(node => node.className?.includes('lore-backdrop')), true);
+  doc.body.children.find(node => node.tagName === 'DIALOG').children[0].dispatch('click');
+  assert.equal(doc.body.children.some(node => node.className?.includes('lore-backdrop')), true);
+  lorePresentation.disposeLorePresentation();
+  assert.equal(doc.body.children.some(node => node.className?.includes('lore-backdrop')), false);
+
+  const fallbackDoc = new FakeDocument();
+  const originalCreate = fallbackDoc.createElement.bind(fallbackDoc);
+  fallbackDoc.createElement = tagName => { const node = originalCreate(tagName); if (tagName === 'dialog') node.showModal = undefined; return node; };
+  const collection = { id: 'collection', title: 'Collection', summary: 'Summary', entry_ids: ['record-42', 'missing'] };
+  const fallbackOpener = fallbackDoc.createElement('button');
+  lorePresentation.showLore(collection, new Map([[entry.id, entry]]), null, { opener: fallbackOpener, reducedMotion: true });
+  const dialog = fallbackDoc.body.children.find(node => node.tagName === 'DIALOG');
+  assert.equal(dialog.open, true);
+  dialog.dispatch('keydown', { key: 'Escape' });
+  dialog.dispatch('cancel');
+  assert.equal(fallbackDoc.body.children.includes(dialog), false);
+  delete global.document;
 });
 
 test('dynasty and theme sequences require the complete ordered gesture', () => {

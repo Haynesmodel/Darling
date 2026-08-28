@@ -1,4 +1,4 @@
-import type { LeagueLore } from '../data/generated/asset-types';
+import type { H2HGame, LeagueLore, SeasonSummaryRow } from '../data/generated/asset-types';
 import type { LoreRevealOptions, LoreScope, LoreService } from './lore-types';
 
 /** Keeps the presentation/registry out of the entry chunk until lore is used. */
@@ -6,9 +6,11 @@ type LorePresentation = typeof import('./lore-presentation');
 
 export function createLazyLoreService(presenter?: () => Promise<LorePresentation>, clock?: () => number): LoreService {
   let asset: LeagueLore | null = null;
+  let canonical: { leagueGames: H2HGame[]; seasonSummaries: SeasonSummaryRow[] } | null = null;
   let reducedMotion = false;
   let loading: Promise<LorePresentation> | null = null;
   const states = new Map<string, { at: number; count?: number; value: string; values?: string[] }>();
+  const tripleSignatures = new Map<string, string>();
   const sessionSeen = new Set<string>();
   const scopes = new Set<LoreScope>();
   let generation = 0;
@@ -42,6 +44,26 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
     }, add: node => { if (!cleared) nodes.add(node); }, onClear: callback => { if (cleared) callback(); else cleanups.add(callback); } };
     scopes.add(scope); return scope;
   };
+  const canonicalFacts = (id: string, context?: Record<string, unknown>): Record<string, unknown> => {
+    if (!canonical) return {};
+    if (id === 'record-42') {
+      const game = canonical.leagueGames.find(item => item.season === 2019 && item.week === 12 && item.type === 'Regular' && new Set([item.teamA, item.teamB]).size === 2 && [item.teamA, item.teamB].includes('Joe') && [item.teamA, item.teamB].includes('Nuss'));
+      if (!game) return {};
+      const score = game.teamA === 'Nuss' ? game.scoreA : game.scoreB;
+      return { score: `Nuss ${score.toFixed(2)}`, opponent: 'Joe', season: game.season, week: game.week, game_type: game.type };
+    }
+    if (id === '2022-championship-context') {
+      const game = canonical.leagueGames.find(item => item.season === 2022 && item.week === 17 && item.round === 'Championship' && ((item.teamA === 'Zubs' && item.teamB === 'Rishi') || (item.teamA === 'Rishi' && item.teamB === 'Zubs')));
+      const owner = typeof context?.owner === 'string' ? context.owner : 'Zubs';
+      const summary = canonical.seasonSummaries.find(item => item.owner === owner && item.season === 2022);
+      if (!game || !summary) return {};
+      const ownerScore = game.teamA === owner ? game.scoreA : game.scoreB;
+      const opponent = game.teamA === owner ? game.teamB : game.teamA;
+      const opponentScore = game.teamA === owner ? game.scoreB : game.scoreA;
+      return { record: `${summary.wins}-${summary.losses}${summary.ties ? `-${summary.ties}` : ''}`, finish: summary.finish, champion: summary.champion, team_count: canonical.seasonSummaries.filter(item => item.season === 2022).length, championship_score: `${owner} ${ownerScore.toFixed(2)} – ${opponent} ${opponentScore.toFixed(2)}` };
+    }
+    return {};
+  };
   const reveal = async (type: 'entry' | 'collection', id: string, options?: LoreRevealOptions) => {
     if (!asset?.enabled) return false;
     const target = type === 'entry' ? asset.entries.find(entry => entry.enabled && entry.id === id) : asset.collections.find(collection => collection.enabled && collection.id === id);
@@ -53,12 +75,13 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
       if (!options?.scope) scope.clear();
       return false;
     }
-    module.showLore(target, new Map(asset.entries.filter(entry => entry.enabled).map(entry => [entry.id, entry])), asset.effects.find(effect => effect.id === (options?.effectId || 'lore-dialog') && effect.enabled) || null, { scope, opener: options?.opener, context: options?.context, reducedMotion });
+    const context = { ...options?.context, facts: { ...(options?.context?.facts as Record<string, unknown> | undefined), ...canonicalFacts(id, options?.context) } };
+    module.showLore(target, new Map(asset.entries.filter(entry => entry.enabled).map(entry => [entry.id, entry])), asset.effects.find(effect => effect.id === (options?.effectId || 'lore-dialog') && effect.enabled) || null, { scope, opener: options?.opener, context, reducedMotion });
     return true;
   };
   const now = clock || (() => typeof performance?.now === 'function' ? performance.now() : Date.now());
   return {
-    hydrate(next) { asset = next; },
+    hydrate(next, nextCanonical) { asset = next; canonical = nextCanonical || null; },
     entry(id) { return asset?.entries.find(entry => entry.enabled && entry.id === id) || null; },
     searchDocuments: docs,
     trigger(id, context = {}) {
@@ -78,7 +101,13 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
         const sequenceId = id === 'dynasty-joel-elevator' ? [id, context.owner, context.season, context.activation_value, ...(owners || []).slice().sort()].join('|') : id;
         if (!advance(sequenceId, value, trigger.activation === 'theme-sequence' ? 5000 : 4000, trigger.activation === 'theme-sequence' ? 'system|light|dark|system|light|dark' : '2016|2017', trigger.activation === 'theme-sequence' ? 6 : 2)) return false;
       }
-      if (trigger.activation === 'triple-activate' && !advance(stateId, value, 4000, `${value}|${value}|${value}`, 3)) return false;
+      if (trigger.activation === 'triple-activate') {
+        const previousSignature = tripleSignatures.get(id);
+        if (previousSignature && previousSignature !== signature) states.delete(previousSignature);
+        tripleSignatures.set(id, signature);
+        if (!advance(stateId, value, 4000, `${value}|${value}|${value}`, 3)) return false;
+        tripleSignatures.delete(id);
+      }
       const onceId = id.startsWith('dynasty-') ? `${id}:${[context.owner, context.season, context.activation_value, value, ...(owners || []).slice().sort()].join('|')}` : id;
       if (trigger.once_policy === 'session' && sessionSeen.has(onceId)) return false;
       if (trigger.once_policy === 'session') sessionSeen.add(onceId);
@@ -86,6 +115,7 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
       const ownerEntry = id === 'owner-emblem' && collection && context.owner
         ? asset.entries.find(entry => collection.entry_ids.includes(entry.id) && entry.enabled && entry.owners.includes(String(context.owner)))
         : null;
+      if (id === 'owner-emblem' && !ownerEntry) return false;
       const type = trigger.entry_id || ownerEntry ? 'entry' : 'collection';
       const target = trigger.entry_id || ownerEntry?.id || trigger.collection_id;
       if (!target) return false;
@@ -95,7 +125,7 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
     reveal,
     createScope: makeScope,
     setReducedMotion(value) { reducedMotion = value; if (loading) void loading.then(module => module.setReducedMotion?.(value)); },
-    clearTransient() { generation += 1; scopes.forEach(scope => scope.clear()); states.clear(); },
-    dispose() { generation += 1; scopes.forEach(scope => scope.clear()); loading = null; asset = null; reducedMotion = false; states.clear(); sessionSeen.clear(); },
+    clearTransient() { generation += 1; scopes.forEach(scope => scope.clear()); states.clear(); tripleSignatures.clear(); },
+    dispose() { generation += 1; scopes.forEach(scope => scope.clear()); loading = null; asset = null; canonical = null; reducedMotion = false; states.clear(); tripleSignatures.clear(); sessionSeen.clear(); },
   };
 }

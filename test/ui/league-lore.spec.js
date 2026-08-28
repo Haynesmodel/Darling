@@ -52,6 +52,15 @@ test('lore dialog traps focus, closes on Escape, and survives motion/forced-colo
   await expect(trigger).toBeFocused();
 });
 
+test('owner emblem fails closed when the selected owner has no micro-entry', async ({ page }) => {
+  await page.goto('/?tab=owner&owner=Plot');
+  const trigger = page.locator('[data-lore-trigger="owner-emblem"]');
+  await expect(trigger).toBeVisible();
+  await trigger.press('Enter'); await trigger.press('Enter'); await trigger.press('Enter');
+  await expect(page.locator('dialog')).toHaveCount(0);
+  await expect(page.locator('.lore-overlay, .lore-backdrop')).toHaveCount(0);
+});
+
 test('lore incantations index the authored catalog and execute a result', async ({ page }) => {
   await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
@@ -63,7 +72,7 @@ test('lore incantations index the authored catalog and execute a result', async 
     await expect(result).toBeVisible();
     await page.keyboard.press('Escape');
   };
-  await search('42', '42.00 Record');
+  await search('42', 'Lowest-Score Record');
   await search('bagel', 'Bagel Shower');
   await search('receipts', 'Hall of Asterisks');
   await search('birds clinch', 'Clinched');
@@ -76,8 +85,8 @@ test('lore incantations index the authored catalog and execute a result', async 
   await page.locator('.search-trigger').click();
   const palette = page.getByRole('dialog', { name: 'Search The Darling' });
   await palette.getByRole('combobox').fill('42');
-  await palette.getByRole('option').filter({ hasText: '42.00 Record' }).first().click();
-  await expect(page.getByRole('dialog', { name: /42\.00 Record/ })).toBeVisible();
+  await palette.getByRole('option').filter({ hasText: 'Lowest-Score Record' }).first().click();
+  await expect(page.getByRole('dialog', { name: /Lowest-Score Record/ })).toBeVisible();
   await expect(page.locator('#global-search-dialog')).toHaveCount(0);
 });
 
@@ -92,13 +101,23 @@ test('cached lore search action keeps modal focus and restores the search opener
   await searchTrigger.click();
   const palette = page.getByRole('dialog', { name: 'Search The Darling' });
   await palette.getByRole('combobox').fill('42');
-  const result = palette.getByRole('option').filter({ hasText: '42.00 Record' }).first();
+  const result = palette.getByRole('option').filter({ hasText: 'Lowest-Score Record' }).first();
   await result.click();
   const loreDialog = page.locator('dialog[aria-labelledby="lore-dialog-title"]');
   await expect(loreDialog).toBeVisible();
   await expect(loreDialog.locator('h2')).toBeFocused();
   await loreDialog.locator('button[aria-label="Close league lore"]').click();
   await expect(searchTrigger).toBeFocused();
+});
+
+test('same-feature route changes clear an open lore presentation', async ({ page }) => {
+  await page.goto('/?tab=owner&owner=Connor');
+  const emblem = page.locator('[data-lore-trigger="owner-emblem"]');
+  await emblem.press('Enter'); await emblem.press('Enter'); await emblem.press('Enter');
+  await expect(page.locator('dialog')).toBeVisible();
+  await page.locator('.owner-hub-owner-control select').selectOption('Rishi');
+  await expect(page.locator('dialog, .lore-overlay')).toHaveCount(0);
+  await expect(page.locator('.owner-hub-emblem[data-lore-owner="Rishi"]')).toBeVisible();
 });
 
 test('draft lore controls are limited to their canonical 2025 boundaries', async ({ page }) => {
@@ -143,6 +162,17 @@ test('2022 championship lore displays owner-oriented canonical H2H scores', asyn
   const dialog = page.locator('dialog');
   await expect(dialog).toContainText('Zubs 101.08 – Rishi 100.40');
   await expect(dialog).toContainText('record');
+  await expect(page.locator('.lore-overlay')).toHaveCount(0);
+  await dialog.locator('button[aria-label="Close league lore"]').click();
+});
+
+test('2022 championship lore orients the same canonical game for Rishi', async ({ page }) => {
+  await page.goto('/?tab=history&team=Rishi&seasons=2022');
+  const button = page.locator('[data-lore-trigger="championship-context"]');
+  await expect(button).toBeVisible();
+  await button.click();
+  const dialog = page.locator('dialog');
+  await expect(dialog).toContainText('Rishi 100.40 – Zubs 101.08');
   await dialog.locator('button[aria-label="Close league lore"]').click();
 });
 
@@ -167,6 +197,26 @@ test('2022 championship lore follows a mutated canonical H2H fixture', async ({ 
   await dialog.locator('button[aria-label="Close league lore"]').click();
 });
 
+test('low-score lore follows the anchored canonical H2H fixture', async ({ page }) => {
+  const fixture = createSnapshotFixture({
+    mutations: {
+      H2H: games => {
+        const record = games.find(game => game.season === 2019 && game.week === 12 && game.teamA === 'Joe' && game.teamB === 'Nuss');
+        record.scoreB = 77.77;
+      },
+    },
+  });
+  await fixture.install(page);
+  await page.goto('/?tab=history&team=Nuss&seasons=2019');
+  const button = page.locator('[data-lore-trigger="record-42-history"]');
+  await expect(button).toBeVisible();
+  await button.click();
+  const dialog = page.locator('dialog');
+  await expect(dialog).toContainText('Nuss 77.77');
+  await expect(dialog).not.toContainText('42.00');
+  await dialog.locator('button[aria-label="Close league lore"]').click();
+});
+
 test('lore presentation primitives render bounded distinct decorations and clean up', async ({ page }) => {
   const reveal = async (url, trigger, presentation, count, activations = 1) => {
     await page.goto(url);
@@ -185,4 +235,13 @@ test('lore presentation primitives render bounded distinct decorations and clean
   await reveal('/?tab=history&team=Connor&seasons=2025', 'connor-collapse-story', 'ticket', 1);
   await reveal('/?tab=history&team=Plot&seasons=2025', 'plot-rankings-story', 'blank-document', 1);
   await reveal('/?tab=trophy&team=Zook', 'trophy-bagel', 'bagel-shower', 14, 3);
+  await reveal('/?tab=trophy&team=Connor', 'trophy-saunders', 'flies', 9, 3);
+});
+
+test('reduced motion keeps lore readable without creating decorative particles', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/?tab=draft&draftMode=pick&draftPick=4');
+  await page.locator('[data-lore-trigger="draft-rishi-pick-four"]').click();
+  await expect(page.getByRole('dialog', { name: 'Rishi Was Deadly' })).toBeVisible();
+  await expect(page.locator('.lore-overlay, .lore-decoration')).toHaveCount(0);
 });

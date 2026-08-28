@@ -1,7 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const esbuild = require('esbuild');
@@ -84,7 +83,9 @@ function quietLogger() {
 }
 
 test.before(async () => {
-  tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-runtime-loader-'));
+  const coverageBundles = path.join(root, 'coverage', 'test-bundles');
+  fs.mkdirSync(coverageBundles, { recursive: true });
+  tempDir = fs.mkdtempSync(path.join(coverageBundles, 'runtime-loader-'));
   const outfile = path.join(tempDir, 'load-league-assets.mjs');
   await esbuild.build({
     entryPoints: [path.join(root, 'src/data/load-league-assets.ts')],
@@ -93,6 +94,8 @@ test.before(async () => {
     platform: 'node',
     format: 'esm',
     target: 'node20',
+    sourcemap: 'inline',
+    sourcesContent: true,
     logLevel: 'silent',
   });
   ({ loadLeagueAssets } = await import(`${pathToFileURL(outfile).href}?${Date.now()}`));

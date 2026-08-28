@@ -320,6 +320,20 @@ test('pending presentation cannot reopen lore after transient clear', async () =
   assert.equal(shown, 0);
 });
 
+test('presentation import failure clears internal scope and retries cleanly', async () => {
+  let attempts = 0; let shown = 0;
+  const service = createLazyLoreService(async () => {
+    attempts += 1;
+    if (attempts === 1) throw new Error('transient import failure');
+    return { showLore() { shown += 1; } };
+  });
+  service.hydrate(lore);
+  assert.equal(await service.reveal('entry', 'record-42'), false);
+  assert.equal(await service.reveal('entry', 'record-42'), true);
+  assert.equal(attempts, 2);
+  assert.equal(shown, 1);
+});
+
 test('loaded presenter cleanup is synchronous at lifecycle boundaries', async () => {
   let transientClears = 0; let motionUpdates = 0; let disposals = 0;
   const service = createLazyLoreService(async () => ({

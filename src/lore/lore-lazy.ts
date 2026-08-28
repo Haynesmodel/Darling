@@ -79,7 +79,14 @@ export function createLazyLoreService(presenter?: () => Promise<LorePresentation
     if (!target) return false;
     const scope = options?.scope || makeScope(`reveal:${id}`);
     const revealGeneration = generation;
-    const module = await load();
+    let module: LorePresentation;
+    try {
+      module = await load();
+    } catch {
+      loading = null;
+      if (!options?.scope) scope.clear();
+      return false;
+    }
     if (revealGeneration !== generation || !asset?.enabled || !scopes.has(scope)) {
       if (!options?.scope) scope.clear();
       return false;

@@ -58,6 +58,19 @@ test.describe('Draft Journey', () => {
     await expect(page.locator('#draftMetricSelect')).toHaveValue('avgFinish');
     await expect(filter).toHaveValue('college-park');
 
+    await page.goBack();
+    await expect.poll(() => new URL(page.url()).searchParams.get('draftLocation')).toBeNull();
+    await expect(page.locator('#draftOwnerSelect')).toHaveValue('Joe');
+    await expect(page.locator('#draftMetricSelect')).toHaveValue('avgFinish');
+    await expect(filter).toHaveValue('');
+
+    await page.goForward();
+    await expect.poll(() => new URL(page.url()).searchParams.get('draftLocation')).toBe('college-park');
+    await expect(page.locator('#draftOwnerSelect')).toHaveValue('Joe');
+    await expect(page.locator('#draftMetricSelect')).toHaveValue('avgFinish');
+    await expect(filter).toHaveValue('college-park');
+    await expect(page.locator('.draft-journey-details')).toContainText('University of Maryland Stadium');
+
     await page.goForward();
     await expect.poll(() => new URL(page.url()).searchParams.get('draftLocation')).toBe('college-park');
     await expect(page.locator('#draftOwnerSelect')).toHaveValue('Joe');

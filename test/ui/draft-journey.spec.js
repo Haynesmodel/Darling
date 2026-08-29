@@ -225,12 +225,22 @@ test.describe('Draft Journey', () => {
       return {
         map: { left: mapBox.left, top: mapBox.top, right: mapBox.right, bottom: mapBox.bottom },
         boxes,
+        viewport: {
+          innerWidth: window.innerWidth,
+          clientWidth: document.documentElement.clientWidth,
+          scrollWidth: document.documentElement.scrollWidth,
+        },
+        overflowers: [...document.querySelectorAll('body *')].map(node => {
+          const box = node.getBoundingClientRect();
+          return { tag: node.tagName.toLowerCase(), className: typeof node.className === 'string' ? node.className : '', left: box.left, right: box.right, width: box.width };
+        }).filter(item => item.left < 0 || item.right > document.documentElement.clientWidth).sort((a, b) => b.right - a.right || a.left - b.left).slice(0, 5),
         noOverflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
       };
     });
     const assertLayout = layout => {
       expect(layout).not.toBeNull();
-      expect(layout.boxes.every(box => box.left >= layout.map.left - 1 && box.right <= layout.map.right + 1 && box.top >= layout.map.top - 1 && box.bottom <= layout.map.bottom + 1 && box.width >= 44 && box.height >= 44 && box.labelFits)).toBe(true);
+      const diagnostics = JSON.stringify({ viewport: layout.viewport, overflowers: layout.overflowers });
+      expect(layout.boxes.every(box => box.left >= layout.map.left - 1 && box.right <= layout.map.right + 1 && box.top >= layout.map.top - 1 && box.bottom <= layout.map.bottom + 1 && box.width >= 44 && box.height >= 44 && box.labelFits), diagnostics).toBe(true);
       for (let index = 0; index < layout.boxes.length; index += 1) {
         for (let other = index + 1; other < layout.boxes.length; other += 1) {
           const first = layout.boxes[index];
@@ -238,15 +248,17 @@ test.describe('Draft Journey', () => {
           expect(first.right <= second.left || second.right <= first.left || first.bottom <= second.top || second.bottom <= first.top).toBe(true);
         }
       }
-      expect(layout.noOverflow).toBe(true);
+      expect(layout.noOverflow, diagnostics).toBe(true);
     };
 
     assertLayout(await readLayout());
     await page.setViewportSize({ width: 320, height: 900 });
     await expect.poll(async () => {
       const layout = await readLayout();
-      return layout && layout.boxes.every(box => box.width <= 120);
-    }).toBe(true);
+      if (!layout) return 'missing map layout';
+      if (layout.boxes.every(box => box.width <= 120) && layout.noOverflow) return 'settled compact layout';
+      return JSON.stringify({ viewport: layout.viewport, compact: layout.boxes.every(box => box.width <= 120), noOverflow: layout.noOverflow, overflowers: layout.overflowers });
+    }).toBe('settled compact layout');
     assertLayout(await readLayout());
   });
 

@@ -81,6 +81,31 @@ test('invalid URL values normalize to the supported data universe', () => {
   assert.equal(resolved.normalize, 'percentile');
 });
 
+test('disabled draft locations normalize to All locations without changing analytics state', () => {
+  const disabled = [{
+    id: 'disabled',
+    label: 'Disabled',
+    location_type: 'physical',
+    season_start: 2017,
+    season_end: 2017,
+    venue: null,
+    coordinates: { latitude: 39, longitude: -76 },
+    coordinate_precision: 'municipality',
+    entry_id: 'entry',
+    enabled: false,
+  }];
+  const resolved = state.resolveDraftSpotState(asset, {
+    draftOwner: 'Joe',
+    draftMode: 'owner',
+    draftMetric: 'playoffRate',
+    draftLocation: 'disabled',
+  }, {}, disabled);
+  assert.equal(resolved.selectedLocation, null);
+  assert.equal(resolved.owner, 'Joe');
+  assert.equal(resolved.mode, 'owner');
+  assert.equal(resolved.metric, 'playoffRate');
+});
+
 test('owner recommendations use only the selected season range', () => {
   const joe2025 = model.buildDraftSpotModel(asset, {
     owner: 'Joe',

@@ -17,6 +17,8 @@ test.describe('Draft Journey', () => {
     const filter = page.locator('select[aria-label="Filter draft journey by location"]');
     await expect(filter.locator('option')).toHaveText(['All locations', 'Remote / virtual · 2014–2016', 'Bethany Beach · 2017–2022', 'College Park · 2023–2024', 'Washington, DC · 2025–2026']);
     await expect(page.locator('.draft-journey-detail')).toHaveCount(4);
+    await expect(page.locator('.draft-journey-map svg')).toHaveAttribute('aria-hidden', 'true');
+    await expect(page.locator('.draft-journey-leader')).toHaveCount(3);
     await filter.selectOption('washington-dc');
     await expect(page).toHaveURL(/draftLocation=washington-dc/);
     await expect(page.locator('.draft-journey-details')).toContainText('2025–2026');
@@ -39,6 +41,51 @@ test.describe('Draft Journey', () => {
     await expect(page).not.toHaveURL(/draftLocation=unknown/);
     await expect(page).toHaveURL(/draftStart=2017/);
     await expect(page.locator('select[aria-label="Filter draft journey by location"]')).toHaveValue('');
+  });
+
+  test('location selection survives Back and Forward with analytics controls preserved', async ({ page }) => {
+    const filter = page.locator('select[aria-label="Filter draft journey by location"]');
+    await page.locator('#draftOwnerSelect').selectOption('Joe');
+    await filter.selectOption('college-park');
+    await page.locator('#draftMetricSelect').selectOption('playoffRate');
+    await expect(page.locator('#draftOwnerSelect')).toHaveValue('Joe');
+    await expect(filter).toHaveValue('college-park');
+    await expect(page.locator('#draftMetricSelect')).toHaveValue('playoffRate');
+
+    await page.goBack();
+    await expect.poll(() => new URL(page.url()).searchParams.get('draftLocation')).toBe('college-park');
+    await expect(page.locator('#draftOwnerSelect')).toHaveValue('Joe');
+    await expect(page.locator('#draftMetricSelect')).toHaveValue('avgFinish');
+    await expect(filter).toHaveValue('college-park');
+
+    await page.goForward();
+    await expect.poll(() => new URL(page.url()).searchParams.get('draftLocation')).toBe('college-park');
+    await expect(page.locator('#draftOwnerSelect')).toHaveValue('Joe');
+    await expect(page.locator('#draftMetricSelect')).toHaveValue('playoffRate');
+    await expect(filter).toHaveValue('college-park');
+  });
+
+  test('invalid direct location replacement does not add a Back entry', async ({ page }) => {
+    await page.goto('/?tab=draft');
+    await page.waitForLoadState('networkidle');
+    const priorUrl = page.url();
+    await page.goto('/?tab=draft&draftOwner=Joe&draftLocation=disabled');
+    await page.waitForLoadState('networkidle');
+    await expect(page).not.toHaveURL(/draftLocation=disabled/);
+    await expect(page.locator('#draftOwnerSelect')).toHaveValue('Joe');
+    await page.goBack();
+    await expect(page).toHaveURL(priorUrl);
+  });
+
+  test('closing a location lore dialog restores focus to its initiating button', async ({ page }) => {
+    const filter = page.locator('select[aria-label="Filter draft journey by location"]');
+    await filter.selectOption('college-park');
+    const opener = page.getByRole('button', { name: 'Open College Park lore' });
+    await opener.focus();
+    await opener.click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.getByRole('button', { name: 'Close league lore' }).click();
+    await expect(opener).toBeFocused();
   });
 
   test('location model handles empty, virtual, and boundary inputs', async ({ page }) => {

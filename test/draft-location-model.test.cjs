@@ -36,7 +36,38 @@ test('physical projection and callouts are finite, bounded, and deterministic', 
   const first = model.layoutDraftCallouts(locations, 320, 220);
   assert.deepEqual(first, model.layoutDraftCallouts(locations, 320, 220));
   for (const box of first) assert.ok(box.left >= 0 && box.top >= 0 && box.left + box.width <= 320 && box.top + box.height <= 220);
+  const leaders = model.draftLocationLeaderLines(first);
+  assert.equal(leaders.length, 3);
+  assert.deepEqual(leaders.map(line => line.locationId), first.map(box => box.location.id));
+  assert.ok(leaders.every(line => [line.x1, line.y1, line.x2, line.y2].every(Number.isFinite)));
   assert.equal(model.projectDraftLocations([locations[0]]).length, 0);
+});
+
+test('co-located physical records receive bounded, non-overlapping callouts at mobile and desktop widths', () => {
+  const source = lore.draft_locations.filter(location => location.location_type === 'physical');
+  const locations = source.map((location, index) => ({
+    ...location,
+    id: `co-located-${index}`,
+    season_start: 2017 + index,
+    season_end: 2017 + index,
+    coordinates: { latitude: 39, longitude: -76 },
+  }));
+  const four = [...locations, { ...locations[0], id: 'co-located-3', season_start: 2020, season_end: 2020 }];
+  for (const [width, height] of [[320, 220], [960, 320]]) {
+    const callouts = model.layoutDraftCallouts(four, width, height);
+    assert.equal(callouts.length, 4);
+    for (const callout of callouts) {
+      assert.ok(callout.left >= 0 && callout.top >= 0);
+      assert.ok(callout.left + callout.width <= width);
+      assert.ok(callout.top + callout.height <= height);
+    }
+    for (let index = 0; index < callouts.length; index += 1) {
+      for (let other = index + 1; other < callouts.length; other += 1) {
+        const a = callouts[index], b = callouts[other];
+        assert.ok(a.left >= b.left + b.width || a.left + a.width <= b.left || a.top >= b.top + b.height || a.top + a.height <= b.top);
+      }
+    }
+  }
 });
 
 test('draft location helpers cover disabled, virtual, precision, and collision branches', () => {

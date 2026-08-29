@@ -1,6 +1,6 @@
 import { useMemo } from 'preact/hooks';
 import type { DraftLocation } from '../../data/generated/asset-types';
-import { draftLocationDetails, draftLocationPrecisionLabel, enabledDraftLocations, formatDraftLocationYears, layoutDraftCallouts, projectDraftLocations } from './draft-location-model';
+import { draftLocationDetails, draftLocationLeaderLines, draftLocationPrecisionLabel, enabledDraftLocations, formatDraftLocationYears, layoutDraftCallouts, projectDraftLocations } from './draft-location-model';
 
 interface Props {
   locations: DraftLocation[];
@@ -13,6 +13,7 @@ export default function DraftJourney({ locations, selectedLocation, onSelect, on
   const sorted = useMemo(() => enabledDraftLocations(locations), [locations]);
   const points = useMemo(() => projectDraftLocations(sorted), [sorted]);
   const callouts = useMemo(() => layoutDraftCallouts(sorted), [sorted]);
+  const leaderLines = useMemo(() => draftLocationLeaderLines(callouts), [callouts]);
   const details = useMemo(() => draftLocationDetails(selectedLocation, sorted), [selectedLocation, sorted]);
   const selected = details.length === 1 && selectedLocation ? details[0] : null;
   const status = selected ? `Showing ${selected.label}, ${formatDraftLocationYears(selected)}` : 'Showing all draft locations';
@@ -36,6 +37,7 @@ export default function DraftJourney({ locations, selectedLocation, onSelect, on
         <div class="draft-journey-map" role="group" aria-label="Schematic route between draft locations">
           <svg aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none">
             <polyline class="draft-journey-route" points={points.map(point => `${point.x},${point.y}`).join(' ')} />
+            {leaderLines.map(line => <line key={line.locationId} class="draft-journey-leader" x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2} />)}
             {points.map(point => <circle key={point.location.id} class={point.location.id === selectedLocation ? 'is-selected' : ''} cx={point.x} cy={point.y} r="2.5" />)}
           </svg>
           {callouts.map(callout => {

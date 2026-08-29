@@ -38,3 +38,27 @@ test('physical projection and callouts are finite, bounded, and deterministic', 
   for (const box of first) assert.ok(box.left >= 0 && box.top >= 0 && box.left + box.width <= 320 && box.top + box.height <= 220);
   assert.equal(model.projectDraftLocations([locations[0]]).length, 0);
 });
+
+test('draft location helpers cover disabled, virtual, precision, and collision branches', () => {
+  const disabled = { ...lore.draft_locations[1], id: 'disabled', enabled: false };
+  const tieVenue = { ...lore.draft_locations[2], id: 'alpha', season_start: 2023, season_end: 2023 };
+  const tieMunicipality = { ...lore.draft_locations[2], id: 'zeta', season_start: 2023, season_end: 2024, coordinate_precision: 'municipality' };
+  const virtual = { ...lore.draft_locations[0], id: 'virtual-test' };
+  const locations = [tieMunicipality, tieVenue, disabled, virtual];
+
+  assert.deepEqual(model.enabledDraftLocations(locations).map(location => location.id), ['virtual-test', 'alpha', 'zeta']);
+  assert.equal(model.normalizeDraftLocation(42, locations), null);
+  assert.equal(model.selectedDraftLocation('missing', locations), null);
+  assert.deepEqual(model.draftLocationDetails(null, locations).map(location => location.id), ['virtual-test', 'alpha', 'zeta']);
+  assert.deepEqual(model.projectDraftLocations([virtual]), []);
+  assert.equal(model.draftLocationPrecisionLabel(virtual), 'Virtual era; no physical location assigned.');
+  assert.equal(model.draftLocationPrecisionLabel(tieVenue), 'Venue location.');
+  assert.equal(model.draftLocationPrecisionLabel(tieMunicipality), 'Municipality reference point; approximate.');
+
+  const points = model.projectDraftLocations([tieVenue, tieMunicipality]);
+  assert.equal(points.length, 2);
+  const callouts = model.layoutDraftCallouts([tieVenue, tieMunicipality], 320, 220);
+  assert.equal(callouts.length, 2);
+  assert.ok(callouts[0].top + callouts[0].height <= callouts[1].top || callouts[1].top + callouts[1].height <= callouts[0].top);
+  assert.deepEqual(model.layoutDraftCallouts([], 0, 0), []);
+});

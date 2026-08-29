@@ -9,11 +9,22 @@ interface Props {
   onReveal?: (entryId: string, opener: HTMLElement) => void;
 }
 
+const COMPACT_LAYOUT_WIDTH = 192;
+const WIDE_LAYOUT_WIDTH = 400;
+const JOURNEY_LAYOUT_HEIGHT = 300;
+const JOURNEY_CALLOUT_HEIGHT = 68;
+
+function compactJourneyLayout(): boolean {
+  return typeof window !== 'undefined' && (window.matchMedia?.('(max-width: 760px)').matches ?? window.innerWidth <= 760);
+}
+
 export default function DraftJourney({ locations, selectedLocation, onSelect, onReveal }: Props) {
   const sorted = useMemo(() => enabledDraftLocations(locations), [locations]);
   const points = useMemo(() => projectDraftLocations(sorted), [sorted]);
-  const callouts = useMemo(() => layoutDraftCallouts(sorted), [sorted]);
-  const leaderLines = useMemo(() => draftLocationLeaderLines(callouts), [callouts]);
+  const compact = compactJourneyLayout();
+  const layoutWidth = compact ? COMPACT_LAYOUT_WIDTH : WIDE_LAYOUT_WIDTH;
+  const callouts = useMemo(() => layoutDraftCallouts(sorted, layoutWidth, JOURNEY_LAYOUT_HEIGHT, JOURNEY_CALLOUT_HEIGHT), [layoutWidth, sorted]);
+  const leaderLines = useMemo(() => draftLocationLeaderLines(callouts, layoutWidth, JOURNEY_LAYOUT_HEIGHT), [callouts, layoutWidth]);
   const details = useMemo(() => draftLocationDetails(selectedLocation, sorted), [selectedLocation, sorted]);
   const selected = details.length === 1 && selectedLocation ? details[0] : null;
   const status = selected ? `Showing ${selected.label}, ${formatDraftLocationYears(selected)}` : 'Showing all draft locations';
@@ -35,14 +46,14 @@ export default function DraftJourney({ locations, selectedLocation, onSelect, on
       <p class="visually-hidden" aria-live="polite">{status}</p>
       <div class="draft-journey-layout">
         <div class="draft-journey-map" role="group" aria-label="Schematic route between draft locations">
-          <svg aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <svg aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ height: `${JOURNEY_LAYOUT_HEIGHT}px` }}>
             <polyline class="draft-journey-route" points={points.map(point => `${point.x},${point.y}`).join(' ')} />
             {leaderLines.map(line => <line key={line.locationId} class="draft-journey-leader" x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2} />)}
             {points.map(point => <circle key={point.location.id} class={point.location.id === selectedLocation ? 'is-selected' : ''} cx={point.x} cy={point.y} r="2.5" />)}
           </svg>
           {callouts.map(callout => {
             const location = callout.location;
-            return <button key={location.id} type="button" class={`draft-journey-callout${location.id === selectedLocation ? ' is-selected' : ''}`} style={{ left: `${((callout.left + callout.width / 2) / 320) * 100}%`, top: `${(callout.top / 220) * 100}%` }} aria-pressed={location.id === selectedLocation} aria-label={`Show ${location.label}, ${formatDraftLocationYears(location)}`} onClick={() => choose(location.id)}>
+            return <button key={location.id} type="button" class={`draft-journey-callout${location.id === selectedLocation ? ' is-selected' : ''}`} style={{ left: `${((callout.left + callout.width / 2) / layoutWidth) * 100}%`, top: `${(callout.top / JOURNEY_LAYOUT_HEIGHT) * 100}%`, width: `${callout.width}px`, minHeight: `${callout.height}px` }} aria-pressed={location.id === selectedLocation} aria-label={`Show ${location.label}, ${formatDraftLocationYears(location)}`} onClick={() => choose(location.id)}>
               <span>{location.label}</span><small>{formatDraftLocationYears(location)}</small>
             </button>;
           })}

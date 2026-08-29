@@ -2,7 +2,7 @@
 
 ## Draft Journey measurement — 2026-08-28
 
-Measured from `93ad02e` with Vite 8.1.4, `VITE_BASE_PATH=/Darling/`, gzip level 9, and the available Node 23.10.0/npm 11.18.0 environment (repository requires Node 24). Final validation after the leader-line, collision-layout, and URL-history review fixes measured 299,268 aggregate JavaScript gzip bytes (+2,187 from the 297,081 baseline), remaining below the 301,000 hard maximum; the 297,868 target is exceeded by 1,400 bytes. Draft Spot static/settled closures measured 95,842/190,549 gzip, both below their 115,000/205,000 ceilings. League Lore is 83,505 authored bytes (manifest hash/bytes regenerated), below the 102,400-byte cap. No production dependency, chart export, or budget value changed.
+Measured from `93ad02e` with Vite 8.1.4, `VITE_BASE_PATH=/Darling/`, gzip level 9, and the available Node 23.10.0/npm 11.18.0 environment (repository requires Node 24). Final validation after the leader-line, collision-layout, URL-history, and responsive-layout review fixes measured 299,392 aggregate JavaScript gzip bytes (+2,311 from the 297,081 baseline), remaining below the 301,000 hard maximum; the 297,868 target is exceeded by 1,524 bytes. Draft Spot static/settled closures measured 95,963/190,670 gzip, both below their 115,000/205,000 ceilings. League Lore is 83,505 authored bytes (manifest hash/bytes regenerated), below the 102,400-byte cap. No production dependency, chart export, or budget value changed.
 
 ## Deferred charts and strict Preact migration — PR A
 

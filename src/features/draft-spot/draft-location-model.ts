@@ -79,11 +79,11 @@ function nearestFirst(values: number[], preferred: number): number[] {
   return values.slice().sort((a, b) => Math.abs(a - preferred) - Math.abs(b - preferred) || a - b);
 }
 
-export function layoutDraftCallouts(locations: DraftLocation[] = [], width = 320, height = 220): DraftLocationCallout[] {
+export function layoutDraftCallouts(locations: DraftLocation[] = [], width = 320, height = 220, requestedBoxHeight = 48): DraftLocationCallout[] {
   const points = projectDraftLocations(locations);
   const scaleX = Math.max(1, width), scaleY = Math.max(1, height);
   const boxWidth = Math.min(width <= 360 ? 112 : 132, Math.max(1, scaleX - 4));
-  const boxHeight = Math.min(48, Math.max(1, scaleY - 4));
+  const boxHeight = Math.min(Math.max(1, requestedBoxHeight), Math.max(1, scaleY - 4));
   const gap = 8;
   const leftSlots = axisSlots(scaleX, boxWidth, gap);
   const topSlots = axisSlots(scaleY, boxHeight, gap);

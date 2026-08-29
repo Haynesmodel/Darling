@@ -208,7 +208,39 @@ test.describe('Draft Journey', () => {
     await page.setViewportSize({ width: 320, height: 900 });
     await page.reload();
     await page.waitForLoadState('networkidle');
+    const boxes = await page.locator('.draft-journey-callout').evaluateAll(nodes => nodes.map(node => {
+      const box = node.getBoundingClientRect();
+      const label = node.querySelector('span');
+      return {
+        left: box.left,
+        top: box.top,
+        right: box.right,
+        bottom: box.bottom,
+        width: box.width,
+        height: box.height,
+        labelFits: label ? label.scrollWidth <= label.clientWidth + 1 && label.scrollHeight <= label.clientHeight + 1 : false,
+      };
+    }));
+    expect(boxes.every(box => box.width >= 44 && box.height >= 44 && box.labelFits)).toBe(true);
+    for (let index = 0; index < boxes.length; index += 1) {
+      for (let other = index + 1; other < boxes.length; other += 1) {
+        expect(boxes[index].right <= boxes[other].left || boxes[other].right <= boxes[index].left || boxes[index].bottom <= boxes[other].top || boxes[other].bottom <= boxes[index].top).toBe(true);
+      }
+    }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  });
+
+  test('desktop map callouts are bounded, target-sized, and non-overlapping', async ({ page }) => {
+    const boxes = await page.locator('.draft-journey-callout').evaluateAll(nodes => nodes.map(node => {
+      const box = node.getBoundingClientRect();
+      return { left: box.left, top: box.top, right: box.right, bottom: box.bottom, width: box.width, height: box.height };
+    }));
+    expect(boxes.every(box => box.width >= 44 && box.height >= 44)).toBe(true);
+    for (let index = 0; index < boxes.length; index += 1) {
+      for (let other = index + 1; other < boxes.length; other += 1) {
+        expect(boxes[index].right <= boxes[other].left || boxes[other].right <= boxes[index].left || boxes[index].bottom <= boxes[other].top || boxes[other].bottom <= boxes[index].top).toBe(true);
+      }
+    }
   });
 
   for (const theme of ['light', 'dark']) {

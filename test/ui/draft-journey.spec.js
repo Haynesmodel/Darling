@@ -204,41 +204,70 @@ test.describe('Draft Journey', () => {
     expect(result.staleUnmounted).toBe(true);
   });
 
-  test('has no horizontal overflow at 320px', async ({ page }) => {
-    await page.setViewportSize({ width: 320, height: 900 });
-    await page.reload();
-    await page.waitForLoadState('networkidle');
-    const boxes = await page.locator('.draft-journey-callout').evaluateAll(nodes => nodes.map(node => {
-      const box = node.getBoundingClientRect();
-      const label = node.querySelector('span');
+  test('keeps callouts bounded and collision-safe when resized to 320px', async ({ page }) => {
+    const readLayout = () => page.evaluate(() => {
+      const map = document.querySelector('.draft-journey-map');
+      if (!map) return null;
+      const mapBox = map.getBoundingClientRect();
+      const boxes = [...map.querySelectorAll('.draft-journey-callout')].map(node => {
+        const box = node.getBoundingClientRect();
+        const label = node.querySelector('span');
+        return {
+          left: box.left,
+          top: box.top,
+          right: box.right,
+          bottom: box.bottom,
+          width: box.width,
+          height: box.height,
+          labelFits: label ? label.scrollWidth <= label.clientWidth + 1 && label.scrollHeight <= label.clientHeight + 1 : false,
+        };
+      });
       return {
-        left: box.left,
-        top: box.top,
-        right: box.right,
-        bottom: box.bottom,
-        width: box.width,
-        height: box.height,
-        labelFits: label ? label.scrollWidth <= label.clientWidth + 1 && label.scrollHeight <= label.clientHeight + 1 : false,
+        map: { left: mapBox.left, top: mapBox.top, right: mapBox.right, bottom: mapBox.bottom },
+        boxes,
+        noOverflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
       };
-    }));
-    expect(boxes.every(box => box.width >= 44 && box.height >= 44 && box.labelFits)).toBe(true);
-    for (let index = 0; index < boxes.length; index += 1) {
-      for (let other = index + 1; other < boxes.length; other += 1) {
-        expect(boxes[index].right <= boxes[other].left || boxes[other].right <= boxes[index].left || boxes[index].bottom <= boxes[other].top || boxes[other].bottom <= boxes[index].top).toBe(true);
+    });
+    const assertLayout = layout => {
+      expect(layout).not.toBeNull();
+      expect(layout.boxes.every(box => box.left >= layout.map.left - 1 && box.right <= layout.map.right + 1 && box.top >= layout.map.top - 1 && box.bottom <= layout.map.bottom + 1 && box.width >= 44 && box.height >= 44 && box.labelFits)).toBe(true);
+      for (let index = 0; index < layout.boxes.length; index += 1) {
+        for (let other = index + 1; other < layout.boxes.length; other += 1) {
+          const first = layout.boxes[index];
+          const second = layout.boxes[other];
+          expect(first.right <= second.left || second.right <= first.left || first.bottom <= second.top || second.bottom <= first.top).toBe(true);
+        }
       }
-    }
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+      expect(layout.noOverflow).toBe(true);
+    };
+
+    assertLayout(await readLayout());
+    await page.setViewportSize({ width: 320, height: 900 });
+    await expect.poll(async () => {
+      const layout = await readLayout();
+      return layout && layout.boxes.every(box => box.width <= 120);
+    }).toBe(true);
+    assertLayout(await readLayout());
   });
 
   test('desktop map callouts are bounded, target-sized, and non-overlapping', async ({ page }) => {
-    const boxes = await page.locator('.draft-journey-callout').evaluateAll(nodes => nodes.map(node => {
+    const layout = await page.evaluate(() => {
+      const map = document.querySelector('.draft-journey-map');
+      if (!map) return null;
+      const mapBox = map.getBoundingClientRect();
+      const boxes = [...map.querySelectorAll('.draft-journey-callout')].map(node => {
       const box = node.getBoundingClientRect();
       return { left: box.left, top: box.top, right: box.right, bottom: box.bottom, width: box.width, height: box.height };
-    }));
-    expect(boxes.every(box => box.width >= 44 && box.height >= 44)).toBe(true);
-    for (let index = 0; index < boxes.length; index += 1) {
-      for (let other = index + 1; other < boxes.length; other += 1) {
-        expect(boxes[index].right <= boxes[other].left || boxes[other].right <= boxes[index].left || boxes[index].bottom <= boxes[other].top || boxes[other].bottom <= boxes[index].top).toBe(true);
+      });
+      return { map: { left: mapBox.left, top: mapBox.top, right: mapBox.right, bottom: mapBox.bottom }, boxes };
+    });
+    expect(layout).not.toBeNull();
+    expect(layout.boxes.every(box => box.left >= layout.map.left - 1 && box.right <= layout.map.right + 1 && box.top >= layout.map.top - 1 && box.bottom <= layout.map.bottom + 1 && box.width >= 44 && box.height >= 44)).toBe(true);
+    for (let index = 0; index < layout.boxes.length; index += 1) {
+      for (let other = index + 1; other < layout.boxes.length; other += 1) {
+        const first = layout.boxes[index];
+        const second = layout.boxes[other];
+        expect(first.right <= second.left || second.right <= first.left || first.bottom <= second.top || second.bottom <= first.top).toBe(true);
       }
     }
   });

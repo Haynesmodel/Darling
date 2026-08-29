@@ -1,4 +1,4 @@
-import { useMemo } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
 import type { DraftLocation } from '../../data/generated/asset-types';
 import { draftLocationDetails, draftLocationLeaderLines, draftLocationPrecisionLabel, enabledDraftLocations, formatDraftLocationYears, layoutDraftCallouts, projectDraftLocations } from './draft-location-model';
 
@@ -14,14 +14,37 @@ const WIDE_LAYOUT_WIDTH = 400;
 const JOURNEY_LAYOUT_HEIGHT = 300;
 const JOURNEY_CALLOUT_HEIGHT = 68;
 
-function compactJourneyLayout(): boolean {
-  return typeof window !== 'undefined' && (window.matchMedia?.('(max-width: 760px)').matches ?? window.innerWidth <= 760);
+function useCompactJourneyLayout(): boolean {
+  const query = '(max-width: 760px)';
+  const readMatches = () => typeof window !== 'undefined' && (window.matchMedia?.(query).matches ?? window.innerWidth <= 760);
+  const [compact, setCompact] = useState(readMatches);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const media = window.matchMedia?.(query);
+    if (!media) {
+      const update = () => setCompact(window.innerWidth <= 760);
+      window.addEventListener('resize', update);
+      update();
+      return () => window.removeEventListener('resize', update);
+    }
+    const update = () => setCompact(media.matches);
+    update();
+    if (media.addEventListener) media.addEventListener('change', update);
+    else media.addListener(update);
+    return () => {
+      if (media.removeEventListener) media.removeEventListener('change', update);
+      else media.removeListener(update);
+    };
+  }, []);
+
+  return compact;
 }
 
 export default function DraftJourney({ locations, selectedLocation, onSelect, onReveal }: Props) {
   const sorted = useMemo(() => enabledDraftLocations(locations), [locations]);
   const points = useMemo(() => projectDraftLocations(sorted), [sorted]);
-  const compact = compactJourneyLayout();
+  const compact = useCompactJourneyLayout();
   const layoutWidth = compact ? COMPACT_LAYOUT_WIDTH : WIDE_LAYOUT_WIDTH;
   const callouts = useMemo(() => layoutDraftCallouts(sorted, layoutWidth, JOURNEY_LAYOUT_HEIGHT, JOURNEY_CALLOUT_HEIGHT), [layoutWidth, sorted]);
   const leaderLines = useMemo(() => draftLocationLeaderLines(callouts, layoutWidth, JOURNEY_LAYOUT_HEIGHT), [callouts, layoutWidth]);

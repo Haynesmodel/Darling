@@ -1,6 +1,8 @@
 import { expect, test } from './coverage-fixture.js';
 import { expectNoViolations } from './accessibility-helpers.js';
 
+const preview = process.env.PLAYWRIGHT_SERVER === 'preview';
+
 test.describe('Draft Journey', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -40,6 +42,7 @@ test.describe('Draft Journey', () => {
   });
 
   test('location model handles empty, virtual, and boundary inputs', async ({ page }) => {
+    test.skip(preview, 'The source model is available only from the instrumented development server.');
     const result = await page.evaluate(async () => {
       const model = await import('/src/features/draft-spot/draft-location-model.ts');
       const virtual = {
@@ -78,6 +81,7 @@ test.describe('Draft Journey', () => {
   });
 
   test('controller renders verified, empty, invalid, mismatched, and stale responses', async ({ page }) => {
+    test.skip(preview, 'The source controller is available only from the instrumented development server.');
     const fixtures = await page.evaluate(async () => {
       const source = await fetch('/assets/DraftSpot.json').then(response => response.json());
       const sortJson = value => Array.isArray(value)

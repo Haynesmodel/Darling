@@ -33,10 +33,14 @@ function clone(value) {
 
 function loadBrowserValidators() {
   const source = fs.readFileSync(path.join(root, 'src/data/generated/asset-validators.ts'), 'utf8');
-  const { code } = esbuild.transformSync(source, { loader: 'ts', format: 'cjs', target: 'node24' });
-  const module = { exports: {} };
-  new Function('module', 'exports', code)(module, module.exports);
-  return module.exports;
+  const loreSource = fs.readFileSync(path.join(root, 'src/data/generated/league-lore-validator.ts'), 'utf8');
+  const load = value => {
+    const { code } = esbuild.transformSync(value, { loader: 'ts', format: 'cjs', target: 'node24' });
+    const module = { exports: {} };
+    new Function('module', 'exports', code)(module, module.exports);
+    return module.exports;
+  };
+  return { ...load(source), ...load(loreSource) };
 }
 
 function sortBy(rows, key) {
@@ -145,6 +149,14 @@ test('generated browser guards agree with AJV across canonical assets and mutati
     { name: 'TransactionHistory', schema: 'transaction-history.schema.json', value: bundle.TransactionHistory, validate: browser.isTransactionHistory,
       mutations: [v => { v.schema_version = 0; }, v => { v.players[0].id = ''; }, v => { v.seasons[0].coverage.completed_week = -1; }, v => { v.unexpected = true; }],
       validMutations: [v => { v.seasons[0].coverage.completed_week = 0; }] },
+    { name: 'LeagueLore', schema: 'league-lore.schema.json', value: bundle.LeagueLore, validate: browser.isLeagueLore,
+      mutations: [
+        v => { v.draft_locations[1].coordinates = null; },
+        v => { v.draft_locations[1].coordinate_precision = 'none'; },
+        v => { v.draft_locations[0].season_start = '2014'; },
+        v => { v.draft_locations = []; },
+      ],
+      validMutations: [v => { delete v.draft_locations; }] },
   ];
   for (const entry of cases) {
     const schemaValidate = ajv.getSchema(`https://darling.example/schemas/${entry.schema}`);
@@ -167,6 +179,43 @@ test('generated browser guards agree with AJV across canonical assets and mutati
 test('semantic validation accepts the canonical bundle and reports stable rule IDs', () => {
   const valid = validateSemanticBundle(bundle, { root });
   assert.deepEqual(valid.errors, []);
+
+  const draftLocationRuleCases = [
+    {
+      ruleId: 'LORE_DRAFT_LOCATION_YEAR_ORDER',
+      mutate: lore => { lore.draft_locations[0].season_end = lore.draft_locations[0].season_start - 1; },
+    },
+    {
+      ruleId: 'LORE_DRAFT_LOCATION_COORDINATE_CONTRACT',
+      mutate: lore => { lore.draft_locations[1].coordinates = null; },
+    },
+    {
+      ruleId: 'LORE_DRAFT_LOCATION_UNKNOWN_ENTRY',
+      mutate: lore => { lore.draft_locations[0].entry_id = 'missing-draft-location-entry'; },
+    },
+    {
+      ruleId: 'LORE_DRAFT_LOCATION_DISABLED_ENTRY',
+      mutate: lore => { lore.entries.find(entry => entry.id === lore.draft_locations[0].entry_id).enabled = false; },
+    },
+    {
+      ruleId: 'LORE_DRAFT_LOCATION_ENTRY_CATEGORY',
+      mutate: lore => { lore.entries.find(entry => entry.id === lore.draft_locations[0].entry_id).category = 'record'; },
+    },
+    {
+      ruleId: 'LORE_DRAFT_LOCATION_OVERLAP',
+      mutate: lore => { lore.draft_locations[1].season_start = lore.draft_locations[0].season_end; },
+    },
+    {
+      ruleId: 'LORE_DUPLICATE_ID',
+      mutate: lore => { lore.draft_locations[0].id = lore.entries[0].id; },
+    },
+  ];
+  for (const { ruleId, mutate } of draftLocationRuleCases) {
+    const candidate = clone(bundle);
+    mutate(candidate.LeagueLore);
+    const errors = validateSemanticBundle(candidate, { root }).errors;
+    assert.ok(errors.some(error => error.includes(`[${ruleId}]`)), `${ruleId}\n${errors.join('\n')}`);
+  }
 
   const duplicate = clone(bundle);
   duplicate.H2H.push(clone(duplicate.H2H[0]));

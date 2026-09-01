@@ -1,5 +1,6 @@
 import { expect, test } from './coverage-fixture.js';
 import { expectNoViolations } from './accessibility-helpers.js';
+import { createSnapshotFixture } from './snapshot-fixture.js';
 
 const preview = process.env.PLAYWRIGHT_SERVER === 'preview';
 
@@ -35,12 +36,44 @@ test.describe('Draft Journey', () => {
     await expect(page.locator('.draft-journey-details')).toContainText('University of Maryland Stadium');
   });
 
-  test('invalid direct location is removed without an error', async ({ page }) => {
+  test('invalid direct location is removed and optional lore suppression preserves Draft Spot', async ({ page }) => {
     await page.goto('/?tab=draft&draftStart=2017&draftLocation=unknown');
     await page.waitForLoadState('networkidle');
     await expect(page).not.toHaveURL(/draftLocation=unknown/);
     await expect(page).toHaveURL(/draftStart=2017/);
     await expect(page.locator('select[aria-label="Filter draft journey by location"]')).toHaveValue('');
+
+    const suppressionCases = [
+      {
+        name: 'invalid optional lore',
+        mutate: lore => { lore.entries = null; },
+      },
+      {
+        name: 'root-disabled lore',
+        mutate: lore => { lore.enabled = false; },
+      },
+      {
+        name: 'draft_locations field absent',
+        mutate: lore => { delete lore.draft_locations; },
+      },
+      {
+        name: 'all location rows disabled',
+        mutate: lore => { lore.draft_locations.forEach(location => { location.enabled = false; }); },
+      },
+    ];
+    for (const { name, mutate } of suppressionCases) {
+      await test.step(name, async () => {
+        const fixture = createSnapshotFixture({ mutations: { LeagueLore: mutate } });
+        await fixture.install(page);
+        await page.goto('/?tab=draft&draftLocation=college-park');
+        await page.waitForLoadState('networkidle');
+        await expect(page.locator('#page-draft')).toHaveAttribute('data-feature-state', 'ready');
+        await expect(page.locator('#draftOwnerSelect')).toBeVisible();
+        await expect(page.locator('#draftJourneyDisclosure')).toHaveCount(0);
+        await expect(page.locator('#draft-section-jump option[value="draft-journey"]')).toHaveCount(0);
+        await expect(page).not.toHaveURL(/draftLocation=/);
+      });
+    }
   });
 
   test('location selection survives Back and Forward with analytics controls preserved', async ({ page }) => {

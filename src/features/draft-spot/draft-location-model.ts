@@ -1,4 +1,5 @@
 import type { DraftLocation } from '../../data/generated/asset-types';
+import { DRAFT_JOURNEY_MAP_BOUNDS } from './draft-journey-basemap.ts';
 
 export interface DraftLocationPoint {
   location: DraftLocation;
@@ -48,16 +49,11 @@ export function draftLocationDetails(requested: unknown, locations: DraftLocatio
 export function projectDraftLocations(locations: DraftLocation[] = []): DraftLocationPoint[] {
   const physical = enabledDraftLocations(locations).filter(location => location.coordinates);
   if (!physical.length) return [];
-  const lats = physical.map(location => location.coordinates!.latitude);
-  const lngs = physical.map(location => location.coordinates!.longitude);
-  const latMin = Math.min(...lats), latMax = Math.max(...lats), lngMin = Math.min(...lngs), lngMax = Math.max(...lngs);
-  const latPad = Math.max((latMax - latMin) * 0.35, 0.25);
-  const lngPad = Math.max((lngMax - lngMin) * 0.35, 0.25);
-  const minLat = latMin - latPad, maxLat = latMax + latPad, minLng = lngMin - lngPad, maxLng = lngMax + lngPad;
+  const { minLatitude, maxLatitude, minLongitude, maxLongitude } = DRAFT_JOURNEY_MAP_BOUNDS;
   return physical.map(location => ({
     location,
-    x: ((location.coordinates!.longitude - minLng) / (maxLng - minLng)) * 100,
-    y: (1 - (location.coordinates!.latitude - minLat) / (maxLat - minLat)) * 100,
+    x: ((location.coordinates!.longitude - minLongitude) / (maxLongitude - minLongitude)) * 100,
+    y: (1 - (location.coordinates!.latitude - minLatitude) / (maxLatitude - minLatitude)) * 100,
   }));
 }
 

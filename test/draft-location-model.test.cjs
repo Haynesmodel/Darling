@@ -26,6 +26,11 @@ test('physical projection and callouts are finite, bounded, and deterministic', 
   const locations = model.enabledDraftLocations(lore.draft_locations);
   const points = model.projectDraftLocations(locations);
   assert.equal(points.length, 3);
+  assert.deepEqual(points.map(point => [point.location.id, Number(point.x.toFixed(4)), Number(point.y.toFixed(4))]), [
+    ['bethany-beach', 72.5973, 62.6529],
+    ['college-park', 47.3933, 56.0191],
+    ['washington-dc', 46.1747, 57.2471],
+  ]);
   for (const point of points) assert.ok(Number.isFinite(point.x) && point.x >= 0 && point.x <= 100 && Number.isFinite(point.y) && point.y >= 0 && point.y <= 100);
   const first = model.layoutDraftCallouts(locations, 320, 220);
   assert.deepEqual(first, model.layoutDraftCallouts(locations, 320, 220));

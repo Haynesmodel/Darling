@@ -18,6 +18,9 @@ test.describe('Draft Journey', () => {
     const filter = page.locator('select[aria-label="Filter draft journey by location"]');
     await expect(filter.locator('option')).toHaveText(['All locations', 'Remote / virtual · 2014–2016', 'Bethany Beach · 2017–2022', 'College Park · 2023–2024', 'Washington, DC · 2025–2026']);
     await expect(page.locator('.draft-journey-detail')).toHaveCount(4);
+    await expect(page.locator('.draft-journey-map')).toHaveAttribute('aria-label', 'Draft locations across the Mid-Atlantic');
+    await expect(page.locator('.draft-journey-basemap')).toHaveAttribute('alt', '');
+    await expect(page.locator('.draft-journey-basemap')).toHaveAttribute('aria-hidden', 'true');
     await expect(page.locator('.draft-journey-map svg')).toHaveAttribute('aria-hidden', 'true');
     await expect(page.locator('.draft-journey-leader')).toHaveCount(3);
     await filter.selectOption('washington-dc');

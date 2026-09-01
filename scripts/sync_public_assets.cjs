@@ -6,6 +6,8 @@ function isDeployableAsset(sourceDir, filePath) {
   const relPath = path.relative(sourceDir, filePath);
   if (!relPath) return true;
 
+  if (relPath === 'draft-journey-basemap.svg') return true;
+
   const name = path.basename(filePath);
   const ext = path.extname(filePath);
   const normalizedRel = relPath.split(path.sep).join('/');

@@ -13,6 +13,7 @@ const COMPACT_LAYOUT_WIDTH = 192;
 const WIDE_LAYOUT_WIDTH = 400;
 const JOURNEY_LAYOUT_HEIGHT = 300;
 const JOURNEY_CALLOUT_HEIGHT = 68;
+const basemapUrl = `${import.meta.env.BASE_URL}assets/draft-journey-basemap.svg`;
 
 function useCompactJourneyLayout(): boolean {
   const query = '(max-width: 760px)';
@@ -57,7 +58,7 @@ export default function DraftJourney({ locations, selectedLocation, onSelect, on
       <div class="section-heading">
         <div>
           <h3 id="draftJourneyHeading">Draft Journey</h3>
-          <p class="muted">A schematic map of draft history. Municipality positions are approximate.</p>
+          <p class="muted">A Mid-Atlantic map of draft history. Municipality positions are approximate.</p>
         </div>
         <label class="draft-journey-filter">Location
           <select aria-label="Filter draft journey by location" value={selectedLocation || ''} onChange={event => choose((event.currentTarget as HTMLSelectElement).value)}>
@@ -68,7 +69,8 @@ export default function DraftJourney({ locations, selectedLocation, onSelect, on
       </div>
       <p class="visually-hidden" aria-live="polite">{status}</p>
       <div class="draft-journey-layout">
-        <div class="draft-journey-map" role="group" aria-label="Schematic route between draft locations">
+        <div class="draft-journey-map has-basemap" role="group" aria-label="Draft locations across the Mid-Atlantic">
+          <img class="draft-journey-basemap" src={basemapUrl} alt="" aria-hidden="true" />
           <svg aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ height: `${JOURNEY_LAYOUT_HEIGHT}px` }}>
             <polyline class="draft-journey-route" points={points.map(point => `${point.x},${point.y}`).join(' ')} />
             {leaderLines.map(line => <line key={line.locationId} class="draft-journey-leader" x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2} />)}

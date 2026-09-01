@@ -42,6 +42,12 @@ test('physical projection and callouts are finite, bounded, and deterministic', 
   assert.equal(model.projectDraftLocations([locations[0]]).length, 0);
 });
 
+test('static Draft Journey backdrop uses the same stretched viewport as the pin overlay', () => {
+  const basemap = fs.readFileSync(path.join(root, 'assets/draft-journey-basemap.svg'), 'utf8');
+  assert.match(basemap, /viewBox="0 0 1000 906\.6667"/);
+  assert.match(basemap, /preserveAspectRatio="none"/);
+});
+
 test('co-located physical records receive bounded, non-overlapping callouts at mobile and desktop widths', () => {
   const source = lore.draft_locations.filter(location => location.location_type === 'physical');
   const locations = source.map((location, index) => ({

@@ -241,10 +241,12 @@ test.describe('Draft Journey', () => {
     const readLayout = () => page.evaluate(() => {
       const disclosure = document.querySelector('#draftJourneyDisclosure');
       const journey = document.querySelector('.draft-journey');
+      const layout = document.querySelector('.draft-journey-layout');
       const map = document.querySelector('.draft-journey-map');
-      if (!disclosure || !journey || !map) return null;
+      if (!disclosure || !journey || !layout || !map) return null;
       const disclosureBox = disclosure.getBoundingClientRect();
       const journeyBox = journey.getBoundingClientRect();
+      const layoutBox = layout.getBoundingClientRect();
       const mapBox = map.getBoundingClientRect();
       const boxes = [...map.querySelectorAll('.draft-journey-callout')].map(node => {
         const box = node.getBoundingClientRect();
@@ -262,6 +264,7 @@ test.describe('Draft Journey', () => {
       return {
         disclosure: { left: disclosureBox.left, right: disclosureBox.right },
         journey: { left: journeyBox.left, right: journeyBox.right },
+        layout: { left: layoutBox.left, right: layoutBox.right },
         map: { left: mapBox.left, top: mapBox.top, right: mapBox.right, bottom: mapBox.bottom },
         boxes,
         viewport: {
@@ -272,10 +275,11 @@ test.describe('Draft Journey', () => {
     });
     const assertLayout = layout => {
       expect(layout).not.toBeNull();
-      const diagnostics = JSON.stringify({ viewport: layout.viewport, disclosure: layout.disclosure, journey: layout.journey, map: layout.map });
+      const diagnostics = JSON.stringify({ viewport: layout.viewport, disclosure: layout.disclosure, journey: layout.journey, layout: layout.layout, map: layout.map });
       expect(layout.disclosure.left >= 0 && layout.disclosure.right <= layout.viewport.clientWidth, diagnostics).toBe(true);
       expect(layout.journey.left >= 0 && layout.journey.right <= layout.viewport.clientWidth, diagnostics).toBe(true);
-      expect(layout.map.left >= 0 && layout.map.right <= layout.viewport.clientWidth && layout.boxes.every(box => box.left >= layout.map.left - 1 && box.right <= layout.map.right + 1 && box.top >= layout.map.top - 1 && box.bottom <= layout.map.bottom + 1 && box.width >= 44 && box.height >= 44 && box.labelFits), diagnostics).toBe(true);
+      expect(layout.layout.left >= layout.disclosure.left && layout.layout.right <= layout.disclosure.right, diagnostics).toBe(true);
+      expect(layout.map.left >= layout.layout.left && layout.map.right <= layout.layout.right && layout.map.right <= layout.viewport.clientWidth && layout.boxes.every(box => box.left >= layout.map.left - 1 && box.right <= layout.map.right + 1 && box.top >= layout.map.top - 1 && box.bottom <= layout.map.bottom + 1 && box.width >= 44 && box.height >= 44 && box.labelFits), diagnostics).toBe(true);
       for (let index = 0; index < layout.boxes.length; index += 1) {
         for (let other = index + 1; other < layout.boxes.length; other += 1) {
           const first = layout.boxes[index];

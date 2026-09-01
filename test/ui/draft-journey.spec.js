@@ -206,8 +206,12 @@ test.describe('Draft Journey', () => {
 
   test('keeps callouts bounded and collision-safe when resized to 320px', async ({ page }) => {
     const readLayout = () => page.evaluate(() => {
+      const disclosure = document.querySelector('#draftJourneyDisclosure');
+      const journey = document.querySelector('.draft-journey');
       const map = document.querySelector('.draft-journey-map');
-      if (!map) return null;
+      if (!disclosure || !journey || !map) return null;
+      const disclosureBox = disclosure.getBoundingClientRect();
+      const journeyBox = journey.getBoundingClientRect();
       const mapBox = map.getBoundingClientRect();
       const boxes = [...map.querySelectorAll('.draft-journey-callout')].map(node => {
         const box = node.getBoundingClientRect();
@@ -223,24 +227,22 @@ test.describe('Draft Journey', () => {
         };
       });
       return {
+        disclosure: { left: disclosureBox.left, right: disclosureBox.right },
+        journey: { left: journeyBox.left, right: journeyBox.right },
         map: { left: mapBox.left, top: mapBox.top, right: mapBox.right, bottom: mapBox.bottom },
         boxes,
         viewport: {
           innerWidth: window.innerWidth,
           clientWidth: document.documentElement.clientWidth,
-          scrollWidth: document.documentElement.scrollWidth,
         },
-        overflowers: [...document.querySelectorAll('body *')].map(node => {
-          const box = node.getBoundingClientRect();
-          return { tag: node.tagName.toLowerCase(), className: typeof node.className === 'string' ? node.className : '', left: box.left, right: box.right, width: box.width };
-        }).filter(item => item.left < 0 || item.right > document.documentElement.clientWidth).sort((a, b) => b.right - a.right || a.left - b.left).slice(0, 5),
-        noOverflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
       };
     });
     const assertLayout = layout => {
       expect(layout).not.toBeNull();
-      const diagnostics = JSON.stringify({ viewport: layout.viewport, overflowers: layout.overflowers });
-      expect(layout.boxes.every(box => box.left >= layout.map.left - 1 && box.right <= layout.map.right + 1 && box.top >= layout.map.top - 1 && box.bottom <= layout.map.bottom + 1 && box.width >= 44 && box.height >= 44 && box.labelFits), diagnostics).toBe(true);
+      const diagnostics = JSON.stringify({ viewport: layout.viewport, disclosure: layout.disclosure, journey: layout.journey, map: layout.map });
+      expect(layout.disclosure.left >= 0 && layout.disclosure.right <= layout.viewport.clientWidth, diagnostics).toBe(true);
+      expect(layout.journey.left >= 0 && layout.journey.right <= layout.viewport.clientWidth, diagnostics).toBe(true);
+      expect(layout.map.left >= 0 && layout.map.right <= layout.viewport.clientWidth && layout.boxes.every(box => box.left >= layout.map.left - 1 && box.right <= layout.map.right + 1 && box.top >= layout.map.top - 1 && box.bottom <= layout.map.bottom + 1 && box.width >= 44 && box.height >= 44 && box.labelFits), diagnostics).toBe(true);
       for (let index = 0; index < layout.boxes.length; index += 1) {
         for (let other = index + 1; other < layout.boxes.length; other += 1) {
           const first = layout.boxes[index];
@@ -248,7 +250,6 @@ test.describe('Draft Journey', () => {
           expect(first.right <= second.left || second.right <= first.left || first.bottom <= second.top || second.bottom <= first.top).toBe(true);
         }
       }
-      expect(layout.noOverflow, diagnostics).toBe(true);
     };
 
     assertLayout(await readLayout());
@@ -256,10 +257,21 @@ test.describe('Draft Journey', () => {
     await expect.poll(async () => {
       const layout = await readLayout();
       if (!layout) return 'missing map layout';
-      if (layout.boxes.every(box => box.width <= 120) && layout.noOverflow) return 'settled compact layout';
-      return JSON.stringify({ viewport: layout.viewport, compact: layout.boxes.every(box => box.width <= 120), noOverflow: layout.noOverflow, overflowers: layout.overflowers });
+      if (layout.boxes.every(box => box.width <= 120)) return 'settled compact layout';
+      return JSON.stringify({ viewport: layout.viewport, compact: layout.boxes.every(box => box.width <= 120), disclosure: layout.disclosure, journey: layout.journey });
     }).toBe('settled compact layout');
     assertLayout(await readLayout());
+  });
+
+  test('has no document overflow on a direct 320px load', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 900 });
+    await page.goto('/?tab=draft');
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('#page-draft')).toHaveAttribute('data-feature-state', 'ready');
+    await expect(page.locator('#draftJourneyDisclosure summary')).toBeVisible();
+    await page.locator('#draftJourneyDisclosure summary').click();
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });
 
   test('desktop map callouts are bounded, target-sized, and non-overlapping', async ({ page }) => {

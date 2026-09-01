@@ -1,22 +1,16 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
-const esbuild = require('esbuild');
 
 const root = path.join(__dirname, '..');
 const lore = JSON.parse(fs.readFileSync(path.join(root, 'assets/LeagueLore.json'), 'utf8'));
 let model;
-let temp;
 
 test.before(async () => {
-  temp = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-draft-location-'));
-  await esbuild.build({ entryPoints: { model: path.join(root, 'src/features/draft-spot/draft-location-model.ts') }, outdir: temp, bundle: true, platform: 'node', format: 'esm', target: 'node20', logLevel: 'silent' });
-  model = await import(`${pathToFileURL(path.join(temp, 'model.js')).href}?${Date.now()}`);
+  model = await import(`${pathToFileURL(path.join(root, 'src/features/draft-spot/draft-location-model.ts')).href}?${Date.now()}`);
 });
-test.after(() => fs.rmSync(temp, { recursive: true, force: true }));
 
 test('draft locations cover the four chronological eras and normalize selection', () => {
   const locations = model.enabledDraftLocations(lore.draft_locations);
@@ -73,15 +67,20 @@ test('co-located physical records receive bounded, non-overlapping callouts at m
 test('draft location helpers cover disabled, virtual, precision, and collision branches', () => {
   const disabled = { ...lore.draft_locations[1], id: 'disabled', enabled: false };
   const tieVenue = { ...lore.draft_locations[2], id: 'alpha', season_start: 2023, season_end: 2023 };
+  const tieId = { ...lore.draft_locations[2], id: 'beta', season_start: 2023, season_end: 2023 };
   const tieMunicipality = { ...lore.draft_locations[2], id: 'zeta', season_start: 2023, season_end: 2024, coordinate_precision: 'municipality' };
   const virtual = { ...lore.draft_locations[0], id: 'virtual-test' };
-  const locations = [tieMunicipality, tieVenue, disabled, virtual];
+  const locations = [tieMunicipality, tieId, tieVenue, disabled, virtual];
 
-  assert.deepEqual(model.enabledDraftLocations(locations).map(location => location.id), ['virtual-test', 'alpha', 'zeta']);
+  assert.deepEqual(model.enabledDraftLocations(locations).map(location => location.id), ['virtual-test', 'alpha', 'beta', 'zeta']);
   assert.equal(model.normalizeDraftLocation(42, locations), null);
   assert.equal(model.selectedDraftLocation('missing', locations), null);
-  assert.deepEqual(model.draftLocationDetails(null, locations).map(location => location.id), ['virtual-test', 'alpha', 'zeta']);
+  assert.equal(model.selectedDraftLocation('alpha', locations).id, 'alpha');
+  assert.equal(model.selectedDraftLocation(), null);
+  assert.deepEqual(model.draftLocationDetails(null, locations).map(location => location.id), ['virtual-test', 'alpha', 'beta', 'zeta']);
+  assert.deepEqual(model.draftLocationDetails().map(location => location.id), []);
   assert.deepEqual(model.projectDraftLocations([virtual]), []);
+  assert.deepEqual(model.projectDraftLocations(), []);
   assert.equal(model.draftLocationPrecisionLabel(virtual), 'Virtual era; no physical location assigned.');
   assert.equal(model.draftLocationPrecisionLabel(tieVenue), 'Venue location.');
   assert.equal(model.draftLocationPrecisionLabel(tieMunicipality), 'Municipality reference point; approximate.');
@@ -91,5 +90,15 @@ test('draft location helpers cover disabled, virtual, precision, and collision b
   const callouts = model.layoutDraftCallouts([tieVenue, tieMunicipality], 320, 220);
   assert.equal(callouts.length, 2);
   assert.ok(callouts[0].top + callouts[0].height <= callouts[1].top || callouts[1].top + callouts[1].height <= callouts[0].top);
+  const noFit = model.layoutDraftCallouts([
+    { ...tieVenue, id: 'tiny-a' },
+    { ...tieMunicipality, id: 'tiny-b' },
+  ], 1, 1, 48);
+  assert.equal(noFit.length, 2);
+  assert.ok(noFit.every(callout => callout.width <= 1 && callout.height <= 1));
+  assert.equal(noFit[1].left, 0);
+  assert.equal(noFit[1].top, 0);
   assert.deepEqual(model.layoutDraftCallouts([], 0, 0), []);
+  assert.deepEqual(model.layoutDraftCallouts(), []);
+  assert.deepEqual(model.draftLocationLeaderLines([]), []);
 });

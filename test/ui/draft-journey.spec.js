@@ -307,6 +307,20 @@ test.describe('Draft Journey', () => {
     await expect(page.locator('#page-draft')).toHaveAttribute('data-feature-state', 'ready');
     await expect(page.locator('#draftJourneyDisclosure summary')).toBeVisible();
     await page.locator('#draftJourneyDisclosure summary').click();
+    const controls = await page.evaluate(() => {
+      const journey = document.querySelector('.draft-journey')?.getBoundingClientRect();
+      const filter = document.querySelector('.draft-journey-filter')?.getBoundingClientRect();
+      const select = document.querySelector('.draft-journey-filter select')?.getBoundingClientRect();
+      const viewport = document.documentElement.clientWidth;
+      return {
+        journey: journey && { left: journey.left, right: journey.right },
+        filter: filter && { left: filter.left, right: filter.right },
+        select: select && { left: select.left, right: select.right },
+        viewport,
+      };
+    });
+    expect(controls.filter && controls.filter.left >= controls.journey.left && controls.filter.right <= controls.journey.right && controls.filter.right <= controls.viewport).toBe(true);
+    expect(controls.select && controls.select.left >= controls.filter.left && controls.select.right <= controls.filter.right && controls.select.right <= controls.viewport).toBe(true);
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });

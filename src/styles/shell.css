@@ -288,6 +288,10 @@ main{padding:16px}
 #page-gauntlet.page.visible{grid-template-columns:minmax(0,1fr)}
 .page.visible > *{min-width:0}
 
+@media (max-width:760px){
+  #page-draft.page.visible{grid-template-columns:minmax(0,1fr)}
+}
+
 @media (max-width:420px){
   .primary-nav{
     gap:var(--space-1);

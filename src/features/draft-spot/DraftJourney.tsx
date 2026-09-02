@@ -74,7 +74,7 @@ export default function DraftJourney({ locations, selectedLocation, onSelect, on
       </div>
       <p class="visually-hidden" aria-live="polite">{status}</p>
       <div class="draft-journey-layout">
-        <div class="draft-journey-map has-basemap is-interactive" role="group" aria-label="Draft locations across the Mid-Atlantic" aria-labelledby="draftJourneyMapHeading" aria-describedby="draftJourneyMapHelp">
+        <div class={`draft-journey-map has-basemap is-interactive${zoom > MIN_JOURNEY_ZOOM ? ' is-zoomed' : ''}`} role="group" aria-label="Draft locations across the Mid-Atlantic" aria-labelledby="draftJourneyMapHeading" aria-describedby="draftJourneyMapHelp">
           <div class="draft-journey-map-chrome">
             <span id="draftJourneyMapHeading">US Census · Mid-Atlantic</span>
             <div class="draft-journey-map-tools" role="group" aria-label="Map zoom controls">
@@ -90,22 +90,22 @@ export default function DraftJourney({ locations, selectedLocation, onSelect, on
               <img class="draft-journey-basemap" src={basemapUrl} alt="" aria-hidden="true" />
               <svg aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ height: `${JOURNEY_LAYOUT_HEIGHT}px` }}>
                 <polyline class="draft-journey-route" points={points.map(point => `${point.x},${point.y}`).join(' ')} />
-                {leaderLines.map(line => <line key={line.locationId} class="draft-journey-leader" x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2} />)}
+                {zoom === MIN_JOURNEY_ZOOM && leaderLines.map(line => <line key={line.locationId} class="draft-journey-leader" x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2} />)}
                 {points.map(point => <circle key={point.location.id} class={point.location.id === selectedLocation ? 'is-selected' : ''} cx={point.x} cy={point.y} r="2.5" />)}
               </svg>
-              {points.map(point => {
-                const location = point.location;
-                const years = formatDraftLocationYears(location);
-                const placement = location.id === 'college-park' ? ' is-offset-northwest' : location.id === 'washington-dc' ? ' is-offset-southeast' : '';
-                return <button key={location.id} type="button" class={`draft-journey-marker${placement}${location.id === selectedLocation ? ' is-selected' : ''}`} style={{ left: `${point.x}%`, top: `${point.y}%` }} aria-pressed={location.id === selectedLocation} aria-label={`Select ${location.label}, ${years}`} title={`${location.label} · ${years}`} data-draft-location-marker={location.id} onClick={() => choose(location.id)}><span>{location.label}</span></button>;
-              })}
-              {callouts.map(callout => {
-                const location = callout.location;
-                return <button key={location.id} type="button" class={`draft-journey-callout${location.id === selectedLocation ? ' is-selected' : ''}`} style={{ left: `${((callout.left + callout.width / 2) / layoutWidth) * 100}%`, top: `${(callout.top / JOURNEY_LAYOUT_HEIGHT) * 100}%`, width: `${callout.width}px`, minHeight: `${callout.height}px` }} aria-pressed={location.id === selectedLocation} aria-label={`Show ${location.label}, ${formatDraftLocationYears(location)}`} onClick={() => choose(location.id)}>
-                  <span>{location.label}</span><small>{formatDraftLocationYears(location)}</small>
-                </button>;
-              })}
             </div>
+            {points.map(point => {
+              const location = point.location;
+              const years = formatDraftLocationYears(location);
+              const placement = location.id === 'college-park' ? ' is-offset-northwest' : location.id === 'washington-dc' ? ' is-offset-southeast' : '';
+              return <button key={location.id} type="button" class={`draft-journey-marker${placement}${location.id === selectedLocation ? ' is-selected' : ''}`} style={{ left: `${50 + (point.x - 50) * zoom}%`, top: `${50 + (point.y - 50) * zoom}%` }} aria-pressed={location.id === selectedLocation} aria-label={`Select ${location.label}, ${years}`} title={`${location.label} · ${years}`} data-draft-location-marker={location.id} onClick={() => choose(location.id)}><span>{location.label} · {years}</span></button>;
+            })}
+            {zoom === MIN_JOURNEY_ZOOM && callouts.map(callout => {
+              const location = callout.location;
+              return <button key={location.id} type="button" class={`draft-journey-callout${location.id === selectedLocation ? ' is-selected' : ''}`} style={{ left: `${((callout.left + callout.width / 2) / layoutWidth) * 100}%`, top: `${(callout.top / JOURNEY_LAYOUT_HEIGHT) * 100}%`, width: `${callout.width}px`, minHeight: `${callout.height}px` }} aria-pressed={location.id === selectedLocation} aria-label={`Show ${location.label}, ${formatDraftLocationYears(location)}`} onClick={() => choose(location.id)}>
+                <span>{location.label}</span><small>{formatDraftLocationYears(location)}</small>
+              </button>;
+            })}
           </div>
         </div>
         <div class="draft-journey-virtual">

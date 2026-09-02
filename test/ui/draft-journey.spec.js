@@ -4,6 +4,20 @@ import { createSnapshotFixture } from './snapshot-fixture.js';
 
 const preview = process.env.PLAYWRIGHT_SERVER === 'preview';
 
+async function ensureTourReplay(page) {
+  const replay = page.getByRole('button', { name: 'Replay tour' });
+  if (!(await replay.isVisible())) {
+    const disclosure = page.locator('#draftJourneyDisclosure');
+    const summary = disclosure.locator('summary');
+    if (await disclosure.getAttribute('open') !== null) await summary.click();
+    await summary.click();
+    const skip = page.getByRole('button', { name: 'Skip tour' });
+    if (await skip.isVisible()) await skip.click();
+  }
+  await expect(replay).toBeVisible();
+  return replay;
+}
+
 test.describe('Draft Journey', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -42,15 +56,7 @@ test.describe('Draft Journey', () => {
   });
 
   test('guides physical stops from canonical champions and lore, then supports skip and replay', async ({ page }) => {
-    const replay = page.getByRole('button', { name: 'Replay tour' });
-    if (!(await replay.isVisible())) {
-      const summary = page.locator('#draftJourneyDisclosure summary');
-      await summary.click();
-      await summary.click();
-      const skip = page.getByRole('button', { name: 'Skip tour' });
-      if (await skip.isVisible()) await skip.click();
-    }
-    await expect(replay).toBeVisible();
+    const replay = await ensureTourReplay(page);
     await replay.click();
     const card = page.locator('.draft-journey-tour-card');
     await expect(card).toContainText('Stop 1 of 4');
@@ -69,13 +75,79 @@ test.describe('Draft Journey', () => {
 
   test('reduced-motion tour advances and presents the incomplete 2026 outcome honestly', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.getByRole('button', { name: 'Replay tour' }).click();
+    await (await ensureTourReplay(page)).click();
+    const reducedMotion = await page.evaluate(() => ({
+      stage: getComputedStyle(document.querySelector('.draft-journey-map-stage')).transitionDuration,
+      marker: getComputedStyle(document.querySelector('[data-draft-location-marker]')).transitionDuration,
+    }));
+    expect(reducedMotion.stage).toBe('0s');
+    expect(reducedMotion.marker).toBe('0s');
     const card = page.locator('.draft-journey-tour-card');
     await expect(card).toContainText('Stop 1 of 4');
     await expect(card).toContainText('2017 · Joel');
-    await expect(card).toContainText('Stop 2 of 4', { timeout: 2500 });
+    await page.waitForTimeout(500);
+    await expect(card).toContainText('Stop 1 of 4');
+    await expect(card).toContainText('Stop 2 of 4', { timeout: 4500 });
     await expect(card).toContainText('College Park');
-    await expect(page.getByRole('button', { name: 'Replay tour' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('button', { name: 'Skip tour' })).toBeVisible();
+  });
+
+  test('tour uses a distinct per-stop focal transform, preserves alignment, and resets to overview', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 900 });
+    await (await ensureTourReplay(page)).click();
+    const stage = page.locator('.draft-journey-map-stage');
+    const map = page.locator('.draft-journey-map');
+    const motion = await page.evaluate(() => ({
+      stage: getComputedStyle(document.querySelector('.draft-journey-map-stage')).transitionDuration,
+      marker: getComputedStyle(document.querySelector('[data-draft-location-marker]')).transitionDuration,
+    }));
+    expect(parseFloat(motion.stage)).toBeGreaterThan(0);
+    expect(parseFloat(motion.marker)).toBeGreaterThan(0);
+    const transformValues = [];
+    for (let index = 0; index < 4; index += 1) {
+      await expect(page.locator('.draft-journey-tour-card')).toContainText(`Stop ${index + 1} of 4`);
+      await page.waitForTimeout(350);
+      transformValues.push(await stage.getAttribute('style'));
+      const locationId = ['bethany-beach', 'college-park', 'washington-dc', 'vienna-virginia'][index];
+      const alignment = await page.evaluate(id => {
+        const markerNode = document.querySelector(`[data-draft-location-marker="${id}"]`);
+        const marker = markerNode?.getBoundingClientRect();
+        const pseudoTransform = markerNode ? getComputedStyle(markerNode, '::before').transform : 'none';
+        const translation = pseudoTransform.match(/^matrix\([^,]+,[^,]+,[^,]+,[^,]+,([^,]+),([^\)]+)\)$/);
+        const circles = [...document.querySelectorAll('.draft-journey-map-stage circle')];
+        const circle = circles[['bethany-beach', 'college-park', 'washington-dc', 'vienna-virginia'].indexOf(id)]?.getBoundingClientRect();
+        const mapBox = document.querySelector('.draft-journey-map')?.getBoundingClientRect();
+        return { marker, circle, map: mapBox, translation: translation ? { x: Number(translation[1]), y: Number(translation[2]) } : { x: 0, y: 0 } };
+      }, locationId);
+      expect(alignment.marker && alignment.circle).not.toBeFalsy();
+      expect(Math.abs((alignment.marker.left + alignment.marker.width / 2 + alignment.translation.x) - (alignment.circle.left + alignment.circle.width / 2))).toBeLessThan(1);
+      expect(alignment.marker.left).toBeGreaterThanOrEqual(alignment.map.left);
+      expect(alignment.marker.right).toBeLessThanOrEqual(alignment.map.right);
+      if (index === 3) {
+        await expect(page.locator('.draft-journey-tour-card')).toContainText('Vienna, Virginia');
+        await expect(page.locator('.draft-journey-tour-card')).toContainText('TBD');
+      }
+      if (index < 3) await page.getByRole('button', { name: 'Next stop' }).click();
+      else await page.getByRole('button', { name: 'Finish tour' }).click();
+    }
+    expect(new Set(transformValues).size).toBe(4);
+    await expect(stage).toHaveAttribute('style', /translate\(0%,\s*0%\) scale\(1\)/);
+    await expect(page.getByRole('button', { name: 'Replay tour' })).toBeVisible();
+  });
+
+  test('reset is a tour interruption and explicit location links skip autoplay', async ({ page }) => {
+    await (await ensureTourReplay(page)).click();
+    await expect(page.getByRole('button', { name: 'Skip tour' })).toBeVisible();
+    await page.getByRole('button', { name: 'Reset map zoom' }).click();
+    await expect(page.getByRole('button', { name: 'Skip tour' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Replay tour' })).toBeVisible();
+    await page.goto('/?tab=draft&draftLocation=college-park');
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('#draftJourneyDisclosure')).toBeVisible();
+    await page.locator('#draftJourneyDisclosure summary').click();
+    await expect(page.locator('select[aria-label="Filter draft journey by location"]')).toHaveValue('college-park');
+    await expect(page.getByRole('button', { name: 'Skip tour' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Replay tour' })).toHaveCount(0);
   });
 
   test('geographic markers are direct keyboard targets and map zoom preserves the projected stage', async ({ page }) => {

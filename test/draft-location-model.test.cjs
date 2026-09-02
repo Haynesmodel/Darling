@@ -30,7 +30,7 @@ test('physical projection and callouts are finite, bounded, and deterministic', 
     ['bethany-beach', 72.5973, 62.6529],
     ['college-park', 47.3933, 56.0191],
     ['washington-dc', 46.1747, 57.2471],
-    ['vienna-virginia', 43.1293, 57.3353],
+    ['vienna-virginia', 43.2224, 57.3739],
   ]);
   for (const point of points) assert.ok(Number.isFinite(point.x) && point.x >= 0 && point.x <= 100 && Number.isFinite(point.y) && point.y >= 0 && point.y <= 100);
   const first = model.layoutDraftCallouts(locations, 320, 220);

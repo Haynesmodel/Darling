@@ -28,13 +28,13 @@
       "sha256": "sha256:ca8155035573c00dc8922d3f6de90772869a2baec9a16909c5d6562bae371d18"
     },
     "LeagueLore": {
-      "bytes": 84636,
+      "bytes": 84640,
       "path": "assets/LeagueLore.json",
       "required": false,
       "rows": 0,
       "season_max": null,
       "season_min": null,
-      "sha256": "sha256:2999886c9d52a5c416916b165000f75b94ba6b0c0ad0cedc6511616b09ac8f6a"
+      "sha256": "sha256:068f7aaea67b5d09bff0272e0bcd382b94b8f9b29c3b70d8502fc884a1d659b0"
     },
     "Rivalries": {
       "bytes": 2668,
@@ -64,7 +64,7 @@
       "sha256": "sha256:1dc2ad97f69bfd444c55ceb4d29243dc8dc96ca96f6b86142dfaad96cca61618"
     }
   },
-  "data_version": "sha256:0e60adc79cf1881175906d776a21c4244cbf8b1ce1a31465500dc86adf2404e4",
+  "data_version": "sha256:c625bd23de09ffc950ea4d7b941b054b15a39525e26c25ce96fff05111e117d8",
   "derived": {
     "bytes": 180308,
     "path": "assets/DerivedStats.json",

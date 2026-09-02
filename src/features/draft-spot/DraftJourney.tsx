@@ -19,11 +19,9 @@ export interface DraftJourneyTourFact {
 const COMPACT_LAYOUT_WIDTH = 230;
 const WIDE_LAYOUT_WIDTH = 400;
 const JOURNEY_LAYOUT_HEIGHT = 300;
-const JOURNEY_CALLOUT_HEIGHT = 68;
 const MIN_JOURNEY_ZOOM = 1;
 const MAX_JOURNEY_ZOOM = 1.6;
 const JOURNEY_ZOOM_STEP = 0.2;
-const basemapUrl = `${import.meta.env.BASE_URL}assets/draft-journey-basemap.svg`;
 
 function useCompactJourneyLayout(): boolean {
   const [compact, setCompact] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 760);
@@ -90,7 +88,7 @@ export default function DraftJourney({ locations, selectedLocation, onSelect, on
     } else setTourIndex(index => index + 1);
   };
   useEffect(() => {
-    if (tourState !== 1) return undefined;
+    if (tourState !== 1) return;
     const timer = window.setTimeout(advanceTour, 3200);
     return () => window.clearTimeout(timer);
   }, [points.length, tourIndex, tourState]);
@@ -166,3 +164,5 @@ export default function DraftJourney({ locations, selectedLocation, onSelect, on
     </section>
   );
 }
+const basemapUrl = `${import.meta.env.BASE_URL}assets/draft-journey-basemap.svg`;
+const JOURNEY_CALLOUT_HEIGHT = 68;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { DraftLocation } from '../../data/generated/asset-types';
 import { draftLocationDetails, draftLocationLeaderLines, draftLocationPrecisionLabel, enabledDraftLocations, formatDraftLocationYears, layoutDraftCallouts, projectDraftLocations } from './draft-location-model';
 
@@ -7,9 +7,17 @@ interface Props {
   selectedLocation: string | null;
   onSelect: (id: string | null) => void;
   onReveal?: (entryId: string, opener: HTMLElement) => void;
+  isOpen?: boolean;
+  tourFacts?: DraftJourneyTourFact[];
 }
 
-const COMPACT_LAYOUT_WIDTH = 192;
+export interface DraftJourneyTourFact {
+  locationId: string;
+  champions: string[];
+  moments: string[];
+}
+
+const COMPACT_LAYOUT_WIDTH = 254;
 const WIDE_LAYOUT_WIDTH = 400;
 const JOURNEY_LAYOUT_HEIGHT = 300;
 const JOURNEY_CALLOUT_HEIGHT = 68;
@@ -45,21 +53,96 @@ function useCompactJourneyLayout(): boolean {
   return compact;
 }
 
-export default function DraftJourney({ locations, selectedLocation, onSelect, onReveal }: Props) {
+function useReducedJourneyMotion(): boolean {
+  const query = '(prefers-reduced-motion: reduce)';
+  const readMatches = () => typeof window !== 'undefined' && (window.matchMedia?.(query).matches ?? false);
+  const [reduced, setReduced] = useState(readMatches);
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const media = window.matchMedia?.(query);
+    if (!media) return undefined;
+    const update = () => setReduced(media.matches);
+    update();
+    if (media.addEventListener) media.addEventListener('change', update);
+    else media.addListener(update);
+    return () => {
+      if (media.removeEventListener) media.removeEventListener('change', update);
+      else media.removeListener(update);
+    };
+  }, []);
+  return reduced;
+}
+
+type TourState = 'idle' | 'running' | 'finishing' | 'done' | 'skipped';
+
+export default function DraftJourney({ locations, selectedLocation, onSelect, onReveal, isOpen = false, tourFacts = [] }: Props) {
   const sorted = useMemo(() => enabledDraftLocations(locations), [locations]);
   const points = useMemo(() => projectDraftLocations(sorted), [sorted]);
+  const physical = useMemo(() => sorted.filter(location => location.location_type === 'physical' && location.coordinates), [sorted]);
   const compact = useCompactJourneyLayout();
+  const reducedMotion = useReducedJourneyMotion();
+  const journeyRoot = useRef<HTMLElement>(null);
+  const [journeyVisible, setJourneyVisible] = useState(isOpen);
+  useEffect(() => {
+    const details = journeyRoot.current?.closest('details');
+    if (!details) return undefined;
+    const sync = () => setJourneyVisible(details.open);
+    sync();
+    details.addEventListener('toggle', sync);
+    const observer = new MutationObserver(sync);
+    observer.observe(details, { attributes: true, attributeFilter: ['open'] });
+    return () => {
+      details.removeEventListener('toggle', sync);
+      observer.disconnect();
+    };
+  }, []);
   const layoutWidth = compact ? COMPACT_LAYOUT_WIDTH : WIDE_LAYOUT_WIDTH;
   const callouts = useMemo(() => layoutDraftCallouts(sorted, layoutWidth, JOURNEY_LAYOUT_HEIGHT, JOURNEY_CALLOUT_HEIGHT), [layoutWidth, sorted]);
   const leaderLines = useMemo(() => draftLocationLeaderLines(callouts, layoutWidth, JOURNEY_LAYOUT_HEIGHT), [callouts, layoutWidth]);
   const details = useMemo(() => draftLocationDetails(selectedLocation, sorted), [selectedLocation, sorted]);
   const [zoom, setZoom] = useState(MIN_JOURNEY_ZOOM);
+  const [tourState, setTourState] = useState<TourState>('idle');
+  const [tourIndex, setTourIndex] = useState(0);
+  const [tourHasRun, setTourHasRun] = useState(false);
+  const tourStarted = useRef(false);
+  const tourStepDuration = reducedMotion ? 160 : 1050;
+  const tourFact = tourFacts.find(fact => fact.locationId === physical[tourIndex]?.id);
   const selected = details.length === 1 && selectedLocation ? details[0] : null;
   const status = selected ? `Showing ${selected.label}, ${formatDraftLocationYears(selected)}` : 'Showing all draft locations';
-  const choose = (value: string) => onSelect(value || null);
-  const adjustZoom = (amount: number) => setZoom(current => Math.min(MAX_JOURNEY_ZOOM, Math.max(MIN_JOURNEY_ZOOM, Number((current + amount).toFixed(1)))));
+  const startTour = () => {
+    if (!physical.length) return;
+    setTourHasRun(true);
+    setTourIndex(0);
+    setTourState('running');
+    setZoom(reducedMotion ? 1.2 : 1.35);
+  };
+  const interruptTour = () => {
+    if (tourState === 'running' || tourState === 'finishing') {
+      setTourState('skipped');
+      setTourIndex(physical.length);
+      setZoom(MIN_JOURNEY_ZOOM);
+    }
+  };
+  const choose = (value: string) => { interruptTour(); onSelect(value || null); };
+  const adjustZoom = (amount: number) => { interruptTour(); setZoom(current => Math.min(MAX_JOURNEY_ZOOM, Math.max(MIN_JOURNEY_ZOOM, Number((current + amount).toFixed(1))))); };
+  useEffect(() => {
+    if (!journeyVisible || tourStarted.current || !physical.length) return;
+    tourStarted.current = true;
+    startTour();
+  }, [journeyVisible, physical.length]);
+  useEffect(() => {
+    if (tourState !== 'running') return undefined;
+    if (tourIndex >= physical.length) {
+      setZoom(MIN_JOURNEY_ZOOM);
+      setTourState('finishing');
+      const finish = window.setTimeout(() => setTourState('done'), reducedMotion ? 0 : 420);
+      return () => window.clearTimeout(finish);
+    }
+    const timer = window.setTimeout(() => setTourIndex(index => index + 1), tourStepDuration);
+    return () => window.clearTimeout(timer);
+  }, [physical.length, reducedMotion, tourIndex, tourState, tourStepDuration]);
   return (
-    <section class="draft-journey" aria-labelledby="draftJourneyHeading">
+    <section ref={journeyRoot} class="draft-journey" aria-labelledby="draftJourneyHeading">
       <div class="section-heading">
         <div>
           <h3 id="draftJourneyHeading">Draft Journey</h3>
@@ -85,6 +168,15 @@ export default function DraftJourney({ locations, selectedLocation, onSelect, on
             </div>
           </div>
           <p id="draftJourneyMapHelp" class="draft-journey-map-help visually-hidden">Select a marker or label to filter the journey. Municipality positions are approximate.</p>
+          {tourState === 'running' && tourFact && physical[tourIndex] && <aside class="draft-journey-tour-card" aria-live="polite" role="status">
+            <p class="draft-journey-tour-kicker">Draft Journey tour · Stop {tourIndex + 1} of {physical.length}</p>
+            <h4>{physical[tourIndex].label}</h4>
+            <p><strong>{formatDraftLocationYears(physical[tourIndex])}</strong></p>
+            <p><strong>Champion{tourFact.champions.length > 1 ? 's' : ''}:</strong> {tourFact.champions.length ? tourFact.champions.join(' · ') : 'TBD — the 2026 season is not complete.'}</p>
+            {tourFact.moments.slice(0, 1).map(moment => <p class="draft-journey-tour-moment" key={moment}><strong>From the lore:</strong> {moment}</p>)}
+            <button type="button" class="draft-journey-tour-skip" onClick={interruptTour}>Skip tour</button>
+          </aside>}
+          {tourHasRun && tourState !== 'running' && tourState !== 'finishing' && <button type="button" class="draft-journey-tour-replay" onClick={startTour}>Replay tour</button>}
           <div class="draft-journey-map-viewport">
             <div class="draft-journey-map-stage" style={{ transform: `scale(${zoom})` }}>
               <img class="draft-journey-basemap" src={basemapUrl} alt="" aria-hidden="true" />
@@ -98,7 +190,8 @@ export default function DraftJourney({ locations, selectedLocation, onSelect, on
               const location = point.location;
               const years = formatDraftLocationYears(location);
               const placement = location.id === 'college-park' ? ' is-offset-northwest' : location.id === 'washington-dc' ? ' is-offset-southeast' : '';
-              return <button key={location.id} type="button" class={`draft-journey-marker${placement}${location.id === selectedLocation ? ' is-selected' : ''}`} style={{ left: `${50 + (point.x - 50) * zoom}%`, top: `${50 + (point.y - 50) * zoom}%` }} aria-pressed={location.id === selectedLocation} aria-label={`Select ${location.label}, ${years}`} title={`${location.label} · ${years}`} data-draft-location-marker={location.id} onClick={() => choose(location.id)}><span>{location.label} · {years}</span></button>;
+              const isTourStop = tourState === 'running' && location.id === physical[tourIndex]?.id;
+              return <button key={location.id} type="button" class={`draft-journey-marker${placement}${location.id === selectedLocation ? ' is-selected' : ''}${isTourStop ? ' is-tour-stop' : ''}`} style={{ left: `${50 + (point.x - 50) * zoom}%`, top: `${50 + (point.y - 50) * zoom}%` }} aria-pressed={location.id === selectedLocation} aria-current={isTourStop ? 'step' : undefined} aria-label={`Select ${location.label}, ${years}`} title={`${location.label} · ${years}`} data-draft-location-marker={location.id} onClick={() => choose(location.id)}><span>{location.label} · {years}</span></button>;
             })}
             {zoom === MIN_JOURNEY_ZOOM && callouts.map(callout => {
               const location = callout.location;

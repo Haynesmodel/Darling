@@ -4,6 +4,7 @@ import type {
   DraftSpotRow,
 } from '../../data/generated/asset-types';
 import type { DraftLocation } from '../../data/generated/asset-types';
+import type { DraftJourneyTourFact } from './DraftJourney';
 
 export const DRAFT_ALL_OWNERS = '__ALL__';
 export const DRAFT_MODES = ['league', 'owner', 'pick', 'zone'] as const;
@@ -125,6 +126,7 @@ export interface DraftSpotMountOptions {
   onReady?: (state: DraftSpotState) => void;
   locations?: DraftLocation[];
   onRevealLocation?: (entryId: string, opener: HTMLElement) => void;
+  tourFacts?: DraftJourneyTourFact[];
 }
 
 export interface DarlingDraftSpotRuntime {

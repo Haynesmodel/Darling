@@ -12,20 +12,22 @@ test.describe('Draft Journey', () => {
     await expect(page.locator('#page-draft')).toHaveAttribute('data-feature-state', 'ready');
     await expect(page.locator('#draftJourneyDisclosure')).toBeVisible();
     await page.locator('#draftJourneyDisclosure summary').click();
+    const skipTour = page.getByRole('button', { name: 'Skip tour' });
+    if (await skipTour.isVisible()) await skipTour.click();
   });
 
-  test('renders all four eras and synchronizes select, URL, and detail', async ({ page }) => {
+  test('renders all five eras and synchronizes select, URL, and detail', async ({ page }) => {
     const filter = page.locator('select[aria-label="Filter draft journey by location"]');
-    await expect(filter.locator('option')).toHaveText(['All locations', 'Remote / virtual · 2014–2016', 'Bethany Beach · 2017–2022', 'College Park · 2023–2024', 'Washington, DC · 2025–2026']);
-    await expect(page.locator('.draft-journey-detail')).toHaveCount(4);
+    await expect(filter.locator('option')).toHaveText(['All locations', 'Remote / virtual · 2014–2016', 'Bethany Beach · 2017–2022', 'College Park · 2023–2024', 'Washington, DC · 2025', 'Vienna, Virginia · 2026']);
+    await expect(page.locator('.draft-journey-detail')).toHaveCount(5);
     await expect(page.locator('.draft-journey-map')).toHaveAttribute('aria-label', 'Draft locations across the Mid-Atlantic');
     await expect(page.locator('.draft-journey-basemap')).toHaveAttribute('alt', '');
     await expect(page.locator('.draft-journey-basemap')).toHaveAttribute('aria-hidden', 'true');
     await expect(page.locator('.draft-journey-map svg')).toHaveAttribute('aria-hidden', 'true');
-    await expect(page.locator('.draft-journey-leader')).toHaveCount(3);
+    await expect(page.locator('.draft-journey-leader')).toHaveCount(4);
     await filter.selectOption('washington-dc');
     await expect(page).toHaveURL(/draftLocation=washington-dc/);
-    await expect(page.locator('.draft-journey-details')).toContainText('2025–2026');
+    await expect(page.locator('.draft-journey-details')).toContainText('2025');
     await expect(page.locator('#draftEndSeason')).toHaveValue('2025');
   });
 
@@ -39,10 +41,47 @@ test.describe('Draft Journey', () => {
     await expect(page.locator('.draft-journey-details')).toContainText('University of Maryland Stadium');
   });
 
+  test('guides physical stops from canonical champions and lore, then supports skip and replay', async ({ page }) => {
+    const replay = page.getByRole('button', { name: 'Replay tour' });
+    if (!(await replay.isVisible())) {
+      const summary = page.locator('#draftJourneyDisclosure summary');
+      await summary.click();
+      await summary.click();
+      const skip = page.getByRole('button', { name: 'Skip tour' });
+      if (await skip.isVisible()) await skip.click();
+    }
+    await expect(replay).toBeVisible();
+    await replay.click();
+    const card = page.locator('.draft-journey-tour-card');
+    await expect(card).toContainText('Stop 1 of 4');
+    await expect(card).toContainText('Bethany Beach');
+    await expect(card).toContainText('2017 · Joel');
+    await expect(card).toContainText('From the lore:');
+    await page.getByRole('button', { name: 'Skip tour' }).click();
+    await expect(replay).toBeVisible();
+    await replay.click();
+    await expect(card).toContainText('Stop 1 of 4');
+    await page.locator('[data-draft-location-marker="vienna-virginia"]').click();
+    await expect(page).toHaveURL(/draftLocation=vienna-virginia/);
+    await expect(card).toHaveCount(0);
+    await expect(replay).toBeVisible();
+  });
+
+  test('reduced-motion tour advances and presents the incomplete 2026 outcome honestly', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.getByRole('button', { name: 'Replay tour' }).click();
+    const card = page.locator('.draft-journey-tour-card');
+    await expect(card).toContainText('Stop 1 of 4');
+    await expect(card).toContainText('2017 · Joel');
+    await expect(card).toContainText('Stop 2 of 4', { timeout: 2500 });
+    await expect(card).toContainText('College Park');
+    await expect(page.getByRole('button', { name: 'Replay tour' })).toBeVisible({ timeout: 5000 });
+  });
+
   test('geographic markers are direct keyboard targets and map zoom preserves the projected stage', async ({ page }) => {
     const map = page.locator('.draft-journey-map');
     const markers = page.locator('[data-draft-location-marker]');
-    await expect(markers).toHaveCount(3);
+    await expect(markers).toHaveCount(4);
     expect(await markers.evaluateAll(nodes => nodes.every(node => node.getAttribute('title')?.includes('·')))).toBe(true);
     const markerSizes = await markers.evaluateAll(nodes => nodes.map(node => {
       const box = node.getBoundingClientRect();

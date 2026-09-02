@@ -5,10 +5,31 @@ import type { AppContext } from '../../app/app-types';
 import type { DarlingFeatureController, FeatureActivation } from '../../app/feature-contract';
 import type { DraftLocation } from '../../data/generated/asset-types';
 import { ownerOrNull } from '../../app/feature-utils';
+import type { DraftJourneyTourFact } from './DraftJourney';
 
 function enabledLoreDraftLocations(context: AppContext): DraftLocation[] {
   const locations = context.data.leagueLore?.enabled ? context.data.leagueLore.draft_locations || [] : [];
   return locations.filter(location => location.enabled && Boolean(context.lore.entry(location.entry_id)));
+}
+
+function draftJourneyTourFacts(context: AppContext, locations: DraftLocation[]): DraftJourneyTourFact[] {
+  const entries = context.data.leagueLore?.entries || [];
+  return locations.filter(location => location.location_type === 'physical').map(location => {
+    const entry = entries.find(candidate => candidate.id === location.entry_id);
+    const moments = entries
+      .filter(candidate => candidate.enabled && candidate.category === 'draft-weekend' && candidate.id !== location.entry_id
+        && candidate.season !== null && candidate.season >= location.season_start && candidate.season <= location.season_end)
+      .sort((a, b) => Number(a.season) - Number(b.season) || a.id.localeCompare(b.id))
+      .map(candidate => candidate.teaser)
+      .filter(Boolean)
+      .slice(0, 2);
+    if (!moments.length && entry?.teaser) moments.push(entry.teaser);
+    const champions = context.data.seasonSummaries
+      .filter(row => row.champion && row.season >= location.season_start && row.season <= location.season_end)
+      .sort((a, b) => a.season - b.season)
+      .map(row => `${row.season} · ${row.owner}`);
+    return { locationId: location.id, champions, moments };
+  });
 }
 
 export function createFeatureController(): DarlingFeatureController {
@@ -99,6 +120,7 @@ export function createFeatureController(): DarlingFeatureController {
         onStateChange: updateForActivation,
         onReady: onReadyForActivation,
         locations: enabledLoreDraftLocations(context),
+        tourFacts: draftJourneyTourFacts(context, enabledLoreDraftLocations(context)),
         onRevealLocation: (entryId, opener) => { void context.lore.reveal('entry', entryId, { opener }); },
       });
     },

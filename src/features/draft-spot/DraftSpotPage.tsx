@@ -12,7 +12,7 @@ import {
 } from './draft-spot-types';
 import type { DraftSpot } from '../../data/generated/asset-types';
 import type { DraftLocation } from '../../data/generated/asset-types';
-import DraftJourney from './DraftJourney';
+import DraftJourney, { type DraftJourneyTourFact } from './DraftJourney';
 import DraftSpotControls from './DraftSpotControls';
 import DraftSpotHero from './DraftSpotHero';
 import DraftPickBoard from './DraftPickBoard';
@@ -38,6 +38,7 @@ interface Props {
   onReady?: DraftSpotMountOptions['onReady'];
   locations?: DraftLocation[];
   onRevealLocation?: DraftSpotMountOptions['onRevealLocation'];
+  tourFacts?: DraftJourneyTourFact[];
 }
 
 function DraftShareAction({ result }: { result: ShareCardBuildResult | null }) {
@@ -177,6 +178,7 @@ export default function DraftSpotPage({
   onReady,
   locations = [],
   onRevealLocation,
+  tourFacts = [],
 }: Props) {
   const initial = useMemo(() => buildDraftSpotModel(asset, requestedState, {}, locations), [asset, requestedState, locations]);
   const [state, setState] = useState(initial.state);
@@ -295,7 +297,7 @@ export default function DraftSpotPage({
       <div ref={disclosureNav} />
       {locations.length > 0 && <details ref={journeyDisclosure} id="draftJourneyDisclosure" class="card feature-disclosure">
         <summary>Draft Journey</summary>
-        <section class="feature-section-content" aria-labelledby="draftJourneyHeading"><DraftJourney locations={locations} selectedLocation={model.state.selectedLocation} onSelect={id => update({ ...model.state, selectedLocation: id, draftLocation: id })} onReveal={onRevealLocation} /></section>
+        <section class="feature-section-content" aria-labelledby="draftJourneyHeading"><DraftJourney locations={locations} selectedLocation={model.state.selectedLocation} onSelect={id => update({ ...model.state, selectedLocation: id, draftLocation: id })} onReveal={onRevealLocation} tourFacts={tourFacts} /></section>
       </details>}
       <details ref={pickDisclosure} id="draftPickDisclosure" class="card feature-disclosure">
         <summary>Pick Board</summary>

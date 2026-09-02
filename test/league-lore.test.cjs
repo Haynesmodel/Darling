@@ -45,10 +45,12 @@ test('League Lore preserves the supplied year and sensitivity corrections', () =
 
 test('Draft Journey covers every season exactly once with reviewed eras', () => {
   const locations = lore.draft_locations;
-  assert.deepEqual(locations.map(location => location.id), ['remote-virtual', 'bethany-beach', 'college-park', 'washington-dc']);
-  assert.deepEqual(locations.map(location => [location.season_start, location.season_end]), [[2014, 2016], [2017, 2022], [2023, 2024], [2025, 2026]]);
+  assert.deepEqual(locations.map(location => location.id), ['remote-virtual', 'bethany-beach', 'college-park', 'washington-dc', 'vienna-virginia']);
+  assert.deepEqual(locations.map(location => [location.season_start, location.season_end]), [[2014, 2016], [2017, 2022], [2023, 2024], [2025, 2025], [2026, 2026]]);
+  assert.deepEqual(locations.find(location => location.id === 'vienna-virginia').coordinates, { latitude: 38.9012, longitude: -77.2653 });
+  assert.equal(locations.find(location => location.id === 'vienna-virginia').coordinate_precision, 'municipality');
   assert.deepEqual(locations.map(location => location.entry_id), [
-    'draft-location-remote-virtual', 'draft-location-bethany-beach', 'draft-location-college-park', 'draft-location-washington-dc',
+    'draft-location-remote-virtual', 'draft-location-bethany-beach', 'draft-location-college-park', 'draft-location-washington-dc', 'draft-location-vienna-virginia',
   ]);
   const seasons = locations.flatMap(location => Array.from({ length: location.season_end - location.season_start + 1 }, (_, index) => location.season_start + index));
   assert.deepEqual(seasons, Array.from({ length: 13 }, (_, index) => 2014 + index));
@@ -65,6 +67,8 @@ test('Draft Journey covers every season exactly once with reviewed eras', () => 
     assert.equal(entry.completed_year, null);
     assert.match(entry.provenance, /User-supplied draft journey history/);
   }
+  assert.match(byId.get('draft-location-vienna-virginia').body.join(' '), /approximate municipality reference point/);
+  assert.match(byId.get('draft-location-vienna-virginia').provenance, /Virginia municipal map sources/);
 });
 
 test('disabled lore root suppresses every optional lore surface', async () => {

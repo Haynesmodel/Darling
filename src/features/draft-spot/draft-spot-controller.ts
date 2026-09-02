@@ -66,6 +66,7 @@ export async function mountDraftSpot(options: DraftSpotMountOptions): Promise<vo
         onStateChange: options.onStateChange,
         onReady: options.onReady,
         locations: options.locations,
+        tourFacts: options.tourFacts,
         onRevealLocation: options.onRevealLocation,
       }),
       options.mount,

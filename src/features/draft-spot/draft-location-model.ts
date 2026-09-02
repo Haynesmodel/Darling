@@ -27,7 +27,7 @@ export function enabledDraftLocations(locations: DraftLocation[] = []): DraftLoc
 }
 
 export function formatDraftLocationYears(location: Pick<DraftLocation, 'season_start' | 'season_end'>): string {
-  return `${location.season_start}–${location.season_end}`;
+  return location.season_start === location.season_end ? String(location.season_start) : `${location.season_start}–${location.season_end}`;
 }
 
 export function normalizeDraftLocation(requested: unknown, locations: DraftLocation[] = []): string | null {

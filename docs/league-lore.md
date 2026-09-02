@@ -6,6 +6,8 @@ The source policy distinguishes the fantasy `season` from `occurred_year`, `comp
 
 `draft_locations` is an optional, validated location-history array. Each enabled row owns an inclusive season range, location type, coordinates (or `null` for the virtual era), precision (`municipality` or `venue`), and a normal lore-entry reference. Draft Journey renders these rows from the verified snapshot; missing, disabled, or invalid optional lore suppresses the journey without affecting Draft Spot statistics. Municipality coordinates are approximate reference points and do not imply an exact venue.
 
+The first time an open Draft Journey is entered, its short guided tour visits physical rows in chronological order. Tour champion labels are derived from `SeasonSummary.json`, while the history moment is taken from the matching lore entry or another dated draft-weekend entry. A season without a completed champion is shown as pending; skip and replay are always available, and direct map interaction ends the tour.
+
 ## Authoring and validation
 
 Entries use stable lowercase kebab-case IDs, bounded paragraphs/search terms, canonical owners, and discriminated anchors. Triggers reference exactly one entry or collection and may reference a registered effect. Run `npm run generate:data`, `npm run check:data-generated`, and `npm run test:assets` after edits. The authored JSON must remain at or below 100 KiB; optional loader failures leave all statistical features available and publish diagnostics.

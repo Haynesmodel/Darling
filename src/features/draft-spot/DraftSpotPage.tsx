@@ -181,9 +181,8 @@ export default function DraftSpotPage({
   tourFacts = [],
 }: Props) {
   const initial = useMemo(() => buildDraftSpotModel(asset, requestedState, {}, locations), [asset, requestedState, locations]);
-  const requestedStateSignature = JSON.stringify(requestedState || {});
   const [state, setState] = useState(initial.state);
-  useEffect(() => setState(initial.state), [initial.state, requestedStateSignature]);
+  useEffect(() => setState(initial.state), [initial.state, requestedState]);
   const model = useMemo(() => buildDraftSpotModel(asset, state, state, locations), [asset, state, locations]);
   const disclosure = useRef<SectionDisclosureController | null>(null);
   const disclosureNav = useRef<HTMLDivElement>(null);
@@ -205,7 +204,7 @@ export default function DraftSpotPage({
   ].join('|');
   const shareResult = useMemo(
     () => buildDraftShareResult(model, dataVersion, typeof window === 'undefined' ? null : window),
-    [dataVersion, disclosureSignature, model],
+    [dataVersion, model],
   );
 
   const update = (requested: Partial<DraftSpotState> & DraftSpotUrlState) => {
@@ -258,7 +257,6 @@ export default function DraftSpotPage({
       preserveFocusedSection: true,
       sections: definitions.flatMap(definition => definition.details ? [{
         ...definition,
-        details: definition.details,
         defaultOpen: defaults.has(definition.id) || (definition.id === 'draft-journey' && journeyWasOpen),
       }] : []),
     });

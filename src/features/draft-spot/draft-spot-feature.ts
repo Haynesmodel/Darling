@@ -13,21 +13,16 @@ function enabledLoreDraftLocations(context: AppContext): DraftLocation[] {
 }
 
 function draftJourneyTourFacts(context: AppContext, locations: DraftLocation[]): DraftJourneyTourFact[] {
-  const entries = context.data.leagueLore?.entries || [];
-  return locations.filter(location => location.location_type === 'physical').map(location => {
-    const entry = entries.find(candidate => candidate.id === location.entry_id);
-    const moment = entries
-      .filter(candidate => candidate.enabled && candidate.category === 'draft-weekend' && candidate.id !== location.entry_id
-        && candidate.season !== null && candidate.season >= location.season_start && candidate.season <= location.season_end)
-      .sort((a, b) => Number(a.season) - Number(b.season) || a.id.localeCompare(b.id))
-      .find(candidate => candidate.teaser)?.teaser || entry?.teaser || '';
-    const champions = context.data.seasonSummaries
-      .filter(row => row.champion && row.season >= location.season_start && row.season <= location.season_end)
-      .sort((a, b) => a.season - b.season)
-      .map(row => `${row.season} · ${row.owner}`)
-      .join(' · ');
-    return { locationId: location.id, champions, moment };
+  const facts: DraftJourneyTourFact[] = [];
+  locations.forEach(location => {
+    if (location.location_type !== 'physical') return;
+    const champions: string[] = [];
+    for (const row of context.data.seasonSummaries) {
+      if (row.champion && row.season >= location.season_start && row.season <= location.season_end) champions.push(`${row.season} · ${row.owner}`);
+    }
+    facts.push({ locationId: location.id, champions: champions.join(' · '), moment: context.lore.entry(location.entry_id)?.teaser || '' });
   });
+  return facts;
 }
 
 export function createFeatureController(): DarlingFeatureController {

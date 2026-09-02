@@ -1,5 +1,4 @@
 import type { DraftLocation } from '../../data/generated/asset-types';
-import { DRAFT_JOURNEY_MAP_BOUNDS } from './draft-journey-basemap.ts';
 
 export interface DraftLocationPoint {
   location: DraftLocation;
@@ -23,7 +22,7 @@ export interface DraftLocationLeaderLine {
 }
 
 export function enabledDraftLocations(locations: DraftLocation[] = []): DraftLocation[] {
-  return locations.filter(location => location.enabled).slice().sort((a, b) => a.season_start - b.season_start || a.season_end - b.season_end || a.id.localeCompare(b.id));
+  return locations.filter(location => location.enabled);
 }
 
 export function formatDraftLocationYears(location: Pick<DraftLocation, 'season_start' | 'season_end'>): string {
@@ -47,18 +46,15 @@ export function draftLocationDetails(requested: unknown, locations: DraftLocatio
 }
 
 export function projectDraftLocations(locations: DraftLocation[] = []): DraftLocationPoint[] {
-  const physical = enabledDraftLocations(locations).filter(location => location.coordinates);
+  const physical = locations.filter(location => location.enabled && location.coordinates);
   if (!physical.length) return [];
-  const { minLatitude, maxLatitude, minLongitude, maxLongitude } = DRAFT_JOURNEY_MAP_BOUNDS;
+  // Bounds match the U.S. Census Bureau 2025 Cartographic Boundary File used by
+  // assets/draft-journey-basemap.svg; the backdrop and pins share this projection.
   return physical.map(location => ({
     location,
-    x: ((location.coordinates!.longitude - minLongitude) / (maxLongitude - minLongitude)) * 100,
-    y: (1 - (location.coordinates!.latitude - minLatitude) / (maxLatitude - minLatitude)) * 100,
+    x: ((location.coordinates!.longitude + 80.5) / 7.5) * 100,
+    y: (1 - (location.coordinates!.latitude - 36) / 6.8) * 100,
   }));
-}
-
-function overlaps(a: DraftLocationCallout, b: DraftLocationCallout): boolean {
-  return a.left < b.left + b.width && a.left + a.width > b.left && a.top < b.top + b.height && a.top + a.height > b.top;
 }
 
 function axisSlots(size: number, boxSize: number, gap: number): number[] {
@@ -67,12 +63,8 @@ function axisSlots(size: number, boxSize: number, gap: number): number[] {
   if (max <= min) return [Math.max(0, (size - boxSize) / 2)];
   const slots: number[] = [];
   for (let value = min; value <= max; value += boxSize + gap) slots.push(value);
-  if (slots.at(-1) !== max) slots.push(max);
+  if (slots.at(-1)! + boxSize <= max) slots.push(max);
   return slots;
-}
-
-function nearestFirst(values: number[], preferred: number): number[] {
-  return values.slice().sort((a, b) => Math.abs(a - preferred) - Math.abs(b - preferred) || a - b);
 }
 
 export function layoutDraftCallouts(locations: DraftLocation[] = [], width = 320, height = 220, requestedBoxHeight = 48): DraftLocationCallout[] {
@@ -83,20 +75,24 @@ export function layoutDraftCallouts(locations: DraftLocation[] = [], width = 320
   const gap = 8;
   const leftSlots = axisSlots(scaleX, boxWidth, gap);
   const topSlots = axisSlots(scaleY, boxHeight, gap);
-  const placed: DraftLocationCallout[] = [];
+  const slots = leftSlots.flatMap(left => topSlots.map(top => ({ left, top })));
   return points.map(point => {
     const center = Math.min(Math.max(point.x * scaleX / 100, boxWidth / 2), scaleX - boxWidth / 2);
     const preferredLeft = center - boxWidth / 2;
     const preferredTop = Math.min(Math.max(point.y * scaleY / 100 - boxHeight - 8, 2), scaleY - boxHeight - 2);
-    const leftCandidates = nearestFirst([...new Set([preferredLeft, ...leftSlots])], preferredLeft);
-    const topCandidates = nearestFirst([...new Set([preferredTop, ...topSlots])], preferredTop);
-    const candidates = leftCandidates.flatMap(left => topCandidates.map(top => ({ left, top })));
-    const position = candidates.find(candidate => {
-      const callout = { ...point, ...candidate, width: boxWidth, height: boxHeight };
-      return !placed.some(previous => overlaps(callout, previous));
-    }) || { left: Math.max(0, Math.min(preferredLeft, scaleX - boxWidth)), top: Math.max(0, Math.min(preferredTop, scaleY - boxHeight)) };
+    let slotIndex = -1;
+    let nearest = Infinity;
+    slots.forEach((slot, index) => {
+      const distance = (slot.left - preferredLeft) ** 2 + (slot.top - preferredTop) ** 2;
+      if (distance < nearest) {
+        nearest = distance;
+        slotIndex = index;
+      }
+    });
+    const position = slotIndex >= 0
+      ? slots.splice(slotIndex, 1)[0]
+      : { left: Math.max(0, Math.min(preferredLeft, scaleX - boxWidth)), top: Math.max(0, Math.min(preferredTop, scaleY - boxHeight)) };
     const callout = { ...point, ...position, width: boxWidth, height: boxHeight };
-    placed.push(callout);
     return callout;
   });
 }

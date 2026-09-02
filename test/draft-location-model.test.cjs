@@ -82,7 +82,7 @@ test('draft location helpers cover disabled, virtual, precision, and collision b
   const tieId = { ...lore.draft_locations[2], id: 'beta', season_start: 2023, season_end: 2023 };
   const tieMunicipality = { ...lore.draft_locations[2], id: 'zeta', season_start: 2023, season_end: 2024, coordinate_precision: 'municipality' };
   const virtual = { ...lore.draft_locations[0], id: 'virtual-test' };
-  const locations = [tieMunicipality, tieId, tieVenue, disabled, virtual];
+  const locations = [virtual, tieVenue, tieId, tieMunicipality, disabled];
 
   assert.deepEqual(model.enabledDraftLocations(locations).map(location => location.id), ['virtual-test', 'alpha', 'beta', 'zeta']);
   assert.equal(model.normalizeDraftLocation(42, locations), null);

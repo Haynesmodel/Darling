@@ -1,6 +1,6 @@
 # League Lore
 
-League Lore is an optional, verified narrative asset. `assets/LeagueLore.json` owns prose, aliases, search terms, collections, trigger metadata, and presentation labels. It never overrides the numerical assets: scores, records, points, finishes, titles, draft slots, transaction participants, and completed-through weeks are read from the canonical data files named by the entry anchor.
+League Lore is an optional, verified narrative asset. `assets/LeagueLore.json` owns prose, aliases, search terms, collections, trigger metadata, and presentation labels. It never overrides the numerical assets: scores, records, points, finishes, titles, draft slots, transaction participants, and completed-through weeks are read from the canonical data files named by the entry anchor. Draft Journey tour moments are the teasers on each physical `draft-location-*` entry, so the map does not duplicate lore selection heuristics.
 
 The source policy distinguishes the fantasy `season` from `occurred_year`, `completed_year`, and `almanac_edition`. The reviewed 2024 Almanac supplies narrative context through 2024; later corrections use their explicit season and completion fields. Singer's lawn story is draft-weekend lore, not a punishment, and the 2022 championship context is respectful/static.
 

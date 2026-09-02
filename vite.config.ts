@@ -306,7 +306,7 @@ export default defineConfig({
             },
             {
               name: 'shared-shell-runtime',
-              test: /(?:core-helpers|facet-helpers|head-to-head-context|season-mode)\.(?:js|ts)$|(?:section-disclosure|table-registry)\.ts$/,
+              test: /(?:core-helpers|facet-helpers|head-to-head-context|season-mode)\.(?:js|ts)$|(?:section-disclosure|table-registry)\.ts$|js\/shared\/simulation-math\.js$/,
               minSize: 0,
             },
             {

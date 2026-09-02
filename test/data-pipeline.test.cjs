@@ -206,6 +206,10 @@ test('semantic validation accepts the canonical bundle and reports stable rule I
       mutate: lore => { lore.draft_locations[1].season_start = lore.draft_locations[0].season_end; },
     },
     {
+      ruleId: 'LORE_DRAFT_LOCATION_ORDER',
+      mutate: lore => { [lore.draft_locations[0], lore.draft_locations[1]] = [lore.draft_locations[1], lore.draft_locations[0]]; },
+    },
+    {
       ruleId: 'LORE_DUPLICATE_ID',
       mutate: lore => { lore.draft_locations[0].id = lore.entries[0].id; },
     },

@@ -27,7 +27,10 @@ test.describe('Draft Journey', () => {
     await expect(page.locator('#draftJourneyDisclosure')).toBeVisible();
     await page.locator('#draftJourneyDisclosure summary').click();
     const skipTour = page.getByRole('button', { name: 'Skip tour' });
+    const replayTour = page.getByRole('button', { name: 'Replay tour' });
+    await expect.poll(async () => (await skipTour.isVisible()) || (await replayTour.isVisible())).toBe(true);
     if (await skipTour.isVisible()) await skipTour.click();
+    await expect(replayTour).toBeVisible();
   });
 
   test('renders all five eras and synchronizes select, URL, and detail', async ({ page }) => {
@@ -62,11 +65,18 @@ test.describe('Draft Journey', () => {
     await expect(card).toContainText('Stop 1 of 4');
     await expect(card).toContainText('Bethany Beach');
     await expect(card).toContainText('2017 · Joel');
+    await expect(card).toContainText('The Almanac remembers the 2017 draft competition and its two-defense choice.');
     await expect(card).toContainText('From the lore:');
     await page.getByRole('button', { name: 'Skip tour' }).click();
     await expect(replay).toBeVisible();
     await replay.click();
     await expect(card).toContainText('Stop 1 of 4');
+    await page.getByRole('button', { name: 'Next stop' }).click();
+    await expect(card).toContainText('The draft moved to College Park at University of Maryland Stadium.');
+    await page.getByRole('button', { name: 'Next stop' }).click();
+    await expect(card).toContainText('Rishi was deadly in the order-setting competition.');
+    await page.getByRole('button', { name: 'Next stop' }).click();
+    await expect(card).toContainText('The 2026 draft season begins a Vienna, Virginia era.');
     await page.locator('[data-draft-location-marker="vienna-virginia"]').click();
     await expect(page).toHaveURL(/draftLocation=vienna-virginia/);
     await expect(card).toHaveCount(0);
@@ -112,15 +122,15 @@ test.describe('Draft Journey', () => {
       const alignment = await page.evaluate(id => {
         const markerNode = document.querySelector(`[data-draft-location-marker="${id}"]`);
         const marker = markerNode?.getBoundingClientRect();
-        const pseudoTransform = markerNode ? getComputedStyle(markerNode, '::before').transform : 'none';
-        const translation = pseudoTransform.match(/^matrix\([^,]+,[^,]+,[^,]+,[^,]+,([^,]+),([^\)]+)\)$/);
-        const circles = [...document.querySelectorAll('.draft-journey-map-stage circle')];
-        const circle = circles[['bethany-beach', 'college-park', 'washington-dc', 'vienna-virginia'].indexOf(id)]?.getBoundingClientRect();
+        const pseudoBackground = markerNode ? getComputedStyle(markerNode, '::before').backgroundColor : '';
         const mapBox = document.querySelector('.draft-journey-map')?.getBoundingClientRect();
-        return { marker, circle, map: mapBox, translation: translation ? { x: Number(translation[1]), y: Number(translation[2]) } : { x: 0, y: 0 } };
+        return { marker, map: mapBox, pseudoBackground, tourStop: markerNode?.classList.contains('is-tour-stop') };
       }, locationId);
-      expect(alignment.marker && alignment.circle).not.toBeFalsy();
-      expect(Math.abs((alignment.marker.left + alignment.marker.width / 2 + alignment.translation.x) - (alignment.circle.left + alignment.circle.width / 2))).toBeLessThan(1);
+      expect(alignment.marker).toBeTruthy();
+      expect(alignment.marker.width).toBe(44);
+      expect(alignment.marker.height).toBe(44);
+      expect(alignment.tourStop).toBe(true);
+      expect(alignment.pseudoBackground).not.toBe('transparent');
       expect(alignment.marker.left).toBeGreaterThanOrEqual(alignment.map.left);
       expect(alignment.marker.right).toBeLessThanOrEqual(alignment.map.right);
       if (index === 3) {
@@ -154,7 +164,7 @@ test.describe('Draft Journey', () => {
     const map = page.locator('.draft-journey-map');
     const markers = page.locator('[data-draft-location-marker]');
     await expect(markers).toHaveCount(4);
-    expect(await markers.evaluateAll(nodes => nodes.every(node => node.getAttribute('title')?.includes('·')))).toBe(true);
+    expect(await markers.evaluateAll(nodes => nodes.every(node => node.getAttribute('aria-label')?.includes('·')))).toBe(true);
     const markerSizes = await markers.evaluateAll(nodes => nodes.map(node => {
       const box = node.getBoundingClientRect();
       return { width: box.width, height: box.height };

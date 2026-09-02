@@ -46,9 +46,16 @@ test('League Lore preserves the supplied year and sensitivity corrections', () =
 test('Draft Journey covers every season exactly once with reviewed eras', () => {
   const locations = lore.draft_locations;
   assert.deepEqual(locations.map(location => location.id), ['remote-virtual', 'bethany-beach', 'college-park', 'washington-dc', 'vienna-virginia']);
+  assert.deepEqual(locations.filter(location => location.enabled), [...locations].sort((a, b) => a.season_start - b.season_start || a.season_end - b.season_end || a.id.localeCompare(b.id)));
   assert.deepEqual(locations.map(location => [location.season_start, location.season_end]), [[2014, 2016], [2017, 2022], [2023, 2024], [2025, 2025], [2026, 2026]]);
   assert.deepEqual(locations.find(location => location.id === 'vienna-virginia').coordinates, { latitude: 38.898576, longitude: -77.258323 });
   assert.equal(locations.find(location => location.id === 'vienna-virginia').coordinate_precision, 'municipality');
+  assert.deepEqual(locations.filter(location => location.location_type === 'physical').map(location => byId.get(location.entry_id).teaser), [
+    'The Almanac remembers the 2017 draft competition and its two-defense choice.',
+    'The draft moved to College Park at University of Maryland Stadium.',
+    'Rishi was deadly in the order-setting competition.',
+    'The 2026 draft season begins a Vienna, Virginia era.',
+  ]);
   assert.deepEqual(locations.map(location => location.entry_id), [
     'draft-location-remote-virtual', 'draft-location-bethany-beach', 'draft-location-college-park', 'draft-location-washington-dc', 'draft-location-vienna-virginia',
   ]);
@@ -69,6 +76,8 @@ test('Draft Journey covers every season exactly once with reviewed eras', () => 
   }
   assert.match(byId.get('draft-location-vienna-virginia').body.join(' '), /approximate municipality reference point/);
   assert.match(byId.get('draft-location-vienna-virginia').provenance, /2024 U\.S\. Census Gazetteer/);
+  assert.match(byId.get('draft-location-bethany-beach').provenance, /tour teaser mirrors/);
+  assert.match(byId.get('draft-location-washington-dc').provenance, /tour teaser mirrors/);
 });
 
 test('disabled lore root suppresses every optional lore surface', async () => {

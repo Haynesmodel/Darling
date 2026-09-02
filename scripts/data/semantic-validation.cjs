@@ -649,6 +649,9 @@ function validateSemanticBundle(bundle, opts = {}) {
     };
     const reportReference = (kind, location, key, message) => report(kind, location, key, message);
     const sortedLocations = draftLocations.filter(location => location.enabled).slice().sort((a, b) => a.season_start - b.season_start || a.season_end - b.season_end || a.id.localeCompare(b.id));
+    draftLocations.filter(location => location.enabled).forEach((location, index) => {
+      if (location !== sortedLocations[index]) reportReference('LORE_DRAFT_LOCATION_ORDER', 'assets/LeagueLore.json', location.id, 'enabled draft locations must be authored in chronological order');
+    });
     draftLocations.forEach(location => {
       if (location.season_end < location.season_start) reportReference('LORE_DRAFT_LOCATION_YEAR_ORDER', 'assets/LeagueLore.json', location.id, 'draft location ends before it starts');
       const physical = location.location_type === 'physical';

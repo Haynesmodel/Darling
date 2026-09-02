@@ -245,9 +245,8 @@ function createPropertyCompactionPlugin() {
 }
 
 export default defineConfig({
-  // Keep Preact core, hooks, and the dev refresh runtime on one module
-  // instance during same-page route re-entry. This prevents stale refresh
-  // callbacks from invoking hooks outside their component render lifecycle.
+  // Keep Preact core and hooks on one module instance during same-page route
+  // re-entry, avoiding duplicate hook dispatchers across the app shell.
   resolve: { dedupe: ['preact'] },
   plugins: [
     ...(collectCoverage ? [createCoveragePlugin()] : []),

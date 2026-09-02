@@ -6,7 +6,7 @@ The source policy distinguishes the fantasy `season` from `occurred_year`, `comp
 
 `draft_locations` is an optional, validated location-history array. Each enabled row owns an inclusive season range, location type, coordinates (or `null` for the virtual era), precision (`municipality` or `venue`), and a normal lore-entry reference. Draft Journey renders these rows from the verified snapshot; missing, disabled, or invalid optional lore suppresses the journey without affecting Draft Spot statistics. Municipality coordinates are approximate reference points and do not imply an exact venue; the Vienna point is the 2024 U.S. Census Gazetteer internal point for the town.
 
-The first time an open Draft Journey is entered, its short guided tour visits physical rows in chronological order. Tour champion labels are derived from `SeasonSummary.json`, while the history moment is taken from the matching `draft-location-*` lore entry teaser. A season without a completed champion is shown as pending; skip and replay are always available, and direct map interaction ends the tour.
+The first time an open Draft Journey is entered, its short guided tour visits physical rows in chronological order. Tour champion labels are derived from `SeasonSummary.json`, while the history moment is taken from the matching `draft-location-*` lore entry teaser. A season without a completed champion is shown as pending; Skip is available during the tour, Replay appears after completion or interruption, and direct map interaction ends the tour.
 
 ## Authoring and validation
 

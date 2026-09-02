@@ -39,6 +39,46 @@ test.describe('Draft Journey', () => {
     await expect(page.locator('.draft-journey-details')).toContainText('University of Maryland Stadium');
   });
 
+  test('geographic markers are direct keyboard targets and map zoom preserves the projected stage', async ({ page }) => {
+    const map = page.locator('.draft-journey-map');
+    const markers = page.locator('[data-draft-location-marker]');
+    await expect(markers).toHaveCount(3);
+    expect(await markers.evaluateAll(nodes => nodes.every(node => node.getAttribute('title')?.includes('·')))).toBe(true);
+    const markerSizes = await markers.evaluateAll(nodes => nodes.map(node => {
+      const box = node.getBoundingClientRect();
+      return { width: box.width, height: box.height };
+    }));
+    expect(markerSizes.every(box => box.width >= 44 && box.height >= 44)).toBe(true);
+
+    const collegeMarker = page.locator('[data-draft-location-marker="college-park"]');
+    await collegeMarker.focus();
+    await collegeMarker.press('Enter');
+    await expect(page).toHaveURL(/draftLocation=college-park/);
+    await expect(collegeMarker).toHaveAttribute('aria-pressed', 'true');
+
+    const stage = page.locator('.draft-journey-map-stage');
+    await expect(stage).toHaveAttribute('style', /scale\(1\)/);
+    await page.getByRole('button', { name: 'Zoom in' }).click();
+    await expect(stage).toHaveAttribute('style', /scale\(1\.2\)/);
+    await expect(map.locator('.draft-journey-map-tools > span')).toHaveText('120%');
+    await page.getByRole('button', { name: 'Reset map zoom' }).click();
+    await expect(stage).toHaveAttribute('style', /scale\(1\)/);
+    await expect(page.getByRole('button', { name: 'Reset map zoom' })).toBeDisabled();
+
+    await page.setViewportSize({ width: 320, height: 900 });
+    const bounds = await page.evaluate(() => {
+      const mapNode = document.querySelector('.draft-journey-map');
+      const mapBox = mapNode?.getBoundingClientRect();
+      const targets = [...document.querySelectorAll('[data-draft-location-marker]')].map(node => {
+        const box = node.getBoundingClientRect();
+        return { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height };
+      });
+      return mapBox && { map: { left: mapBox.left, right: mapBox.right, top: mapBox.top, bottom: mapBox.bottom }, targets };
+    });
+    expect(bounds).not.toBeNull();
+    expect(bounds.targets.every(target => target.width >= 44 && target.height >= 44 && target.left >= bounds.map.left && target.right <= bounds.map.right && target.top >= bounds.map.top && target.bottom <= bounds.map.bottom)).toBe(true);
+  });
+
   test('invalid direct location is removed and optional lore suppression preserves Draft Spot', async ({ page }) => {
     await page.goto('/?tab=draft&draftStart=2017&draftLocation=unknown');
     await page.waitForLoadState('networkidle');

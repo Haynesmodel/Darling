@@ -7,6 +7,7 @@ import { fetchVerifiedJson, versionedAssetUrl } from '../../data/verified-json-f
 
 const assetCache = new Map<string, Promise<DraftSpot>>();
 let activeMount: HTMLElement | null = null;
+let activeMountId = 0;
 
 function fetchDraftSpot(options: Pick<DraftSpotMountOptions, 'assetPath' | 'assetSha256' | 'assetBytes' | 'sourceHash' | 'dataVersion'>): Promise<DraftSpot> {
   const basePath = new URL('.', document.baseURI).pathname;
@@ -47,19 +48,18 @@ function renderStatus(mount: HTMLElement, kind: 'loading' | 'error' | 'empty', m
 }
 
 export async function mountDraftSpot(options: DraftSpotMountOptions): Promise<void> {
+  const mountId = ++activeMountId;
   activeMount = options.mount;
   renderStatus(options.mount, 'loading', 'Loading Draft Spot data…');
   try {
     const asset = await fetchDraftSpot(options);
-    if (activeMount !== options.mount) return;
+    if (activeMount !== options.mount || mountId !== activeMountId) return;
     if (!asset.rows.length) {
       renderStatus(options.mount, 'empty', 'Draft Spot is unavailable because no seasons contain draft-pick data.');
       return;
     }
-    const stateKey = JSON.stringify(options.state || {});
     render(
       h(DraftSpotPage, {
-        key: stateKey,
         asset,
         requestedState: options.state,
         dataVersion: options.dataVersion,
@@ -72,12 +72,13 @@ export async function mountDraftSpot(options: DraftSpotMountOptions): Promise<vo
       options.mount,
     );
   } catch (error) {
-    if (activeMount !== options.mount) return;
+    if (activeMount !== options.mount || mountId !== activeMountId) return;
     renderStatus(options.mount, 'error', `Draft Spot is unavailable: ${(error as Error).message}`);
   }
 }
 
 export function unmountDraftSpot(): void {
+  activeMountId += 1;
   if (activeMount) render(null, activeMount);
   activeMount = null;
 }

@@ -181,7 +181,9 @@ export default function DraftSpotPage({
   tourFacts = [],
 }: Props) {
   const initial = useMemo(() => buildDraftSpotModel(asset, requestedState, {}, locations), [asset, requestedState, locations]);
+  const requestedStateSignature = JSON.stringify(requestedState || {});
   const [state, setState] = useState(initial.state);
+  useEffect(() => setState(initial.state), [initial.state, requestedStateSignature]);
   const model = useMemo(() => buildDraftSpotModel(asset, state, state, locations), [asset, state, locations]);
   const disclosure = useRef<SectionDisclosureController | null>(null);
   const disclosureNav = useRef<HTMLDivElement>(null);
@@ -192,6 +194,7 @@ export default function DraftSpotPage({
   const selectionDisclosure = useRef<HTMLDetailsElement>(null);
   const ledgerDisclosure = useRef<HTMLDetailsElement>(null);
   const journeyDisclosure = useRef<HTMLDetailsElement>(null);
+  const journeyWasOpen = journeyDisclosure.current?.open === true;
   const disclosureSignature = [
     model.state.mode,
     model.state.owner,
@@ -256,7 +259,7 @@ export default function DraftSpotPage({
       sections: definitions.flatMap(definition => definition.details ? [{
         ...definition,
         details: definition.details,
-        defaultOpen: defaults.has(definition.id),
+        defaultOpen: defaults.has(definition.id) || (definition.id === 'draft-journey' && journeyWasOpen),
       }] : []),
     });
   }, [disclosureSignature, model.pickSummary.length, model.zoneSummary.length, model.ownerRecommendations.length, model.baseRows.length, model.rows.length, model.selectedPickSummary, model.selectedZoneSummary, model.ownerProfile, locations.length]);

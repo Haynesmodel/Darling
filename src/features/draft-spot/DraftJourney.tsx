@@ -12,8 +12,8 @@ interface Props {
 
 export interface DraftJourneyTourFact {
   locationId: string;
-  champions: string[];
-  moments: string[];
+  champions: string;
+  moment: string;
 }
 
 const COMPACT_LAYOUT_WIDTH = 254;
@@ -26,38 +26,26 @@ const JOURNEY_ZOOM_STEP = 0.2;
 const basemapUrl = `${import.meta.env.BASE_URL}assets/draft-journey-basemap.svg`;
 
 function useCompactJourneyLayout(): boolean {
-  const query = '(max-width: 760px)';
-  const readMatches = () => typeof window !== 'undefined' && (window.matchMedia?.(query).matches ?? window.innerWidth <= 760);
+  const readMatches = () => typeof window !== 'undefined' && window.innerWidth <= 760;
   const [compact, setCompact] = useState(readMatches);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
-    const media = window.matchMedia?.(query);
-    if (!media) {
-      const update = () => setCompact(window.innerWidth <= 760);
-      window.addEventListener('resize', update);
-      update();
-      return () => window.removeEventListener('resize', update);
-    }
-    const update = () => setCompact(media.matches);
+    const update = () => setCompact(window.innerWidth <= 760);
     update();
-    if (media.addEventListener) media.addEventListener('change', update);
-    else media.addListener(update);
-    return () => {
-      if (media.removeEventListener) media.removeEventListener('change', update);
-      else media.removeListener(update);
-    };
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
   }, []);
 
   return compact;
 }
 
-type TourState = 'idle' | 'running' | 'finishing' | 'done' | 'skipped';
+type TourState = 'idle' | 'running' | 'done' | 'skipped';
 
 export default function DraftJourney({ locations, selectedLocation, onSelect, onReveal, tourFacts = [] }: Props) {
   const sorted = useMemo(() => enabledDraftLocations(locations), [locations]);
   const points = useMemo(() => projectDraftLocations(sorted), [sorted]);
-  const physical = useMemo(() => sorted.filter(location => location.location_type === 'physical' && location.coordinates), [sorted]);
+  const physical = useMemo(() => points.map(point => point.location), [points]);
   const compact = useCompactJourneyLayout();
   const journeyRoot = useRef<HTMLElement>(null);
   const [journeyVisible, setJourneyVisible] = useState(false);
@@ -67,12 +55,7 @@ export default function DraftJourney({ locations, selectedLocation, onSelect, on
     const sync = () => setJourneyVisible(details.open);
     sync();
     details.addEventListener('toggle', sync);
-    const observer = new MutationObserver(sync);
-    observer.observe(details, { attributes: true, attributeFilter: ['open'] });
-    return () => {
-      details.removeEventListener('toggle', sync);
-      observer.disconnect();
-    };
+    return () => details.removeEventListener('toggle', sync);
   }, []);
   const layoutWidth = compact ? COMPACT_LAYOUT_WIDTH : WIDE_LAYOUT_WIDTH;
   const callouts = useMemo(() => layoutDraftCallouts(sorted, layoutWidth, JOURNEY_LAYOUT_HEIGHT, JOURNEY_CALLOUT_HEIGHT), [layoutWidth, sorted]);
@@ -93,7 +76,7 @@ export default function DraftJourney({ locations, selectedLocation, onSelect, on
     setZoom(1.35);
   };
   const interruptTour = () => {
-    if (tourState === 'running' || tourState === 'finishing') {
+    if (tourState === 'running') {
       setTourState('skipped');
       setTourIndex(physical.length);
       setZoom(MIN_JOURNEY_ZOOM);
@@ -106,15 +89,11 @@ export default function DraftJourney({ locations, selectedLocation, onSelect, on
     startTour();
   }, [journeyVisible, physical.length, selectedLocation, tourState]);
   useEffect(() => {
-    if (tourState === 'finishing') {
-      const finish = window.setTimeout(() => setTourState('done'), 420);
-      return () => window.clearTimeout(finish);
-    }
     if (tourState !== 'running') return undefined;
     if (tourIndex >= physical.length) {
       setZoom(MIN_JOURNEY_ZOOM);
-      setTourState('finishing');
-      return undefined;
+      const finish = window.setTimeout(() => setTourState('done'), 420);
+      return () => window.clearTimeout(finish);
     }
     const timer = window.setTimeout(() => setTourIndex(index => index + 1), 3200);
     return () => window.clearTimeout(timer);
@@ -145,16 +124,15 @@ export default function DraftJourney({ locations, selectedLocation, onSelect, on
               <button type="button" class="draft-journey-map-reset" aria-label="Reset map zoom" onClick={() => { interruptTour(); setZoom(MIN_JOURNEY_ZOOM); }} disabled={zoom === MIN_JOURNEY_ZOOM}>Reset</button>
             </div>
           </div>
-          <p class="draft-journey-map-help visually-hidden">Select a marker or label to filter the journey. Municipality positions are approximate.</p>
           {tourState === 'running' && tourFact && physical[tourIndex] && <aside class="draft-journey-tour-card" aria-live="polite" role="status">
             <p class="draft-journey-tour-kicker">Draft Journey tour · Stop {tourIndex + 1} of {physical.length}</p>
             <h4>{physical[tourIndex].label}</h4>
             <p><strong>{formatDraftLocationYears(physical[tourIndex])}</strong></p>
-            <p><strong>Champion{tourFact.champions.length > 1 ? 's' : ''}:</strong> {tourFact.champions.length ? tourFact.champions.join(' · ') : 'TBD — the 2026 season is not complete.'}</p>
-            {tourFact.moments.slice(0, 1).map(moment => <p class="draft-journey-tour-moment" key={moment}><strong>From the lore:</strong> {moment}</p>)}
-            <div class="draft-journey-tour-actions"><button type="button" class="draft-journey-tour-next" onClick={() => tourState === 'running' && setTourIndex(index => index + 1)}>{tourIndex === physical.length - 1 ? 'Finish tour' : 'Next stop'}</button><button type="button" class="draft-journey-tour-skip" onClick={interruptTour}>Skip tour</button></div>
+            <p><strong>Champions:</strong> {tourFact.champions || 'TBD — the 2026 season is not complete.'}</p>
+            {tourFact.moment && <p class="draft-journey-tour-moment"><strong>From the lore:</strong> {tourFact.moment}</p>}
+            <div class="draft-journey-tour-actions"><button type="button" class="draft-journey-tour-next" onClick={() => setTourIndex(index => index + 1)}>{tourIndex === physical.length - 1 ? 'Finish tour' : 'Next stop'}</button><button type="button" class="draft-journey-tour-skip" onClick={interruptTour}>Skip tour</button></div>
           </aside>}
-          {tourState !== 'idle' && tourState !== 'running' && tourState !== 'finishing' && <button type="button" class="draft-journey-tour-replay" onClick={startTour}>Replay tour</button>}
+          {(tourState === 'done' || tourState === 'skipped') && <button type="button" class="draft-journey-tour-replay" onClick={startTour}>Replay tour</button>}
           <div class="draft-journey-map-viewport">
             <div class="draft-journey-map-stage" style={{ transform: `translate(${stagePanX}%,${stagePanY}%) scale(${zoom})` }}>
               <img class="draft-journey-basemap" src={basemapUrl} alt="" aria-hidden="true" />

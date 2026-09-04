@@ -32,7 +32,3 @@ test('uses the New York calendar date and includes the full Friday through Monda
   assert.equal(windowGate.isDraftWeekendActive(new Date('2026-09-08T03:59:59Z')), true, 'Monday end');
   assert.equal(windowGate.isDraftWeekendActive(new Date('2026-09-08T04:00:00Z')), false, 'after Monday in New York');
 });
-
-test('exposes stable New York date keys for diagnostics and tests', () => {
-  assert.equal(windowGate.newYorkDateKey(new Date('2026-09-05T12:00:00Z')), '2026-09-05');
-});

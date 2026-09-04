@@ -45,8 +45,8 @@
 .draft-weekend-honor-blue{border-color:color-mix(in srgb, var(--status-info-border) 42%, transparent)}
 .draft-weekend-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:26px;padding-top:20px;border-top:1px solid color-mix(in srgb, var(--hero-text) 16%, transparent)}
 .draft-weekend-footer p{margin:0;color:var(--hero-text);font-size:14px;line-height:1.45}
-.draft-weekend-dismiss{min-height:44px;padding:10px 16px;border:1px solid var(--status-champ);border-radius:var(--radius-pill);color:var(--text-primary);background:var(--status-champ);font-weight:800;white-space:nowrap;cursor:pointer}
-.draft-weekend-dismiss:hover{background:color-mix(in srgb, var(--status-champ) 80%, var(--hero-text))}
+.draft-weekend-dismiss{min-height:44px;padding:10px 16px;border:1px solid var(--text-primary);border-radius:var(--radius-pill);color:var(--surface-panel);background:var(--text-primary);font-weight:800;white-space:nowrap;cursor:pointer}
+.draft-weekend-dismiss:hover{background:color-mix(in srgb, var(--text-primary) 80%, var(--surface-panel))}
 .draft-weekend-dismiss span{margin-inline-start:6px;font-size:18px}
 .draft-weekend-ball{position:absolute;z-index:0;font-size:clamp(34px,5vw,64px);filter:drop-shadow(0 10px 12px color-mix(in srgb, var(--table-header) 25%, transparent));pointer-events:none}
 .draft-weekend-ball-one{inset-block-start:10%;inset-inline-end:4%;animation:draft-weekend-ball-flight 9s ease-in-out infinite}

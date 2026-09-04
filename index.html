@@ -402,6 +402,8 @@
     (() => {
       const welcome = document.querySelector('[data-draft-weekend-welcome]');
       if (!welcome) return;
+      const tab = new URLSearchParams(window.location.search).get('tab');
+      if (tab && tab !== 'pulse') { welcome.hidden = true; return; }
       const dismiss = document.querySelector('[data-draft-weekend-dismiss]');
       const storageKey = 'darling.draft-weekend-welcome.dismissed.2026';
       const dateFormatter = new Intl.DateTimeFormat('en-CA', {

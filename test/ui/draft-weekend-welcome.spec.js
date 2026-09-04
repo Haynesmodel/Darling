@@ -1,4 +1,5 @@
 import { expect, test } from './coverage-fixture.js';
+import { expectNoViolations } from './accessibility-helpers.js';
 
 test.describe('Draft Weekend welcome', () => {
   test.beforeEach(async ({ page }) => {
@@ -11,6 +12,7 @@ test.describe('Draft Weekend welcome', () => {
     for (const name of ['Reigning Champ: Zook', 'Reigning Saunders: Connor', 'VPC: Shap', 'Commish: Plotnick']) {
       await expect(page.getByRole('article', { name })).toBeVisible();
     }
+    await expectNoViolations(page, '[data-draft-weekend-welcome]');
     await page.getByRole('button', { name: /Enter the league/ }).click();
     await expect(page.locator('[data-draft-weekend-welcome]')).toBeHidden();
     await expect(page.locator('#mainContent')).toBeFocused();
@@ -41,5 +43,12 @@ test.describe('Draft Weekend welcome', () => {
     await page.clock.setFixedTime(new Date('2026-09-08T04:00:00Z'));
     await page.reload();
     await expect(page.locator('[data-draft-weekend-welcome]')).toBeHidden();
+  });
+
+  test('stays hidden on deep-linked feature routes while the Draft chart loads', async ({ page }) => {
+    await page.goto('/?tab=draft');
+    await expect(page.locator('[data-draft-weekend-welcome]')).toBeHidden();
+    await expect(page.locator('#page-draft')).toHaveAttribute('data-feature-state', 'ready');
+    await expect(page.locator('.draft-pick-chart')).toHaveAttribute('data-chart-state', 'ready');
   });
 });

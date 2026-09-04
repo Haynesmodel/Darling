@@ -8,7 +8,7 @@ const indexHtml = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8')
 const gateScript = indexHtml.match(/<script>\s*((?:(?!<\/script>)[\s\S])*data-draft-weekend-dismiss[\s\S]*?)<\/script>/)?.[1];
 assert.ok(gateScript, 'the shell date gate script should be present');
 
-function runGate(iso, { dismissed = false } = {}) {
+function runGate(iso, { dismissed = false, search = '' } = {}) {
   const welcome = { hidden: true };
   const dismiss = { addEventListener(type, handler) { if (type === 'click') this.click = handler; } };
   const mainContent = { focused: false, focus() { this.focused = true; } };
@@ -31,6 +31,7 @@ function runGate(iso, { dismissed = false } = {}) {
   vm.runInNewContext(gateScript, {
     Date: FixedDate,
     Intl,
+    URLSearchParams,
     document,
     window: {
       localStorage: {
@@ -38,6 +39,7 @@ function runGate(iso, { dismissed = false } = {}) {
         setItem(key, value) { store.set(key, value); },
       },
       setInterval() {},
+      location: { search },
     },
   });
   return { welcome, dismiss, mainContent, store };
@@ -48,6 +50,7 @@ test('the production shell gate uses the New York calendar and the full weekend 
   assert.equal(runGate('2026-09-04T04:00:00Z').welcome.hidden, false, 'Friday start');
   assert.equal(runGate('2026-09-08T03:59:59Z').welcome.hidden, false, 'Monday end');
   assert.equal(runGate('2026-09-08T04:00:00Z').welcome.hidden, true, 'after Monday in New York');
+  assert.equal(runGate('2026-09-04T12:00:00Z', { search: '?tab=draft' }).welcome.hidden, true, 'deep-linked feature route');
 });
 
 test('the production shell gate persists dismissal and returns focus to the app', () => {

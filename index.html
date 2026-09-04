@@ -402,8 +402,7 @@
     (() => {
       const welcome = document.querySelector('[data-draft-weekend-welcome]');
       if (!welcome) return;
-      const tab = new URLSearchParams(window.location.search).get('tab');
-      if (tab && tab !== 'pulse') { welcome.hidden = true; return; }
+      const featureQueryKeys = new Set(['owner', 'team', 'seasons', 'weeks', 'opps', 'types', 'rounds', 'focus', 'rivalryTeamA', 'rivalryTeamB', 'currentOwner', 'trophyOwner', 'dynastyOwner', 'ga']);
       const dismiss = document.querySelector('[data-draft-weekend-dismiss]');
       const storageKey = 'darling.draft-weekend-welcome.dismissed.2026';
       const dateFormatter = new Intl.DateTimeFormat('en-CA', {
@@ -413,7 +412,8 @@
       try { dismissed = window.localStorage.getItem(storageKey) === 'true'; } catch { /* Storage is optional. */ }
       const sync = () => {
         const params = [...new URLSearchParams(window.location.search)];
-        const homeRoute = params.every(([key, value]) => key === 'tab' && value === 'pulse');
+        const tab = new URLSearchParams(window.location.search).get('tab');
+        const homeRoute = tab === 'pulse' || (!tab && !params.some(([key]) => featureQueryKeys.has(key) || key.startsWith('tx') || key.startsWith('current') || key.startsWith('dynasty') || key.startsWith('draft') || key.startsWith('ga') || key.startsWith('game')));
         const parts = Object.fromEntries(dateFormatter.formatToParts(new Date()).map(({ type, value }) => [type, value]));
         const dateKey = Number(parts.year) * 10000 + Number(parts.month) * 100 + Number(parts.day);
         welcome.hidden = !homeRoute || dismissed || dateKey < 20260904 || dateKey >= 20260908;

@@ -54,6 +54,10 @@ test('the production shell gate uses the New York calendar and the full weekend 
   assert.equal(runGate('2026-09-08T04:00:00Z').welcome.hidden, true, 'after Monday in New York');
   assert.equal(runGate('2026-09-04T12:00:00Z', { search: '?tab=draft' }).welcome.hidden, true, 'deep-linked feature route');
   assert.equal(runGate('2026-09-04T12:00:00Z', { search: '?draftMetric=playoffRate' }).welcome.hidden, true, 'legacy deep-linked feature route');
+  assert.equal(runGate('2026-09-04T12:00:00Z', { search: '?txView=trades' }).welcome.hidden, true, 'legacy transactions route');
+  assert.equal(runGate('2026-09-04T12:00:00Z', { search: '?currentSeason=2025' }).welcome.hidden, true, 'legacy current-season route');
+  assert.equal(runGate('2026-09-04T12:00:00Z', { search: '?dynastyMode=windows' }).welcome.hidden, true, 'legacy dynasty route');
+  assert.equal(runGate('2026-09-04T12:00:00Z', { search: '?tab=pulse&draftMetric=playoffRate' }).welcome.hidden, false, 'explicit home route');
 });
 
 test('the production shell gate persists dismissal and returns focus to the app', () => {

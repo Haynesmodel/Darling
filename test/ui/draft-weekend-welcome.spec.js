@@ -61,5 +61,12 @@ test.describe('Draft Weekend welcome', () => {
     await expect(page.locator('.draft-pick-chart')).toHaveAttribute('data-chart-state', 'ready');
     await page.goto('/?draftMetric=playoffRate');
     await expect(page.locator('[data-draft-weekend-welcome]')).toBeHidden();
+    await page.goto('/?tab=draft');
+    await expect(page.locator('[data-draft-weekend-welcome]')).toBeHidden();
+    await page.evaluate(() => {
+      history.pushState({}, '', '/');
+      window.dispatchEvent(new CustomEvent('darling:route-update'));
+    });
+    await expect(page.getByRole('heading', { name: 'Welcome to Draft Weekend, 2026' })).toBeVisible();
   });
 });

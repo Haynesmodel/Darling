@@ -51,4 +51,15 @@ test.describe('Draft Weekend welcome', () => {
     await expect(page.locator('#page-draft')).toHaveAttribute('data-feature-state', 'ready');
     await expect(page.locator('.draft-pick-chart')).toHaveAttribute('data-chart-state', 'ready');
   });
+
+  test('hides when SPA navigation leaves the homepage before Draft chart loading', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'Welcome to Draft Weekend, 2026' })).toBeVisible();
+    await page.getByText('Tools', { exact: true }).click();
+    await page.locator('#primaryNavigation #tabDraftBtn').click();
+    await expect(page.locator('[data-draft-weekend-welcome]')).toBeHidden();
+    await expect(page.locator('.draft-pick-chart')).toHaveAttribute('data-chart-state', 'ready');
+    await page.goto('/?draftMetric=playoffRate');
+    await expect(page.locator('[data-draft-weekend-welcome]')).toBeHidden();
+  });
 });

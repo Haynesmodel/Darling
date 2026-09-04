@@ -12,6 +12,7 @@ function runGate(iso, { dismissed = false, search = '' } = {}) {
   const welcome = { hidden: true };
   const dismiss = { addEventListener(type, handler) { if (type === 'click') this.click = handler; } };
   const mainContent = { focused: false, focus() { this.focused = true; } };
+  const listeners = {};
   const store = new Map(dismissed ? [['darling.draft-weekend-welcome.dismissed.2026', 'true']] : []);
   const document = {
     querySelector(selector) {
@@ -39,10 +40,11 @@ function runGate(iso, { dismissed = false, search = '' } = {}) {
         setItem(key, value) { store.set(key, value); },
       },
       setInterval() {},
+      addEventListener(type, handler) { listeners[type] = handler; },
       location: { search },
     },
   });
-  return { welcome, dismiss, mainContent, store };
+  return { welcome, dismiss, mainContent, store, listeners };
 }
 
 test('the production shell gate uses the New York calendar and the full weekend window', () => {
@@ -51,6 +53,7 @@ test('the production shell gate uses the New York calendar and the full weekend 
   assert.equal(runGate('2026-09-08T03:59:59Z').welcome.hidden, false, 'Monday end');
   assert.equal(runGate('2026-09-08T04:00:00Z').welcome.hidden, true, 'after Monday in New York');
   assert.equal(runGate('2026-09-04T12:00:00Z', { search: '?tab=draft' }).welcome.hidden, true, 'deep-linked feature route');
+  assert.equal(runGate('2026-09-04T12:00:00Z', { search: '?draftMetric=playoffRate' }).welcome.hidden, true, 'legacy deep-linked feature route');
 });
 
 test('the production shell gate persists dismissal and returns focus to the app', () => {

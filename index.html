@@ -412,10 +412,13 @@
       let dismissed = false;
       try { dismissed = window.localStorage.getItem(storageKey) === 'true'; } catch { /* Storage is optional. */ }
       const sync = () => {
+        const params = [...new URLSearchParams(window.location.search)];
+        const homeRoute = params.every(([key, value]) => key === 'tab' && value === 'pulse');
         const parts = Object.fromEntries(dateFormatter.formatToParts(new Date()).map(({ type, value }) => [type, value]));
         const dateKey = Number(parts.year) * 10000 + Number(parts.month) * 100 + Number(parts.day);
-        welcome.hidden = dismissed || dateKey < 20260904 || dateKey >= 20260908;
+        welcome.hidden = !homeRoute || dismissed || dateKey < 20260904 || dateKey >= 20260908;
       };
+      window.addEventListener('darling:route-update', sync);
       dismiss?.addEventListener('click', () => {
         dismissed = true;
         sync();

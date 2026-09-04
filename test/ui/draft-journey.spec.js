@@ -165,11 +165,28 @@ test.describe('Draft Journey', () => {
     const markers = page.locator('[data-draft-location-marker]');
     await expect(markers).toHaveCount(4);
     expect(await markers.evaluateAll(nodes => nodes.every(node => node.getAttribute('aria-label')?.includes('·')))).toBe(true);
+    expect(await markers.evaluateAll(nodes => nodes.every(node => getComputedStyle(node).display === 'none'))).toBe(true);
+
+    const stage = page.locator('.draft-journey-map-stage');
+    await page.getByRole('button', { name: 'Zoom in' }).click();
+    await expect(stage).toHaveAttribute('style', /scale\(1\.2\)/);
+    await expect(map.locator('.draft-journey-map-tools > span')).toHaveText('120%');
+    await expect(map.locator('.draft-journey-callout')).toHaveCount(0);
+    await expect(map.locator('.draft-journey-leader')).toHaveCount(0);
     const markerSizes = await markers.evaluateAll(nodes => nodes.map(node => {
       const box = node.getBoundingClientRect();
       return { width: box.width, height: box.height };
     }));
     expect(markerSizes.every(box => box.width >= 44 && box.height >= 44)).toBe(true);
+    const clusterLayout = await page.evaluate(() => {
+      const ids = ['college-park', 'washington-dc', 'vienna-virginia'];
+      const boxes = ids.map(id => document.querySelector(`[data-draft-location-marker="${id}"]`).getBoundingClientRect());
+      const overlaps = boxes.some((box, index) => boxes.slice(index + 1).some(other => box.left < other.right && box.right > other.left && box.top < other.bottom && box.bottom > other.top));
+      const connectors = ids.map(id => getComputedStyle(document.querySelector(`[data-draft-location-marker="${id}"]`), '::after').borderTopStyle);
+      return { overlaps, connectors };
+    });
+    expect(clusterLayout.overlaps).toBe(false);
+    expect(clusterLayout.connectors).toEqual(['dashed', 'dashed', 'dashed']);
 
     const collegeMarker = page.locator('[data-draft-location-marker="college-park"]');
     const markerSizeBeforeZoom = await collegeMarker.evaluate(node => {
@@ -181,13 +198,9 @@ test.describe('Draft Journey', () => {
     await expect(page).toHaveURL(/draftLocation=college-park/);
     await expect(collegeMarker).toHaveAttribute('aria-pressed', 'true');
 
-    const stage = page.locator('.draft-journey-map-stage');
-    await expect(stage).toHaveAttribute('style', /scale\(1\)/);
     await page.getByRole('button', { name: 'Zoom in' }).click();
-    await expect(stage).toHaveAttribute('style', /scale\(1\.2\)/);
-    await expect(map.locator('.draft-journey-map-tools > span')).toHaveText('120%');
-    await expect(map.locator('.draft-journey-callout')).toHaveCount(0);
-    await expect(map.locator('.draft-journey-leader')).toHaveCount(0);
+    await expect(stage).toHaveAttribute('style', /scale\(1\.4\)/);
+    await expect(map.locator('.draft-journey-map-tools > span')).toHaveText('140%');
     const markerSizeAfterZoom = await collegeMarker.evaluate(node => {
       const box = node.getBoundingClientRect();
       return { width: box.width, height: box.height };
@@ -207,8 +220,10 @@ test.describe('Draft Journey', () => {
     await page.getByRole('button', { name: 'Reset map zoom' }).click();
     await expect(stage).toHaveAttribute('style', /scale\(1\)/);
     await expect(page.getByRole('button', { name: 'Reset map zoom' })).toBeDisabled();
+    expect(await markers.evaluateAll(nodes => nodes.every(node => getComputedStyle(node).display === 'none'))).toBe(true);
 
     await page.setViewportSize({ width: 320, height: 900 });
+    await page.getByRole('button', { name: 'Zoom in' }).click();
     const bounds = await page.evaluate(() => {
       const mapNode = document.querySelector('.draft-journey-map');
       const mapBox = mapNode?.getBoundingClientRect();
@@ -216,11 +231,14 @@ test.describe('Draft Journey', () => {
         const box = node.getBoundingClientRect();
         return { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height };
       });
-      return mapBox && { map: { left: mapBox.left, right: mapBox.right, top: mapBox.top, bottom: mapBox.bottom }, targets };
+      const cluster = targets.slice(1);
+      const overlaps = cluster.some((box, index) => cluster.slice(index + 1).some(other => box.left < other.right && box.right > other.left && box.top < other.bottom && box.bottom > other.top));
+      return mapBox && { map: { left: mapBox.left, right: mapBox.right, top: mapBox.top, bottom: mapBox.bottom }, targets, overlaps };
     });
     expect(bounds).not.toBeNull();
     expect(bounds.targets.every(target => target.width >= 44 && target.height >= 44 && target.left >= bounds.map.left && target.right <= bounds.map.right && target.top >= bounds.map.top && target.bottom <= bounds.map.bottom)).toBe(true);
-    for (let step = 0; step < 3; step += 1) await page.getByRole('button', { name: 'Zoom in' }).click();
+    expect(bounds.overlaps).toBe(false);
+    for (let step = 0; step < 2; step += 1) await page.getByRole('button', { name: 'Zoom in' }).click();
     await expect(map.locator('.draft-journey-map-tools > span')).toHaveText('160%');
     await collegeMarker.focus();
     const maxZoomBounds = await page.evaluate(() => {

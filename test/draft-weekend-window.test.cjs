@@ -15,6 +15,7 @@ function runGate(iso, { dismissed = false, search = '' } = {}) {
   const listeners = {};
   const store = new Map(dismissed ? [['darling.draft-weekend-welcome.dismissed.2026', 'true']] : []);
   const document = {
+    addEventListener() {},
     querySelector(selector) {
       return {
         '[data-draft-weekend-welcome]': welcome,

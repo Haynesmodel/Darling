@@ -419,6 +419,11 @@
         welcome.hidden = !homeRoute || dismissed || dateKey < 20260904 || dateKey >= 20260908;
       };
       window.addEventListener('darling:route-update', sync);
+      window.addEventListener('popstate', sync);
+      document.addEventListener('click', event => {
+        const link = event.target instanceof Element ? event.target.closest('a[data-feature-id]') : null;
+        if (link) window.setTimeout(sync, 0);
+      });
       dismiss?.addEventListener('click', () => {
         dismissed = true;
         sync();

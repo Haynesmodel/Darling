@@ -52,9 +52,9 @@ export default function DraftWeekendWelcome() {
         <div class="draft-weekend-whistle" aria-hidden="true">🏈</div>
       </div>
       <div class="draft-weekend-honors" aria-label="Draft Weekend league honors">
-        {honors.map(honor => <article class={`draft-weekend-honor draft-weekend-honor-${honor.tone}`} key={honor.label}>
+        {honors.map(honor => <article class={`draft-weekend-honor draft-weekend-honor-${honor.tone}`} key={honor.label} aria-label={`${honor.label}: ${honor.owner}`}>
           <span class="draft-weekend-honor-icon" aria-hidden="true">{honor.icon}</span>
-          <span class="draft-weekend-honor-label">{honor.label}</span>
+          <span class="draft-weekend-honor-label">{honor.label}:</span>
           <strong>{honor.owner}</strong>
         </article>)}
       </div>

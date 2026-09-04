@@ -96,6 +96,7 @@ function parseUrlState(search) {
   const draftZone = params.get('draftZone') || null;
   const draftMinSample = params.get('draftMinSample');
   const draftNormalize = params.get('draftNormalize') || null;
+  const draftLocation = params.get('draftLocation') || null;
   const parsedDraftStart = isFiniteInput(draftStart) ? +draftStart : null;
   const parsedDraftEnd = isFiniteInput(draftEnd) ? +draftEnd : null;
   const parsedDraftPick = isFiniteInput(draftPick) ? +draftPick : null;
@@ -120,7 +121,7 @@ function parseUrlState(search) {
   const hasCurrent = !!(tab === 'current' || parsedCurrentSeason !== null || parsedCurrentWeek !== null || currentOwner || currentView || currentProjection);
   const hasDynasty = !!(tab === 'dynasty' || dynastyMode || dynastyOwner || parsedDynastyStart !== null || parsedDynastyEnd !== null || parsedDynastyMinSeasons !== null || parsedDynastySaunders !== null);
   const hasGauntlet = !!(tab === 'gauntlet' || gauntletA || gauntletB || gauntletModel || parsedGauntletIncludePostseason !== null || parsedGauntletSimulations !== null || gauntletSeed);
-  const hasDraft = !!(tab === 'draft' || draftOwner || draftMode || parsedDraftStart !== null || parsedDraftEnd !== null || draftMetric || parsedDraftPick !== null || draftZone || parsedDraftMinSample !== null || draftNormalize);
+  const hasDraft = !!(tab === 'draft' || draftOwner || draftMode || parsedDraftStart !== null || parsedDraftEnd !== null || draftMetric || parsedDraftPick !== null || draftZone || parsedDraftMinSample !== null || draftNormalize || draftLocation);
   const hasGameQuery = !!(gameResult || gameMinScore !== null || gameMaxScore !== null || gameSort || gameLimit !== null);
   const hasOwner = tab === 'owner' || !!owner;
   const hasTransactions = !!(tab === 'transactions' || transactionSeason !== null || transactionView || transactionOwner || transactionPlayer || transactionId);
@@ -162,6 +163,7 @@ function parseUrlState(search) {
     draftZone,
     draftMinSample: parsedDraftMinSample,
     draftNormalize,
+    draftLocation,
     trophyOwner,
     dynastyMode,
     dynastyOwner,
@@ -254,6 +256,7 @@ function buildUrlFromState(opts = {}) {
   const selectedDraftNormalize = Object.prototype.hasOwnProperty.call(opts, 'selectedDraftNormalize') ? opts.selectedDraftNormalize : null;
   const selectedDraftPick = Object.prototype.hasOwnProperty.call(opts, 'selectedDraftPick') ? opts.selectedDraftPick : null;
   const selectedDraftZone = Object.prototype.hasOwnProperty.call(opts, 'selectedDraftZone') ? opts.selectedDraftZone : null;
+  const selectedDraftLocation = Object.prototype.hasOwnProperty.call(opts, 'selectedDraftLocation') ? opts.selectedDraftLocation : null;
   const selectedGameResult = Object.prototype.hasOwnProperty.call(opts, 'selectedGameResult') ? opts.selectedGameResult : null;
   const selectedGameMinScore = Object.prototype.hasOwnProperty.call(opts, 'selectedGameMinScore') ? opts.selectedGameMinScore : null;
   const selectedGameMaxScore = Object.prototype.hasOwnProperty.call(opts, 'selectedGameMaxScore') ? opts.selectedGameMaxScore : null;
@@ -325,6 +328,7 @@ function buildUrlFromState(opts = {}) {
     if (selectedDraftNormalize === 'percentile') params.set('draftNormalize', 'percentile');
     if (isFiniteInput(selectedDraftPick)) params.set('draftPick', `${selectedDraftPick}`);
     else if (selectedDraftZone) params.set('draftZone', selectedDraftZone);
+    if (selectedDraftLocation) params.set('draftLocation', selectedDraftLocation);
   }
   const setIf = (key, set, uni) => { if (isRestrictiveFn(set, uni)) params.set(key, [...set].join(',')); };
   if (tab !== 'gauntlet' && tab !== 'draft' && tab !== 'transactions') {

@@ -3,7 +3,27 @@ import { mountDraftSpot, unmountDraftSpot } from './draft-spot-controller';
 import { registerDraftSpotTables } from './draft-spot-tables';
 import type { AppContext } from '../../app/app-types';
 import type { DarlingFeatureController, FeatureActivation } from '../../app/feature-contract';
+import type { DraftLocation } from '../../data/generated/asset-types';
 import { ownerOrNull } from '../../app/feature-utils';
+import type { DraftJourneyTourFact } from './DraftJourney';
+
+function enabledLoreDraftLocations(context: AppContext): DraftLocation[] {
+  const locations = context.data.leagueLore?.enabled ? context.data.leagueLore.draft_locations || [] : [];
+  return locations.filter(location => location.enabled && Boolean(context.lore.entry(location.entry_id)));
+}
+
+function draftJourneyTourFacts(context: AppContext, locations: DraftLocation[]): DraftJourneyTourFact[] {
+  const facts: DraftJourneyTourFact[] = [];
+  locations.forEach(location => {
+    if (location.location_type !== 'physical') return;
+    const champions: string[] = [];
+    for (const row of context.data.seasonSummaries) {
+      if (row.champion && row.season >= location.season_start && row.season <= location.season_end) champions.push(`${row.season} · ${row.owner}`);
+    }
+    facts.push({ locationId: location.id, champions: champions.join(' · '), moment: context.lore.entry(location.entry_id)?.teaser || '' });
+  });
+  return facts;
+}
 
 export function createFeatureController(): DarlingFeatureController {
   let context: AppContext;
@@ -27,6 +47,7 @@ export function createFeatureController(): DarlingFeatureController {
       selectedDraftNormalize: next.normalize,
       selectedDraftPick: next.selectedPick,
       selectedDraftZone: next.selectedZone,
+      selectedDraftLocation: next.selectedLocation,
     });
   };
 
@@ -40,10 +61,24 @@ export function createFeatureController(): DarlingFeatureController {
       const activationSignal = input.signal;
       activeSignal = activationSignal;
       const updateForActivation = (next: any) => update(next, activationSignal);
+      let shouldReplaceCanonical = false;
+      const onReadyForActivation = (next: any) => {
+        if (shouldReplaceCanonical) {
+          shouldReplaceCanonical = false;
+          void context.router.runReplacing(() => updateForActivation(next));
+          return;
+        }
+        updateForActivation(next);
+      };
       if (input.reason !== 'tab' || !selected) {
         const explicit = Object.entries(input.route)
           .some(([key, value]) => key.startsWith('draft') && value !== null && value !== undefined);
         const favorite = !explicit ? context.ownerPreference.getSnapshot().owner : null;
+        const availableLocations = enabledLoreDraftLocations(context);
+        const requestedLocation = input.route.draftLocation;
+        const selectedLocation = typeof requestedLocation === 'string' && availableLocations.some(location => location.id === requestedLocation)
+          ? requestedLocation
+          : null;
         selected = {
           owner: input.route.draftOwner || favorite,
           mode: input.route.draftMode || (input.route.draftOwner || favorite ? 'owner' : null),
@@ -54,12 +89,17 @@ export function createFeatureController(): DarlingFeatureController {
           normalize: input.route.draftNormalize,
           selectedPick: input.route.draftPick,
           selectedZone: input.route.draftZone,
+          selectedLocation,
         };
+        if (requestedLocation && !selectedLocation) {
+          shouldReplaceCanonical = true;
+        }
       }
       const entry = context.data.manifest.assets.DraftSpot;
       const sourceHash = context.data.manifest.assets.SeasonSummary.sha256;
       if (!entry || !sourceHash) throw new Error('Draft Spot asset is not present in the data manifest');
-      updateForActivation(selected);
+      if (shouldReplaceCanonical) await context.router.runReplacing(() => updateForActivation(selected));
+      else updateForActivation(selected);
       const mount = context.document.getElementById('draftSpotRoot');
       if (!mount) throw new Error('Draft Spot mount is missing');
       await mountDraftSpot({
@@ -71,7 +111,10 @@ export function createFeatureController(): DarlingFeatureController {
         dataVersion: context.data.dataVersion,
         state: selected,
         onStateChange: updateForActivation,
-        onReady: updateForActivation,
+        onReady: onReadyForActivation,
+        locations: enabledLoreDraftLocations(context),
+        tourFacts: draftJourneyTourFacts(context, enabledLoreDraftLocations(context)),
+        onRevealLocation: (entryId, opener) => { void context.lore.reveal('entry', entryId, { opener }); },
       });
     },
     deactivate() {

@@ -1,3 +1,4 @@
+const fs = require('node:fs');
 const path = require('node:path');
 const { canonicalJson, readJson } = require('./canonical-json.cjs');
 
@@ -615,9 +616,13 @@ function validateSemanticBundle(bundle, opts = {}) {
   }
 
   if (lore) {
-    const loreBytes = Buffer.byteLength(canonicalJson(lore));
+    // Runtime and manifest limits apply to the authored JSON payload served to
+    // browsers, rather than the pretty-printed key-sorted validation form.
+    const lorePath = path.join(root, 'assets', 'LeagueLore.json');
+    const loreBytes = fs.existsSync(lorePath) ? fs.statSync(lorePath).size : Buffer.byteLength(JSON.stringify(lore));
     if (loreBytes > 100 * 1024) report('LORE_ASSET_SIZE', 'assets/LeagueLore.json', 'asset', `asset is ${loreBytes} bytes; maximum is 102400`);
-    const namespaces = [lore.owners, lore.commissioner_terms, lore.collections, lore.effects, lore.entries, lore.triggers];
+    const draftLocations = Array.isArray(lore.draft_locations) ? lore.draft_locations : [];
+    const namespaces = [lore.owners, lore.commissioner_terms, lore.collections, lore.effects, lore.entries, lore.triggers, draftLocations];
     const ids = new Set();
     namespaces.forEach(rows => rows.forEach(row => {
       if (!row.id) return;
@@ -643,6 +648,30 @@ function validateSemanticBundle(bundle, opts = {}) {
         && game.owners.every(owner => [row.teamA, row.teamB].includes(owner)));
     };
     const reportReference = (kind, location, key, message) => report(kind, location, key, message);
+    const sortedLocations = draftLocations.filter(location => location.enabled).slice().sort((a, b) => a.season_start - b.season_start || a.season_end - b.season_end || a.id.localeCompare(b.id));
+    draftLocations.filter(location => location.enabled).forEach((location, index) => {
+      if (location !== sortedLocations[index]) reportReference('LORE_DRAFT_LOCATION_ORDER', 'assets/LeagueLore.json', location.id, 'enabled draft locations must be authored in chronological order');
+    });
+    draftLocations.forEach(location => {
+      if (location.season_end < location.season_start) reportReference('LORE_DRAFT_LOCATION_YEAR_ORDER', 'assets/LeagueLore.json', location.id, 'draft location ends before it starts');
+      const physical = location.location_type === 'physical';
+      const coordinates = location.coordinates;
+      const validCoordinates = coordinates && Number.isFinite(coordinates.latitude) && Number.isFinite(coordinates.longitude) && coordinates.latitude >= -90 && coordinates.latitude <= 90 && coordinates.longitude >= -180 && coordinates.longitude <= 180;
+      if (physical !== Boolean(validCoordinates) || (physical && !['municipality', 'venue'].includes(location.coordinate_precision)) || (!physical && (location.venue !== null || location.coordinate_precision !== 'none'))) {
+        reportReference('LORE_DRAFT_LOCATION_COORDINATE_CONTRACT', 'assets/LeagueLore.json', location.id, 'draft location coordinate contract is invalid');
+      }
+      const entry = entries.get(location.entry_id);
+      if (!entry) reportReference('LORE_DRAFT_LOCATION_UNKNOWN_ENTRY', 'assets/LeagueLore.json', location.id, `draft location entry ${location.entry_id} is unknown`);
+      else {
+        if (!entry.enabled && location.enabled) reportReference('LORE_DRAFT_LOCATION_DISABLED_ENTRY', 'assets/LeagueLore.json', location.id, `enabled draft location references disabled entry ${location.entry_id}`);
+        if (entry.category !== 'draft-weekend') reportReference('LORE_DRAFT_LOCATION_ENTRY_CATEGORY', 'assets/LeagueLore.json', location.id, `draft location entry ${location.entry_id} must be draft-weekend`);
+      }
+    });
+    for (let index = 1; index < sortedLocations.length; index += 1) {
+      if (sortedLocations[index].season_start <= sortedLocations[index - 1].season_end) {
+        reportReference('LORE_DRAFT_LOCATION_OVERLAP', 'assets/LeagueLore.json', `${sortedLocations[index - 1].id}|${sortedLocations[index].id}`, 'enabled draft location ranges overlap');
+      }
+    }
     const aliasOwners = new Map();
     lore.owners.forEach(row => {
       for (const alias of [row.owner, ...row.aliases].map(value => String(value).trim().toLocaleLowerCase())) {

@@ -176,7 +176,7 @@ test('analytical routes publish their mode-specific primary sections and defer s
       url: analyticalRoutes[4].url,
       open: ['draftPickDisclosure', 'draftSelectionDisclosure'],
       closed: 'draftZoneDisclosure',
-      options: ['Pick Board', 'Zone Comparison', 'Owner Recommendations', 'Owner Timeline', 'Selection Detail', 'Draft Spot Data'],
+      options: ['Draft Journey', 'Pick Board', 'Zone Comparison', 'Owner Recommendations', 'Owner Timeline', 'Selection Detail', 'Draft Spot Data'],
       emptyChart: '.draft-zone-chart svg',
     },
     {

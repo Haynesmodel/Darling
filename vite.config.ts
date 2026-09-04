@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parse } from '@babel/parser';
 import { defineConfig } from 'vite';
-import preact from '@preact/preset-vite';
 import instrumentLibrary from 'istanbul-lib-instrument';
 import { minify } from 'terser';
 
@@ -246,9 +245,14 @@ function createPropertyCompactionPlugin() {
 }
 
 export default defineConfig({
+  // Keep Preact core and hooks on one module instance during same-page route
+  // re-entry, avoiding duplicate hook dispatchers across the app shell.
+  resolve: { dedupe: ['preact'] },
   plugins: [
     ...(collectCoverage ? [createCoveragePlugin()] : []),
-    preact(),
+    // The app imports Preact directly and uses Vite's native JSX transform.
+    // Keeping the preset out of the dev graph avoids its deferred refresh
+    // callbacks re-entering a Draft Spot mount after history teardown.
     createPropertyCompactionPlugin(),
   ],
   base: process.env.VITE_BASE_PATH || '/',
@@ -301,7 +305,7 @@ export default defineConfig({
             },
             {
               name: 'shared-shell-runtime',
-              test: /(?:core-helpers|facet-helpers|head-to-head-context|season-mode)\.(?:js|ts)$|(?:section-disclosure|table-registry)\.ts$/,
+              test: /(?:core-helpers|facet-helpers|head-to-head-context|season-mode)\.(?:js|ts)$|(?:section-disclosure|table-registry)\.ts$|js\/shared\/simulation-math\.js$/,
               minSize: 0,
             },
             {

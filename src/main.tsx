@@ -17,23 +17,7 @@ import { focusableElements } from './accessibility/focus';
 import { prefersReducedMotion, subscribeToReducedMotion } from './accessibility/motion';
 import { bindPrimaryNavigation, syncPageState } from './accessibility/primary-navigation';
 
-interface BrowserWindow {
-  darlingTheme?: DarlingThemeRuntime;
-  darlingSearch?: DarlingSearchRuntime;
-  darlingTables?: DarlingTableRuntime;
-  darlingDataDiagnostics?: DataDiagnostics;
-  darlingAccessibility?: {
-    prefersReducedMotion: typeof prefersReducedMotion;
-    focusableElements: typeof focusableElements;
-    syncPageState: typeof syncPageState;
-  };
-}
-
-interface BrowserDocument {
-  readyState: string;
-  getElementById(id: string): unknown;
-  addEventListener(type: 'DOMContentLoaded', listener: () => void, options?: { once?: boolean }): void;
-}
+type DarlingDataLoader = typeof import('./data/load-league-assets').loadLeagueAssets;
 
 const themeRuntime = createDarlingThemeRuntime();
 const loreRuntime = createLazyLoreService();
@@ -45,27 +29,26 @@ const searchRuntime = createSearchRuntime({ loreAction: action => {
 } });
 const tableRuntime = createTableRuntime();
 const freshnessRuntime = createDataFreshnessRuntime();
-const browser = globalThis as unknown as {
-  window: BrowserWindow;
-  document?: BrowserDocument;
+window.darlingTheme = themeRuntime;
+window.darlingSearch = searchRuntime;
+window.darlingTables = tableRuntime;
+window.darlingDataLoader = async options => {
+  const { loadLeagueAssets } = await import('./data/load-league-assets');
+  return loadLeagueAssets(options);
 };
-
-browser.window.darlingTheme = themeRuntime;
-browser.window.darlingSearch = searchRuntime;
-browser.window.darlingTables = tableRuntime;
-browser.window.darlingAccessibility = {
+window.darlingAccessibility = {
   prefersReducedMotion,
   focusableElements,
   syncPageState,
 };
 
 function mountShell() {
-  const themeMount = browser.document!.getElementById('themeControls');
+  const themeMount = document.getElementById('themeControls');
   render(<ThemeToggle runtime={themeRuntime} />, themeMount as Parameters<typeof render>[1]);
-  const searchMount = browser.document!.getElementById('globalSearchRoot');
-  const searchPortal = browser.document!.getElementById('globalSearchPortal');
+  const searchMount = document.getElementById('globalSearchRoot');
+  const searchPortal = document.getElementById('globalSearchPortal');
   render(<GlobalSearch runtime={searchRuntime} portal={searchPortal as any} />, searchMount as Parameters<typeof render>[1]);
-  const freshnessMount = browser.document!.getElementById('dataFreshnessRoot');
+  const freshnessMount = document.getElementById('dataFreshnessRoot');
   render(<DataFreshnessBadge runtime={freshnessRuntime} />, freshnessMount as Parameters<typeof render>[1]);
   bindPrimaryNavigation(document);
   bindDropdownChecklists(document);
@@ -95,8 +78,8 @@ function mountShell() {
   void bootstrapDarlingApp({ tableRuntime, searchRuntime, freshnessRuntime, lore: loreRuntime });
 }
 
-if (browser.document?.readyState === 'loading') {
-  browser.document.addEventListener('DOMContentLoaded', mountShell, { once: true });
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', mountShell, { once: true });
 } else {
   mountShell();
 }

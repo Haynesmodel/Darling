@@ -8,6 +8,5 @@
 @import "./section-disclosure.css" layer(components);
 @import "../components/search/search.css" layer(components);
 @import "../components/data-freshness/data-freshness.css" layer(components);
-@import "../components/draft-weekend/draft-weekend-welcome.css" layer(components);
 @import "./utilities.css" layer(utilities);
 @import "./motion.css" layer(utilities);

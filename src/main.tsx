@@ -16,6 +16,7 @@ import { bindDropdownChecklists } from './accessibility/dropdown-checklist';
 import { focusableElements } from './accessibility/focus';
 import { prefersReducedMotion, subscribeToReducedMotion } from './accessibility/motion';
 import { bindPrimaryNavigation, syncPageState } from './accessibility/primary-navigation';
+import DraftWeekendWelcome from './components/draft-weekend/DraftWeekendWelcome';
 
 type DarlingDataLoader = typeof import('./data/load-league-assets').loadLeagueAssets;
 
@@ -82,10 +83,16 @@ function mountDataFreshness() {
   render(<DataFreshnessBadge runtime={freshnessRuntime} />, mount as Parameters<typeof render>[1]);
 }
 
+function mountDraftWeekendWelcome() {
+  const mount = browser.document!.getElementById('draftWeekendWelcomeRoot');
+  render(<DraftWeekendWelcome />, mount as Parameters<typeof render>[1]);
+}
+
 function mountShell() {
   mountThemeControls();
   mountGlobalSearch();
   mountDataFreshness();
+  mountDraftWeekendWelcome();
   bindPrimaryNavigation(document);
   bindDropdownChecklists(document);
   document.addEventListener('click', event => {

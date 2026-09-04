@@ -17,13 +17,10 @@ import { focusableElements } from './accessibility/focus';
 import { prefersReducedMotion, subscribeToReducedMotion } from './accessibility/motion';
 import { bindPrimaryNavigation, syncPageState } from './accessibility/primary-navigation';
 
-type DarlingDataLoader = typeof import('./data/load-league-assets').loadLeagueAssets;
-
 interface BrowserWindow {
   darlingTheme?: DarlingThemeRuntime;
   darlingSearch?: DarlingSearchRuntime;
   darlingTables?: DarlingTableRuntime;
-  darlingDataLoader?: DarlingDataLoader;
   darlingDataDiagnostics?: DataDiagnostics;
   darlingAccessibility?: {
     prefersReducedMotion: typeof prefersReducedMotion;
@@ -56,36 +53,20 @@ const browser = globalThis as unknown as {
 browser.window.darlingTheme = themeRuntime;
 browser.window.darlingSearch = searchRuntime;
 browser.window.darlingTables = tableRuntime;
-browser.window.darlingDataLoader = async options => {
-  const { loadLeagueAssets } = await import('./data/load-league-assets');
-  return loadLeagueAssets(options);
-};
 browser.window.darlingAccessibility = {
   prefersReducedMotion,
   focusableElements,
   syncPageState,
 };
 
-function mountThemeControls() {
-  const mount = browser.document!.getElementById('themeControls');
-  render(<ThemeToggle runtime={themeRuntime} />, mount as Parameters<typeof render>[1]);
-}
-
-function mountGlobalSearch() {
-  const mount = browser.document!.getElementById('globalSearchRoot');
-  const portal = browser.document!.getElementById('globalSearchPortal');
-  render(<GlobalSearch runtime={searchRuntime} portal={portal as any} />, mount as Parameters<typeof render>[1]);
-}
-
-function mountDataFreshness() {
-  const mount = browser.document!.getElementById('dataFreshnessRoot');
-  render(<DataFreshnessBadge runtime={freshnessRuntime} />, mount as Parameters<typeof render>[1]);
-}
-
 function mountShell() {
-  mountThemeControls();
-  mountGlobalSearch();
-  mountDataFreshness();
+  const themeMount = browser.document!.getElementById('themeControls');
+  render(<ThemeToggle runtime={themeRuntime} />, themeMount as Parameters<typeof render>[1]);
+  const searchMount = browser.document!.getElementById('globalSearchRoot');
+  const searchPortal = browser.document!.getElementById('globalSearchPortal');
+  render(<GlobalSearch runtime={searchRuntime} portal={searchPortal as any} />, searchMount as Parameters<typeof render>[1]);
+  const freshnessMount = browser.document!.getElementById('dataFreshnessRoot');
+  render(<DataFreshnessBadge runtime={freshnessRuntime} />, freshnessMount as Parameters<typeof render>[1]);
   bindPrimaryNavigation(document);
   bindDropdownChecklists(document);
   document.addEventListener('click', event => {

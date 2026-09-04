@@ -410,12 +410,14 @@
       let dismissed = false;
       try { dismissed = window.localStorage.getItem(storageKey) === 'true'; } catch { /* Storage is optional. */ }
       const sync = () => {
-        const date = dateFormatter.format(new Date());
-        welcome.hidden = dismissed || date < '2026-09-04' || date >= '2026-09-08';
+        const parts = Object.fromEntries(dateFormatter.formatToParts(new Date()).map(({ type, value }) => [type, value]));
+        const dateKey = Number(parts.year) * 10000 + Number(parts.month) * 100 + Number(parts.day);
+        welcome.hidden = dismissed || dateKey < 20260904 || dateKey >= 20260908;
       };
       dismiss?.addEventListener('click', () => {
         dismissed = true;
         sync();
+        document.querySelector('#mainContent')?.focus();
         try { window.localStorage.setItem(storageKey, 'true'); } catch { /* Storage is optional. */ }
       });
       window.setInterval(sync, 60000);

@@ -110,6 +110,43 @@
 
   <main id="mainContent" tabindex="-1">
     <div id="appStatus" class="status-banner status-loading" role="status" aria-live="polite">Loading league data...</div>
+    <div id="draftWeekendWelcomeRoot">
+      <section class="draft-weekend-welcome" data-draft-weekend-welcome hidden aria-labelledby="draftWeekendWelcomeTitle">
+        <div class="draft-weekend-glow draft-weekend-glow-one" aria-hidden="true"></div>
+        <div class="draft-weekend-glow draft-weekend-glow-two" aria-hidden="true"></div>
+        <div class="draft-weekend-ball draft-weekend-ball-one" aria-hidden="true">🏈</div>
+        <div class="draft-weekend-ball draft-weekend-ball-two" aria-hidden="true">🏈</div>
+        <div class="draft-weekend-content">
+          <div class="draft-weekend-kicker"><span class="draft-weekend-live-dot" aria-hidden="true"></span> Draft agent is online</div>
+          <div class="draft-weekend-heading-row">
+            <div>
+              <p class="draft-weekend-eyebrow">The league is on the clock</p>
+              <h2 id="draftWeekendWelcomeTitle">Welcome to Draft Weekend, 2026</h2>
+              <p class="draft-weekend-intro">The rosters are fresh, the takes are spicy, and one Sunday stands between you and glory.</p>
+            </div>
+            <div class="draft-weekend-whistle" aria-hidden="true">🏈</div>
+          </div>
+          <div class="draft-weekend-honors" aria-label="Draft Weekend league honors">
+            <article class="draft-weekend-honor draft-weekend-honor-gold" aria-label="Reigning Champ: Zook">
+              <span class="draft-weekend-honor-icon" aria-hidden="true">🏆</span><span class="draft-weekend-honor-label">Reigning Champ:</span><strong>Zook</strong>
+            </article>
+            <article class="draft-weekend-honor draft-weekend-honor-violet" aria-label="Reigning Saunders: Connor">
+              <span class="draft-weekend-honor-icon" aria-hidden="true">⚡</span><span class="draft-weekend-honor-label">Reigning Saunders:</span><strong>Connor</strong>
+            </article>
+            <article class="draft-weekend-honor draft-weekend-honor-green" aria-label="VPC: Shap">
+              <span class="draft-weekend-honor-icon" aria-hidden="true">🎯</span><span class="draft-weekend-honor-label">VPC:</span><strong>Shap</strong>
+            </article>
+            <article class="draft-weekend-honor draft-weekend-honor-blue" aria-label="Commish: Plotnick">
+              <span class="draft-weekend-honor-icon" aria-hidden="true">📣</span><span class="draft-weekend-honor-label">Commish:</span><strong>Plotnick</strong>
+            </article>
+          </div>
+          <div class="draft-weekend-footer">
+            <p><span aria-hidden="true">🏟️</span> Good luck, managers. May your sleepers sleep and your rivals panic.</p>
+            <button type="button" class="draft-weekend-dismiss" data-draft-weekend-dismiss>Enter the league <span aria-hidden="true">→</span></button>
+          </div>
+        </div>
+      </section>
+    </div>
     <section id="page-pulse" class="page visible" aria-labelledby="page-pulse-title">
       <h2 id="page-pulse-title" class="visually-hidden">League Pulse</h2>
       <div id="leaguePulseRoot"></div>
@@ -360,6 +397,43 @@
   </div>
   <div id="globalSearchPortal"></div>
 
+  <!-- Keep the temporary date gate in the shell so this weekend-only feature does not inflate the app bundle. -->
+  <script>
+    (() => {
+      const welcome = document.querySelector('[data-draft-weekend-welcome]');
+      if (!welcome) return;
+      const featureQueryKeys = new Set(['owner', 'team', 'seasons', 'weeks', 'opps', 'types', 'rounds', 'focus', 'rivalryTeamA', 'rivalryTeamB', 'currentOwner', 'trophyOwner', 'dynastyOwner', 'ga']);
+      const dismiss = document.querySelector('[data-draft-weekend-dismiss]');
+      const storageKey = 'darling.draft-weekend-welcome.dismissed.2026';
+      const dateFormatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
+      });
+      let dismissed = false;
+      try { dismissed = window.localStorage.getItem(storageKey) === 'true'; } catch { /* Storage is optional. */ }
+      const sync = () => {
+        const params = [...new URLSearchParams(window.location.search)];
+        const tab = new URLSearchParams(window.location.search).get('tab');
+        const homeRoute = tab === 'pulse' || (!tab && !params.some(([key]) => featureQueryKeys.has(key) || key.startsWith('tx') || key.startsWith('current') || key.startsWith('dynasty') || key.startsWith('draft') || key.startsWith('ga') || key.startsWith('game')));
+        const parts = Object.fromEntries(dateFormatter.formatToParts(new Date()).map(({ type, value }) => [type, value]));
+        const dateKey = Number(parts.year) * 10000 + Number(parts.month) * 100 + Number(parts.day);
+        welcome.hidden = !homeRoute || dismissed || dateKey < 20260904 || dateKey >= 20260908;
+      };
+      window.addEventListener('darling:route-update', sync);
+      window.addEventListener('popstate', sync);
+      document.addEventListener('click', event => {
+        const link = event.target instanceof Element ? event.target.closest('a[data-feature-id]') : null;
+        if (link) window.setTimeout(sync, 0);
+      });
+      dismiss?.addEventListener('click', () => {
+        dismissed = true;
+        sync();
+        document.querySelector('#mainContent')?.focus();
+        try { window.localStorage.setItem(storageKey, 'true'); } catch { /* Storage is optional. */ }
+      });
+      window.setInterval(sync, 60000);
+      sync();
+    })();
+  </script>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>

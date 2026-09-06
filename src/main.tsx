@@ -19,25 +19,6 @@ import { bindPrimaryNavigation, syncPageState } from './accessibility/primary-na
 
 type DarlingDataLoader = typeof import('./data/load-league-assets').loadLeagueAssets;
 
-interface BrowserWindow {
-  darlingTheme?: DarlingThemeRuntime;
-  darlingSearch?: DarlingSearchRuntime;
-  darlingTables?: DarlingTableRuntime;
-  darlingDataLoader?: DarlingDataLoader;
-  darlingDataDiagnostics?: DataDiagnostics;
-  darlingAccessibility?: {
-    prefersReducedMotion: typeof prefersReducedMotion;
-    focusableElements: typeof focusableElements;
-    syncPageState: typeof syncPageState;
-  };
-}
-
-interface BrowserDocument {
-  readyState: string;
-  getElementById(id: string): unknown;
-  addEventListener(type: 'DOMContentLoaded', listener: () => void, options?: { once?: boolean }): void;
-}
-
 const themeRuntime = createDarlingThemeRuntime();
 const loreRuntime = createLazyLoreService();
 const searchRuntime = createSearchRuntime({ loreAction: action => {
@@ -48,44 +29,27 @@ const searchRuntime = createSearchRuntime({ loreAction: action => {
 } });
 const tableRuntime = createTableRuntime();
 const freshnessRuntime = createDataFreshnessRuntime();
-const browser = globalThis as unknown as {
-  window: BrowserWindow;
-  document?: BrowserDocument;
-};
-
-browser.window.darlingTheme = themeRuntime;
-browser.window.darlingSearch = searchRuntime;
-browser.window.darlingTables = tableRuntime;
-browser.window.darlingDataLoader = async options => {
+window.darlingTheme = themeRuntime;
+window.darlingSearch = searchRuntime;
+window.darlingTables = tableRuntime;
+window.darlingDataLoader = async options => {
   const { loadLeagueAssets } = await import('./data/load-league-assets');
   return loadLeagueAssets(options);
 };
-browser.window.darlingAccessibility = {
+window.darlingAccessibility = {
   prefersReducedMotion,
   focusableElements,
   syncPageState,
 };
 
-function mountThemeControls() {
-  const mount = browser.document!.getElementById('themeControls');
-  render(<ThemeToggle runtime={themeRuntime} />, mount as Parameters<typeof render>[1]);
-}
-
-function mountGlobalSearch() {
-  const mount = browser.document!.getElementById('globalSearchRoot');
-  const portal = browser.document!.getElementById('globalSearchPortal');
-  render(<GlobalSearch runtime={searchRuntime} portal={portal as any} />, mount as Parameters<typeof render>[1]);
-}
-
-function mountDataFreshness() {
-  const mount = browser.document!.getElementById('dataFreshnessRoot');
-  render(<DataFreshnessBadge runtime={freshnessRuntime} />, mount as Parameters<typeof render>[1]);
-}
-
 function mountShell() {
-  mountThemeControls();
-  mountGlobalSearch();
-  mountDataFreshness();
+  const themeMount = document.getElementById('themeControls');
+  render(<ThemeToggle runtime={themeRuntime} />, themeMount as Parameters<typeof render>[1]);
+  const searchMount = document.getElementById('globalSearchRoot');
+  const searchPortal = document.getElementById('globalSearchPortal');
+  render(<GlobalSearch runtime={searchRuntime} portal={searchPortal as any} />, searchMount as Parameters<typeof render>[1]);
+  const freshnessMount = document.getElementById('dataFreshnessRoot');
+  render(<DataFreshnessBadge runtime={freshnessRuntime} />, freshnessMount as Parameters<typeof render>[1]);
   bindPrimaryNavigation(document);
   bindDropdownChecklists(document);
   document.addEventListener('click', event => {
@@ -114,8 +78,8 @@ function mountShell() {
   void bootstrapDarlingApp({ tableRuntime, searchRuntime, freshnessRuntime, lore: loreRuntime });
 }
 
-if (browser.document?.readyState === 'loading') {
-  browser.document.addEventListener('DOMContentLoaded', mountShell, { once: true });
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', mountShell, { once: true });
 } else {
   mountShell();
 }

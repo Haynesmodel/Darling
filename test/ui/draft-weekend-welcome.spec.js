@@ -18,6 +18,50 @@ test.describe('Draft Weekend welcome', () => {
     await expect(page.locator('#mainContent')).toBeFocused();
   });
 
+  test('reveals every competition finish, final draft slot, and origin story', async ({ page }) => {
+    await page.goto('/');
+    const cards = await page.locator('.draft-order-card').evaluateAll(elements => elements.map(element => ({
+      name: element.querySelector('h4')?.textContent,
+      finish: element.querySelector('.draft-order-finish')?.textContent,
+      pick: element.querySelector('strong')?.textContent,
+      reason: element.querySelector('p')?.textContent,
+    })));
+    expect(cards).toEqual([
+      { name: 'Nuss', finish: 'Competition 1st', pick: 'Drafting #1', reason: 'First legit fish' },
+      { name: 'Snare', finish: 'Competition 2nd', pick: 'Drafting #2', reason: 'Chesapeake Chicken; crab got his nipple' },
+      { name: 'Haynes', finish: 'Competition 3rd', pick: 'Drafting #5', reason: 'Chesapeake Chicken, ate a fish eye, caught a crab' },
+      { name: 'Shap', finish: 'Competition 4th', pick: 'Drafting #7', reason: 'Chesapeake Chicken' },
+      { name: 'Connor', finish: 'Competition 5th', pick: 'Drafting #12', reason: 'Chesapeake Chicken; at one point caught a fish but had it overturned' },
+      { name: 'Singer', finish: 'Competition 6th', pick: 'Drafting #11', reason: 'Picked Connor' },
+      { name: 'Plot', finish: 'Competition 7th', pick: 'Drafting #3', reason: 'Chesapeake Chicken' },
+      { name: 'Zubs', finish: 'Competition 8th', pick: 'Drafting #4', reason: 'Ate a fish eye' },
+      { name: 'Joel', finish: 'Competition 9th', pick: 'Drafting #10', reason: 'Ate a fish eye' },
+      { name: 'Zook', finish: 'Competition 10th', pick: 'Drafting #8', reason: 'Random number generator' },
+      { name: 'Shemer', finish: 'Competition 11th', pick: 'Drafting #6', reason: 'Random number generator' },
+      { name: 'Rishi', finish: 'Competition 12th', pick: 'Drafting #9', reason: "Random number generator. Originally had the tiebreaker for hitting Nussbaum's fish head-on, but got overruled by Captain Mike" },
+    ]);
+    await expect(page.locator('[data-draft-order-status]')).toHaveText('Group 1 of 3');
+    await page.locator('[data-draft-order-next]').click();
+    await expect(page.locator('[data-draft-order-status]')).toHaveText('Group 2 of 3');
+    await expect(page.getByRole('article', { name: /Connor finished 5th/ })).toBeVisible();
+    await page.locator('[data-draft-order-next]').click();
+    await expect(page.locator('[data-draft-order-status]')).toHaveText('Group 3 of 3');
+    await expect(page.getByRole('article', { name: /Rishi finished 12th/ })).toBeVisible();
+    await page.locator('[data-draft-order-previous]').click();
+    await expect(page.locator('[data-draft-order-status]')).toHaveText('Group 2 of 3');
+  });
+
+  test('auto-advances every five seconds and can be paused', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('[data-draft-order-status]')).toHaveText('Group 1 of 3');
+    await page.clock.fastForward(5000);
+    await expect(page.locator('[data-draft-order-status]')).toHaveText('Group 2 of 3');
+    await page.locator('[data-draft-order-toggle]').click();
+    await expect(page.locator('[data-draft-order-toggle]')).toHaveText('Play slideshow');
+    await page.clock.fastForward(6000);
+    await expect(page.locator('[data-draft-order-status]')).toHaveText('Group 2 of 3');
+  });
+
   test('stays inside the viewport on compact screens', async ({ page }) => {
     for (const width of [320, 390]) {
       await page.setViewportSize({ width, height: 844 });
@@ -34,6 +78,9 @@ test.describe('Draft Weekend welcome', () => {
     const animations = await page.locator('.draft-weekend-ball, .draft-weekend-whistle, .draft-weekend-live-dot').evaluateAll(elements =>
       elements.map(element => getComputedStyle(element).animationName));
     expect(animations.every(name => name === 'none')).toBe(true);
+    await expect(page.locator('[data-draft-order-toggle]')).toBeHidden();
+    await page.clock.fastForward(6000);
+    await expect(page.locator('[data-draft-order-status]')).toHaveText('Group 1 of 3');
   });
 
   test('is hidden before Friday and after Monday in New York', async ({ page }) => {

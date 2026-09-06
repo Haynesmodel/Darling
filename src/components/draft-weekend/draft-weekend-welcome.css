@@ -43,6 +43,27 @@
 .draft-weekend-honor-violet{border-color:color-mix(in srgb, var(--status-saunders) 42%, transparent)}
 .draft-weekend-honor-green{border-color:color-mix(in srgb, var(--status-win-text) 42%, transparent)}
 .draft-weekend-honor-blue{border-color:color-mix(in srgb, var(--status-info-border) 42%, transparent)}
+.draft-order-carousel{margin-top:24px;padding:18px;border:1px solid color-mix(in srgb,var(--hero-text) 18%,transparent);border-radius:18px;background:color-mix(in srgb,var(--table-header) 52%,transparent);backdrop-filter:blur(8px)}
+.draft-order-header{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:14px}
+.draft-order-eyebrow{margin:0 0 3px;color:var(--status-champ);font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.draft-order-header h3{margin:0;color:var(--hero-text);font-size:clamp(20px,3vw,28px)}
+.draft-order-status{flex:none;padding:5px 9px;border:1px solid color-mix(in srgb,var(--hero-text) 22%,transparent);border-radius:var(--radius-pill);color:var(--hero-text);font-size:12px;font-weight:800}
+.draft-order-stage{display:grid}
+.draft-order-slide{grid-area:1/1;visibility:hidden;opacity:0;transform:translateX(18px);transition:opacity .35s ease,transform .35s ease;pointer-events:none}
+.draft-order-slide.is-active{visibility:visible;opacity:1;transform:none;pointer-events:auto}
+.draft-order-group-title{margin:0 0 9px;color:var(--hero-text);font-size:13px;font-weight:800}
+.draft-order-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.draft-order-card{display:flex;flex-direction:column;min-width:0;min-height:150px;padding:12px;border:1px solid color-mix(in srgb,var(--hero-text) 16%,transparent);border-radius:13px;background:color-mix(in srgb,var(--hero-text) 7%,transparent)}
+.draft-order-finish{color:var(--status-champ);font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
+.draft-order-card h4{margin:4px 0 5px;color:var(--hero-text);font-size:20px}
+.draft-order-card p{flex:1;margin:0 0 10px;color:var(--hero-text);font-size:12px;line-height:1.4}
+.draft-order-card strong{align-self:flex-start;padding:4px 8px;border:1px solid var(--status-champ);border-radius:var(--radius-pill);color:var(--hero-text);background:color-mix(in srgb,var(--status-champ) 28%,var(--table-header));font-size:12px}
+.draft-order-controls{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:12px}
+.draft-order-controls button{min-height:38px;padding:7px 11px;border:1px solid color-mix(in srgb,var(--hero-text) 28%,transparent);border-radius:var(--radius-pill);color:var(--hero-text);background:color-mix(in srgb,var(--table-header) 62%,transparent);font-size:12px;font-weight:800;cursor:pointer}
+.draft-order-controls button:hover{background:color-mix(in srgb,var(--hero-text) 14%,var(--table-header))}
+.draft-order-dots{display:flex;gap:5px;margin-inline:auto 6px}
+.draft-order-dots span{width:7px;height:7px;border-radius:50%;background:color-mix(in srgb,var(--hero-text) 30%,transparent)}
+.draft-order-dots span.is-active{background:var(--status-champ);transform:scale(1.25)}
 .draft-weekend-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:26px;padding-top:20px;border-top:1px solid color-mix(in srgb, var(--hero-text) 16%, transparent)}
 .draft-weekend-footer p{margin:0;color:var(--hero-text);font-size:14px;line-height:1.45}
 .draft-weekend-dismiss{min-height:44px;padding:10px 16px;border:1px solid var(--text-primary);border-radius:var(--radius-pill);color:var(--surface-panel);background:var(--text-primary);font-weight:800;white-space:nowrap;cursor:pointer}
@@ -57,12 +78,13 @@
 @keyframes draft-weekend-pulse{0%,100%{opacity:.7;transform:scale(.92)}50%{opacity:1;transform:scale(1.08)}}
 @keyframes draft-weekend-float{0%,100%{transform:translateY(0) rotate(8deg)}50%{transform:translateY(-8px) rotate(3deg)}}
 @keyframes draft-weekend-ball-flight{0%,100%{transform:translate3d(0,0,0) rotate(-12deg)}50%{transform:translate3d(-24px,18px,0) rotate(18deg)}}
-@media (prefers-reduced-motion:reduce){.draft-weekend-live-dot,.draft-weekend-whistle,.draft-weekend-ball{animation:none}}
+@media (prefers-reduced-motion:reduce){.draft-weekend-live-dot,.draft-weekend-whistle,.draft-weekend-ball{animation:none}.draft-order-slide{transition:none}.draft-order-dots span{transform:none}}
 @media (max-width:760px){
   .draft-weekend-welcome{border-radius:18px}
   .draft-weekend-heading-row{align-items:flex-start}
   .draft-weekend-whistle{width:70px;height:70px;border-radius:20px;font-size:34px}
   .draft-weekend-honors{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .draft-order-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width:500px){
   .draft-weekend-content{padding:24px 18px}
@@ -71,6 +93,16 @@
   .draft-weekend-honors{gap:8px;margin-top:24px}
   .draft-weekend-honor{min-height:72px;padding:10px}
   .draft-weekend-honor strong{font-size:17px}
+  .draft-order-carousel{padding:14px}
+  .draft-order-header{align-items:flex-start}
+  .draft-order-grid{grid-template-columns:1fr}
+  .draft-order-card{min-height:0}
+  .draft-order-controls{display:grid;grid-template-columns:1fr 1fr}
+  .draft-order-controls button{width:100%}
+  .draft-order-dots{grid-column:1/-1;grid-row:1;margin:0 auto 3px}
+  .draft-order-controls [data-draft-order-previous]{grid-column:1;grid-row:2}
+  .draft-order-controls [data-draft-order-next]{grid-column:2;grid-row:2}
+  .draft-order-controls [data-draft-order-toggle]{grid-column:1/-1;grid-row:3}
   .draft-weekend-footer{display:block}
   .draft-weekend-footer p{margin-bottom:14px}
   .draft-weekend-dismiss{width:100%}

@@ -48,7 +48,7 @@ test.describe('Draft Weekend welcome', () => {
       { name: 'Connor', finish: 'Competition 5th', pick: 'Drafting #12', reason: 'Chesapeake Chicken; at one point caught a fish but had it overturned' },
       { name: 'Singer', finish: 'Competition 6th', pick: 'Drafting #11', reason: 'Picked Connor' },
       { name: 'Plot', finish: 'Competition 7th', pick: 'Drafting #3', reason: 'Chesapeake Chicken' },
-      { name: 'Zubs', finish: 'Competition 8th', pick: 'Drafting #4', reason: 'Ate the fish first' },
+      { name: 'Zubs', finish: 'Competition 8th', pick: 'Drafting #4', reason: 'Ate the first fish eyeball' },
       { name: 'Joel', finish: 'Competition 9th', pick: 'Drafting #10', reason: 'Ate a fish eye' },
       { name: 'Zook', finish: 'Competition 10th', pick: 'Drafting #8', reason: 'Random number generator; knew fishing would be too complicated' },
       { name: 'Shemer', finish: 'Competition 11th', pick: 'Drafting #6', reason: 'Random number generator' },

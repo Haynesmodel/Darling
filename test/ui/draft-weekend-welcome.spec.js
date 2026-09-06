@@ -9,6 +9,14 @@ test.describe('Draft Weekend welcome', () => {
   test('shows the required honors and dismisses with focus recovery', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Welcome to Draft Weekend, 2026' })).toBeVisible();
+    await expect(page.locator('.draft-weekend-scoreboard')).toContainText('2026 Draft Night');
+    await expect(page.locator('.draft-weekend-scoreboard')).toContainText('Home • New York');
+    await expect(page.getByText('THE MAIN EVENT IS HERE')).toBeVisible();
+    await expect(page.locator('.draft-weekend-confetti i')).toHaveCount(12);
+    await expect(page.locator('.draft-weekend-stadium-lights span')).toHaveCount(3);
+    const motionNames = await page.locator('.draft-weekend-confetti i, .draft-weekend-stadium-lights span').evaluateAll(elements =>
+      elements.map(element => getComputedStyle(element).animationName));
+    expect(motionNames.every(name => name !== 'none')).toBe(true);
     for (const name of ['Reigning Champ: Zook', 'Reigning Saunders: Connor', 'VPC: Shap', 'Commish: Plotnick']) {
       await expect(page.getByRole('article', { name })).toBeVisible();
     }
@@ -81,7 +89,7 @@ test.describe('Draft Weekend welcome', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Welcome to Draft Weekend, 2026' })).toBeVisible();
-    const animations = await page.locator('.draft-weekend-ball, .draft-weekend-whistle, .draft-weekend-live-dot').evaluateAll(elements =>
+    const animations = await page.locator('.draft-weekend-ball, .draft-weekend-whistle, .draft-weekend-live-dot, .draft-weekend-stadium-lights span, .draft-weekend-confetti i, .draft-weekend-announcement span').evaluateAll(elements =>
       elements.map(element => getComputedStyle(element).animationName));
     expect(animations.every(name => name === 'none')).toBe(true);
     await expect(page.locator('[data-draft-order-toggle]')).toBeHidden();

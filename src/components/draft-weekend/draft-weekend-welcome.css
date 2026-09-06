@@ -106,6 +106,7 @@
 .draft-order-card h4{margin:4px 0 5px;color:var(--hero-text);font-size:20px}
 .draft-order-card p{flex:1;margin:0 0 10px;color:var(--hero-text);font-size:12px;line-height:1.4}
 .draft-order-card strong{align-self:flex-start;padding:4px 8px;border:1px solid var(--status-champ);border-radius:var(--radius-pill);color:var(--hero-text);background:color-mix(in srgb,var(--status-champ) 28%,var(--table-header));font-size:12px}
+.draft-order-footnote{margin:12px 2px 0;color:color-mix(in srgb,var(--hero-text) 82%,transparent);font-size:11px;line-height:1.45}
 .draft-order-controls{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:12px}
 .draft-order-controls button{min-height:38px;padding:7px 11px;border:1px solid color-mix(in srgb,var(--hero-text) 28%,transparent);border-radius:var(--radius-pill);color:var(--hero-text);background:color-mix(in srgb,var(--table-header) 62%,transparent);font-size:12px;font-weight:800;cursor:pointer}
 .draft-order-controls button:hover{background:color-mix(in srgb,var(--hero-text) 14%,var(--table-header))}

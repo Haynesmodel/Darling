@@ -12,6 +12,7 @@ test.describe('Draft Weekend welcome', () => {
     await expect(page.locator('.draft-weekend-scoreboard')).toContainText('2026 Draft Night');
     await expect(page.locator('.draft-weekend-scoreboard')).toContainText('12 Teams • One Board');
     await expect(page.getByText('THE MAIN EVENT IS HERE')).toBeVisible();
+    await expect(page.locator('.draft-order-footnote')).toHaveText('*“Legit” according to league sources; the Israel angle remains sealed in the commissioner’s conspiracy file.');
     await expect(page.locator('.draft-weekend-confetti i')).toHaveCount(12);
     await expect(page.locator('.draft-weekend-stadium-lights span')).toHaveCount(3);
     const motionNames = await page.locator('.draft-weekend-confetti i, .draft-weekend-stadium-lights span').evaluateAll(elements =>
@@ -38,16 +39,16 @@ test.describe('Draft Weekend welcome', () => {
       reason: element.querySelector('p')?.textContent,
     })));
     expect(cards).toEqual([
-      { name: 'Nuss', finish: 'Competition 1st', pick: 'Drafting #1', reason: 'First legit fish' },
+      { name: 'Nuss', finish: 'Competition 1st', pick: 'Drafting #1', reason: 'First legit* fish' },
       { name: 'Snare', finish: 'Competition 2nd', pick: 'Drafting #2', reason: 'Chesapeake Chicken; crab got his nipple' },
       { name: 'Haynes', finish: 'Competition 3rd', pick: 'Drafting #5', reason: 'Chesapeake Chicken, ate a fish eye, caught a crab' },
       { name: 'Shap', finish: 'Competition 4th', pick: 'Drafting #7', reason: 'Chesapeake Chicken' },
       { name: 'Connor', finish: 'Competition 5th', pick: 'Drafting #12', reason: 'Chesapeake Chicken; at one point caught a fish but had it overturned' },
       { name: 'Singer', finish: 'Competition 6th', pick: 'Drafting #11', reason: 'Picked Connor' },
       { name: 'Plot', finish: 'Competition 7th', pick: 'Drafting #3', reason: 'Chesapeake Chicken' },
-      { name: 'Zubs', finish: 'Competition 8th', pick: 'Drafting #4', reason: 'Ate a fish eye' },
+      { name: 'Zubs', finish: 'Competition 8th', pick: 'Drafting #4', reason: 'Ate the fish first' },
       { name: 'Joel', finish: 'Competition 9th', pick: 'Drafting #10', reason: 'Ate a fish eye' },
-      { name: 'Zook', finish: 'Competition 10th', pick: 'Drafting #8', reason: 'Random number generator' },
+      { name: 'Zook', finish: 'Competition 10th', pick: 'Drafting #8', reason: 'Random number generator; knew fishing would be too complicated' },
       { name: 'Shemer', finish: 'Competition 11th', pick: 'Drafting #6', reason: 'Random number generator' },
       { name: 'Rishi', finish: 'Competition 12th', pick: 'Drafting #9', reason: "Random number generator. Originally had the tiebreaker for hitting Nussbaum's fish head-on, but got overruled by Captain Mike" },
     ]);
@@ -84,6 +85,7 @@ test.describe('Draft Weekend welcome', () => {
       await page.locator('[data-draft-order-next]').click();
       await page.locator('[data-draft-order-next]').click();
       await expect(page.getByRole('article', { name: /Rishi finished 12th/ })).toBeVisible();
+      await expect(page.locator('.draft-order-footnote')).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     }
   });

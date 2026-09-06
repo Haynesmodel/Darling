@@ -44,9 +44,11 @@ test.describe('Draft Weekend welcome', () => {
     await page.locator('[data-draft-order-next]').click();
     await expect(page.locator('[data-draft-order-status]')).toHaveText('Group 2 of 3');
     await expect(page.getByRole('article', { name: /Connor finished 5th/ })).toBeVisible();
+    await expectNoViolations(page, '[data-draft-order-carousel]');
     await page.locator('[data-draft-order-next]').click();
     await expect(page.locator('[data-draft-order-status]')).toHaveText('Group 3 of 3');
     await expect(page.getByRole('article', { name: /Rishi finished 12th/ })).toBeVisible();
+    await expectNoViolations(page, '[data-draft-order-carousel]');
     await page.locator('[data-draft-order-previous]').click();
     await expect(page.locator('[data-draft-order-status]')).toHaveText('Group 2 of 3');
   });
@@ -67,6 +69,10 @@ test.describe('Draft Weekend welcome', () => {
       await page.setViewportSize({ width, height: 844 });
       await page.goto('/');
       await expect(page.getByRole('heading', { name: 'Welcome to Draft Weekend, 2026' })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      await page.locator('[data-draft-order-next]').click();
+      await page.locator('[data-draft-order-next]').click();
+      await expect(page.getByRole('article', { name: /Rishi finished 12th/ })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     }
   });

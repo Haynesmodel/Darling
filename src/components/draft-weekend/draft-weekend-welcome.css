@@ -49,7 +49,7 @@
 .draft-order-header h3{margin:0;color:var(--hero-text);font-size:clamp(20px,3vw,28px)}
 .draft-order-status{flex:none;padding:5px 9px;border:1px solid color-mix(in srgb,var(--hero-text) 22%,transparent);border-radius:var(--radius-pill);color:var(--hero-text);font-size:12px;font-weight:800}
 .draft-order-stage{display:grid}
-.draft-order-slide{grid-area:1/1;visibility:hidden;opacity:0;transform:translateX(18px);transition:opacity .35s ease,transform .35s ease;pointer-events:none}
+.draft-order-slide{grid-area:1/1;visibility:hidden;opacity:0;transform:translateX(18px);transition:transform .35s ease;pointer-events:none}
 .draft-order-slide.is-active{visibility:visible;opacity:1;transform:none;pointer-events:auto}
 .draft-order-group-title{margin:0 0 9px;color:var(--hero-text);font-size:13px;font-weight:800}
 .draft-order-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}

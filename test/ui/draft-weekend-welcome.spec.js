@@ -15,6 +15,8 @@ test.describe('Draft Weekend welcome', () => {
     await expect(page.locator('.draft-order-footnote')).toHaveText('*“Legit” according to league sources; the Israel angle remains sealed in the commissioner’s conspiracy file.');
     await expect(page.locator('.draft-weekend-confetti i')).toHaveCount(12);
     await expect(page.locator('.draft-weekend-stadium-lights span')).toHaveCount(3);
+    await expect(page.getByRole('article', { name: 'Reigning Saunders: Connor' }).locator('.draft-weekend-honor-icon')).toHaveText('🐔');
+    await expect(page.getByRole('article', { name: 'Commish: Plotnick' }).locator('.draft-weekend-honor-icon')).toHaveText('🍔');
     const motionNames = await page.locator('.draft-weekend-confetti i, .draft-weekend-stadium-lights span').evaluateAll(elements =>
       elements.map(element => getComputedStyle(element).animationName));
     expect(motionNames.every(name => name !== 'none')).toBe(true);

@@ -10,13 +10,16 @@ test.describe('Draft Weekend welcome', () => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Welcome to Draft Weekend, 2026' })).toBeVisible();
     await expect(page.locator('.draft-weekend-scoreboard')).toContainText('2026 Draft Night');
-    await expect(page.locator('.draft-weekend-scoreboard')).toContainText('Home • New York');
+    await expect(page.locator('.draft-weekend-scoreboard')).toContainText('12 Teams • One Board');
     await expect(page.getByText('THE MAIN EVENT IS HERE')).toBeVisible();
     await expect(page.locator('.draft-weekend-confetti i')).toHaveCount(12);
     await expect(page.locator('.draft-weekend-stadium-lights span')).toHaveCount(3);
     const motionNames = await page.locator('.draft-weekend-confetti i, .draft-weekend-stadium-lights span').evaluateAll(elements =>
       elements.map(element => getComputedStyle(element).animationName));
     expect(motionNames.every(name => name !== 'none')).toBe(true);
+    const beamAngles = await page.locator('.draft-weekend-stadium-lights span').evaluateAll(elements =>
+      elements.map(element => getComputedStyle(element).getPropertyValue('--draft-weekend-beam-angle').trim()));
+    expect(beamAngles).toEqual(['24deg', '-4deg', '-25deg']);
     for (const name of ['Reigning Champ: Zook', 'Reigning Saunders: Connor', 'VPC: Shap', 'Commish: Plotnick']) {
       await expect(page.getByRole('article', { name })).toBeVisible();
     }

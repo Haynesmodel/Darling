@@ -9,10 +9,9 @@
   color:var(--hero-text);
   background:
     repeating-linear-gradient(90deg, transparent 0 72px, color-mix(in srgb, var(--hero-text) 4%, transparent) 73px 75px),
-    linear-gradient(116deg, color-mix(in srgb, var(--accent-primary) 74%, var(--table-header)) 0%, color-mix(in srgb, var(--table-header) 86%, var(--accent-primary)) 52%, color-mix(in srgb, var(--status-win-text) 40%, var(--table-header)) 100%),
     radial-gradient(circle at 88% 18%, color-mix(in srgb, var(--accent-secondary) 35%, transparent), transparent 30%),
     radial-gradient(circle at 12% 110%, color-mix(in srgb, var(--status-win-text) 28%, transparent), transparent 34%),
-    linear-gradient(135deg, var(--table-header) 0%, color-mix(in srgb, var(--accent-primary) 45%, var(--table-header)) 55%, color-mix(in srgb, var(--status-win-text) 35%, var(--table-header)) 100%);
+    linear-gradient(116deg, color-mix(in srgb, var(--accent-primary) 74%, var(--table-header)) 0%, color-mix(in srgb, var(--table-header) 86%, var(--accent-primary)) 52%, color-mix(in srgb, var(--status-win-text) 40%, var(--table-header)) 100%);
   box-shadow:var(--shadow-pop);
 }
 .draft-weekend-welcome::before{
@@ -39,10 +38,10 @@
 }
 .draft-weekend-content{position:relative;z-index:2;padding:clamp(24px,5vw,48px)}
 .draft-weekend-stadium-lights{position:absolute;z-index:1;inset:0;overflow:hidden;pointer-events:none}
-.draft-weekend-stadium-lights span{position:absolute;top:-56%;width:28%;height:170%;background:linear-gradient(180deg, color-mix(in srgb, var(--hero-text) 32%, transparent), transparent 68%);filter:blur(12px);opacity:.18;transform:rotate(24deg);transform-origin:top center;animation:draft-weekend-light-sweep 8s ease-in-out infinite}
+.draft-weekend-stadium-lights span{--draft-weekend-beam-angle:24deg;position:absolute;top:-56%;width:28%;height:170%;background:linear-gradient(180deg, color-mix(in srgb, var(--hero-text) 32%, transparent), transparent 68%);filter:blur(12px);opacity:.18;transform:rotate(var(--draft-weekend-beam-angle));transform-origin:top center;animation:draft-weekend-light-sweep 8s ease-in-out infinite}
 .draft-weekend-stadium-lights span:nth-child(1){inset-inline-start:4%;animation-delay:-2.5s}
-.draft-weekend-stadium-lights span:nth-child(2){inset-inline-start:37%;width:34%;opacity:.13;transform:rotate(-4deg);animation-delay:-5s}
-.draft-weekend-stadium-lights span:nth-child(3){inset-inline-end:4%;transform:rotate(-25deg);animation-delay:-1s}
+.draft-weekend-stadium-lights span:nth-child(2){--draft-weekend-beam-angle:-4deg;inset-inline-start:37%;width:34%;opacity:.13;animation-delay:-5s}
+.draft-weekend-stadium-lights span:nth-child(3){--draft-weekend-beam-angle:-25deg;inset-inline-end:4%;animation-delay:-1s}
 .draft-weekend-confetti{position:absolute;z-index:3;inset:0;overflow:hidden;pointer-events:none}
 .draft-weekend-confetti i{position:absolute;top:-14px;width:7px;height:18px;border-radius:2px;background:var(--status-champ);opacity:.9;transform:rotate(18deg);animation:draft-weekend-confetti-fall 7s linear infinite}
 .draft-weekend-confetti i:nth-child(1){inset-inline-start:7%;animation-delay:-1.2s}
@@ -128,7 +127,7 @@
 @keyframes draft-weekend-float{0%,100%{transform:translateY(0) rotate(8deg)}50%{transform:translateY(-8px) rotate(3deg)}}
 @keyframes draft-weekend-ball-flight{0%,100%{transform:translate3d(0,0,0) rotate(-12deg)}50%{transform:translate3d(-24px,18px,0) rotate(18deg)}}
 @keyframes draft-weekend-sparkle{0%,100%{transform:scale(.82) rotate(-10deg);opacity:.6}50%{transform:scale(1.2) rotate(10deg);opacity:1}}
-@keyframes draft-weekend-light-sweep{0%,100%{opacity:.1;transform:rotate(24deg) translateX(-12px)}50%{opacity:.24;transform:rotate(24deg) translateX(22px)}}
+@keyframes draft-weekend-light-sweep{0%,100%{opacity:.1;transform:rotate(var(--draft-weekend-beam-angle)) translateX(-12px)}50%{opacity:.24;transform:rotate(var(--draft-weekend-beam-angle)) translateX(22px)}}
 @keyframes draft-weekend-confetti-fall{0%{transform:translate3d(0,-20px,0) rotate(18deg)}45%{opacity:.95}100%{transform:translate3d(24px,540px,0) rotate(300deg);opacity:0}}
 @media (prefers-reduced-motion:reduce){
   .draft-weekend-live-dot,.draft-weekend-whistle,.draft-weekend-ball,.draft-weekend-stadium-lights span,.draft-weekend-confetti i,.draft-weekend-announcement span{animation:none}

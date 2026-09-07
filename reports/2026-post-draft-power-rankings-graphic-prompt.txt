@@ -1,0 +1,32 @@
+Use case: infographic-diagram.
+Create a finished, polished, shareable fantasy football power-rankings poster for The Darling league. Portrait composition approximately 2:3, high resolution, legible when shared in a group chat. Premium sports editorial design with bold condensed typography, generous spacing, a dark ink background, bright readable type, subtle stadium-light atmosphere and very restrained football field markings. A small stylized football/trophy motif may accent the header. Make it feel like a professional preseason rankings release. No player photos, no NFL/team logos, no invented sponsor branding.
+
+The graphic's information is exact and must all appear without omissions or changes. Main title:
+"THE DARLING"
+"2026 POWER RANKINGS"
+Small subtitle: "POST-DRAFT EDITION • SEPTEMBER 6, 2026"
+
+Create one full-width ranked table containing exactly 12 rows, in this exact order. Clear columns for rank, manager/team, score, and letter grade. Header labels: "RK", "TEAM", "SCORE / 100", "GRADE". Manager names prominent, team names in smaller secondary text below them. Scores large; grades in attractive compact badges. Subtly highlight Nuss in first place with a premium champion treatment; other rows should remain equally readable. Use thin horizontal separators and consistent alignment, with enough row height that the entire table is easy to scan. Do not reorder equal scores.
+
+EXACT ROW CONTENT (rank | manager | secondary team name | score | grade):
+01 | Nuss | Dr. Nuss | 92 | A−
+02 | Joe | When it Haynes, it Pours | 88 | B+
+03 | Rishi | Rishi’s Raiders | 87 | B+
+04 | Shap | Shap Daddy | 85 | B
+05 | Connor | BallinJohnnyDavis | 84 | B
+06 | Zubs | The Browns | 84 | B
+07 | Snare | Bill Nye The Science Guy | 82 | B−
+08 | Zook | Cool Hand Zook | 82 | B−
+09 | Plot | PlotNix | 80 | B−
+10 | Singer | Least Edjucated | 80 | B−
+11 | Joel | Crazy Feta Fighters | 78 | C+
+12 | Shemer | ShemDawggg | 67 | D+
+
+Footer informational band, clearly readable:
+"65 RANKING BOARDS • 54 OUTLETS"
+"Updated September 2–6 • 12-team half-PPR"
+Smaller methodology footnote:
+"85% starters • 15% depth • Small K/DEF adjustment"
+"Custom league-relative scores. Equal scores are effectively tied."
+
+Text accuracy is essential. Spell 'Edjucated' exactly as given; it is intentional. Keep all 12 teams on the poster. Make the rankings and grades the visual focus. Do not add factual claims, other numbers, extra rows, category labels, commentary, or a website URL. Deliver the actual designed poster, no mockup frame or surrounding device.

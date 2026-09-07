@@ -1,0 +1,5152 @@
+{
+  "boards": 65,
+  "outlets": 54,
+  "players": [
+    {
+      "name": "Jahmyr Gibbs",
+      "key": "jahmyrgibbs",
+      "pos": "RB",
+      "roster_id": 5,
+      "pick": 1,
+      "rank": 1.0,
+      "pos_rank": 1.0,
+      "coverage": 65,
+      "value": 3.309214991950505
+    },
+    {
+      "name": "Bijan Robinson",
+      "key": "bijanrobinson",
+      "pos": "RB",
+      "roster_id": 12,
+      "pick": 2,
+      "rank": 2.0,
+      "pos_rank": 2.0,
+      "coverage": 65,
+      "value": 3.2222036149608755
+    },
+    {
+      "name": "Puka Nacua",
+      "key": "pukanacua",
+      "pos": "WR",
+      "roster_id": 2,
+      "pick": 3,
+      "rank": 4.0,
+      "pos_rank": 2.0,
+      "coverage": 65,
+      "value": 3.068052935133617
+    },
+    {
+      "name": "Amon-Ra St. Brown",
+      "key": "amonrastbrown",
+      "pos": "WR",
+      "roster_id": 1,
+      "pick": 4,
+      "rank": 6.5,
+      "pos_rank": 4.0,
+      "coverage": 65,
+      "value": 2.903749883842341
+    },
+    {
+      "name": "Christian McCaffrey",
+      "key": "christianmccaffrey",
+      "pos": "RB",
+      "roster_id": 6,
+      "pick": 5,
+      "rank": 7.5,
+      "pos_rank": 4.0,
+      "coverage": 65,
+      "value": 2.8449093838194073
+    },
+    {
+      "name": "Saquon Barkley",
+      "key": "saquonbarkley",
+      "pos": "RB",
+      "roster_id": 11,
+      "pick": 6,
+      "rank": 15.0,
+      "pos_rank": 8.0,
+      "coverage": 65,
+      "value": 2.488234439880675
+    },
+    {
+      "name": "Ja'Marr Chase",
+      "key": "jamarrchase",
+      "pos": "WR",
+      "roster_id": 7,
+      "pick": 7,
+      "rank": 3.0,
+      "pos_rank": 1.0,
+      "coverage": 65,
+      "value": 3.142160907287339
+    },
+    {
+      "name": "Jonathan Taylor",
+      "key": "jonathantaylor",
+      "pos": "RB",
+      "roster_id": 9,
+      "pick": 8,
+      "rank": 8.0,
+      "pos_rank": 4.0,
+      "coverage": 65,
+      "value": 2.816738506852711
+    },
+    {
+      "name": "James Cook",
+      "key": "jamescook",
+      "pos": "RB",
+      "roster_id": 8,
+      "pick": 9,
+      "rank": 9.25,
+      "pos_rank": 5.0,
+      "coverage": 65,
+      "value": 2.7495992040150825
+    },
+    {
+      "name": "Omarion Hampton",
+      "key": "omarionhampton",
+      "pos": "RB",
+      "roster_id": 10,
+      "pick": 10,
+      "rank": 18.0,
+      "pos_rank": 10.0,
+      "coverage": 65,
+      "value": 2.3749057545736716
+    },
+    {
+      "name": "Jaxon Smith-Njigba",
+      "key": "jaxonsmithnjigba",
+      "pos": "WR",
+      "roster_id": 4,
+      "pick": 11,
+      "rank": 6.0,
+      "pos_rank": 3.0,
+      "coverage": 65,
+      "value": 2.9345215425090947
+    },
+    {
+      "name": "CeeDee Lamb",
+      "key": "ceedeelamb",
+      "pos": "WR",
+      "roster_id": 3,
+      "pick": 12,
+      "rank": 10.0,
+      "pos_rank": 5.0,
+      "coverage": 65,
+      "value": 2.711377991194885
+    },
+    {
+      "name": "Chase Brown",
+      "key": "chasebrown",
+      "pos": "RB",
+      "roster_id": 3,
+      "pick": 13,
+      "rank": 13.5,
+      "pos_rank": 7.0,
+      "coverage": 65,
+      "value": 2.5501098435987624
+    },
+    {
+      "name": "Derrick Henry",
+      "key": "derrickhenry",
+      "pos": "RB",
+      "roster_id": 4,
+      "pick": 14,
+      "rank": 20.0,
+      "pos_rank": 10.0,
+      "coverage": 65,
+      "value": 2.3059128830867204
+    },
+    {
+      "name": "De'Von Achane",
+      "key": "devonachane",
+      "pos": "RB",
+      "roster_id": 10,
+      "pick": 15,
+      "rank": 17.0,
+      "pos_rank": 9.0,
+      "coverage": 65,
+      "value": 2.4112733987445467
+    },
+    {
+      "name": "A.J. Brown",
+      "key": "ajbrown",
+      "pos": "WR",
+      "roster_id": 8,
+      "pick": 16,
+      "rank": 15.0,
+      "pos_rank": 7.0,
+      "coverage": 65,
+      "value": 2.488234439880675
+    },
+    {
+      "name": "Kenneth Walker",
+      "key": "kennethwalker",
+      "pos": "RB",
+      "roster_id": 9,
+      "pick": 17,
+      "rank": 17.0,
+      "pos_rank": 9.0,
+      "coverage": 65,
+      "value": 2.4112733987445467
+    },
+    {
+      "name": "Kyren Williams",
+      "key": "kyrenwilliams",
+      "pos": "RB",
+      "roster_id": 7,
+      "pick": 18,
+      "rank": 33.0,
+      "pos_rank": 14.0,
+      "coverage": 65,
+      "value": 1.9459101490553132
+    },
+    {
+      "name": "Cam Skattebo",
+      "key": "camskattebo",
+      "pos": "RB",
+      "roster_id": 11,
+      "pick": 19,
+      "rank": 52.0,
+      "pos_rank": 20.0,
+      "coverage": 65,
+      "value": 1.5799758797037842
+    },
+    {
+      "name": "Ashton Jeanty",
+      "key": "ashtonjeanty",
+      "pos": "RB",
+      "roster_id": 6,
+      "pick": 20,
+      "rank": 24.5,
+      "pos_rank": 12.0,
+      "coverage": 65,
+      "value": 2.1661509407115616
+    },
+    {
+      "name": "Justin Jefferson",
+      "key": "justinjefferson",
+      "pos": "WR",
+      "roster_id": 1,
+      "pick": 21,
+      "rank": 11.0,
+      "pos_rank": 6.0,
+      "coverage": 65,
+      "value": 2.662587827025453
+    },
+    {
+      "name": "Josh Allen",
+      "key": "joshallen",
+      "pos": "QB",
+      "roster_id": 2,
+      "pick": 22,
+      "rank": 25.0,
+      "pos_rank": 1.0,
+      "coverage": 65,
+      "value": 2.151762203259462
+    },
+    {
+      "name": "George Pickens",
+      "key": "georgepickens",
+      "pos": "WR",
+      "roster_id": 12,
+      "pick": 23,
+      "rank": 22.75,
+      "pos_rank": 10.25,
+      "coverage": 65,
+      "value": 2.218207302667615
+    },
+    {
+      "name": "Brock Bowers",
+      "key": "brockbowers",
+      "pos": "TE",
+      "roster_id": 5,
+      "pick": 24,
+      "rank": 17.0,
+      "pos_rank": 1.0,
+      "coverage": 65,
+      "value": 2.4112733987445467
+    },
+    {
+      "name": "Drake London",
+      "key": "drakelondon",
+      "pos": "WR",
+      "roster_id": 5,
+      "pick": 25,
+      "rank": 18.0,
+      "pos_rank": 8.0,
+      "coverage": 65,
+      "value": 2.3749057545736716
+    },
+    {
+      "name": "Zay Flowers",
+      "key": "zayflowers",
+      "pos": "WR",
+      "roster_id": 12,
+      "pick": 26,
+      "rank": 31.0,
+      "pos_rank": 15.0,
+      "coverage": 65,
+      "value": 1.9935381980445679
+    },
+    {
+      "name": "Javonte Williams",
+      "key": "javontewilliams",
+      "pos": "RB",
+      "roster_id": 2,
+      "pick": 27,
+      "rank": 35.75,
+      "pos_rank": 14.0,
+      "coverage": 65,
+      "value": 1.8839184730273455
+    },
+    {
+      "name": "Jeremiyah Love",
+      "key": "jeremiyahlove",
+      "pos": "RB",
+      "roster_id": 1,
+      "pick": 28,
+      "rank": 37.0,
+      "pos_rank": 15.75,
+      "coverage": 65,
+      "value": 1.8569626630388172
+    },
+    {
+      "name": "Trey McBride",
+      "key": "treymcbride",
+      "pos": "TE",
+      "roster_id": 6,
+      "pick": 29,
+      "rank": 22.0,
+      "pos_rank": 2.0,
+      "coverage": 65,
+      "value": 2.2413743619491493
+    },
+    {
+      "name": "Lamar Jackson",
+      "key": "lamarjackson",
+      "pos": "QB",
+      "roster_id": 11,
+      "pick": 30,
+      "rank": 35.5,
+      "pos_rank": 2.0,
+      "coverage": 65,
+      "value": 1.889397938791971
+    },
+    {
+      "name": "Nico Collins",
+      "key": "nicocollins",
+      "pos": "WR",
+      "roster_id": 7,
+      "pick": 31,
+      "rank": 19.0,
+      "pos_rank": 9.0,
+      "coverage": 65,
+      "value": 2.3398144347624017
+    },
+    {
+      "name": "Breece Hall",
+      "key": "breecehall",
+      "pos": "RB",
+      "roster_id": 9,
+      "pick": 32,
+      "rank": 38.5,
+      "pos_rank": 15.0,
+      "coverage": 65,
+      "value": 1.8255464668054382
+    },
+    {
+      "name": "Travis Etienne",
+      "key": "travisetienne",
+      "pos": "RB",
+      "roster_id": 8,
+      "pick": 33,
+      "rank": 43.0,
+      "pos_rank": 17.0,
+      "coverage": 65,
+      "value": 1.7368183511967539
+    },
+    {
+      "name": "Chris Olave",
+      "key": "chrisolave",
+      "pos": "WR",
+      "roster_id": 10,
+      "pick": 34,
+      "rank": 22.5,
+      "pos_rank": 11.0,
+      "coverage": 65,
+      "value": 2.225870175413184
+    },
+    {
+      "name": "Garrett Wilson",
+      "key": "garrettwilson",
+      "pos": "WR",
+      "roster_id": 4,
+      "pick": 35,
+      "rank": 38.0,
+      "pos_rank": 18.0,
+      "coverage": 65,
+      "value": 1.8359092538409847
+    },
+    {
+      "name": "Malik Nabers",
+      "key": "maliknabers",
+      "pos": "WR",
+      "roster_id": 3,
+      "pick": 36,
+      "rank": 27.5,
+      "pos_rank": 12.0,
+      "coverage": 65,
+      "value": 2.0827693317725107
+    },
+    {
+      "name": "DeVonta Smith",
+      "key": "devontasmith",
+      "pos": "WR",
+      "roster_id": 3,
+      "pick": 37,
+      "rank": 29.0,
+      "pos_rank": 13.0,
+      "coverage": 65,
+      "value": 2.043548618619229
+    },
+    {
+      "name": "Emeka Egbuka",
+      "key": "emekaegbuka",
+      "pos": "WR",
+      "roster_id": 4,
+      "pick": 38,
+      "rank": 42.5,
+      "pos_rank": 20.0,
+      "coverage": 65,
+      "value": 1.7462970951512977
+    },
+    {
+      "name": "Jameson Williams",
+      "key": "jamesonwilliams",
+      "pos": "WR",
+      "roster_id": 10,
+      "pick": 39,
+      "rank": 49.5,
+      "pos_rank": 25.0,
+      "coverage": 65,
+      "value": 1.6211339521972916
+    },
+    {
+      "name": "Colston Loveland",
+      "key": "colstonloveland",
+      "pos": "TE",
+      "roster_id": 8,
+      "pick": 40,
+      "rank": 34.0,
+      "pos_rank": 3.0,
+      "coverage": 65,
+      "value": 1.9229206308306146
+    },
+    {
+      "name": "Jaylen Waddle",
+      "key": "jaylenwaddle",
+      "pos": "WR",
+      "roster_id": 9,
+      "pick": 41,
+      "rank": 38.0,
+      "pos_rank": 18.0,
+      "coverage": 65,
+      "value": 1.8359092538409847
+    },
+    {
+      "name": "D'Andre Swift",
+      "key": "dandreswift",
+      "pos": "RB",
+      "roster_id": 7,
+      "pick": 42,
+      "rank": 45.25,
+      "pos_rank": 18.0,
+      "coverage": 65,
+      "value": 1.6952419243510135
+    },
+    {
+      "name": "Ladd McConkey",
+      "key": "laddmcconkey",
+      "pos": "WR",
+      "roster_id": 11,
+      "pick": 43,
+      "rank": 39.0,
+      "pos_rank": 19.0,
+      "coverage": 65,
+      "value": 1.8152899666382492
+    },
+    {
+      "name": "Rashee Rice",
+      "key": "rasheerice",
+      "pos": "WR",
+      "roster_id": 6,
+      "pick": 44,
+      "rank": 31.0,
+      "pos_rank": 14.0,
+      "coverage": 65,
+      "value": 1.9935381980445679
+    },
+    {
+      "name": "Tee Higgins",
+      "key": "teehiggins",
+      "pos": "WR",
+      "roster_id": 1,
+      "pick": 45,
+      "rank": 35.5,
+      "pos_rank": 17.0,
+      "coverage": 65,
+      "value": 1.889397938791971
+    },
+    {
+      "name": "Quinshon Judkins",
+      "key": "quinshonjudkins",
+      "pos": "RB",
+      "roster_id": 2,
+      "pick": 46,
+      "rank": 55.0,
+      "pos_rank": 22.0,
+      "coverage": 65,
+      "value": 1.5327229948532388
+    },
+    {
+      "name": "DJ Moore",
+      "key": "djmoore",
+      "pos": "WR",
+      "roster_id": 12,
+      "pick": 47,
+      "rank": 54.0,
+      "pos_rank": 26.0,
+      "coverage": 65,
+      "value": 1.548227181389204
+    },
+    {
+      "name": "Tetairoa McMillan",
+      "key": "tetairoamcmillan",
+      "pos": "WR",
+      "roster_id": 5,
+      "pick": 48,
+      "rank": 39.5,
+      "pos_rank": 19.0,
+      "coverage": 65,
+      "value": 1.805137595174231
+    },
+    {
+      "name": "Jadarian Price",
+      "key": "jadarianprice",
+      "pos": "RB",
+      "roster_id": 5,
+      "pick": 49,
+      "rank": 60.0,
+      "pos_rank": 23.0,
+      "coverage": 65,
+      "value": 1.4586150226995167
+    },
+    {
+      "name": "Bucky Irving",
+      "key": "buckyirving",
+      "pos": "RB",
+      "roster_id": 12,
+      "pick": 50,
+      "rank": 52.0,
+      "pos_rank": 20.0,
+      "coverage": 65,
+      "value": 1.5799758797037842
+    },
+    {
+      "name": "Davante Adams",
+      "key": "davanteadams",
+      "pos": "WR",
+      "roster_id": 2,
+      "pick": 51,
+      "rank": 48.0,
+      "pos_rank": 24.0,
+      "coverage": 65,
+      "value": 1.6466672542024563
+    },
+    {
+      "name": "Parker Washington",
+      "key": "parkerwashington",
+      "pos": "WR",
+      "roster_id": 1,
+      "pick": 52,
+      "rank": 59.0,
+      "pos_rank": 27.5,
+      "coverage": 65,
+      "value": 1.4730037601516164
+    },
+    {
+      "name": "Luther Burden",
+      "key": "lutherburden",
+      "pos": "WR",
+      "roster_id": 6,
+      "pick": 53,
+      "rank": 47.0,
+      "pos_rank": 23.0,
+      "coverage": 65,
+      "value": 1.6640589969143256
+    },
+    {
+      "name": "Terry McLaurin",
+      "key": "terrymclaurin",
+      "pos": "WR",
+      "roster_id": 11,
+      "pick": 54,
+      "rank": 48.5,
+      "pos_rank": 24.0,
+      "coverage": 65,
+      "value": 1.638083510511065
+    },
+    {
+      "name": "Joe Burrow",
+      "key": "joeburrow",
+      "pos": "QB",
+      "roster_id": 7,
+      "pick": 55,
+      "rank": 53.0,
+      "pos_rank": 4.0,
+      "coverage": 65,
+      "value": 1.563975538357343
+    },
+    {
+      "name": "Christian Watson",
+      "key": "christianwatson",
+      "pos": "WR",
+      "roster_id": 9,
+      "pick": 56,
+      "rank": 54.0,
+      "pos_rank": 26.0,
+      "coverage": 65,
+      "value": 1.548227181389204
+    },
+    {
+      "name": "David Montgomery",
+      "key": "davidmontgomery",
+      "pos": "RB",
+      "roster_id": 8,
+      "pick": 57,
+      "rank": 55.0,
+      "pos_rank": 21.0,
+      "coverage": 65,
+      "value": 1.5327229948532388
+    },
+    {
+      "name": "Jaylen Warren",
+      "key": "jaylenwarren",
+      "pos": "RB",
+      "roster_id": 10,
+      "pick": 58,
+      "rank": 71.0,
+      "pos_rank": 27.0,
+      "coverage": 65,
+      "value": 1.312661110076437
+    },
+    {
+      "name": "Tyler Warren",
+      "key": "tylerwarren",
+      "pos": "TE",
+      "roster_id": 4,
+      "pick": 59,
+      "rank": 56.0,
+      "pos_rank": 4.0,
+      "coverage": 65,
+      "value": 1.5174555227224502
+    },
+    {
+      "name": "Bhayshul Tuten",
+      "key": "bhayshultuten",
+      "pos": "RB",
+      "roster_id": 3,
+      "pick": 60,
+      "rank": 59.5,
+      "pos_rank": 23.0,
+      "coverage": 65,
+      "value": 1.4657835121781293
+    },
+    {
+      "name": "Blake Corum",
+      "key": "blakecorum",
+      "pos": "RB",
+      "roster_id": 3,
+      "pick": 61,
+      "rank": 89.0,
+      "pos_rank": 33.0,
+      "coverage": 65,
+      "value": 1.1119904146142858
+    },
+    {
+      "name": "Rhamondre Stevenson",
+      "key": "rhamondrestevenson",
+      "pos": "RB",
+      "roster_id": 4,
+      "pick": 62,
+      "rank": 67.0,
+      "pos_rank": 26.0,
+      "coverage": 65,
+      "value": 1.363304842895192
+    },
+    {
+      "name": "TreVeyon Henderson",
+      "key": "treveyonhenderson",
+      "pos": "RB",
+      "roster_id": 10,
+      "pick": 63,
+      "rank": 65.0,
+      "pos_rank": 25.25,
+      "coverage": 65,
+      "value": 1.3896221512125653
+    },
+    {
+      "name": "Drake Maye",
+      "key": "drakemaye",
+      "pos": "QB",
+      "roster_id": 8,
+      "pick": 64,
+      "rank": 43.5,
+      "pos_rank": 3.0,
+      "coverage": 65,
+      "value": 1.7274286108469148
+    },
+    {
+      "name": "Rome Odunze",
+      "key": "romeodunze",
+      "pos": "WR",
+      "roster_id": 9,
+      "pick": 65,
+      "rank": 59.0,
+      "pos_rank": 28.0,
+      "coverage": 65,
+      "value": 1.4730037601516164
+    },
+    {
+      "name": "Tony Pollard",
+      "key": "tonypollard",
+      "pos": "RB",
+      "roster_id": 7,
+      "pick": 66,
+      "rank": 77.0,
+      "pos_rank": 29.0,
+      "coverage": 65,
+      "value": 1.241202146094292
+    },
+    {
+      "name": "Travis Kelce",
+      "key": "traviskelce",
+      "pos": "TE",
+      "roster_id": 11,
+      "pick": 67,
+      "rank": 105.0,
+      "pos_rank": 10.5,
+      "coverage": 65,
+      "value": 0.9621781363856257
+    },
+    {
+      "name": "Jalen Hurts",
+      "key": "jalenhurts",
+      "pos": "QB",
+      "roster_id": 6,
+      "pick": 68,
+      "rank": 58.5,
+      "pos_rank": 6.0,
+      "coverage": 65,
+      "value": 1.4802765194806962
+    },
+    {
+      "name": "Sam LaPorta",
+      "key": "samlaporta",
+      "pos": "TE",
+      "roster_id": 1,
+      "pick": 69,
+      "rank": 78.75,
+      "pos_rank": 7.0,
+      "coverage": 65,
+      "value": 1.2212868363933505
+    },
+    {
+      "name": "Marvin Harrison",
+      "key": "marvinharrison",
+      "pos": "WR",
+      "roster_id": 2,
+      "pick": 70,
+      "rank": 73.0,
+      "pos_rank": 32.0,
+      "coverage": 65,
+      "value": 1.2882696569522778
+    },
+    {
+      "name": "Jayden Daniels",
+      "key": "jaydendaniels",
+      "pos": "QB",
+      "roster_id": 12,
+      "pick": 71,
+      "rank": 62.0,
+      "pos_rank": 6.0,
+      "coverage": 65,
+      "value": 1.4304441457328203
+    },
+    {
+      "name": "Mike Evans",
+      "key": "mikeevans",
+      "pos": "WR",
+      "roster_id": 5,
+      "pick": 72,
+      "rank": 61.5,
+      "pos_rank": 29.25,
+      "coverage": 65,
+      "value": 1.4374128150489138
+    },
+    {
+      "name": "Caleb Williams",
+      "key": "calebwilliams",
+      "pos": "QB",
+      "roster_id": 5,
+      "pick": 73,
+      "rank": 68.5,
+      "pos_rank": 7.0,
+      "coverage": 65,
+      "value": 1.344011639960513
+    },
+    {
+      "name": "George Kittle",
+      "key": "georgekittle",
+      "pos": "TE",
+      "roster_id": 12,
+      "pick": 74,
+      "rank": 94.0,
+      "pos_rank": 9.0,
+      "coverage": 65,
+      "value": 1.0627193656075031
+    },
+    {
+      "name": "Harold Fannin",
+      "key": "haroldfannin",
+      "pos": "TE",
+      "roster_id": 2,
+      "pick": 75,
+      "rank": 84.0,
+      "pos_rank": 7.25,
+      "coverage": 65,
+      "value": 1.1638154824788718
+    },
+    {
+      "name": "MarShawn Lloyd",
+      "key": "marshawnlloyd",
+      "pos": "RB",
+      "roster_id": 1,
+      "pick": 76,
+      "rank": 82.0,
+      "pos_rank": 31,
+      "coverage": 64,
+      "value": 1.1853216876998354
+    },
+    {
+      "name": "DK Metcalf",
+      "key": "dkmetcalf",
+      "pos": "WR",
+      "roster_id": 6,
+      "pick": 77,
+      "rank": 77.5,
+      "pos_rank": 34.0,
+      "coverage": 65,
+      "value": 1.235471471385307
+    },
+    {
+      "name": "Brandon Aubrey",
+      "key": "brandonaubrey",
+      "pos": "K",
+      "roster_id": 11,
+      "pick": 78,
+      "rank": null,
+      "pos_rank": 1.0,
+      "coverage": 0,
+      "value": 0
+    },
+    {
+      "name": "Carnell Tate",
+      "key": "carnelltate",
+      "pos": "WR",
+      "roster_id": 7,
+      "pick": 79,
+      "rank": 74.0,
+      "pos_rank": 32.0,
+      "coverage": 65,
+      "value": 1.2762934659055623
+    },
+    {
+      "name": "Jonathon Brooks",
+      "key": "jonathonbrooks",
+      "pos": "RB",
+      "roster_id": 9,
+      "pick": 80,
+      "rank": 79.0,
+      "pos_rank": 30,
+      "coverage": 64,
+      "value": 1.218473895016736
+    },
+    {
+      "name": "Brian Thomas",
+      "key": "brianthomas",
+      "pos": "WR",
+      "roster_id": 8,
+      "pick": 81,
+      "rank": 79.0,
+      "pos_rank": 34.25,
+      "coverage": 65,
+      "value": 1.218473895016736
+    },
+    {
+      "name": "Tucker Kraft",
+      "key": "tuckerkraft",
+      "pos": "TE",
+      "roster_id": 10,
+      "pick": 82,
+      "rank": 66.0,
+      "pos_rank": 5.0,
+      "coverage": 65,
+      "value": 1.3763769244625448
+    },
+    {
+      "name": "Jordan Mason",
+      "key": "jordanmason",
+      "pos": "RB",
+      "roster_id": 4,
+      "pick": 83,
+      "rank": 98.0,
+      "pos_rank": 36.0,
+      "coverage": 65,
+      "value": 1.0249790376246561
+    },
+    {
+      "name": "Justin Herbert",
+      "key": "justinherbert",
+      "pos": "QB",
+      "roster_id": 3,
+      "pick": 84,
+      "rank": 71.0,
+      "pos_rank": 8.0,
+      "coverage": 65,
+      "value": 1.312661110076437
+    },
+    {
+      "name": "Jacory Croskey-Merritt",
+      "key": "jacorycroskeymerritt",
+      "pos": "RB",
+      "roster_id": 3,
+      "pick": 85,
+      "rank": 102.0,
+      "pos_rank": 36.5,
+      "coverage": 65,
+      "value": 0.9886113934537812
+    },
+    {
+      "name": "Courtland Sutton",
+      "key": "courtlandsutton",
+      "pos": "WR",
+      "roster_id": 4,
+      "pick": 86,
+      "rank": 83.0,
+      "pos_rank": 37.0,
+      "coverage": 65,
+      "value": 1.1745107715956198
+    },
+    {
+      "name": "Chuba Hubbard",
+      "key": "chubahubbard",
+      "pos": "RB",
+      "roster_id": 10,
+      "pick": 87,
+      "rank": 96.5,
+      "pos_rank": 34.5,
+      "coverage": 65,
+      "value": 1.038965279599396
+    },
+    {
+      "name": "Rico Dowdle",
+      "key": "ricodowdle",
+      "pos": "RB",
+      "roster_id": 8,
+      "pick": 88,
+      "rank": 81.5,
+      "pos_rank": 30.0,
+      "coverage": 65,
+      "value": 1.1907712924674
+    },
+    {
+      "name": "Chris Godwin",
+      "key": "chrisgodwin",
+      "pos": "WR",
+      "roster_id": 9,
+      "pick": 89,
+      "rank": 81.0,
+      "pos_rank": 35.0,
+      "coverage": 65,
+      "value": 1.1962507582320256
+    },
+    {
+      "name": "Kyle Pitts",
+      "key": "kylepitts",
+      "pos": "TE",
+      "roster_id": 7,
+      "pick": 90,
+      "rank": 84.0,
+      "pos_rank": 7.0,
+      "coverage": 65,
+      "value": 1.1638154824788718
+    },
+    {
+      "name": "Makai Lemon",
+      "key": "makailemon",
+      "pos": "WR",
+      "roster_id": 11,
+      "pick": 91,
+      "rank": 109.0,
+      "pos_rank": 46.0,
+      "coverage": 65,
+      "value": 0.9279867716373463
+    },
+    {
+      "name": "J.K. Dobbins",
+      "key": "jkdobbins",
+      "pos": "RB",
+      "roster_id": 6,
+      "pick": 92,
+      "rank": 93.0,
+      "pos_rank": 33.5,
+      "coverage": 65,
+      "value": 1.07238127651924
+    },
+    {
+      "name": "RJ Harvey",
+      "key": "rjharvey",
+      "pos": "RB",
+      "roster_id": 1,
+      "pick": 93,
+      "rank": 98.5,
+      "pos_rank": 35.0,
+      "coverage": 65,
+      "value": 1.0203600917683615
+    },
+    {
+      "name": "Alec Pierce",
+      "key": "alecpierce",
+      "pos": "WR",
+      "roster_id": 2,
+      "pick": 94,
+      "rank": 94.5,
+      "pos_rank": 41.5,
+      "coverage": 65,
+      "value": 1.05792319334401
+    },
+    {
+      "name": "Josh Jacobs",
+      "key": "joshjacobs",
+      "pos": "RB",
+      "roster_id": 12,
+      "pick": 95,
+      "rank": 136.5,
+      "pos_rank": 46,
+      "coverage": 62,
+      "value": 0.7200848362917537
+    },
+    {
+      "name": "Kenny Gainwell",
+      "key": "kennygainwell",
+      "pos": "RB",
+      "roster_id": 5,
+      "pick": 96,
+      "rank": 104.0,
+      "pos_rank": 37.0,
+      "coverage": 65,
+      "value": 0.9709118163543803
+    },
+    {
+      "name": "Kyle Monangai",
+      "key": "kylemonangai",
+      "pos": "RB",
+      "roster_id": 5,
+      "pick": 97,
+      "rank": 116.0,
+      "pos_rank": 39.0,
+      "coverage": 65,
+      "value": 0.8708283577973978
+    },
+    {
+      "name": "Stefon Diggs",
+      "key": "stefondiggs",
+      "pos": "WR",
+      "roster_id": 12,
+      "pick": 98,
+      "rank": 96.0,
+      "pos_rank": 42.0,
+      "coverage": 65,
+      "value": 1.0436711706368085
+    },
+    {
+      "name": "Mike Washington",
+      "key": "mikewashington",
+      "pos": "RB",
+      "roster_id": 2,
+      "pick": 99,
+      "rank": 140.0,
+      "pos_rank": 47,
+      "coverage": 64,
+      "value": 0.6964749706526201
+    },
+    {
+      "name": "Dak Prescott",
+      "key": "dakprescott",
+      "pos": "QB",
+      "roster_id": 1,
+      "pick": 100,
+      "rank": 78.0,
+      "pos_rank": 9.5,
+      "coverage": 65,
+      "value": 1.2297734502706692
+    },
+    {
+      "name": "Michael Wilson",
+      "key": "michaelwilson",
+      "pos": "WR",
+      "roster_id": 6,
+      "pick": 101,
+      "rank": 94.0,
+      "pos_rank": 40.5,
+      "coverage": 65,
+      "value": 1.0627193656075031
+    },
+    {
+      "name": "Aaron Jones",
+      "key": "aaronjones",
+      "pos": "RB",
+      "roster_id": 11,
+      "pick": 102,
+      "rank": 119.0,
+      "pos_rank": 41.0,
+      "coverage": 65,
+      "value": 0.8472978603872037
+    },
+    {
+      "name": "Michael Pittman",
+      "key": "michaelpittman",
+      "pos": "WR",
+      "roster_id": 7,
+      "pick": 103,
+      "rank": 92.0,
+      "pos_rank": 40.0,
+      "coverage": 65,
+      "value": 1.0821374514646047
+    },
+    {
+      "name": "Trevor Lawrence",
+      "key": "trevorlawrence",
+      "pos": "QB",
+      "roster_id": 9,
+      "pick": 104,
+      "rank": 73.0,
+      "pos_rank": 9.0,
+      "coverage": 65,
+      "value": 1.2882696569522778
+    },
+    {
+      "name": "Quentin Johnston",
+      "key": "quentinjohnston",
+      "pos": "WR",
+      "roster_id": 8,
+      "pick": 105,
+      "rank": 89.0,
+      "pos_rank": 38.0,
+      "coverage": 65,
+      "value": 1.1119904146142858
+    },
+    {
+      "name": "Jordan Addison",
+      "key": "jordanaddison",
+      "pos": "WR",
+      "roster_id": 10,
+      "pick": 106,
+      "rank": 106.0,
+      "pos_rank": 44.5,
+      "coverage": 65,
+      "value": 0.953520073642511
+    },
+    {
+      "name": "Matthew Stafford",
+      "key": "matthewstafford",
+      "pos": "QB",
+      "roster_id": 4,
+      "pick": 107,
+      "rank": 107.5,
+      "pos_rank": 16.0,
+      "coverage": 65,
+      "value": 0.9406719311646621
+    },
+    {
+      "name": "Dalton Kincaid",
+      "key": "daltonkincaid",
+      "pos": "TE",
+      "roster_id": 3,
+      "pick": 108,
+      "rank": 109.0,
+      "pos_rank": 11.0,
+      "coverage": 64,
+      "value": 0.9279867716373463
+    },
+    {
+      "name": "Jayden Reed",
+      "key": "jaydenreed",
+      "pos": "WR",
+      "roster_id": 3,
+      "pick": 109,
+      "rank": 101.5,
+      "pos_rank": 43.0,
+      "coverage": 65,
+      "value": 0.9930856738487022
+    },
+    {
+      "name": "Bo Nix",
+      "key": "bonix",
+      "pos": "QB",
+      "roster_id": 4,
+      "pick": 110,
+      "rank": 99.5,
+      "pos_rank": 13.0,
+      "coverage": 65,
+      "value": 1.0111857154923203
+    },
+    {
+      "name": "Patrick Mahomes",
+      "key": "patrickmahomes",
+      "pos": "QB",
+      "roster_id": 10,
+      "pick": 111,
+      "rank": 103.0,
+      "pos_rank": 14.0,
+      "coverage": 65,
+      "value": 0.9797224460365351
+    },
+    {
+      "name": "Josh Downs",
+      "key": "joshdowns",
+      "pos": "WR",
+      "roster_id": 8,
+      "pick": 112,
+      "rank": 95.0,
+      "pos_rank": 41.0,
+      "coverage": 65,
+      "value": 1.0531499145913523
+    },
+    {
+      "name": "De'Zhaun Stribling",
+      "key": "dezhaunstribling",
+      "pos": "WR",
+      "roster_id": 9,
+      "pick": 113,
+      "rank": 114.0,
+      "pos_rank": 47.5,
+      "coverage": 65,
+      "value": 0.8868286991438388
+    },
+    {
+      "name": "Matthew Golden",
+      "key": "matthewgolden",
+      "pos": "WR",
+      "roster_id": 7,
+      "pick": 114,
+      "rank": 120.75,
+      "pos_rank": 49,
+      "coverage": 64,
+      "value": 0.8338231618038434
+    },
+    {
+      "name": "Xavier Worthy",
+      "key": "xavierworthy",
+      "pos": "WR",
+      "roster_id": 11,
+      "pick": 115,
+      "rank": 126.5,
+      "pos_rank": 51.0,
+      "coverage": 65,
+      "value": 0.7907856501238614
+    },
+    {
+      "name": "Rachaad White",
+      "key": "rachaadwhite",
+      "pos": "RB",
+      "roster_id": 6,
+      "pick": 116,
+      "rank": 116.0,
+      "pos_rank": 40.0,
+      "coverage": 65,
+      "value": 0.8708283577973978
+    },
+    {
+      "name": "Chris Rodriguez",
+      "key": "chrisrodriguez",
+      "pos": "RB",
+      "roster_id": 1,
+      "pick": 117,
+      "rank": 120.5,
+      "pos_rank": 42.0,
+      "coverage": 64,
+      "value": 0.8357370379861276
+    },
+    {
+      "name": "Romeo Doubs",
+      "key": "romeodoubs",
+      "pos": "WR",
+      "roster_id": 2,
+      "pick": 118,
+      "rank": 127.0,
+      "pos_rank": 51.0,
+      "coverage": 65,
+      "value": 0.7871293389207508
+    },
+    {
+      "name": "Woody Marks",
+      "key": "woodymarks",
+      "pos": "RB",
+      "roster_id": 12,
+      "pick": 119,
+      "rank": 129.0,
+      "pos_rank": 44,
+      "coverage": 64,
+      "value": 0.7726363316181839
+    },
+    {
+      "name": "Los Angeles Rams",
+      "key": "losangelesrams",
+      "pos": "DEF",
+      "roster_id": 5,
+      "pick": 120,
+      "rank": null,
+      "pos_rank": 3,
+      "coverage": 0,
+      "value": 0
+    },
+    {
+      "name": "Wan'Dale Robinson",
+      "key": "wandalerobinson",
+      "pos": "WR",
+      "roster_id": 5,
+      "pick": 121,
+      "rank": 106.0,
+      "pos_rank": 44.0,
+      "coverage": 65,
+      "value": 0.953520073642511
+    },
+    {
+      "name": "Isaiah Likely",
+      "key": "isaiahlikely",
+      "pos": "TE",
+      "roster_id": 12,
+      "pick": 122,
+      "rank": 111.5,
+      "pos_rank": 12.5,
+      "coverage": 64,
+      "value": 0.9071960019682725
+    },
+    {
+      "name": "Jakobi Meyers",
+      "key": "jakobimeyers",
+      "pos": "WR",
+      "roster_id": 2,
+      "pick": 123,
+      "rank": 116.5,
+      "pos_rank": 48.0,
+      "coverage": 65,
+      "value": 0.8668679565813008
+    },
+    {
+      "name": "KC Concepcion",
+      "key": "kcconcepcion",
+      "pos": "WR",
+      "roster_id": 1,
+      "pick": 124,
+      "rank": 119.5,
+      "pos_rank": 48.5,
+      "coverage": 65,
+      "value": 0.8434293836092832
+    },
+    {
+      "name": "Jaxson Dart",
+      "key": "jaxsondart",
+      "pos": "QB",
+      "roster_id": 6,
+      "pick": 125,
+      "rank": 100.0,
+      "pos_rank": 13.0,
+      "coverage": 65,
+      "value": 1.0066298989564595
+    },
+    {
+      "name": "Jake Ferguson",
+      "key": "jakeferguson",
+      "pos": "TE",
+      "roster_id": 11,
+      "pick": 126,
+      "rank": 130.0,
+      "pos_rank": 15.0,
+      "coverage": 64,
+      "value": 0.7654678421395714
+    },
+    {
+      "name": "Khalil Shakir",
+      "key": "khalilshakir",
+      "pos": "WR",
+      "roster_id": 7,
+      "pick": 127,
+      "rank": 135.0,
+      "pos_rank": 54.0,
+      "coverage": 65,
+      "value": 0.7303765223283013
+    },
+    {
+      "name": "Dallas Goedert",
+      "key": "dallasgoedert",
+      "pos": "TE",
+      "roster_id": 9,
+      "pick": 128,
+      "rank": 115.0,
+      "pos_rank": 13.0,
+      "coverage": 64,
+      "value": 0.8787965274465745
+    },
+    {
+      "name": "Malik Willis",
+      "key": "malikwillis",
+      "pos": "QB",
+      "roster_id": 8,
+      "pick": 129,
+      "rank": 131.0,
+      "pos_rank": 21.0,
+      "coverage": 65,
+      "value": 0.7583503743707074
+    },
+    {
+      "name": "Jared Goff",
+      "key": "jaredgoff",
+      "pos": "QB",
+      "roster_id": 10,
+      "pick": 130,
+      "rank": 106.25,
+      "pos_rank": 15.0,
+      "coverage": 65,
+      "value": 0.9513672202814101
+    },
+    {
+      "name": "Ja'Kobi Lane",
+      "key": "jakobilane",
+      "pos": "WR",
+      "roster_id": 4,
+      "pick": 131,
+      "rank": 183.5,
+      "pos_rank": 73.0,
+      "coverage": 57,
+      "value": 0.44183275227903923
+    },
+    {
+      "name": "Tyler Allgeier",
+      "key": "tylerallgeier",
+      "pos": "RB",
+      "roster_id": 3,
+      "pick": 132,
+      "rank": 131.25,
+      "pos_rank": 45.0,
+      "coverage": 65,
+      "value": 0.7565788947223254
+    },
+    {
+      "name": "Deebo Samuel",
+      "key": "deebosamuel",
+      "pos": "WR",
+      "roster_id": 3,
+      "pick": 133,
+      "rank": 133.5,
+      "pos_rank": 54.5,
+      "coverage": 64,
+      "value": 0.7407752295491999
+    },
+    {
+      "name": "Hunter Henry",
+      "key": "hunterhenry",
+      "pos": "TE",
+      "roster_id": 4,
+      "pick": 134,
+      "rank": 155.5,
+      "pos_rank": 19.0,
+      "coverage": 65,
+      "value": 0.5981390699317581
+    },
+    {
+      "name": "Denzel Boston",
+      "key": "denzelboston",
+      "pos": "WR",
+      "roster_id": 10,
+      "pick": 135,
+      "rank": 154.5,
+      "pos_rank": 59,
+      "coverage": 64,
+      "value": 0.6041996945434491
+    },
+    {
+      "name": "Rashid Shaheed",
+      "key": "rashidshaheed",
+      "pos": "WR",
+      "roster_id": 8,
+      "pick": 136,
+      "rank": 140.0,
+      "pos_rank": 56.0,
+      "coverage": 65,
+      "value": 0.6964749706526201
+    },
+    {
+      "name": "Caleb Douglas",
+      "key": "calebdouglas",
+      "pos": "WR",
+      "roster_id": 9,
+      "pick": 137,
+      "rank": 192.25,
+      "pos_rank": 76.0,
+      "coverage": 55,
+      "value": 0.39760570881027474
+    },
+    {
+      "name": "Dylan Sampson",
+      "key": "dylansampson",
+      "pos": "RB",
+      "roster_id": 7,
+      "pick": 138,
+      "rank": 149.5,
+      "pos_rank": 51,
+      "coverage": 63,
+      "value": 0.6350663425239765
+    },
+    {
+      "name": "Tank Bigsby",
+      "key": "tankbigsby",
+      "pos": "RB",
+      "roster_id": 11,
+      "pick": 139,
+      "rank": 150.0,
+      "pos_rank": 52,
+      "coverage": 64,
+      "value": 0.6319364495150489
+    },
+    {
+      "name": "Kaelon Black",
+      "key": "kaelonblack",
+      "pos": "RB",
+      "roster_id": 6,
+      "pick": 140,
+      "rank": 190.5,
+      "pos_rank": 61.0,
+      "coverage": 57,
+      "value": 0.40629601800225185
+    },
+    {
+      "name": "Keaton Mitchell",
+      "key": "keatonmitchell",
+      "pos": "RB",
+      "roster_id": 1,
+      "pick": 141,
+      "rank": 143.5,
+      "pos_rank": 49,
+      "coverage": 64,
+      "value": 0.6734096977216238
+    },
+    {
+      "name": "Jalen Coker",
+      "key": "jalencoker",
+      "pos": "WR",
+      "roster_id": 2,
+      "pick": 142,
+      "rank": 133.0,
+      "pos_rank": 53.0,
+      "coverage": 65,
+      "value": 0.7442656344889685
+    },
+    {
+      "name": "Brian Robinson",
+      "key": "brianrobinson",
+      "pos": "RB",
+      "roster_id": 12,
+      "pick": 143,
+      "rank": 158.0,
+      "pos_rank": 55.0,
+      "coverage": 60,
+      "value": 0.5831462853456169
+    },
+    {
+      "name": "Mark Andrews",
+      "key": "markandrews",
+      "pos": "TE",
+      "roster_id": 5,
+      "pick": 144,
+      "rank": 128.0,
+      "pos_rank": 14.5,
+      "coverage": 65,
+      "value": 0.779856579591671
+    },
+    {
+      "name": "Brock Purdy",
+      "key": "brockpurdy",
+      "pos": "QB",
+      "roster_id": 5,
+      "pick": 145,
+      "rank": 97.0,
+      "pos_rank": 12.0,
+      "coverage": 65,
+      "value": 1.0342814302869696
+    },
+    {
+      "name": "Alvin Kamara",
+      "key": "alvinkamara",
+      "pos": "RB",
+      "roster_id": 12,
+      "pick": 146,
+      "rank": 164.75,
+      "pos_rank": 56.0,
+      "coverage": 62,
+      "value": 0.5437538836349561
+    },
+    {
+      "name": "Emmett Johnson",
+      "key": "emmettjohnson",
+      "pos": "RB",
+      "roster_id": 2,
+      "pick": 147,
+      "rank": 160.5,
+      "pos_rank": 55.0,
+      "coverage": 63,
+      "value": 0.5683749680253043
+    },
+    {
+      "name": "Houston Texans",
+      "key": "houstontexans",
+      "pos": "DEF",
+      "roster_id": 1,
+      "pick": 148,
+      "rank": null,
+      "pos_rank": 1,
+      "coverage": 0,
+      "value": 0
+    },
+    {
+      "name": "Kayshon Boutte",
+      "key": "kayshonboutte",
+      "pos": "WR",
+      "roster_id": 6,
+      "pick": 149,
+      "rank": 163.0,
+      "pos_rank": 63,
+      "coverage": 64,
+      "value": 0.5538186702510969
+    },
+    {
+      "name": "Baltimore Ravens",
+      "key": "baltimoreravens",
+      "pos": "DEF",
+      "roster_id": 11,
+      "pick": 150,
+      "rank": null,
+      "pos_rank": 11,
+      "coverage": 0,
+      "value": 0
+    },
+    {
+      "name": "Tyrone Tracy",
+      "key": "tyronetracy",
+      "pos": "RB",
+      "roster_id": 7,
+      "pick": 151,
+      "rank": 163.25,
+      "pos_rank": 56.0,
+      "coverage": 62,
+      "value": 0.5523746266788632
+    },
+    {
+      "name": "Jonah Coleman",
+      "key": "jonahcoleman",
+      "pos": "RB",
+      "roster_id": 9,
+      "pick": 152,
+      "rank": 140.5,
+      "pos_rank": 47,
+      "coverage": 64,
+      "value": 0.6931471805599453
+    },
+    {
+      "name": "Ray Davis",
+      "key": "raydavis",
+      "pos": "RB",
+      "roster_id": 8,
+      "pick": 153,
+      "rank": 171.5,
+      "pos_rank": 58,
+      "coverage": 61,
+      "value": 0.5058546110439703
+    },
+    {
+      "name": "Keenan Allen",
+      "key": "keenanallen",
+      "pos": "WR",
+      "roster_id": 10,
+      "pick": 154,
+      "rank": 174.5,
+      "pos_rank": 68.0,
+      "coverage": 63,
+      "value": 0.48946080126829383
+    },
+    {
+      "name": "Tyjae Spears",
+      "key": "tyjaespears",
+      "pos": "RB",
+      "roster_id": 4,
+      "pick": 155,
+      "rank": 138.0,
+      "pos_rank": 47.0,
+      "coverage": 65,
+      "value": 0.7098979909847607
+    },
+    {
+      "name": "Los Angeles Chargers",
+      "key": "losangeleschargers",
+      "pos": "DEF",
+      "roster_id": 3,
+      "pick": 156,
+      "rank": null,
+      "pos_rank": 10,
+      "coverage": 0,
+      "value": 0
+    },
+    {
+      "name": "Jason Myers",
+      "key": "jasonmyers",
+      "pos": "K",
+      "roster_id": 3,
+      "pick": 157,
+      "rank": null,
+      "pos_rank": 5.0,
+      "coverage": 0,
+      "value": 0
+    },
+    {
+      "name": "Zach Charbonnet",
+      "key": "zachcharbonnet",
+      "pos": "RB",
+      "roster_id": 4,
+      "pick": 158,
+      "rank": 146.0,
+      "pos_rank": 50.0,
+      "coverage": 62,
+      "value": 0.6572542574993387
+    },
+    {
+      "name": "Jordyn Tyson",
+      "key": "jordyntyson",
+      "pos": "WR",
+      "roster_id": 10,
+      "pick": 159,
+      "rank": 139.0,
+      "pos_rank": 55,
+      "coverage": 64,
+      "value": 0.7031639588034165
+    },
+    {
+      "name": "Jordan James",
+      "key": "jordanjames",
+      "pos": "RB",
+      "roster_id": 8,
+      "pick": 160,
+      "rank": 229.0,
+      "pos_rank": 75.0,
+      "coverage": 53,
+      "value": 0.23064671281736498
+    },
+    {
+      "name": "Ka'imi Fairbairn",
+      "key": "kaimifairbairn",
+      "pos": "K",
+      "roster_id": 9,
+      "pick": 161,
+      "rank": null,
+      "pos_rank": 2.0,
+      "coverage": 0,
+      "value": 0
+    },
+    {
+      "name": "Seattle Seahawks",
+      "key": "seattleseahawks",
+      "pos": "DEF",
+      "roster_id": 7,
+      "pick": 162,
+      "rank": null,
+      "pos_rank": 3,
+      "coverage": 0,
+      "value": 0
+    },
+    {
+      "name": "Malik Washington",
+      "key": "malikwashington",
+      "pos": "WR",
+      "roster_id": 11,
+      "pick": 163,
+      "rank": 181.5,
+      "pos_rank": 72.0,
+      "coverage": 61,
+      "value": 0.4522224561281751
+    },
+    {
+      "name": "Philadelphia Eagles",
+      "key": "philadelphiaeagles",
+      "pos": "DEF",
+      "roster_id": 6,
+      "pick": 164,
+      "rank": null,
+      "pos_rank": 5,
+      "coverage": 0,
+      "value": 0
+    },
+    {
+      "name": "Cam Little",
+      "key": "camlittle",
+      "pos": "K",
+      "roster_id": 1,
+      "pick": 165,
+      "rank": null,
+      "pos_rank": 4.0,
+      "coverage": 0,
+      "value": 0
+    },
+    {
+      "name": "Jalen Nailor",
+      "key": "jalennailor",
+      "pos": "WR",
+      "roster_id": 2,
+      "pick": 166,
+      "rank": 176.0,
+      "pos_rank": 69,
+      "coverage": 62,
+      "value": 0.48136359103567444
+    },
+    {
+      "name": "Jacksonville Jaguars",
+      "key": "jacksonvillejaguars",
+      "pos": "DEF",
+      "roster_id": 12,
+      "pick": 167,
+      "rank": null,
+      "pos_rank": 8,
+      "coverage": 0,
+      "value": 0
+    },
+    {
+      "name": "Tre Tucker",
+      "key": "tretucker",
+      "pos": "WR",
+      "roster_id": 5,
+      "pick": 168,
+      "rank": 157.5,
+      "pos_rank": 60.0,
+      "coverage": 65,
+      "value": 0.5861269134837546
+    },
+    {
+      "name": "Braelon Allen",
+      "key": "braelonallen",
+      "pos": "RB",
+      "roster_id": 5,
+      "pick": 169,
+      "rank": 161.0,
+      "pos_rank": 55.0,
+      "coverage": 61,
+      "value": 0.5654467082462159
+    },
+    {
+      "name": "Omar Cooper",
+      "key": "omarcooper",
+      "pos": "WR",
+      "roster_id": 12,
+      "pick": 170,
+      "rank": 177.5,
+      "pos_rank": 69.0,
+      "coverage": 63,
+      "value": 0.47333141933841016
+    },
+    {
+      "name": "Denver Broncos",
+      "key": "denverbroncos",
+      "pos": "DEF",
+      "roster_id": 2,
+      "pick": 171,
+      "rank": null,
+      "pos_rank": 3,
+      "coverage": 0,
+      "value": 0
+    },
+    {
+      "name": "Jordan Love",
+      "key": "jordanlove",
+      "pos": "QB",
+      "roster_id": 1,
+      "pick": 172,
+      "rank": 120.0,
+      "pos_rank": 18.0,
+      "coverage": 65,
+      "value": 0.8395758142932934
+    },
+    {
+      "name": "Seth McGowan",
+      "key": "sethmcgowan",
+      "pos": "RB",
+      "roster_id": 6,
+      "pick": 173,
+      "rank": 225.5,
+      "pos_rank": 75.5,
+      "coverage": 51,
+      "value": 0.24539935129240323
+    },
+    {
+      "name": "Kyler Murray",
+      "key": "kylermurray",
+      "pos": "QB",
+      "roster_id": 11,
+      "pick": 174,
+      "rank": 112.0,
+      "pos_rank": 16.75,
+      "coverage": 65,
+      "value": 0.9030892200156192
+    },
+    {
+      "name": "Cameron Dicker",
+      "key": "camerondicker",
+      "pos": "K",
+      "roster_id": 7,
+      "pick": 175,
+      "rank": null,
+      "pos_rank": 3.0,
+      "coverage": 0,
+      "value": 0
+    },
+    {
+      "name": "New England Patriots",
+      "key": "newenglandpatriots",
+      "pos": "DEF",
+      "roster_id": 9,
+      "pick": 176,
+      "rank": null,
+      "pos_rank": 6,
+      "coverage": 0,
+      "value": 0
+    },
+    {
+      "name": "Pittsburgh Steelers",
+      "key": "pittsburghsteelers",
+      "pos": "DEF",
+      "roster_id": 8,
+      "pick": 177,
+      "rank": null,
+      "pos_rank": 8,
+      "coverage": 0,
+      "value": 0
+    },
+    {
+      "name": "Juwan Johnson",
+      "key": "juwanjohnson",
+      "pos": "TE",
+      "roster_id": 10,
+      "pick": 178,
+      "rank": 128.0,
+      "pos_rank": 14.5,
+      "coverage": 64,
+      "value": 0.779856579591671
+    },
+    {
+      "name": "Harrison Mevis",
+      "key": "harrisonmevis",
+      "pos": "K",
+      "roster_id": 4,
+      "pick": 179,
+      "rank": null,
+      "pos_rank": 12.0,
+      "coverage": 0,
+      "value": 0
+    },
+    {
+      "name": "Cyrus Allen",
+      "key": "cyrusallen",
+      "pos": "WR",
+      "roster_id": 3,
+      "pick": 180,
+      "rank": 202.5,
+      "pos_rank": 76,
+      "coverage": 46,
+      "value": 0.34816827638440423
+    },
+    {
+      "name": "Zachariah Branch",
+      "key": "zachariahbranch",
+      "pos": "WR",
+      "roster_id": 3,
+      "pick": 181,
+      "rank": 201.0,
+      "pos_rank": 81.0,
+      "coverage": 56,
+      "value": 0.3552521312728092
+    },
+    {
+      "name": "Minnesota Vikings",
+      "key": "minnesotavikings",
+      "pos": "DEF",
+      "roster_id": 4,
+      "pick": 182,
+      "rank": null,
+      "pos_rank": 7,
+      "coverage": 0,
+      "value": 0
+    },
+    {
+      "name": "Jake Bates",
+      "key": "jakebates",
+      "pos": "K",
+      "roster_id": 10,
+      "pick": 183,
+      "rank": null,
+      "pos_rank": 10.0,
+      "coverage": 0,
+      "value": 0
+    },
+    {
+      "name": "Eddy Pineiro",
+      "key": "eddypineiro",
+      "pos": "K",
+      "roster_id": 8,
+      "pick": 184,
+      "rank": null,
+      "pos_rank": 6.5,
+      "coverage": 0,
+      "value": 0
+    },
+    {
+      "name": "Isiah Pacheco",
+      "key": "isiahpacheco",
+      "pos": "RB",
+      "roster_id": 9,
+      "pick": 185,
+      "rank": 201.5,
+      "pos_rank": 65,
+      "coverage": 52,
+      "value": 0.35288526626254313
+    },
+    {
+      "name": "Pat Bryant",
+      "key": "patbryant",
+      "pos": "WR",
+      "roster_id": 7,
+      "pick": 186,
+      "rank": 177.0,
+      "pos_rank": 69,
+      "coverage": 61,
+      "value": 0.4760016478942891
+    },
+    {
+      "name": "Oronde Gadsden",
+      "key": "orondegadsden",
+      "pos": "TE",
+      "roster_id": 11,
+      "pick": 187,
+      "rank": 198.75,
+      "pos_rank": 26.0,
+      "coverage": 58,
+      "value": 0.3659729010179108
+    },
+    {
+      "name": "Will Reichard",
+      "key": "willreichard",
+      "pos": "K",
+      "roster_id": 6,
+      "pick": 188,
+      "rank": null,
+      "pos_rank": 16.0,
+      "coverage": 0,
+      "value": 0
+    },
+    {
+      "name": "Devaughn Vele",
+      "key": "devaughnvele",
+      "pos": "WR",
+      "roster_id": 1,
+      "pick": 189,
+      "rank": 210.0,
+      "pos_rank": 85.5,
+      "coverage": 56,
+      "value": 0.3134827183965142
+    },
+    {
+      "name": "Harrison Butker",
+      "key": "harrisonbutker",
+      "pos": "K",
+      "roster_id": 2,
+      "pick": 190,
+      "rank": null,
+      "pos_rank": 15.0,
+      "coverage": 0,
+      "value": 0
+    },
+    {
+      "name": "Wil Lutz",
+      "key": "willutz",
+      "pos": "K",
+      "roster_id": 12,
+      "pick": 191,
+      "rank": null,
+      "pos_rank": 17.0,
+      "coverage": 0,
+      "value": 0
+    },
+    {
+      "name": "Justin Tucker",
+      "key": "justintucker",
+      "pos": "K",
+      "roster_id": 5,
+      "pick": 192,
+      "rank": null,
+      "pos_rank": 33.0,
+      "coverage": 0,
+      "value": 0
+    }
+  ],
+  "teams": [
+    {
+      "rid": 5,
+      "manager": "Nuss",
+      "starters": [
+        {
+          "name": "Caleb Williams",
+          "key": "calebwilliams",
+          "pos": "QB",
+          "roster_id": 5,
+          "pick": 73,
+          "rank": 68.5,
+          "pos_rank": 7.0,
+          "coverage": 65,
+          "value": 1.344011639960513
+        },
+        {
+          "name": "Jahmyr Gibbs",
+          "key": "jahmyrgibbs",
+          "pos": "RB",
+          "roster_id": 5,
+          "pick": 1,
+          "rank": 1.0,
+          "pos_rank": 1.0,
+          "coverage": 65,
+          "value": 3.309214991950505
+        },
+        {
+          "name": "Jadarian Price",
+          "key": "jadarianprice",
+          "pos": "RB",
+          "roster_id": 5,
+          "pick": 49,
+          "rank": 60.0,
+          "pos_rank": 23.0,
+          "coverage": 65,
+          "value": 1.4586150226995167
+        },
+        {
+          "name": "Drake London",
+          "key": "drakelondon",
+          "pos": "WR",
+          "roster_id": 5,
+          "pick": 25,
+          "rank": 18.0,
+          "pos_rank": 8.0,
+          "coverage": 65,
+          "value": 2.3749057545736716
+        },
+        {
+          "name": "Tetairoa McMillan",
+          "key": "tetairoamcmillan",
+          "pos": "WR",
+          "roster_id": 5,
+          "pick": 48,
+          "rank": 39.5,
+          "pos_rank": 19.0,
+          "coverage": 65,
+          "value": 1.805137595174231
+        },
+        {
+          "name": "Brock Bowers",
+          "key": "brockbowers",
+          "pos": "TE",
+          "roster_id": 5,
+          "pick": 24,
+          "rank": 17.0,
+          "pos_rank": 1.0,
+          "coverage": 65,
+          "value": 2.4112733987445467
+        },
+        {
+          "name": "Mike Evans",
+          "key": "mikeevans",
+          "pos": "WR",
+          "roster_id": 5,
+          "pick": 72,
+          "rank": 61.5,
+          "pos_rank": 29.25,
+          "coverage": 65,
+          "value": 1.4374128150489138
+        }
+      ],
+      "bench": [
+        {
+          "name": "Kenny Gainwell",
+          "key": "kennygainwell",
+          "pos": "RB",
+          "roster_id": 5,
+          "pick": 96,
+          "rank": 104.0,
+          "pos_rank": 37.0,
+          "coverage": 65,
+          "value": 0.9709118163543803
+        },
+        {
+          "name": "Wan'Dale Robinson",
+          "key": "wandalerobinson",
+          "pos": "WR",
+          "roster_id": 5,
+          "pick": 121,
+          "rank": 106.0,
+          "pos_rank": 44.0,
+          "coverage": 65,
+          "value": 0.953520073642511
+        },
+        {
+          "name": "Kyle Monangai",
+          "key": "kylemonangai",
+          "pos": "RB",
+          "roster_id": 5,
+          "pick": 97,
+          "rank": 116.0,
+          "pos_rank": 39.0,
+          "coverage": 65,
+          "value": 0.8708283577973978
+        },
+        {
+          "name": "Tre Tucker",
+          "key": "tretucker",
+          "pos": "WR",
+          "roster_id": 5,
+          "pick": 168,
+          "rank": 157.5,
+          "pos_rank": 60.0,
+          "coverage": 65,
+          "value": 0.5861269134837546
+        },
+        {
+          "name": "Braelon Allen",
+          "key": "braelonallen",
+          "pos": "RB",
+          "roster_id": 5,
+          "pick": 169,
+          "rank": 161.0,
+          "pos_rank": 55.0,
+          "coverage": 61,
+          "value": 0.5654467082462159
+        },
+        {
+          "name": "Brock Purdy",
+          "key": "brockpurdy",
+          "pos": "QB",
+          "roster_id": 5,
+          "pick": 145,
+          "rank": 97.0,
+          "pos_rank": 12.0,
+          "coverage": 65,
+          "value": 1.0342814302869696
+        },
+        {
+          "name": "Mark Andrews",
+          "key": "markandrews",
+          "pos": "TE",
+          "roster_id": 5,
+          "pick": 144,
+          "rank": 128.0,
+          "pos_rank": 14.5,
+          "coverage": 65,
+          "value": 0.779856579591671
+        }
+      ],
+      "starter_value": 14.140571218151898,
+      "bench_value": 2.660733385792885,
+      "special": 0.4583333333333333,
+      "score_raw": 91.61595713212998,
+      "score": 91.6,
+      "power_rank": 1,
+      "team_name": "Dr. Nuss",
+      "score_display": 92,
+      "grade": "A-",
+      "draft_slot": 1,
+      "strength": "Gibbs + Bowers create the biggest combined RB/TE advantage. London, McMillan and Evans fill out a strong receiving lineup.",
+      "concern": "Jadarian Price is the vulnerable RB2; the bench offers less cover than several rivals. Replace unsigned Justin Tucker."
+    },
+    {
+      "rid": 6,
+      "manager": "Joe",
+      "starters": [
+        {
+          "name": "Jalen Hurts",
+          "key": "jalenhurts",
+          "pos": "QB",
+          "roster_id": 6,
+          "pick": 68,
+          "rank": 58.5,
+          "pos_rank": 6.0,
+          "coverage": 65,
+          "value": 1.4802765194806962
+        },
+        {
+          "name": "Christian McCaffrey",
+          "key": "christianmccaffrey",
+          "pos": "RB",
+          "roster_id": 6,
+          "pick": 5,
+          "rank": 7.5,
+          "pos_rank": 4.0,
+          "coverage": 65,
+          "value": 2.8449093838194073
+        },
+        {
+          "name": "Ashton Jeanty",
+          "key": "ashtonjeanty",
+          "pos": "RB",
+          "roster_id": 6,
+          "pick": 20,
+          "rank": 24.5,
+          "pos_rank": 12.0,
+          "coverage": 65,
+          "value": 2.1661509407115616
+        },
+        {
+          "name": "Rashee Rice",
+          "key": "rasheerice",
+          "pos": "WR",
+          "roster_id": 6,
+          "pick": 44,
+          "rank": 31.0,
+          "pos_rank": 14.0,
+          "coverage": 65,
+          "value": 1.9935381980445679
+        },
+        {
+          "name": "Luther Burden",
+          "key": "lutherburden",
+          "pos": "WR",
+          "roster_id": 6,
+          "pick": 53,
+          "rank": 47.0,
+          "pos_rank": 23.0,
+          "coverage": 65,
+          "value": 1.6640589969143256
+        },
+        {
+          "name": "Trey McBride",
+          "key": "treymcbride",
+          "pos": "TE",
+          "roster_id": 6,
+          "pick": 29,
+          "rank": 22.0,
+          "pos_rank": 2.0,
+          "coverage": 65,
+          "value": 2.2413743619491493
+        },
+        {
+          "name": "DK Metcalf",
+          "key": "dkmetcalf",
+          "pos": "WR",
+          "roster_id": 6,
+          "pick": 77,
+          "rank": 77.5,
+          "pos_rank": 34.0,
+          "coverage": 65,
+          "value": 1.235471471385307
+        }
+      ],
+      "bench": [
+        {
+          "name": "J.K. Dobbins",
+          "key": "jkdobbins",
+          "pos": "RB",
+          "roster_id": 6,
+          "pick": 92,
+          "rank": 93.0,
+          "pos_rank": 33.5,
+          "coverage": 65,
+          "value": 1.07238127651924
+        },
+        {
+          "name": "Michael Wilson",
+          "key": "michaelwilson",
+          "pos": "WR",
+          "roster_id": 6,
+          "pick": 101,
+          "rank": 94.0,
+          "pos_rank": 40.5,
+          "coverage": 65,
+          "value": 1.0627193656075031
+        },
+        {
+          "name": "Rachaad White",
+          "key": "rachaadwhite",
+          "pos": "RB",
+          "roster_id": 6,
+          "pick": 116,
+          "rank": 116.0,
+          "pos_rank": 40.0,
+          "coverage": 65,
+          "value": 0.8708283577973978
+        },
+        {
+          "name": "Kayshon Boutte",
+          "key": "kayshonboutte",
+          "pos": "WR",
+          "roster_id": 6,
+          "pick": 149,
+          "rank": 163.0,
+          "pos_rank": 63,
+          "coverage": 64,
+          "value": 0.5538186702510969
+        },
+        {
+          "name": "Kaelon Black",
+          "key": "kaelonblack",
+          "pos": "RB",
+          "roster_id": 6,
+          "pick": 140,
+          "rank": 190.5,
+          "pos_rank": 61.0,
+          "coverage": 57,
+          "value": 0.40629601800225185
+        },
+        {
+          "name": "Jaxson Dart",
+          "key": "jaxsondart",
+          "pos": "QB",
+          "roster_id": 6,
+          "pick": 125,
+          "rank": 100.0,
+          "pos_rank": 13.0,
+          "coverage": 65,
+          "value": 1.0066298989564595
+        },
+        {
+          "name": "Seth McGowan",
+          "key": "sethmcgowan",
+          "pos": "RB",
+          "roster_id": 6,
+          "pick": 173,
+          "rank": 225.5,
+          "pos_rank": 75.5,
+          "coverage": 51,
+          "value": 0.24539935129240323
+        }
+      ],
+      "starter_value": 13.625779872305015,
+      "bench_value": 2.8003756189074487,
+      "special": 0.6041666666666667,
+      "score_raw": 87.86754895832324,
+      "score": 87.9,
+      "power_rank": 2,
+      "team_name": "When it Haynes, it Pours",
+      "score_display": 88,
+      "grade": "B+",
+      "draft_slot": 5,
+      "strength": "McCaffrey, Jeanty and McBride give this lineup three premium anchors, with Hurts and Rice adding strength.",
+      "concern": "The WR2/flex spots depend on Burden and Metcalf; the bench is adequate rather than dominant."
+    },
+    {
+      "rid": 8,
+      "manager": "Rishi",
+      "starters": [
+        {
+          "name": "Drake Maye",
+          "key": "drakemaye",
+          "pos": "QB",
+          "roster_id": 8,
+          "pick": 64,
+          "rank": 43.5,
+          "pos_rank": 3.0,
+          "coverage": 65,
+          "value": 1.7274286108469148
+        },
+        {
+          "name": "James Cook",
+          "key": "jamescook",
+          "pos": "RB",
+          "roster_id": 8,
+          "pick": 9,
+          "rank": 9.25,
+          "pos_rank": 5.0,
+          "coverage": 65,
+          "value": 2.7495992040150825
+        },
+        {
+          "name": "Travis Etienne",
+          "key": "travisetienne",
+          "pos": "RB",
+          "roster_id": 8,
+          "pick": 33,
+          "rank": 43.0,
+          "pos_rank": 17.0,
+          "coverage": 65,
+          "value": 1.7368183511967539
+        },
+        {
+          "name": "A.J. Brown",
+          "key": "ajbrown",
+          "pos": "WR",
+          "roster_id": 8,
+          "pick": 16,
+          "rank": 15.0,
+          "pos_rank": 7.0,
+          "coverage": 65,
+          "value": 2.488234439880675
+        },
+        {
+          "name": "Brian Thomas",
+          "key": "brianthomas",
+          "pos": "WR",
+          "roster_id": 8,
+          "pick": 81,
+          "rank": 79.0,
+          "pos_rank": 34.25,
+          "coverage": 65,
+          "value": 1.218473895016736
+        },
+        {
+          "name": "Colston Loveland",
+          "key": "colstonloveland",
+          "pos": "TE",
+          "roster_id": 8,
+          "pick": 40,
+          "rank": 34.0,
+          "pos_rank": 3.0,
+          "coverage": 65,
+          "value": 1.9229206308306146
+        },
+        {
+          "name": "David Montgomery",
+          "key": "davidmontgomery",
+          "pos": "RB",
+          "roster_id": 8,
+          "pick": 57,
+          "rank": 55.0,
+          "pos_rank": 21.0,
+          "coverage": 65,
+          "value": 1.5327229948532388
+        }
+      ],
+      "bench": [
+        {
+          "name": "Rico Dowdle",
+          "key": "ricodowdle",
+          "pos": "RB",
+          "roster_id": 8,
+          "pick": 88,
+          "rank": 81.5,
+          "pos_rank": 30.0,
+          "coverage": 65,
+          "value": 1.1907712924674
+        },
+        {
+          "name": "Quentin Johnston",
+          "key": "quentinjohnston",
+          "pos": "WR",
+          "roster_id": 8,
+          "pick": 105,
+          "rank": 89.0,
+          "pos_rank": 38.0,
+          "coverage": 65,
+          "value": 1.1119904146142858
+        },
+        {
+          "name": "Josh Downs",
+          "key": "joshdowns",
+          "pos": "WR",
+          "roster_id": 8,
+          "pick": 112,
+          "rank": 95.0,
+          "pos_rank": 41.0,
+          "coverage": 65,
+          "value": 1.0531499145913523
+        },
+        {
+          "name": "Rashid Shaheed",
+          "key": "rashidshaheed",
+          "pos": "WR",
+          "roster_id": 8,
+          "pick": 136,
+          "rank": 140.0,
+          "pos_rank": 56.0,
+          "coverage": 65,
+          "value": 0.6964749706526201
+        },
+        {
+          "name": "Ray Davis",
+          "key": "raydavis",
+          "pos": "RB",
+          "roster_id": 8,
+          "pick": 153,
+          "rank": 171.5,
+          "pos_rank": 58,
+          "coverage": 61,
+          "value": 0.5058546110439703
+        },
+        {
+          "name": "Malik Willis",
+          "key": "malikwillis",
+          "pos": "QB",
+          "roster_id": 8,
+          "pick": 129,
+          "rank": 131.0,
+          "pos_rank": 21.0,
+          "coverage": 65,
+          "value": 0.7583503743707074
+        },
+        {
+          "name": "Jordan James",
+          "key": "jordanjames",
+          "pos": "RB",
+          "roster_id": 8,
+          "pick": 160,
+          "rank": 229.0,
+          "pos_rank": 75.0,
+          "coverage": 53,
+          "value": 0.23064671281736498
+        }
+      ],
+      "starter_value": 13.376198126640016,
+      "bench_value": 3.133880833999179,
+      "special": 0.7395833333333333,
+      "score_raw": 86.86565055476056,
+      "score": 86.9,
+      "power_rank": 3,
+      "team_name": "Rishi\u2019s Raiders \u2620\ufe0f",
+      "score_display": 87,
+      "grade": "B+",
+      "draft_slot": 9,
+      "strength": "Cook, A.J. Brown, Maye and Loveland make a balanced core. Etienne/Montgomery and useful receiving reserves limit weak spots.",
+      "concern": "Brian Thomas is the least secure starting receiver; there is less elite RB/TE value than on the top two rosters."
+    },
+    {
+      "rid": 7,
+      "manager": "Shap",
+      "starters": [
+        {
+          "name": "Joe Burrow",
+          "key": "joeburrow",
+          "pos": "QB",
+          "roster_id": 7,
+          "pick": 55,
+          "rank": 53.0,
+          "pos_rank": 4.0,
+          "coverage": 65,
+          "value": 1.563975538357343
+        },
+        {
+          "name": "Kyren Williams",
+          "key": "kyrenwilliams",
+          "pos": "RB",
+          "roster_id": 7,
+          "pick": 18,
+          "rank": 33.0,
+          "pos_rank": 14.0,
+          "coverage": 65,
+          "value": 1.9459101490553132
+        },
+        {
+          "name": "D'Andre Swift",
+          "key": "dandreswift",
+          "pos": "RB",
+          "roster_id": 7,
+          "pick": 42,
+          "rank": 45.25,
+          "pos_rank": 18.0,
+          "coverage": 65,
+          "value": 1.6952419243510135
+        },
+        {
+          "name": "Ja'Marr Chase",
+          "key": "jamarrchase",
+          "pos": "WR",
+          "roster_id": 7,
+          "pick": 7,
+          "rank": 3.0,
+          "pos_rank": 1.0,
+          "coverage": 65,
+          "value": 3.142160907287339
+        },
+        {
+          "name": "Nico Collins",
+          "key": "nicocollins",
+          "pos": "WR",
+          "roster_id": 7,
+          "pick": 31,
+          "rank": 19.0,
+          "pos_rank": 9.0,
+          "coverage": 65,
+          "value": 2.3398144347624017
+        },
+        {
+          "name": "Kyle Pitts",
+          "key": "kylepitts",
+          "pos": "TE",
+          "roster_id": 7,
+          "pick": 90,
+          "rank": 84.0,
+          "pos_rank": 7.0,
+          "coverage": 65,
+          "value": 1.1638154824788718
+        },
+        {
+          "name": "Carnell Tate",
+          "key": "carnelltate",
+          "pos": "WR",
+          "roster_id": 7,
+          "pick": 79,
+          "rank": 74.0,
+          "pos_rank": 32.0,
+          "coverage": 65,
+          "value": 1.2762934659055623
+        }
+      ],
+      "bench": [
+        {
+          "name": "Tony Pollard",
+          "key": "tonypollard",
+          "pos": "RB",
+          "roster_id": 7,
+          "pick": 66,
+          "rank": 77.0,
+          "pos_rank": 29.0,
+          "coverage": 65,
+          "value": 1.241202146094292
+        },
+        {
+          "name": "Michael Pittman",
+          "key": "michaelpittman",
+          "pos": "WR",
+          "roster_id": 7,
+          "pick": 103,
+          "rank": 92.0,
+          "pos_rank": 40.0,
+          "coverage": 65,
+          "value": 1.0821374514646047
+        },
+        {
+          "name": "Matthew Golden",
+          "key": "matthewgolden",
+          "pos": "WR",
+          "roster_id": 7,
+          "pick": 114,
+          "rank": 120.75,
+          "pos_rank": 49,
+          "coverage": 64,
+          "value": 0.8338231618038434
+        },
+        {
+          "name": "Khalil Shakir",
+          "key": "khalilshakir",
+          "pos": "WR",
+          "roster_id": 7,
+          "pick": 127,
+          "rank": 135.0,
+          "pos_rank": 54.0,
+          "coverage": 65,
+          "value": 0.7303765223283013
+        },
+        {
+          "name": "Dylan Sampson",
+          "key": "dylansampson",
+          "pos": "RB",
+          "roster_id": 7,
+          "pick": 138,
+          "rank": 149.5,
+          "pos_rank": 51,
+          "coverage": 63,
+          "value": 0.6350663425239765
+        },
+        {
+          "name": "Tyrone Tracy",
+          "key": "tyronetracy",
+          "pos": "RB",
+          "roster_id": 7,
+          "pick": 151,
+          "rank": 163.25,
+          "pos_rank": 56.0,
+          "coverage": 62,
+          "value": 0.5523746266788632
+        },
+        {
+          "name": "Pat Bryant",
+          "key": "patbryant",
+          "pos": "WR",
+          "roster_id": 7,
+          "pick": 186,
+          "rank": 177.0,
+          "pos_rank": 69,
+          "coverage": 61,
+          "value": 0.4760016478942891
+        }
+      ],
+      "starter_value": 13.127211902197844,
+      "bench_value": 3.105407426846998,
+      "special": 0.9166666666666666,
+      "score_raw": 85.01798718342029,
+      "score": 85.0,
+      "power_rank": 4,
+      "team_name": "Shap Daddy",
+      "score_display": 85,
+      "grade": "B",
+      "draft_slot": 7,
+      "strength": "Chase and Collins form an excellent WR pairing; Burrow, Kyren and Swift round out a strong core. Pollard and Pittman provide usable depth.",
+      "concern": "The Pitts/Tate end of the starting lineup carries less consensus value than the higher-ranked teams\u2019 equivalent spots."
+    },
+    {
+      "rid": 3,
+      "manager": "Connor",
+      "starters": [
+        {
+          "name": "Justin Herbert",
+          "key": "justinherbert",
+          "pos": "QB",
+          "roster_id": 3,
+          "pick": 84,
+          "rank": 71.0,
+          "pos_rank": 8.0,
+          "coverage": 65,
+          "value": 1.312661110076437
+        },
+        {
+          "name": "Chase Brown",
+          "key": "chasebrown",
+          "pos": "RB",
+          "roster_id": 3,
+          "pick": 13,
+          "rank": 13.5,
+          "pos_rank": 7.0,
+          "coverage": 65,
+          "value": 2.5501098435987624
+        },
+        {
+          "name": "Bhayshul Tuten",
+          "key": "bhayshultuten",
+          "pos": "RB",
+          "roster_id": 3,
+          "pick": 60,
+          "rank": 59.5,
+          "pos_rank": 23.0,
+          "coverage": 65,
+          "value": 1.4657835121781293
+        },
+        {
+          "name": "CeeDee Lamb",
+          "key": "ceedeelamb",
+          "pos": "WR",
+          "roster_id": 3,
+          "pick": 12,
+          "rank": 10.0,
+          "pos_rank": 5.0,
+          "coverage": 65,
+          "value": 2.711377991194885
+        },
+        {
+          "name": "Malik Nabers",
+          "key": "maliknabers",
+          "pos": "WR",
+          "roster_id": 3,
+          "pick": 36,
+          "rank": 27.5,
+          "pos_rank": 12.0,
+          "coverage": 65,
+          "value": 2.0827693317725107
+        },
+        {
+          "name": "Dalton Kincaid",
+          "key": "daltonkincaid",
+          "pos": "TE",
+          "roster_id": 3,
+          "pick": 108,
+          "rank": 109.0,
+          "pos_rank": 11.0,
+          "coverage": 64,
+          "value": 0.9279867716373463
+        },
+        {
+          "name": "DeVonta Smith",
+          "key": "devontasmith",
+          "pos": "WR",
+          "roster_id": 3,
+          "pick": 37,
+          "rank": 29.0,
+          "pos_rank": 13.0,
+          "coverage": 65,
+          "value": 2.043548618619229
+        }
+      ],
+      "bench": [
+        {
+          "name": "Blake Corum",
+          "key": "blakecorum",
+          "pos": "RB",
+          "roster_id": 3,
+          "pick": 61,
+          "rank": 89.0,
+          "pos_rank": 33.0,
+          "coverage": 65,
+          "value": 1.1119904146142858
+        },
+        {
+          "name": "Jayden Reed",
+          "key": "jaydenreed",
+          "pos": "WR",
+          "roster_id": 3,
+          "pick": 109,
+          "rank": 101.5,
+          "pos_rank": 43.0,
+          "coverage": 65,
+          "value": 0.9930856738487022
+        },
+        {
+          "name": "Jacory Croskey-Merritt",
+          "key": "jacorycroskeymerritt",
+          "pos": "RB",
+          "roster_id": 3,
+          "pick": 85,
+          "rank": 102.0,
+          "pos_rank": 36.5,
+          "coverage": 65,
+          "value": 0.9886113934537812
+        },
+        {
+          "name": "Tyler Allgeier",
+          "key": "tylerallgeier",
+          "pos": "RB",
+          "roster_id": 3,
+          "pick": 132,
+          "rank": 131.25,
+          "pos_rank": 45.0,
+          "coverage": 65,
+          "value": 0.7565788947223254
+        },
+        {
+          "name": "Deebo Samuel",
+          "key": "deebosamuel",
+          "pos": "WR",
+          "roster_id": 3,
+          "pick": 133,
+          "rank": 133.5,
+          "pos_rank": 54.5,
+          "coverage": 64,
+          "value": 0.7407752295491999
+        },
+        {
+          "name": "Zachariah Branch",
+          "key": "zachariahbranch",
+          "pos": "WR",
+          "roster_id": 3,
+          "pick": 181,
+          "rank": 201.0,
+          "pos_rank": 81.0,
+          "coverage": 56,
+          "value": 0.3552521312728092
+        },
+        {
+          "name": "Cyrus Allen",
+          "key": "cyrusallen",
+          "pos": "WR",
+          "roster_id": 3,
+          "pick": 180,
+          "rank": 202.5,
+          "pos_rank": 76,
+          "coverage": 46,
+          "value": 0.34816827638440423
+        }
+      ],
+      "starter_value": 13.0942371790773,
+      "bench_value": 3.003346020510788,
+      "special": 0.7291666666666667,
+      "score_raw": 84.09771914947034,
+      "score": 84.1,
+      "power_rank": 5,
+      "team_name": "BallinJohnnyDavis",
+      "score_display": 84,
+      "grade": "B",
+      "draft_slot": 12,
+      "strength": "Lamb, Nabers and DeVonta Smith give this roster an outstanding three-WR lineup, supported by Chase Brown.",
+      "concern": "Tuten at RB2 and Kincaid at TE leave two clear pressure points. Nabers\u2019 recovery adds uncertainty already reflected in the recent boards."
+    },
+    {
+      "rid": 1,
+      "manager": "Zubs",
+      "starters": [
+        {
+          "name": "Dak Prescott",
+          "key": "dakprescott",
+          "pos": "QB",
+          "roster_id": 1,
+          "pick": 100,
+          "rank": 78.0,
+          "pos_rank": 9.5,
+          "coverage": 65,
+          "value": 1.2297734502706692
+        },
+        {
+          "name": "Jeremiyah Love",
+          "key": "jeremiyahlove",
+          "pos": "RB",
+          "roster_id": 1,
+          "pick": 28,
+          "rank": 37.0,
+          "pos_rank": 15.75,
+          "coverage": 65,
+          "value": 1.8569626630388172
+        },
+        {
+          "name": "MarShawn Lloyd",
+          "key": "marshawnlloyd",
+          "pos": "RB",
+          "roster_id": 1,
+          "pick": 76,
+          "rank": 82.0,
+          "pos_rank": 31,
+          "coverage": 64,
+          "value": 1.1853216876998354
+        },
+        {
+          "name": "Amon-Ra St. Brown",
+          "key": "amonrastbrown",
+          "pos": "WR",
+          "roster_id": 1,
+          "pick": 4,
+          "rank": 6.5,
+          "pos_rank": 4.0,
+          "coverage": 65,
+          "value": 2.903749883842341
+        },
+        {
+          "name": "Justin Jefferson",
+          "key": "justinjefferson",
+          "pos": "WR",
+          "roster_id": 1,
+          "pick": 21,
+          "rank": 11.0,
+          "pos_rank": 6.0,
+          "coverage": 65,
+          "value": 2.662587827025453
+        },
+        {
+          "name": "Sam LaPorta",
+          "key": "samlaporta",
+          "pos": "TE",
+          "roster_id": 1,
+          "pick": 69,
+          "rank": 78.75,
+          "pos_rank": 7.0,
+          "coverage": 65,
+          "value": 1.2212868363933505
+        },
+        {
+          "name": "Tee Higgins",
+          "key": "teehiggins",
+          "pos": "WR",
+          "roster_id": 1,
+          "pick": 45,
+          "rank": 35.5,
+          "pos_rank": 17.0,
+          "coverage": 65,
+          "value": 1.889397938791971
+        }
+      ],
+      "bench": [
+        {
+          "name": "Parker Washington",
+          "key": "parkerwashington",
+          "pos": "WR",
+          "roster_id": 1,
+          "pick": 52,
+          "rank": 59.0,
+          "pos_rank": 27.5,
+          "coverage": 65,
+          "value": 1.4730037601516164
+        },
+        {
+          "name": "RJ Harvey",
+          "key": "rjharvey",
+          "pos": "RB",
+          "roster_id": 1,
+          "pick": 93,
+          "rank": 98.5,
+          "pos_rank": 35.0,
+          "coverage": 65,
+          "value": 1.0203600917683615
+        },
+        {
+          "name": "KC Concepcion",
+          "key": "kcconcepcion",
+          "pos": "WR",
+          "roster_id": 1,
+          "pick": 124,
+          "rank": 119.5,
+          "pos_rank": 48.5,
+          "coverage": 65,
+          "value": 0.8434293836092832
+        },
+        {
+          "name": "Chris Rodriguez",
+          "key": "chrisrodriguez",
+          "pos": "RB",
+          "roster_id": 1,
+          "pick": 117,
+          "rank": 120.5,
+          "pos_rank": 42.0,
+          "coverage": 64,
+          "value": 0.8357370379861276
+        },
+        {
+          "name": "Keaton Mitchell",
+          "key": "keatonmitchell",
+          "pos": "RB",
+          "roster_id": 1,
+          "pick": 141,
+          "rank": 143.5,
+          "pos_rank": 49,
+          "coverage": 64,
+          "value": 0.6734096977216238
+        },
+        {
+          "name": "Jordan Love",
+          "key": "jordanlove",
+          "pos": "QB",
+          "roster_id": 1,
+          "pick": 172,
+          "rank": 120.0,
+          "pos_rank": 18.0,
+          "coverage": 65,
+          "value": 0.8395758142932934
+        },
+        {
+          "name": "Devaughn Vele",
+          "key": "devaughnvele",
+          "pos": "WR",
+          "roster_id": 1,
+          "pick": 189,
+          "rank": 210.0,
+          "pos_rank": 85.5,
+          "coverage": 56,
+          "value": 0.3134827183965142
+        }
+      ],
+      "starter_value": 12.949080287062436,
+      "bench_value": 3.313583386962209,
+      "special": 0.9375,
+      "score_raw": 84.0742334819134,
+      "score": 84.1,
+      "power_rank": 6,
+      "team_name": "The Browns",
+      "score_display": 84,
+      "grade": "B",
+      "draft_slot": 4,
+      "strength": "Amon-Ra, Jefferson and Higgins are an elite starting WR trio; Parker Washington is valuable cover.",
+      "concern": "Jeremiyah Love and MarShawn Lloyd carry the starting-RB burden. RB depth has less established consensus value than the receivers."
+    },
+    {
+      "rid": 12,
+      "manager": "Snare",
+      "starters": [
+        {
+          "name": "Jayden Daniels",
+          "key": "jaydendaniels",
+          "pos": "QB",
+          "roster_id": 12,
+          "pick": 71,
+          "rank": 62.0,
+          "pos_rank": 6.0,
+          "coverage": 65,
+          "value": 1.4304441457328203
+        },
+        {
+          "name": "Bijan Robinson",
+          "key": "bijanrobinson",
+          "pos": "RB",
+          "roster_id": 12,
+          "pick": 2,
+          "rank": 2.0,
+          "pos_rank": 2.0,
+          "coverage": 65,
+          "value": 3.2222036149608755
+        },
+        {
+          "name": "Bucky Irving",
+          "key": "buckyirving",
+          "pos": "RB",
+          "roster_id": 12,
+          "pick": 50,
+          "rank": 52.0,
+          "pos_rank": 20.0,
+          "coverage": 65,
+          "value": 1.5799758797037842
+        },
+        {
+          "name": "George Pickens",
+          "key": "georgepickens",
+          "pos": "WR",
+          "roster_id": 12,
+          "pick": 23,
+          "rank": 22.75,
+          "pos_rank": 10.25,
+          "coverage": 65,
+          "value": 2.218207302667615
+        },
+        {
+          "name": "Zay Flowers",
+          "key": "zayflowers",
+          "pos": "WR",
+          "roster_id": 12,
+          "pick": 26,
+          "rank": 31.0,
+          "pos_rank": 15.0,
+          "coverage": 65,
+          "value": 1.9935381980445679
+        },
+        {
+          "name": "George Kittle",
+          "key": "georgekittle",
+          "pos": "TE",
+          "roster_id": 12,
+          "pick": 74,
+          "rank": 94.0,
+          "pos_rank": 9.0,
+          "coverage": 65,
+          "value": 1.0627193656075031
+        },
+        {
+          "name": "DJ Moore",
+          "key": "djmoore",
+          "pos": "WR",
+          "roster_id": 12,
+          "pick": 47,
+          "rank": 54.0,
+          "pos_rank": 26.0,
+          "coverage": 65,
+          "value": 1.548227181389204
+        }
+      ],
+      "bench": [
+        {
+          "name": "Stefon Diggs",
+          "key": "stefondiggs",
+          "pos": "WR",
+          "roster_id": 12,
+          "pick": 98,
+          "rank": 96.0,
+          "pos_rank": 42.0,
+          "coverage": 65,
+          "value": 1.0436711706368085
+        },
+        {
+          "name": "Woody Marks",
+          "key": "woodymarks",
+          "pos": "RB",
+          "roster_id": 12,
+          "pick": 119,
+          "rank": 129.0,
+          "pos_rank": 44,
+          "coverage": 64,
+          "value": 0.7726363316181839
+        },
+        {
+          "name": "Josh Jacobs",
+          "key": "joshjacobs",
+          "pos": "RB",
+          "roster_id": 12,
+          "pick": 95,
+          "rank": 136.5,
+          "pos_rank": 46,
+          "coverage": 62,
+          "value": 0.7200848362917537
+        },
+        {
+          "name": "Brian Robinson",
+          "key": "brianrobinson",
+          "pos": "RB",
+          "roster_id": 12,
+          "pick": 143,
+          "rank": 158.0,
+          "pos_rank": 55.0,
+          "coverage": 60,
+          "value": 0.5831462853456169
+        },
+        {
+          "name": "Alvin Kamara",
+          "key": "alvinkamara",
+          "pos": "RB",
+          "roster_id": 12,
+          "pick": 146,
+          "rank": 164.75,
+          "pos_rank": 56.0,
+          "coverage": 62,
+          "value": 0.5437538836349561
+        },
+        {
+          "name": "Omar Cooper",
+          "key": "omarcooper",
+          "pos": "WR",
+          "roster_id": 12,
+          "pick": 170,
+          "rank": 177.5,
+          "pos_rank": 69.0,
+          "coverage": 63,
+          "value": 0.47333141933841016
+        },
+        {
+          "name": "Isaiah Likely",
+          "key": "isaiahlikely",
+          "pos": "TE",
+          "roster_id": 12,
+          "pick": 122,
+          "rank": 111.5,
+          "pos_rank": 12.5,
+          "coverage": 64,
+          "value": 0.9071960019682725
+        }
+      ],
+      "starter_value": 13.05531568810637,
+      "bench_value": 2.501317490544852,
+      "special": 0.5208333333333333,
+      "score_raw": 82.05272220535443,
+      "score": 82.1,
+      "power_rank": 7,
+      "team_name": "Bill Nye The Science Guy",
+      "score_display": 82,
+      "grade": "B-",
+      "draft_slot": 2,
+      "strength": "Bijan, Pickens, Flowers and Daniels provide a strong core, with Bucky Irving and DJ Moore filling out a competitive lineup.",
+      "concern": "Jacobs is an uncertain stash, not a dependable starting RB. Kittle\u2019s recovery and thinner usable reserves keep the floor below the top tier."
+    },
+    {
+      "rid": 9,
+      "manager": "Zook",
+      "starters": [
+        {
+          "name": "Trevor Lawrence",
+          "key": "trevorlawrence",
+          "pos": "QB",
+          "roster_id": 9,
+          "pick": 104,
+          "rank": 73.0,
+          "pos_rank": 9.0,
+          "coverage": 65,
+          "value": 1.2882696569522778
+        },
+        {
+          "name": "Jonathan Taylor",
+          "key": "jonathantaylor",
+          "pos": "RB",
+          "roster_id": 9,
+          "pick": 8,
+          "rank": 8.0,
+          "pos_rank": 4.0,
+          "coverage": 65,
+          "value": 2.816738506852711
+        },
+        {
+          "name": "Kenneth Walker",
+          "key": "kennethwalker",
+          "pos": "RB",
+          "roster_id": 9,
+          "pick": 17,
+          "rank": 17.0,
+          "pos_rank": 9.0,
+          "coverage": 65,
+          "value": 2.4112733987445467
+        },
+        {
+          "name": "Jaylen Waddle",
+          "key": "jaylenwaddle",
+          "pos": "WR",
+          "roster_id": 9,
+          "pick": 41,
+          "rank": 38.0,
+          "pos_rank": 18.0,
+          "coverage": 65,
+          "value": 1.8359092538409847
+        },
+        {
+          "name": "Christian Watson",
+          "key": "christianwatson",
+          "pos": "WR",
+          "roster_id": 9,
+          "pick": 56,
+          "rank": 54.0,
+          "pos_rank": 26.0,
+          "coverage": 65,
+          "value": 1.548227181389204
+        },
+        {
+          "name": "Dallas Goedert",
+          "key": "dallasgoedert",
+          "pos": "TE",
+          "roster_id": 9,
+          "pick": 128,
+          "rank": 115.0,
+          "pos_rank": 13.0,
+          "coverage": 64,
+          "value": 0.8787965274465745
+        },
+        {
+          "name": "Breece Hall",
+          "key": "breecehall",
+          "pos": "RB",
+          "roster_id": 9,
+          "pick": 32,
+          "rank": 38.5,
+          "pos_rank": 15.0,
+          "coverage": 65,
+          "value": 1.8255464668054382
+        }
+      ],
+      "bench": [
+        {
+          "name": "Rome Odunze",
+          "key": "romeodunze",
+          "pos": "WR",
+          "roster_id": 9,
+          "pick": 65,
+          "rank": 59.0,
+          "pos_rank": 28.0,
+          "coverage": 65,
+          "value": 1.4730037601516164
+        },
+        {
+          "name": "Jonathon Brooks",
+          "key": "jonathonbrooks",
+          "pos": "RB",
+          "roster_id": 9,
+          "pick": 80,
+          "rank": 79.0,
+          "pos_rank": 30,
+          "coverage": 64,
+          "value": 1.218473895016736
+        },
+        {
+          "name": "Chris Godwin",
+          "key": "chrisgodwin",
+          "pos": "WR",
+          "roster_id": 9,
+          "pick": 89,
+          "rank": 81.0,
+          "pos_rank": 35.0,
+          "coverage": 65,
+          "value": 1.1962507582320256
+        },
+        {
+          "name": "De'Zhaun Stribling",
+          "key": "dezhaunstribling",
+          "pos": "WR",
+          "roster_id": 9,
+          "pick": 113,
+          "rank": 114.0,
+          "pos_rank": 47.5,
+          "coverage": 65,
+          "value": 0.8868286991438388
+        },
+        {
+          "name": "Jonah Coleman",
+          "key": "jonahcoleman",
+          "pos": "RB",
+          "roster_id": 9,
+          "pick": 152,
+          "rank": 140.5,
+          "pos_rank": 47,
+          "coverage": 64,
+          "value": 0.6931471805599453
+        },
+        {
+          "name": "Caleb Douglas",
+          "key": "calebdouglas",
+          "pos": "WR",
+          "roster_id": 9,
+          "pick": 137,
+          "rank": 192.25,
+          "pos_rank": 76.0,
+          "coverage": 55,
+          "value": 0.39760570881027474
+        },
+        {
+          "name": "Isiah Pacheco",
+          "key": "isiahpacheco",
+          "pos": "RB",
+          "roster_id": 9,
+          "pick": 185,
+          "rank": 201.5,
+          "pos_rank": 65,
+          "coverage": 52,
+          "value": 0.35288526626254313
+        }
+      ],
+      "starter_value": 12.604760992031737,
+      "bench_value": 3.7162990810678997,
+      "special": 0.875,
+      "score_raw": 82.04529792052314,
+      "score": 82.0,
+      "power_rank": 8,
+      "team_name": "Cool Hand Zook \ud83d\udd2b",
+      "score_display": 82,
+      "grade": "B-",
+      "draft_slot": 8,
+      "strength": "Taylor, Walker and Hall form the deepest starting RB trio, and this roster has the model\u2019s strongest bench.",
+      "concern": "Goedert provides little TE advantage; the starting receivers offer less top-end value. Extra bench weight moves this roster up."
+    },
+    {
+      "rid": 2,
+      "manager": "Plot",
+      "starters": [
+        {
+          "name": "Josh Allen",
+          "key": "joshallen",
+          "pos": "QB",
+          "roster_id": 2,
+          "pick": 22,
+          "rank": 25.0,
+          "pos_rank": 1.0,
+          "coverage": 65,
+          "value": 2.151762203259462
+        },
+        {
+          "name": "Javonte Williams",
+          "key": "javontewilliams",
+          "pos": "RB",
+          "roster_id": 2,
+          "pick": 27,
+          "rank": 35.75,
+          "pos_rank": 14.0,
+          "coverage": 65,
+          "value": 1.8839184730273455
+        },
+        {
+          "name": "Quinshon Judkins",
+          "key": "quinshonjudkins",
+          "pos": "RB",
+          "roster_id": 2,
+          "pick": 46,
+          "rank": 55.0,
+          "pos_rank": 22.0,
+          "coverage": 65,
+          "value": 1.5327229948532388
+        },
+        {
+          "name": "Puka Nacua",
+          "key": "pukanacua",
+          "pos": "WR",
+          "roster_id": 2,
+          "pick": 3,
+          "rank": 4.0,
+          "pos_rank": 2.0,
+          "coverage": 65,
+          "value": 3.068052935133617
+        },
+        {
+          "name": "Davante Adams",
+          "key": "davanteadams",
+          "pos": "WR",
+          "roster_id": 2,
+          "pick": 51,
+          "rank": 48.0,
+          "pos_rank": 24.0,
+          "coverage": 65,
+          "value": 1.6466672542024563
+        },
+        {
+          "name": "Harold Fannin",
+          "key": "haroldfannin",
+          "pos": "TE",
+          "roster_id": 2,
+          "pick": 75,
+          "rank": 84.0,
+          "pos_rank": 7.25,
+          "coverage": 65,
+          "value": 1.1638154824788718
+        },
+        {
+          "name": "Marvin Harrison",
+          "key": "marvinharrison",
+          "pos": "WR",
+          "roster_id": 2,
+          "pick": 70,
+          "rank": 73.0,
+          "pos_rank": 32.0,
+          "coverage": 65,
+          "value": 1.2882696569522778
+        }
+      ],
+      "bench": [
+        {
+          "name": "Alec Pierce",
+          "key": "alecpierce",
+          "pos": "WR",
+          "roster_id": 2,
+          "pick": 94,
+          "rank": 94.5,
+          "pos_rank": 41.5,
+          "coverage": 65,
+          "value": 1.05792319334401
+        },
+        {
+          "name": "Jakobi Meyers",
+          "key": "jakobimeyers",
+          "pos": "WR",
+          "roster_id": 2,
+          "pick": 123,
+          "rank": 116.5,
+          "pos_rank": 48.0,
+          "coverage": 65,
+          "value": 0.8668679565813008
+        },
+        {
+          "name": "Romeo Doubs",
+          "key": "romeodoubs",
+          "pos": "WR",
+          "roster_id": 2,
+          "pick": 118,
+          "rank": 127.0,
+          "pos_rank": 51.0,
+          "coverage": 65,
+          "value": 0.7871293389207508
+        },
+        {
+          "name": "Jalen Coker",
+          "key": "jalencoker",
+          "pos": "WR",
+          "roster_id": 2,
+          "pick": 142,
+          "rank": 133.0,
+          "pos_rank": 53.0,
+          "coverage": 65,
+          "value": 0.7442656344889685
+        },
+        {
+          "name": "Mike Washington",
+          "key": "mikewashington",
+          "pos": "RB",
+          "roster_id": 2,
+          "pick": 99,
+          "rank": 140.0,
+          "pos_rank": 47,
+          "coverage": 64,
+          "value": 0.6964749706526201
+        },
+        {
+          "name": "Emmett Johnson",
+          "key": "emmettjohnson",
+          "pos": "RB",
+          "roster_id": 2,
+          "pick": 147,
+          "rank": 160.5,
+          "pos_rank": 55.0,
+          "coverage": 63,
+          "value": 0.5683749680253043
+        },
+        {
+          "name": "Jalen Nailor",
+          "key": "jalennailor",
+          "pos": "WR",
+          "roster_id": 2,
+          "pick": 166,
+          "rank": 176.0,
+          "pos_rank": 69,
+          "coverage": 62,
+          "value": 0.48136359103567444
+        }
+      ],
+      "starter_value": 12.735208999907268,
+      "bench_value": 2.741602086241927,
+      "special": 0.6666666666666666,
+      "score_raw": 80.2282241731955,
+      "score": 80.2,
+      "power_rank": 9,
+      "team_name": "PlotNix",
+      "score_display": 80,
+      "grade": "B-",
+      "draft_slot": 3,
+      "strength": "Puka and Josh Allen deliver elite WR/QB anchors. Javonte and Judkins form a serviceable RB pair.",
+      "concern": "The remainder of the lineup lacks another premium anchor; reserve RB support is particularly thin behind the starters."
+    },
+    {
+      "rid": 4,
+      "manager": "Singer",
+      "starters": [
+        {
+          "name": "Bo Nix",
+          "key": "bonix",
+          "pos": "QB",
+          "roster_id": 4,
+          "pick": 110,
+          "rank": 99.5,
+          "pos_rank": 13.0,
+          "coverage": 65,
+          "value": 1.0111857154923203
+        },
+        {
+          "name": "Derrick Henry",
+          "key": "derrickhenry",
+          "pos": "RB",
+          "roster_id": 4,
+          "pick": 14,
+          "rank": 20.0,
+          "pos_rank": 10.0,
+          "coverage": 65,
+          "value": 2.3059128830867204
+        },
+        {
+          "name": "Rhamondre Stevenson",
+          "key": "rhamondrestevenson",
+          "pos": "RB",
+          "roster_id": 4,
+          "pick": 62,
+          "rank": 67.0,
+          "pos_rank": 26.0,
+          "coverage": 65,
+          "value": 1.363304842895192
+        },
+        {
+          "name": "Jaxon Smith-Njigba",
+          "key": "jaxonsmithnjigba",
+          "pos": "WR",
+          "roster_id": 4,
+          "pick": 11,
+          "rank": 6.0,
+          "pos_rank": 3.0,
+          "coverage": 65,
+          "value": 2.9345215425090947
+        },
+        {
+          "name": "Garrett Wilson",
+          "key": "garrettwilson",
+          "pos": "WR",
+          "roster_id": 4,
+          "pick": 35,
+          "rank": 38.0,
+          "pos_rank": 18.0,
+          "coverage": 65,
+          "value": 1.8359092538409847
+        },
+        {
+          "name": "Tyler Warren",
+          "key": "tylerwarren",
+          "pos": "TE",
+          "roster_id": 4,
+          "pick": 59,
+          "rank": 56.0,
+          "pos_rank": 4.0,
+          "coverage": 65,
+          "value": 1.5174555227224502
+        },
+        {
+          "name": "Emeka Egbuka",
+          "key": "emekaegbuka",
+          "pos": "WR",
+          "roster_id": 4,
+          "pick": 38,
+          "rank": 42.5,
+          "pos_rank": 20.0,
+          "coverage": 65,
+          "value": 1.7462970951512977
+        }
+      ],
+      "bench": [
+        {
+          "name": "Courtland Sutton",
+          "key": "courtlandsutton",
+          "pos": "WR",
+          "roster_id": 4,
+          "pick": 86,
+          "rank": 83.0,
+          "pos_rank": 37.0,
+          "coverage": 65,
+          "value": 1.1745107715956198
+        },
+        {
+          "name": "Jordan Mason",
+          "key": "jordanmason",
+          "pos": "RB",
+          "roster_id": 4,
+          "pick": 83,
+          "rank": 98.0,
+          "pos_rank": 36.0,
+          "coverage": 65,
+          "value": 1.0249790376246561
+        },
+        {
+          "name": "Tyjae Spears",
+          "key": "tyjaespears",
+          "pos": "RB",
+          "roster_id": 4,
+          "pick": 155,
+          "rank": 138.0,
+          "pos_rank": 47.0,
+          "coverage": 65,
+          "value": 0.7098979909847607
+        },
+        {
+          "name": "Zach Charbonnet",
+          "key": "zachcharbonnet",
+          "pos": "RB",
+          "roster_id": 4,
+          "pick": 158,
+          "rank": 146.0,
+          "pos_rank": 50.0,
+          "coverage": 62,
+          "value": 0.6572542574993387
+        },
+        {
+          "name": "Ja'Kobi Lane",
+          "key": "jakobilane",
+          "pos": "WR",
+          "roster_id": 4,
+          "pick": 131,
+          "rank": 183.5,
+          "pos_rank": 73.0,
+          "coverage": 57,
+          "value": 0.44183275227903923
+        },
+        {
+          "name": "Matthew Stafford",
+          "key": "matthewstafford",
+          "pos": "QB",
+          "roster_id": 4,
+          "pick": 107,
+          "rank": 107.5,
+          "pos_rank": 16.0,
+          "coverage": 65,
+          "value": 0.9406719311646621
+        },
+        {
+          "name": "Hunter Henry",
+          "key": "hunterhenry",
+          "pos": "TE",
+          "roster_id": 4,
+          "pick": 134,
+          "rank": 155.5,
+          "pos_rank": 19.0,
+          "coverage": 65,
+          "value": 0.5981390699317581
+        }
+      ],
+      "starter_value": 12.71458685569806,
+      "bench_value": 2.8212907083869663,
+      "special": 0.6458333333333334,
+      "score_raw": 80.21593758581373,
+      "score": 80.2,
+      "power_rank": 10,
+      "team_name": "Least Edjucated",
+      "score_display": 80,
+      "grade": "B-",
+      "draft_slot": 11,
+      "strength": "JSN and Henry anchor a competitive WR-heavy roster; Wilson, Egbuka and Sutton provide useful options.",
+      "concern": "The Nix/Stafford QB pairing and Stevenson at RB2 offer less weekly advantage. The RB bench is not a major strength."
+    },
+    {
+      "rid": 10,
+      "manager": "Joel",
+      "starters": [
+        {
+          "name": "Patrick Mahomes",
+          "key": "patrickmahomes",
+          "pos": "QB",
+          "roster_id": 10,
+          "pick": 111,
+          "rank": 103.0,
+          "pos_rank": 14.0,
+          "coverage": 65,
+          "value": 0.9797224460365351
+        },
+        {
+          "name": "De'Von Achane",
+          "key": "devonachane",
+          "pos": "RB",
+          "roster_id": 10,
+          "pick": 15,
+          "rank": 17.0,
+          "pos_rank": 9.0,
+          "coverage": 65,
+          "value": 2.4112733987445467
+        },
+        {
+          "name": "Omarion Hampton",
+          "key": "omarionhampton",
+          "pos": "RB",
+          "roster_id": 10,
+          "pick": 10,
+          "rank": 18.0,
+          "pos_rank": 10.0,
+          "coverage": 65,
+          "value": 2.3749057545736716
+        },
+        {
+          "name": "Chris Olave",
+          "key": "chrisolave",
+          "pos": "WR",
+          "roster_id": 10,
+          "pick": 34,
+          "rank": 22.5,
+          "pos_rank": 11.0,
+          "coverage": 65,
+          "value": 2.225870175413184
+        },
+        {
+          "name": "Jameson Williams",
+          "key": "jamesonwilliams",
+          "pos": "WR",
+          "roster_id": 10,
+          "pick": 39,
+          "rank": 49.5,
+          "pos_rank": 25.0,
+          "coverage": 65,
+          "value": 1.6211339521972916
+        },
+        {
+          "name": "Tucker Kraft",
+          "key": "tuckerkraft",
+          "pos": "TE",
+          "roster_id": 10,
+          "pick": 82,
+          "rank": 66.0,
+          "pos_rank": 5.0,
+          "coverage": 65,
+          "value": 1.3763769244625448
+        },
+        {
+          "name": "TreVeyon Henderson",
+          "key": "treveyonhenderson",
+          "pos": "RB",
+          "roster_id": 10,
+          "pick": 63,
+          "rank": 65.0,
+          "pos_rank": 25.25,
+          "coverage": 65,
+          "value": 1.3896221512125653
+        }
+      ],
+      "bench": [
+        {
+          "name": "Jaylen Warren",
+          "key": "jaylenwarren",
+          "pos": "RB",
+          "roster_id": 10,
+          "pick": 58,
+          "rank": 71.0,
+          "pos_rank": 27.0,
+          "coverage": 65,
+          "value": 1.312661110076437
+        },
+        {
+          "name": "Chuba Hubbard",
+          "key": "chubahubbard",
+          "pos": "RB",
+          "roster_id": 10,
+          "pick": 87,
+          "rank": 96.5,
+          "pos_rank": 34.5,
+          "coverage": 65,
+          "value": 1.038965279599396
+        },
+        {
+          "name": "Jordan Addison",
+          "key": "jordanaddison",
+          "pos": "WR",
+          "roster_id": 10,
+          "pick": 106,
+          "rank": 106.0,
+          "pos_rank": 44.5,
+          "coverage": 65,
+          "value": 0.953520073642511
+        },
+        {
+          "name": "Jordyn Tyson",
+          "key": "jordyntyson",
+          "pos": "WR",
+          "roster_id": 10,
+          "pick": 159,
+          "rank": 139.0,
+          "pos_rank": 55,
+          "coverage": 64,
+          "value": 0.7031639588034165
+        },
+        {
+          "name": "Denzel Boston",
+          "key": "denzelboston",
+          "pos": "WR",
+          "roster_id": 10,
+          "pick": 135,
+          "rank": 154.5,
+          "pos_rank": 59,
+          "coverage": 64,
+          "value": 0.6041996945434491
+        },
+        {
+          "name": "Keenan Allen",
+          "key": "keenanallen",
+          "pos": "WR",
+          "roster_id": 10,
+          "pick": 154,
+          "rank": 174.5,
+          "pos_rank": 68.0,
+          "coverage": 63,
+          "value": 0.48946080126829383
+        },
+        {
+          "name": "Jared Goff",
+          "key": "jaredgoff",
+          "pos": "QB",
+          "roster_id": 10,
+          "pick": 130,
+          "rank": 106.25,
+          "pos_rank": 15.0,
+          "coverage": 65,
+          "value": 0.9513672202814101
+        },
+        {
+          "name": "Juwan Johnson",
+          "key": "juwanjohnson",
+          "pos": "TE",
+          "roster_id": 10,
+          "pick": 178,
+          "rank": 128.0,
+          "pos_rank": 14.5,
+          "coverage": 64,
+          "value": 0.779856579591671
+        }
+      ],
+      "starter_value": 12.378904802640339,
+      "bench_value": 3.186024324903974,
+      "special": 0.3125,
+      "score_raw": 77.62114336051836,
+      "score": 77.6,
+      "power_rank": 11,
+      "team_name": "Crazy Feta Fighters",
+      "score_display": 78,
+      "grade": "C+",
+      "draft_slot": 10,
+      "strength": "Achane, Hampton and Olave are a strong trio, with Henderson, Warren and Hubbard providing RB options.",
+      "concern": "The Mahomes/Goff pairing ranks lower than most league quarterbacks, and WR depth is less convincing. A defense must be added."
+    },
+    {
+      "rid": 11,
+      "manager": "Shemer",
+      "starters": [
+        {
+          "name": "Lamar Jackson",
+          "key": "lamarjackson",
+          "pos": "QB",
+          "roster_id": 11,
+          "pick": 30,
+          "rank": 35.5,
+          "pos_rank": 2.0,
+          "coverage": 65,
+          "value": 1.889397938791971
+        },
+        {
+          "name": "Saquon Barkley",
+          "key": "saquonbarkley",
+          "pos": "RB",
+          "roster_id": 11,
+          "pick": 6,
+          "rank": 15.0,
+          "pos_rank": 8.0,
+          "coverage": 65,
+          "value": 2.488234439880675
+        },
+        {
+          "name": "Cam Skattebo",
+          "key": "camskattebo",
+          "pos": "RB",
+          "roster_id": 11,
+          "pick": 19,
+          "rank": 52.0,
+          "pos_rank": 20.0,
+          "coverage": 65,
+          "value": 1.5799758797037842
+        },
+        {
+          "name": "Ladd McConkey",
+          "key": "laddmcconkey",
+          "pos": "WR",
+          "roster_id": 11,
+          "pick": 43,
+          "rank": 39.0,
+          "pos_rank": 19.0,
+          "coverage": 65,
+          "value": 1.8152899666382492
+        },
+        {
+          "name": "Terry McLaurin",
+          "key": "terrymclaurin",
+          "pos": "WR",
+          "roster_id": 11,
+          "pick": 54,
+          "rank": 48.5,
+          "pos_rank": 24.0,
+          "coverage": 65,
+          "value": 1.638083510511065
+        },
+        {
+          "name": "Travis Kelce",
+          "key": "traviskelce",
+          "pos": "TE",
+          "roster_id": 11,
+          "pick": 67,
+          "rank": 105.0,
+          "pos_rank": 10.5,
+          "coverage": 65,
+          "value": 0.9621781363856257
+        },
+        {
+          "name": "Makai Lemon",
+          "key": "makailemon",
+          "pos": "WR",
+          "roster_id": 11,
+          "pick": 91,
+          "rank": 109.0,
+          "pos_rank": 46.0,
+          "coverage": 65,
+          "value": 0.9279867716373463
+        }
+      ],
+      "bench": [
+        {
+          "name": "Aaron Jones",
+          "key": "aaronjones",
+          "pos": "RB",
+          "roster_id": 11,
+          "pick": 102,
+          "rank": 119.0,
+          "pos_rank": 41.0,
+          "coverage": 65,
+          "value": 0.8472978603872037
+        },
+        {
+          "name": "Xavier Worthy",
+          "key": "xavierworthy",
+          "pos": "WR",
+          "roster_id": 11,
+          "pick": 115,
+          "rank": 126.5,
+          "pos_rank": 51.0,
+          "coverage": 65,
+          "value": 0.7907856501238614
+        },
+        {
+          "name": "Tank Bigsby",
+          "key": "tankbigsby",
+          "pos": "RB",
+          "roster_id": 11,
+          "pick": 139,
+          "rank": 150.0,
+          "pos_rank": 52,
+          "coverage": 64,
+          "value": 0.6319364495150489
+        },
+        {
+          "name": "Malik Washington",
+          "key": "malikwashington",
+          "pos": "WR",
+          "roster_id": 11,
+          "pick": 163,
+          "rank": 181.5,
+          "pos_rank": 72.0,
+          "coverage": 61,
+          "value": 0.4522224561281751
+        },
+        {
+          "name": "Kyler Murray",
+          "key": "kylermurray",
+          "pos": "QB",
+          "roster_id": 11,
+          "pick": 174,
+          "rank": 112.0,
+          "pos_rank": 16.75,
+          "coverage": 65,
+          "value": 0.9030892200156192
+        },
+        {
+          "name": "Jake Ferguson",
+          "key": "jakeferguson",
+          "pos": "TE",
+          "roster_id": 11,
+          "pick": 126,
+          "rank": 130.0,
+          "pos_rank": 15.0,
+          "coverage": 64,
+          "value": 0.7654678421395714
+        },
+        {
+          "name": "Oronde Gadsden",
+          "key": "orondegadsden",
+          "pos": "TE",
+          "roster_id": 11,
+          "pick": 187,
+          "rank": 198.75,
+          "pos_rank": 26.0,
+          "coverage": 58,
+          "value": 0.3659729010179108
+        }
+      ],
+      "starter_value": 11.301146643548716,
+      "bench_value": 2.1501625419537826,
+      "special": 0.7916666666666666,
+      "score_raw": 66.69341162791038,
+      "score": 66.7,
+      "power_rank": 12,
+      "team_name": "ShemDawggg",
+      "score_display": 67,
+      "grade": "D+",
+      "draft_slot": 6,
+      "strength": "Lamar and Barkley are strong anchors, and McConkey/McLaurin are credible starting receivers.",
+      "concern": "The largest gap is usable flex and bench strength: Lemon, Jones and Worthy trail rivals\u2019 alternatives. Three TEs, two QBs and an early kicker leave fewer RB/WR options."
+    }
+  ],
+  "source_manifest": [
+    {
+      "outlet": "BA Sports Podcast",
+      "analyst": "Brady Auer",
+      "date": "Sep 2, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/bradyauer.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 210
+    },
+    {
+      "outlet": "Bandit Fantasy Football",
+      "analyst": "Brad Beatson",
+      "date": "Sep 3, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/bandit.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 206
+    },
+    {
+      "outlet": "BettingPros",
+      "analyst": "Mike Maher",
+      "date": "Sep 3, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/mike-maher.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 261
+    },
+    {
+      "outlet": "Cam Sheath Fantasy Football Blog",
+      "analyst": "Cameron Sheath",
+      "date": "Sep 2, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/cameron-sheath.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 278
+    },
+    {
+      "outlet": "Chop Fantasy Football",
+      "analyst": "Owen MacCarrick",
+      "date": "Sep 3, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/owen-maccarrick.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 340
+    },
+    {
+      "outlet": "Club Fantasy FFL",
+      "analyst": "Ryan Weisse",
+      "date": "Sep 6, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/ryan-weisse.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 369
+    },
+    {
+      "outlet": "Cupps Analytics",
+      "analyst": "Alex Cupps",
+      "date": "Sep 5, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/alex-cupps.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 282
+    },
+    {
+      "outlet": "DFS Dashboard",
+      "analyst": "Matthew Korn",
+      "date": "Sep 4, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/matthewkorn.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 356
+    },
+    {
+      "outlet": "Dime Projections",
+      "analyst": "Michael Stevi",
+      "date": "Sep 6, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/michael-stevi---dime-projections.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 268
+    },
+    {
+      "outlet": "Dr. Roto",
+      "analyst": "Chris Kennedy",
+      "date": "Sep 4, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/chris-kennedy.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 630
+    },
+    {
+      "outlet": "Dr. Roto",
+      "analyst": "Matt De Lima",
+      "date": "Sep 4, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/matt-de-lima.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 384
+    },
+    {
+      "outlet": "Dynasty Trade Calculator",
+      "analyst": "David Heilman",
+      "date": "Sep 6, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/david-heilman.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 200
+    },
+    {
+      "outlet": "Estadio Fantasy",
+      "analyst": "Mauricio Gutierrez",
+      "date": "Sep 2, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/mauricio-gutierrez.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 313
+    },
+    {
+      "outlet": "Fantasy Endgame",
+      "analyst": "Pierre Camus",
+      "date": "Sep 5, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/pierre-camus.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 336
+    },
+    {
+      "outlet": "Fantasy Football Bots",
+      "analyst": "Ted Chmyz",
+      "date": "Sep 4, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/tedchmyz.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 357
+    },
+    {
+      "outlet": "Fantasy Football Diagnostics",
+      "analyst": "Jon Jeune",
+      "date": "Sep 6, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/jon-jeune.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 249
+    },
+    {
+      "outlet": "Fantasy Football Empire",
+      "analyst": "Jeff Boggis",
+      "date": "Sep 4, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/jeff-boggis.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 277
+    },
+    {
+      "outlet": "Fantasy Football Universe",
+      "analyst": "Jeremy Shulman",
+      "date": "Sep 3, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/jeremy-shulman.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 335
+    },
+    {
+      "outlet": "Fantasy Futebolista",
+      "analyst": "Guilherme Gianni",
+      "date": "Sep 4, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/guilherme-gianni-.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 323
+    },
+    {
+      "outlet": "Fantasy In Frames",
+      "analyst": "Aidan Weingartner",
+      "date": "Sep 5, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/aidanweingartner.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 306
+    },
+    {
+      "outlet": "Fantasy In Frames",
+      "analyst": "Jorge B. Edwards",
+      "date": "Sep 5, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/jorge-b-edwards.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 228
+    },
+    {
+      "outlet": "Fantasy Shed",
+      "analyst": "Rich Piazza",
+      "date": "Sep 3, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/rich-piazza-fantasy-shed.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 339
+    },
+    {
+      "outlet": "FantasyNow+",
+      "analyst": "Justin Bauerle",
+      "date": "Sep 3, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/justinbauerle.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 309
+    },
+    {
+      "outlet": "FantasyPros",
+      "analyst": "Andrew Erickson",
+      "date": "Sep 4, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/andrew-erickson.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 235
+    },
+    {
+      "outlet": "FantasyPros",
+      "analyst": "Chris Welsh",
+      "date": "Sep 4, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/christopher-welsh.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 314
+    },
+    {
+      "outlet": "FantasyPros",
+      "analyst": "Derek Brown",
+      "date": "Sep 5, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/derek-brown.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 334
+    },
+    {
+      "outlet": "FantasyPros",
+      "analyst": "Mike Fanelli",
+      "date": "Sep 5, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/mike-fanelli.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 325
+    },
+    {
+      "outlet": "FantasyPros",
+      "analyst": "Pat Fitzmaurice",
+      "date": "Sep 5, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/pat-fitzmaurice.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 329
+    },
+    {
+      "outlet": "FantasyPros",
+      "analyst": "Seth Woolcock",
+      "date": "Sep 6, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/sethwoolcock.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 312
+    },
+    {
+      "outlet": "FantasyPros",
+      "analyst": "Tera Roberts",
+      "date": "Sep 4, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/tera-roberts.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 338
+    },
+    {
+      "outlet": "FantasySharks",
+      "analyst": "Justin Weigal",
+      "date": "Sep 6, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/justin-weigal.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 287
+    },
+    {
+      "outlet": "Fantrax",
+      "analyst": "Ryan Prosick",
+      "date": "Sep 2, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/ryan-prosick.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 302
+    },
+    {
+      "outlet": "FF Faceoff",
+      "analyst": "Pete Nova",
+      "date": "Sep 4, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/petenova.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 380
+    },
+    {
+      "outlet": "FlurrySports",
+      "analyst": "Trevor Land",
+      "date": "Sep 4, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/trevor-land.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 318
+    },
+    {
+      "outlet": "FTN",
+      "analyst": "C.H. Herms",
+      "date": "Sep 5, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/herms.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 317
+    },
+    {
+      "outlet": "Going For 2",
+      "analyst": "Chew Russell",
+      "date": "Sep 4, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/chew-russell.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 332
+    },
+    {
+      "outlet": "Going For 2",
+      "analyst": "Kyle Senra",
+      "date": "Sep 3, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/kyle-senra.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 287
+    },
+    {
+      "outlet": "gregsauce",
+      "analyst": "Greg Smith",
+      "date": "Sep 3, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/greg-smith.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 366
+    },
+    {
+      "outlet": "Gridiron Experts",
+      "analyst": "Jason Willan",
+      "date": "Sep 3, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/jason-willan.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 315
+    },
+    {
+      "outlet": "OTC Fantasy",
+      "analyst": "Frank Ammirante",
+      "date": "Sep 5, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/frank-ammirante.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 228
+    },
+    {
+      "outlet": "Player Profiler",
+      "analyst": "Wyatt Bertolone",
+      "date": "Sep 3, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/wyatt-bertolone.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 201
+    },
+    {
+      "outlet": "Points Over Expected",
+      "analyst": "Mike Bland",
+      "date": "Sep 6, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/mike-bland.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 250
+    },
+    {
+      "outlet": "Pressbox",
+      "analyst": "Ken Zalis",
+      "date": "Sep 6, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/ken-zalis.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 270
+    },
+    {
+      "outlet": "Primero y Diez",
+      "analyst": "Francisco (Chato) Romero",
+      "date": "Sep 2, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/francisco-(chato)-romero.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 370
+    },
+    {
+      "outlet": "Pro Football Mania",
+      "analyst": "Justin Fuhr",
+      "date": "Sep 6, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/justin-fuhr.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 309
+    },
+    {
+      "outlet": "ProFootballIntel",
+      "analyst": "Justin Jaksa",
+      "date": "Sep 5, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/justin-r-jaksa.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 290
+    },
+    {
+      "outlet": "QB List",
+      "analyst": "Drew DeLuca",
+      "date": "Sep 6, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/drew-deluca.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 299
+    },
+    {
+      "outlet": "r/fantasyfootball",
+      "analyst": "Community Consensus",
+      "date": "Sep 4, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/reddit.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 316
+    },
+    {
+      "outlet": "Razzball",
+      "analyst": "Rudy Gamble",
+      "date": "Sep 5, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/rudy-gamble.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 397
+    },
+    {
+      "outlet": "Roto Street Journal",
+      "analyst": "Wolf of Roto Street",
+      "date": "Sep 4, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/wolf-of-roto-street.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 267
+    },
+    {
+      "outlet": "RotoBaller",
+      "analyst": "Brandon Murchison",
+      "date": "Sep 2, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/brandon-murchison.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 298
+    },
+    {
+      "outlet": "RotoBaller",
+      "analyst": "Dan Larocca",
+      "date": "Sep 4, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/dan-larocca.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 375
+    },
+    {
+      "outlet": "RotoBaller",
+      "analyst": "Kevin Tompkins",
+      "date": "Sep 5, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/kevin-tompkins.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 260
+    },
+    {
+      "outlet": "SB Nation",
+      "analyst": "Chet Gresham",
+      "date": "Sep 4, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/chet-gresham.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 309
+    },
+    {
+      "outlet": "SharpLinkHQ",
+      "analyst": "Tommy Garrett",
+      "date": "Sep 3, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/tommy-garrett.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 397
+    },
+    {
+      "outlet": "Stone Cold Fantasy",
+      "analyst": "Jonathan Stone",
+      "date": "Sep 6, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/jonathan-stone.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 991
+    },
+    {
+      "outlet": "Talking Points Sports",
+      "analyst": "Ed Birdsall",
+      "date": "Sep 4, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/ed-birdsall.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 397
+    },
+    {
+      "outlet": "The Deep Shot",
+      "analyst": "Dalton Del Don",
+      "date": "Sep 6, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/dalton-del-don.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 288
+    },
+    {
+      "outlet": "The DFS Build",
+      "analyst": "Kevin Roberts",
+      "date": "Sep 3, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/kevin-roberts.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 315
+    },
+    {
+      "outlet": "The Fantasy Champions",
+      "analyst": "Ricky Lemon",
+      "date": "Sep 3, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/ricky-lemon.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 317
+    },
+    {
+      "outlet": "The Fantasy Edge",
+      "analyst": "Chris Dell",
+      "date": "Sep 4, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/christopher-dell.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 256
+    },
+    {
+      "outlet": "The Fantasy Scout",
+      "analyst": "Tal Malachovsky",
+      "date": "Sep 4, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/tal-malachovsky.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 328
+    },
+    {
+      "outlet": "The Washington Post",
+      "analyst": "Des Bieler",
+      "date": "Sep 2, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/des-bieler.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 314
+    },
+    {
+      "outlet": "Wheel Route FF",
+      "analyst": "Kev Wheeler",
+      "date": "Sep 4, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/kevin-wheeler.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 332
+    },
+    {
+      "outlet": "Yates Fantasy Football",
+      "analyst": "Kyle Yates",
+      "date": "Sep 2, 2026",
+      "url": "https://www.fantasypros.com/nfl/rankings/kyle-yates.php?type=draft&scoring=HALF&position=ALL",
+      "rows": 954
+    }
+  ],
+  "excluded_profiles": [
+    {
+      "name": "Site Rankings",
+      "site": "Gridiron Experts",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Hayden Winks",
+      "site": "Yahoo! Sports",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Riley Cadieux",
+      "site": "Fantasy Football From Up North",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Andy Behrens",
+      "site": "The Deep Shot",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Judy Adabie",
+      "site": "Fan Girl Football",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Daniel Mader",
+      "site": "Fantasy Football Advice",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Jamie Calandro",
+      "site": "RotoBaller",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Elliot Berkovits ",
+      "site": "Packer Report",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Matthew Hill",
+      "site": "DataForce Fantasy Football",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Marc Shannep",
+      "site": "Fantasy Knockout",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Jacob Piccolo",
+      "site": "TrueRGM",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Brian Hartman",
+      "site": "QB List",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Jacob Gibbs",
+      "site": "SportsLine",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Josh Norris",
+      "site": "Yahoo! Sports",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Michael Tomlin",
+      "site": "Fantasy Six Pack",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Jody Smith",
+      "site": "Draft Sharks",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "David Biggs",
+      "site": "Drink Five",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Todd D Clark",
+      "site": "The Fantasy Fix",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Joe Sheffield",
+      "site": "Front Office Pros",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Wolf Trelles-Heard",
+      "site": "FantasyPros",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Nic Bodiford",
+      "site": "NerdBall Fantay Football",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Scott Whitfield",
+      "site": "Roto Rankings",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Doug Burrell",
+      "site": "Draft With Doug",
+      "reason": "No dated full public board"
+    },
+    {
+      "name": "Nick Raducanu",
+      "site": "Dr. Roto",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Huseyin Aksu",
+      "site": "Fantasy Couch",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Nick Zylak",
+      "site": "Fantasy Football Advice",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Joe Wiggans",
+      "site": "IDP Guys",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Andrew Leduc",
+      "site": "That Sports Podcast Network",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Andrew Scott",
+      "site": "Fantasy In Frames",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Alfredo Brown",
+      "site": "The Pretend GM",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Josh Hall",
+      "site": "IDP Army",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Donald Gibson",
+      "site": "FantasyPros",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Jeremy Popielarz ",
+      "site": "FTN",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Zach Brunner",
+      "site": "FlurrySports",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Jeff Paur",
+      "site": "RTSports",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Justin Sablich",
+      "site": "5th Down Fantasy",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Joel Smyth",
+      "site": "Yahoo! Sports",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Nate Marcum",
+      "site": "Fantasy In Frames",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Justin Boone",
+      "site": "Yahoo! Sports",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Matt Harmon",
+      "site": "Yahoo! Sports",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "The Tecmo Weave",
+      "site": "Lab 52",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Ben Wasley",
+      "site": "Hashtag Football",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Scott Pianowski",
+      "site": "Yahoo! Sports",
+      "reason": "No usable public ranking rows"
+    },
+    {
+      "name": "Adam Dove",
+      "site": "The Fantasy Couriers",
+      "reason": "No usable public ranking rows"
+    }
+  ],
+  "sensitivity": {
+    "0.75": [
+      [
+        "Nuss",
+        90.4723
+      ],
+      [
+        "Joe",
+        87.2615
+      ],
+      [
+        "Rishi",
+        87.0544
+      ],
+      [
+        "Shap",
+        85.2739
+      ],
+      [
+        "Zubs",
+        84.8374
+      ],
+      [
+        "Connor",
+        84.165
+      ],
+      [
+        "Zook",
+        83.7895
+      ],
+      [
+        "Snare",
+        81.1308
+      ],
+      [
+        "Singer",
+        80.1071
+      ],
+      [
+        "Plot",
+        79.949
+      ],
+      [
+        "Joel",
+        78.4128
+      ],
+      [
+        "Shemer",
+        65.9422
+      ]
+    ],
+    "0.8": [
+      [
+        "Nuss",
+        91.0827
+      ],
+      [
+        "Joe",
+        87.5861
+      ],
+      [
+        "Rishi",
+        86.9667
+      ],
+      [
+        "Shap",
+        85.1468
+      ],
+      [
+        "Zubs",
+        84.4468
+      ],
+      [
+        "Connor",
+        84.1339
+      ],
+      [
+        "Zook",
+        82.8894
+      ],
+      [
+        "Snare",
+        81.6058
+      ],
+      [
+        "Singer",
+        80.1586
+      ],
+      [
+        "Plot",
+        80.0882
+      ],
+      [
+        "Joel",
+        77.9962
+      ],
+      [
+        "Shemer",
+        66.2945
+      ]
+    ],
+    "0.85": [
+      [
+        "Nuss",
+        91.616
+      ],
+      [
+        "Joe",
+        87.8675
+      ],
+      [
+        "Rishi",
+        86.8657
+      ],
+      [
+        "Shap",
+        85.018
+      ],
+      [
+        "Connor",
+        84.0977
+      ],
+      [
+        "Zubs",
+        84.0742
+      ],
+      [
+        "Snare",
+        82.0527
+      ],
+      [
+        "Zook",
+        82.0453
+      ],
+      [
+        "Plot",
+        80.2282
+      ],
+      [
+        "Singer",
+        80.2159
+      ],
+      [
+        "Joel",
+        77.6211
+      ],
+      [
+        "Shemer",
+        66.6934
+      ]
+    ],
+    "0.9": [
+      [
+        "Nuss",
+        92.0771
+      ],
+      [
+        "Joe",
+        88.1089
+      ],
+      [
+        "Rishi",
+        86.7553
+      ],
+      [
+        "Shap",
+        84.8899
+      ],
+      [
+        "Connor",
+        84.058
+      ],
+      [
+        "Zubs",
+        83.7227
+      ],
+      [
+        "Snare",
+        82.4691
+      ],
+      [
+        "Zook",
+        81.2615
+      ],
+      [
+        "Plot",
+        80.3664
+      ],
+      [
+        "Singer",
+        80.277
+      ],
+      [
+        "Joel",
+        77.2865
+      ],
+      [
+        "Shemer",
+        67.1235
+      ]
+    ],
+    "1.0": [
+      [
+        "Nuss",
+        92.8097
+      ],
+      [
+        "Joe",
+        88.4872
+      ],
+      [
+        "Rishi",
+        86.5211
+      ],
+      [
+        "Shap",
+        84.6435
+      ],
+      [
+        "Connor",
+        83.973
+      ],
+      [
+        "Snare",
+        83.2075
+      ],
+      [
+        "Zubs",
+        83.0886
+      ],
+      [
+        "Plot",
+        80.63
+      ],
+      [
+        "Singer",
+        80.4035
+      ],
+      [
+        "Zook",
+        79.8774
+      ],
+      [
+        "Joel",
+        76.7281
+      ],
+      [
+        "Shemer",
+        68.0263
+      ]
+    ]
+  },
+  "as_of": "2026-09-06",
+  "window": "2026-09-02 through 2026-09-06, inclusive"
+}

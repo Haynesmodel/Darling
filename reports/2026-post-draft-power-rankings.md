@@ -1,8 +1,8 @@
 # Darling 2026 post-draft power rankings
 
-![Darling 2026 post-draft power rankings: all 12 teams with scores and letter grades](2026-post-draft-power-rankings.png)
+![Darling 2026 post-draft power rankings: all 12 teams with descriptions, scores and letter grades](2026-post-draft-power-rankings-descriptions.png)
 
-[Download graphic](2026-post-draft-power-rankings.png) · [Supporting data](2026-post-draft-power-rankings-data.json) · [Image-generation prompt](2026-post-draft-power-rankings-graphic-prompt.txt)
+[Download graphic](2026-post-draft-power-rankings-descriptions.png) · [Supporting data](2026-post-draft-power-rankings-data.json) · [Image-generation prompt](2026-post-draft-power-rankings-descriptions-prompt.txt) · [Compact graphic](2026-post-draft-power-rankings.png)
 
 As of September 6, 2026. Rankings window: September 2–6, inclusive (five calendar dates, Eastern time).
 
@@ -63,6 +63,8 @@ Numbers in parentheses are the custom blended skill-only overall ranks, not draf
 
 ### 1. Nuss — 92/100, A-
 
+Gibbs and Bowers deliver elite positional advantages. London leads a strong receiving group; RB2 and backfield depth are the concerns.
+
 Team: Dr. Nuss. Draft slot: 1.
 
 Core lineup: Caleb Williams (QB, 68.5); Jahmyr Gibbs (RB, 1); Jadarian Price (RB, 60); Drake London (WR, 18); Tetairoa McMillan (WR, 39.5); Brock Bowers (TE, 17); Mike Evans (WR, 61.5).
@@ -70,6 +72,8 @@ Core lineup: Caleb Williams (QB, 68.5); Jahmyr Gibbs (RB, 1); Jadarian Price (RB
 Bench, in model depth order: Kenny Gainwell (RB, 104); Wan'Dale Robinson (WR, 106); Kyle Monangai (RB, 116); Tre Tucker (WR, 157.5); Braelon Allen (RB, 161); Brock Purdy (QB, 97); Mark Andrews (TE, 128).
 
 ### 2. Joe — 88/100, B+
+
+McCaffrey, Jeanty and McBride anchor a strong lineup. Hurts and Rice add upside; Burden and Metcalf must deliver at receiver.
 
 Team: When it Haynes, it Pours. Draft slot: 5.
 
@@ -79,6 +83,8 @@ Bench, in model depth order: J.K. Dobbins (RB, 93); Michael Wilson (WR, 94); Rac
 
 ### 3. Rishi — 87/100, B+
 
+Cook, A.J. Brown, Maye and Loveland form a balanced core with useful depth. Brian Thomas is the biggest starting-lineup question.
+
 Team: Rishi’s Raiders ☠️. Draft slot: 9.
 
 Core lineup: Drake Maye (QB, 43.5); James Cook (RB, 9.25); Travis Etienne (RB, 43); A.J. Brown (WR, 15); Brian Thomas (WR, 79); Colston Loveland (TE, 34); David Montgomery (RB, 55).
@@ -86,6 +92,8 @@ Core lineup: Drake Maye (QB, 43.5); James Cook (RB, 9.25); Travis Etienne (RB, 4
 Bench, in model depth order: Rico Dowdle (RB, 81.5); Quentin Johnston (WR, 89); Josh Downs (WR, 95); Rashid Shaheed (WR, 140); Ray Davis (RB, 171.5); Malik Willis (QB, 131); Jordan James (RB, 229).
 
 ### 4. Shap — 85/100, B
+
+Chase and Collins headline an excellent receiver group. Burrow, Kyren and Swift provide support; tight end and flex need consistency.
 
 Team: Shap Daddy. Draft slot: 7.
 
@@ -95,6 +103,8 @@ Bench, in model depth order: Tony Pollard (RB, 77); Michael Pittman (WR, 92); Ma
 
 ### 5. Connor — 84/100, B
 
+Lamb, Nabers and DeVonta Smith offer major receiving upside alongside Chase Brown. Tuten at RB2 and Kincaid at TE are vulnerabilities.
+
 Team: BallinJohnnyDavis. Draft slot: 12.
 
 Core lineup: Justin Herbert (QB, 71); Chase Brown (RB, 13.5); Bhayshul Tuten (RB, 59.5); CeeDee Lamb (WR, 10); Malik Nabers (WR, 27.5); Dalton Kincaid (TE, 109); DeVonta Smith (WR, 29).
@@ -102,6 +112,8 @@ Core lineup: Justin Herbert (QB, 71); Chase Brown (RB, 13.5); Bhayshul Tuten (RB
 Bench, in model depth order: Blake Corum (RB, 89); Jayden Reed (WR, 101.5); Jacory Croskey-Merritt (RB, 102); Tyler Allgeier (RB, 131.25); Deebo Samuel (WR, 133.5); Zachariah Branch (WR, 201); Cyrus Allen (WR, 202.5).
 
 ### 6. Zubs — 84/100, B
+
+Amon-Ra, Jefferson and Higgins form an elite receiving trio, with Washington in reserve. Love and Lloyd shoulder an uncertain backfield.
 
 Team: The Browns. Draft slot: 4.
 
@@ -111,6 +123,8 @@ Bench, in model depth order: Parker Washington (WR, 59); RJ Harvey (RB, 98.5); K
 
 ### 7. Snare — 82/100, B-
 
+Bijan, Pickens, Flowers and Daniels give this roster a strong core. Jacobs is an uncertain stash; Kittle and bench depth add risk.
+
 Team: Bill Nye The Science Guy. Draft slot: 2.
 
 Core lineup: Jayden Daniels (QB, 62); Bijan Robinson (RB, 2); Bucky Irving (RB, 52); George Pickens (WR, 22.75); Zay Flowers (WR, 31); George Kittle (TE, 94); DJ Moore (WR, 54).
@@ -118,6 +132,8 @@ Core lineup: Jayden Daniels (QB, 62); Bijan Robinson (RB, 2); Bucky Irving (RB, 
 Bench, in model depth order: Stefon Diggs (WR, 96); Woody Marks (RB, 129); Josh Jacobs (RB, 136.5); Brian Robinson (RB, 158); Alvin Kamara (RB, 164.75); Omar Cooper (WR, 177.5); Isaiah Likely (TE, 111.5).
 
 ### 8. Zook — 82/100, B-
+
+Taylor, Walker and Hall form an excellent RB trio, supported by the strongest bench. Tight end and elite receiving production are missing.
 
 Team: Cool Hand Zook 🔫. Draft slot: 8.
 
@@ -127,6 +143,8 @@ Bench, in model depth order: Rome Odunze (WR, 59); Jonathon Brooks (RB, 79); Chr
 
 ### 9. Plot — 80/100, B-
 
+Puka and Josh Allen provide elite anchors. Javonte and Judkins form a serviceable backfield, but reserve running backs offer limited support.
+
 Team: PlotNix. Draft slot: 3.
 
 Core lineup: Josh Allen (QB, 25); Javonte Williams (RB, 35.75); Quinshon Judkins (RB, 55); Puka Nacua (WR, 4); Davante Adams (WR, 48); Harold Fannin (TE, 84); Marvin Harrison (WR, 73).
@@ -134,6 +152,8 @@ Core lineup: Josh Allen (QB, 25); Javonte Williams (RB, 35.75); Quinshon Judkins
 Bench, in model depth order: Alec Pierce (WR, 94.5); Jakobi Meyers (WR, 116.5); Romeo Doubs (WR, 127); Jalen Coker (WR, 133); Mike Washington (RB, 140); Emmett Johnson (RB, 160.5); Jalen Nailor (WR, 176).
 
 ### 10. Singer — 80/100, B-
+
+JSN and Henry lead a competitive roster with good receiver depth. The quarterback pairing and Stevenson at RB2 offer less weekly advantage.
 
 Team: Least Edjucated. Draft slot: 11.
 
@@ -143,6 +163,8 @@ Bench, in model depth order: Courtland Sutton (WR, 83); Jordan Mason (RB, 98); T
 
 ### 11. Joel — 78/100, C+
 
+Achane, Hampton and Olave form a strong foundation, with useful RB depth. Quarterback and receiver depth lag; a defense must be added.
+
 Team: Crazy Feta Fighters. Draft slot: 10.
 
 Core lineup: Patrick Mahomes (QB, 103); De'Von Achane (RB, 17); Omarion Hampton (RB, 18); Chris Olave (WR, 22.5); Jameson Williams (WR, 49.5); Tucker Kraft (TE, 66); TreVeyon Henderson (RB, 65).
@@ -150,6 +172,8 @@ Core lineup: Patrick Mahomes (QB, 103); De'Von Achane (RB, 17); Omarion Hampton 
 Bench, in model depth order: Jaylen Warren (RB, 71); Chuba Hubbard (RB, 96.5); Jordan Addison (WR, 106); Jordyn Tyson (WR, 139); Denzel Boston (WR, 154.5); Keenan Allen (WR, 174.5); Jared Goff (QB, 106.25); Juwan Johnson (TE, 128).
 
 ### 12. Shemer — 67/100, D+
+
+Lamar and Barkley are strong anchors, but flex and bench strength trail the league. Extra quarterbacks and tight ends limit RB/WR options.
 
 Team: ShemDawggg. Draft slot: 6.
 

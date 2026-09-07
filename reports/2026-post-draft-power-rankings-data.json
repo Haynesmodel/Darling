@@ -2288,7 +2288,8 @@
       "grade": "A-",
       "draft_slot": 1,
       "strength": "Gibbs + Bowers create the biggest combined RB/TE advantage. London, McMillan and Evans fill out a strong receiving lineup.",
-      "concern": "Jadarian Price is the vulnerable RB2; the bench offers less cover than several rivals. Replace unsigned Justin Tucker."
+      "concern": "Jadarian Price is the vulnerable RB2; the bench offers less cover than several rivals. Replace unsigned Justin Tucker.",
+      "description": "Gibbs and Bowers deliver elite positional advantages. London leads a strong receiving group; RB2 and backfield depth are the concerns."
     },
     {
       "rid": 6,
@@ -2462,7 +2463,8 @@
       "grade": "B+",
       "draft_slot": 5,
       "strength": "McCaffrey, Jeanty and McBride give this lineup three premium anchors, with Hurts and Rice adding strength.",
-      "concern": "The WR2/flex spots depend on Burden and Metcalf; the bench is adequate rather than dominant."
+      "concern": "The WR2/flex spots depend on Burden and Metcalf; the bench is adequate rather than dominant.",
+      "description": "McCaffrey, Jeanty and McBride anchor a strong lineup. Hurts and Rice add upside; Burden and Metcalf must deliver at receiver."
     },
     {
       "rid": 8,
@@ -2636,7 +2638,8 @@
       "grade": "B+",
       "draft_slot": 9,
       "strength": "Cook, A.J. Brown, Maye and Loveland make a balanced core. Etienne/Montgomery and useful receiving reserves limit weak spots.",
-      "concern": "Brian Thomas is the least secure starting receiver; there is less elite RB/TE value than on the top two rosters."
+      "concern": "Brian Thomas is the least secure starting receiver; there is less elite RB/TE value than on the top two rosters.",
+      "description": "Cook, A.J. Brown, Maye and Loveland form a balanced core with useful depth. Brian Thomas is the biggest starting-lineup question."
     },
     {
       "rid": 7,
@@ -2810,7 +2813,8 @@
       "grade": "B",
       "draft_slot": 7,
       "strength": "Chase and Collins form an excellent WR pairing; Burrow, Kyren and Swift round out a strong core. Pollard and Pittman provide usable depth.",
-      "concern": "The Pitts/Tate end of the starting lineup carries less consensus value than the higher-ranked teams\u2019 equivalent spots."
+      "concern": "The Pitts/Tate end of the starting lineup carries less consensus value than the higher-ranked teams\u2019 equivalent spots.",
+      "description": "Chase and Collins headline an excellent receiver group. Burrow, Kyren and Swift provide support; tight end and flex need consistency."
     },
     {
       "rid": 3,
@@ -2984,7 +2988,8 @@
       "grade": "B",
       "draft_slot": 12,
       "strength": "Lamb, Nabers and DeVonta Smith give this roster an outstanding three-WR lineup, supported by Chase Brown.",
-      "concern": "Tuten at RB2 and Kincaid at TE leave two clear pressure points. Nabers\u2019 recovery adds uncertainty already reflected in the recent boards."
+      "concern": "Tuten at RB2 and Kincaid at TE leave two clear pressure points. Nabers\u2019 recovery adds uncertainty already reflected in the recent boards.",
+      "description": "Lamb, Nabers and DeVonta Smith offer major receiving upside alongside Chase Brown. Tuten at RB2 and Kincaid at TE are vulnerabilities."
     },
     {
       "rid": 1,
@@ -3158,7 +3163,8 @@
       "grade": "B",
       "draft_slot": 4,
       "strength": "Amon-Ra, Jefferson and Higgins are an elite starting WR trio; Parker Washington is valuable cover.",
-      "concern": "Jeremiyah Love and MarShawn Lloyd carry the starting-RB burden. RB depth has less established consensus value than the receivers."
+      "concern": "Jeremiyah Love and MarShawn Lloyd carry the starting-RB burden. RB depth has less established consensus value than the receivers.",
+      "description": "Amon-Ra, Jefferson and Higgins form an elite receiving trio, with Washington in reserve. Love and Lloyd shoulder an uncertain backfield."
     },
     {
       "rid": 12,
@@ -3332,7 +3338,8 @@
       "grade": "B-",
       "draft_slot": 2,
       "strength": "Bijan, Pickens, Flowers and Daniels provide a strong core, with Bucky Irving and DJ Moore filling out a competitive lineup.",
-      "concern": "Jacobs is an uncertain stash, not a dependable starting RB. Kittle\u2019s recovery and thinner usable reserves keep the floor below the top tier."
+      "concern": "Jacobs is an uncertain stash, not a dependable starting RB. Kittle\u2019s recovery and thinner usable reserves keep the floor below the top tier.",
+      "description": "Bijan, Pickens, Flowers and Daniels give this roster a strong core. Jacobs is an uncertain stash; Kittle and bench depth add risk."
     },
     {
       "rid": 9,
@@ -3506,7 +3513,8 @@
       "grade": "B-",
       "draft_slot": 8,
       "strength": "Taylor, Walker and Hall form the deepest starting RB trio, and this roster has the model\u2019s strongest bench.",
-      "concern": "Goedert provides little TE advantage; the starting receivers offer less top-end value. Extra bench weight moves this roster up."
+      "concern": "Goedert provides little TE advantage; the starting receivers offer less top-end value. Extra bench weight moves this roster up.",
+      "description": "Taylor, Walker and Hall form an excellent RB trio, supported by the strongest bench. Tight end and elite receiving production are missing."
     },
     {
       "rid": 2,
@@ -3680,7 +3688,8 @@
       "grade": "B-",
       "draft_slot": 3,
       "strength": "Puka and Josh Allen deliver elite WR/QB anchors. Javonte and Judkins form a serviceable RB pair.",
-      "concern": "The remainder of the lineup lacks another premium anchor; reserve RB support is particularly thin behind the starters."
+      "concern": "The remainder of the lineup lacks another premium anchor; reserve RB support is particularly thin behind the starters.",
+      "description": "Puka and Josh Allen provide elite anchors. Javonte and Judkins form a serviceable backfield, but reserve running backs offer limited support."
     },
     {
       "rid": 4,
@@ -3854,7 +3863,8 @@
       "grade": "B-",
       "draft_slot": 11,
       "strength": "JSN and Henry anchor a competitive WR-heavy roster; Wilson, Egbuka and Sutton provide useful options.",
-      "concern": "The Nix/Stafford QB pairing and Stevenson at RB2 offer less weekly advantage. The RB bench is not a major strength."
+      "concern": "The Nix/Stafford QB pairing and Stevenson at RB2 offer less weekly advantage. The RB bench is not a major strength.",
+      "description": "JSN and Henry lead a competitive roster with good receiver depth. The quarterback pairing and Stevenson at RB2 offer less weekly advantage."
     },
     {
       "rid": 10,
@@ -4039,7 +4049,8 @@
       "grade": "C+",
       "draft_slot": 10,
       "strength": "Achane, Hampton and Olave are a strong trio, with Henderson, Warren and Hubbard providing RB options.",
-      "concern": "The Mahomes/Goff pairing ranks lower than most league quarterbacks, and WR depth is less convincing. A defense must be added."
+      "concern": "The Mahomes/Goff pairing ranks lower than most league quarterbacks, and WR depth is less convincing. A defense must be added.",
+      "description": "Achane, Hampton and Olave form a strong foundation, with useful RB depth. Quarterback and receiver depth lag; a defense must be added."
     },
     {
       "rid": 11,
@@ -4213,7 +4224,8 @@
       "grade": "D+",
       "draft_slot": 6,
       "strength": "Lamar and Barkley are strong anchors, and McConkey/McLaurin are credible starting receivers.",
-      "concern": "The largest gap is usable flex and bench strength: Lemon, Jones and Worthy trail rivals\u2019 alternatives. Three TEs, two QBs and an early kicker leave fewer RB/WR options."
+      "concern": "The largest gap is usable flex and bench strength: Lemon, Jones and Worthy trail rivals\u2019 alternatives. Three TEs, two QBs and an early kicker leave fewer RB/WR options.",
+      "description": "Lamar and Barkley are strong anchors, but flex and bench strength trail the league. Extra quarterbacks and tight ends limit RB/WR options."
     }
   ],
   "source_manifest": [

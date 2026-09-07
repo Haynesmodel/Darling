@@ -1,0 +1,107 @@
+Use case: infographic-diagram; edit an existing fantasy-football rankings poster.
+The attached image is the edit target and visual reference. The user wants EVERY team to have a written description. Redesign the layout to accommodate ALL TWELVE descriptions legibly, while preserving the original black-and-gold sports editorial look, football trophy, subtle stadium atmosphere, exact rankings, scores, grades and September 6 snapshot date.
+
+Deliver a polished high-resolution portrait poster, ideally around 2048 x 3072. Use TWO COLUMNS of SIX roomy team cards: left column ranks 01 through 06 from top to bottom; right column ranks 07 through 12 from top to bottom. Keep all card heights equal. Each card should show rank, manager name, smaller team name, score /100, a grade badge, and its exact description in readable high-contrast sentence-case text. Header must be compact (under 15% height) to leave most space for team descriptions. Descriptions must NOT be tiny: use a clean readable sans-serif body font with comfortable leading and full-width paragraphs within each card, wrapping across about 3–5 lines as needed. Scores/grades should not consume the description space. Subtly highlight Nuss's card with gold. Other cards can share restrained gold outlines and clear dividers. No player photos, extra commentary, or invented logos.
+
+Header exact text:
+"THE DARLING"
+"2026 POWER RANKINGS"
+"POST-DRAFT EDITION • SEPTEMBER 6, 2026"
+
+Each card MUST contain the following exact content. The description is essential, including for ranks 10, 11 and 12. Do not omit, summarize or truncate sentences.
+01 | Nuss | Dr. Nuss | 92/100 | A−
+Description: "Gibbs and Bowers deliver elite positional advantages. London leads a strong receiving group; RB2 and backfield depth are the concerns."
+
+02 | Joe | When it Haynes, it Pours | 88/100 | B+
+Description: "McCaffrey, Jeanty and McBride anchor a strong lineup. Hurts and Rice add upside; Burden and Metcalf must deliver at receiver."
+
+03 | Rishi | Rishi’s Raiders | 87/100 | B+
+Description: "Cook, A.J. Brown, Maye and Loveland form a balanced core with useful depth. Brian Thomas is the biggest starting-lineup question."
+
+04 | Shap | Shap Daddy | 85/100 | B
+Description: "Chase and Collins headline an excellent receiver group. Burrow, Kyren and Swift provide support; tight end and flex need consistency."
+
+05 | Connor | BallinJohnnyDavis | 84/100 | B
+Description: "Lamb, Nabers and DeVonta Smith offer major receiving upside alongside Chase Brown. Tuten at RB2 and Kincaid at TE are vulnerabilities."
+
+06 | Zubs | The Browns | 84/100 | B
+Description: "Amon-Ra, Jefferson and Higgins form an elite receiving trio, with Washington in reserve. Love and Lloyd shoulder an uncertain backfield."
+
+07 | Snare | Bill Nye The Science Guy | 82/100 | B−
+Description: "Bijan, Pickens, Flowers and Daniels give this roster a strong core. Jacobs is an uncertain stash; Kittle and bench depth add risk."
+
+08 | Zook | Cool Hand Zook | 82/100 | B−
+Description: "Taylor, Walker and Hall form an excellent RB trio, supported by the strongest bench. Tight end and elite receiving production are missing."
+
+09 | Plot | PlotNix | 80/100 | B−
+Description: "Puka and Josh Allen provide elite anchors. Javonte and Judkins form a serviceable backfield, but reserve running backs offer limited support."
+
+10 | Singer | Least Edjucated | 80/100 | B−
+Description: "JSN and Henry lead a competitive roster with good receiver depth. The quarterback pairing and Stevenson at RB2 offer less weekly advantage."
+
+11 | Joel | Crazy Feta Fighters | 78/100 | C+
+Description: "Achane, Hampton and Olave form a strong foundation, with useful RB depth. Quarterback and receiver depth lag; a defense must be added."
+
+12 | Shemer | ShemDawggg | 67/100 | D+
+Description: "Lamar and Barkley are strong anchors, but flex and bench strength trail the league. Extra quarterbacks and tight ends limit RB/WR options."
+
+Footer exact text:
+"65 RANKING BOARDS • 54 OUTLETS"
+"Updated September 2–6 • 12-team half-PPR"
+"85% starters • 15% depth • Small K/DEF adjustment"
+"Custom league-relative scores. Equal scores are effectively tied."
+
+Preserve the intentional spelling "Least Edjucated". Render all text accurately and make ALL 12 DESCRIPTIONS readable. Do not change any scores, grades or order. No mockup framing.
+
+
+Built-in image generator layout correction (applied to first render):
+
+Edit this poster to fix one specific layout defect: its lower cards and typography are vertically compressed. All twelve teams MUST have equal-size cards and identical readable body typography. Preserve every word of all twelve descriptions and every name, rank, score, grade, date, and footer statement.
+
+Completely reflow the poster into a STRICT UNIFORM GRID: TWO columns, SIX equal-height rows. All cards must be EXACTLY THE SAME HEIGHT from the first row to the sixth. Do not shrink lower rows, warp text, stretch text or condense letters. Use normal-proportion sans-serif body text, same font size and line height throughout all twelve cards. Remove the large shield rank ornaments to recover space. Put rank, manager name, score and grade together in a compact card header, team name below, then description. Shrink the giant title/trophy area by 40% to allocate sufficient room to the cards. Footer is compact and readable. Keep the dark stadium background and gold accents.
+
+The grid should occupy about 82% of the canvas height; header about 12%; footer about 6%. Each of the SIX rows occupies exactly one sixth of the grid height. Same font size in Shemer's description as in Nuss's description. Each description has enough space for 4–6 lines at constant line height; wrap naturally. Scores may be smaller than in the input to make room for descriptions. Manager names and score sizes must be identical across all twelve cards.
+ the following exact content. The description is essential, including for ranks 10, 11 and 12. Do not omit, summarize or truncate sentences.
+01 | Nuss | Dr. Nuss | 92/100 | A−
+Description: "Gibbs and Bowers deliver elite positional advantages. London leads a strong receiving group; RB2 and backfield depth are the concerns."
+
+02 | Joe | When it Haynes, it Pours | 88/100 | B+
+Description: "McCaffrey, Jeanty and McBride anchor a strong lineup. Hurts and Rice add upside; Burden and Metcalf must deliver at receiver."
+
+03 | Rishi | Rishi’s Raiders | 87/100 | B+
+Description: "Cook, A.J. Brown, Maye and Loveland form a balanced core with useful depth. Brian Thomas is the biggest starting-lineup question."
+
+04 | Shap | Shap Daddy | 85/100 | B
+Description: "Chase and Collins headline an excellent receiver group. Burrow, Kyren and Swift provide support; tight end and flex need consistency."
+
+05 | Connor | BallinJohnnyDavis | 84/100 | B
+Description: "Lamb, Nabers and DeVonta Smith offer major receiving upside alongside Chase Brown. Tuten at RB2 and Kincaid at TE are vulnerabilities."
+
+06 | Zubs | The Browns | 84/100 | B
+Description: "Amon-Ra, Jefferson and Higgins form an elite receiving trio, with Washington in reserve. Love and Lloyd shoulder an uncertain backfield."
+
+07 | Snare | Bill Nye The Science Guy | 82/100 | B−
+Description: "Bijan, Pickens, Flowers and Daniels give this roster a strong core. Jacobs is an uncertain stash; Kittle and bench depth add risk."
+
+08 | Zook | Cool Hand Zook | 82/100 | B−
+Description: "Taylor, Walker and Hall form an excellent RB trio, supported by the strongest bench. Tight end and elite receiving production are missing."
+
+09 | Plot | PlotNix | 80/100 | B−
+Description: "Puka and Josh Allen provide elite anchors. Javonte and Judkins form a serviceable backfield, but reserve running backs offer limited support."
+
+10 | Singer | Least Edjucated | 80/100 | B−
+Description: "JSN and Henry lead a competitive roster with good receiver depth. The quarterback pairing and Stevenson at RB2 offer less weekly advantage."
+
+11 | Joel | Crazy Feta Fighters | 78/100 | C+
+Description: "Achane, Hampton and Olave form a strong foundation, with useful RB depth. Quarterback and receiver depth lag; a defense must be added."
+
+12 | Shemer | ShemDawggg | 67/100 | D+
+Description: "Lamar and Barkley are strong anchors, but flex and bench strength trail the league. Extra quarterbacks and tight ends limit RB/WR options."
+
+
+Footer:
+"65 RANKING BOARDS • 54 OUTLETS"
+"Updated September 2–6 • 12-team half-PPR"
+"85% starters • 15% depth • Small K/DEF adjustment"
+"Custom league-relative scores. Equal scores are effectively tied."
+Text must remain accurate. The visual priority is twelve equally readable descriptions; dramatic oversized titles are secondary.

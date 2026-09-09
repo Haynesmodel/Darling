@@ -1,0 +1,324 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+const {
+  compareArtifactBytes,
+  fetchBytes,
+  fetchResponse,
+  getCurrentMainSha,
+  isAllowedUrl,
+  normalizePagesUrl,
+  readExpectedArtifact,
+  runBrowserCheck,
+  runVerification,
+} = require('../scripts/verify_pages_deployment.cjs');
+
+const pages = normalizePagesUrl('https://example.test/Darling/');
+const index = Buffer.from('<html><link rel="stylesheet" href="/Darling/assets/app.css"></html>');
+const manifest = Buffer.from('{"assets":{}}');
+const artifact = { index, manifest };
+
+function response(body, status = 200, headers = { 'content-type': 'text/html' }) {
+  return new Response(body, { status, headers });
+}
+
+function pageRequest({ indexBody = index, manifestBody = manifest, indexStatus = 200 } = {}) {
+  return async url => {
+    if (url.endsWith('asset-manifest.json')) return response(manifestBody, 200, { 'content-type': 'application/json' });
+    return response(indexBody, indexStatus);
+  };
+}
+
+test('normalizes Pages origin and rejects lookalike base paths', () => {
+  assert.equal(pages.url, 'https://example.test/Darling/');
+  assert.equal(isAllowedUrl('https://example.test/Darling/assets/app.js', pages), true);
+  assert.equal(isAllowedUrl('https://example.test/Darling2/assets/app.js', pages), false);
+  assert.equal(isAllowedUrl('https://other.test/Darling/assets/app.js', pages), false);
+});
+
+test('compares exact artifact bytes and reports hashes', () => {
+  const result = compareArtifactBytes({ name: 'index.html', expected: index, observed: Buffer.from(index) });
+  assert.equal(result.expected.bytes, index.length);
+  assert.equal(result.observed.sha256, result.expected.sha256);
+  assert.throws(
+    () => compareArtifactBytes({ name: 'index.html', expected: index, observed: Buffer.from('old') }),
+    /index\.html mismatch: expected/,
+  );
+});
+
+test('requires source HTML and manifest responses to be HTTP 200', async () => {
+  await assert.rejects(
+    () => fetchBytes(pages.url, {
+      pages,
+      request: pageRequest({ indexStatus: 503 }),
+      requestTimeoutMs: 100,
+    }),
+    /Expected HTTP 200/,
+  );
+});
+
+test('follows same-origin redirects and refuses cross-origin redirects', async () => {
+  let calls = 0;
+  const sameOrigin = await fetchBytes(pages.url, {
+    pages,
+    request: async url => {
+      calls += 1;
+      return calls === 1
+        ? response(null, 302, { location: '/Darling/index.html' })
+        : response(index);
+    },
+    requestTimeoutMs: 100,
+  });
+  assert.equal(sameOrigin.bytes.toString(), index.toString());
+  await assert.rejects(
+    () => fetchResponse(pages.url, {
+      pages,
+      request: async () => response(null, 302, { location: 'https://evil.test/Darling/' }),
+      requestTimeoutMs: 100,
+    }),
+    /outside expected Pages origin\/base path/,
+  );
+});
+
+test('request timeout covers a response body that never completes', async () => {
+  await assert.rejects(
+    () => fetchBytes(pages.url, {
+      pages,
+      request: async () => ({
+        status: 200,
+        headers: new Map(),
+        arrayBuffer: () => new Promise(() => {}),
+      }),
+      requestTimeoutMs: 20,
+    }),
+    /Response body timed out after 20ms/,
+  );
+});
+
+test('retries propagation mismatches at most twelve times and passes after recovery', async () => {
+  let attempts = 0;
+  const result = await runVerification({
+    artifact,
+    pages,
+    expectedSha: 'a'.repeat(40),
+    request: async url => {
+      attempts += 1;
+      const old = attempts < 5;
+      return url.endsWith('asset-manifest.json')
+        ? response(old ? Buffer.from('old') : manifest, 200, { 'content-type': 'application/json' })
+        : response(old ? Buffer.from('old') : index);
+    },
+    maxAttempts: 12,
+    retryDelayMs: 0,
+    deadlineMs: 1000,
+    browserCheck: async () => ({ requestFailures: [], consoleErrors: [], pageErrors: [] }),
+  });
+  assert.equal(result.status, 'PASS');
+  assert.equal(result.attempts, 3);
+  assert.equal(attempts, 6);
+});
+
+test('exhaustion returns FAIL with a bounded attempt count', async () => {
+  const result = await runVerification({
+    artifact,
+    pages,
+    expectedSha: 'b'.repeat(40),
+    request: pageRequest({ indexBody: Buffer.from('old') }),
+    maxAttempts: 3,
+    retryDelayMs: 0,
+    deadlineMs: 1000,
+    browserCheck: async () => ({ requestFailures: [], consoleErrors: [], pageErrors: [] }),
+  });
+  assert.equal(result.status, 'FAIL');
+  assert.equal(result.attempts, 3);
+  assert.match(result.error, /mismatch/);
+});
+
+test('artifact mismatch retains browser failure evidence when the final attempt fails', async () => {
+  const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-pages-'));
+  const screenshotPath = path.join(outputDir, 'mismatch.png');
+  const result = await runVerification({
+    artifact,
+    pages,
+    expectedSha: 'b'.repeat(40),
+    request: pageRequest({ indexBody: Buffer.from('old') }),
+    maxAttempts: 1,
+    retryDelayMs: 0,
+    deadlineMs: 1000,
+    browserFactory: fakeBrowser(),
+    screenshotPath,
+    browserTimeoutMs: 100,
+  });
+  assert.equal(result.status, 'FAIL');
+  assert.deepEqual(result.browser.requestFailures, []);
+  assert.equal(fs.readFileSync(screenshotPath, 'utf8'), 'PNG');
+  fs.rmSync(outputDir, { recursive: true, force: true });
+});
+
+test('newer main SHA marks a propagation failure superseded', async () => {
+  const result = await runVerification({
+    artifact,
+    pages,
+    expectedSha: 'c'.repeat(40),
+    repository: 'Haynesmodel/Darling',
+    token: 'test-token',
+    request: pageRequest({ indexBody: Buffer.from('old') }),
+    apiRequest: async () => response(JSON.stringify({ commit: { sha: 'd'.repeat(40) } }), 200, { 'content-type': 'application/json' }),
+    maxAttempts: 12,
+    retryDelayMs: 0,
+    deadlineMs: 1000,
+  });
+  assert.equal(result.status, 'SUPERSEDED');
+  assert.equal(result.supersededBy, 'd'.repeat(40));
+});
+
+test('browser errors are retried and included in the final result', async () => {
+  let browserAttempts = 0;
+  const result = await runVerification({
+    artifact,
+    pages,
+    expectedSha: 'e'.repeat(40),
+    request: pageRequest(),
+    maxAttempts: 2,
+    retryDelayMs: 0,
+    deadlineMs: 1000,
+    browserCheck: async () => {
+      browserAttempts += 1;
+      throw Object.assign(new Error('application error'), {
+        diagnostics: { requestFailures: [{ url: '/Darling/assets/app.js' }], consoleErrors: [], pageErrors: [] },
+      });
+    },
+  });
+  assert.equal(result.status, 'FAIL');
+  assert.equal(browserAttempts, 2);
+  assert.deepEqual(result.browser.requestFailures, [{ url: '/Darling/assets/app.js' }]);
+});
+
+function fakeBrowser({ failNavigation = false, emitErrors = false } = {}) {
+  const listeners = new Map();
+  let currentUrl = pages.url;
+  const page = {
+    on(event, callback) {
+      listeners.set(event, callback);
+    },
+    async goto(url) {
+      currentUrl = new URL(url, pages.url).toString();
+      if (failNavigation) throw new Error('navigation failed');
+      if (emitErrors) {
+        listeners.get('response')?.({ url: () => `${pages.url}missing.js`, status: () => 404 });
+        listeners.get('requestfailed')?.({ url: () => `${pages.url}failed.js`, failure: () => ({ errorText: 'offline' }) });
+        listeners.get('console')?.({ type: () => 'error', text: () => 'console failure' });
+        listeners.get('pageerror')?.(new Error('page failure'));
+      }
+    },
+    url: () => currentUrl,
+    locator(selector) {
+      return {
+        async waitFor() {},
+        async getAttribute(name) {
+          if (name === 'data-feature-state' && selector.startsWith('#page-')) return 'ready';
+          return null;
+        },
+        async click() {
+          currentUrl = `${pages.url}?tab=current`;
+        },
+      };
+    },
+    async evaluate() {
+      return [`${pages.url}assets/app.css`];
+    },
+    async waitForTimeout() {},
+    async screenshot({ path: screenshotPath }) {
+      fs.writeFileSync(screenshotPath, 'PNG');
+    },
+  };
+  const context = {
+    async newPage() { return page; },
+    pages() { return [page]; },
+    async close() {},
+  };
+  const browser = {
+    async newContext() { return context; },
+    async close() {},
+  };
+  return async () => browser;
+}
+
+test('browser adapter verifies Home, Current, navigation, styles, and captures a screenshot', async () => {
+  const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-pages-'));
+  const screenshotPath = path.join(outputDir, 'verification.png');
+  const diagnostics = await runBrowserCheck({
+    pages,
+    browserFactory: fakeBrowser(),
+    screenshotPath,
+    browserTimeoutMs: 100,
+  });
+  assert.deepEqual(diagnostics.requestFailures, []);
+  assert.deepEqual(diagnostics.consoleErrors, []);
+  assert.deepEqual(diagnostics.pageErrors, []);
+  assert.deepEqual(diagnostics.screenshots, [screenshotPath]);
+  assert.equal(fs.readFileSync(screenshotPath, 'utf8'), 'PNG');
+  fs.rmSync(outputDir, { recursive: true, force: true });
+});
+
+test('browser adapter preserves diagnostics and screenshot on navigation failure', async () => {
+  const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-pages-'));
+  const screenshotPath = path.join(outputDir, 'failure.png');
+  await assert.rejects(
+    () => runBrowserCheck({
+      pages,
+      browserFactory: fakeBrowser({ failNavigation: true }),
+      screenshotPath,
+      browserTimeoutMs: 100,
+    }),
+    error => error.message === 'navigation failed'
+      && error.diagnostics.screenshots.length === 1,
+  );
+  assert.equal(fs.readFileSync(screenshotPath, 'utf8'), 'PNG');
+  fs.rmSync(outputDir, { recursive: true, force: true });
+});
+
+test('browser adapter fails when app-owned request or console errors are observed', async () => {
+  await assert.rejects(
+    () => runBrowserCheck({
+      pages,
+      browserFactory: fakeBrowser({ emitErrors: true }),
+      browserTimeoutMs: 100,
+    }),
+    error => error.message.includes('app-owned request or application errors')
+      && error.diagnostics.requestFailures.length >= 2
+      && error.diagnostics.consoleErrors.length >= 1
+      && error.diagnostics.pageErrors.length >= 1,
+  );
+});
+
+test('expected artifact reader accepts complete artifacts and rejects missing files', () => {
+  const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-artifact-'));
+  fs.mkdirSync(path.join(outputDir, 'assets'));
+  fs.writeFileSync(path.join(outputDir, 'index.html'), index);
+  fs.writeFileSync(path.join(outputDir, 'assets', 'asset-manifest.json'), manifest);
+  const loaded = readExpectedArtifact(outputDir);
+  assert.deepEqual(loaded, artifact);
+  fs.unlinkSync(path.join(outputDir, 'index.html'));
+  assert.throws(() => readExpectedArtifact(outputDir), /missing index\.html/);
+  fs.rmSync(outputDir, { recursive: true, force: true });
+});
+
+test('GitHub SHA lookup handles missing auth, API errors, and valid responses', async () => {
+  assert.equal(await getCurrentMainSha({ repository: 'Haynesmodel/Darling' }), null);
+  assert.equal(await getCurrentMainSha({
+    repository: 'Haynesmodel/Darling',
+    token: 'secret',
+    request: async () => response('denied', 403),
+    requestTimeoutMs: 100,
+  }), null);
+  assert.equal(await getCurrentMainSha({
+    repository: 'Haynesmodel/Darling',
+    token: 'secret',
+    request: async () => response(JSON.stringify({ commit: { sha: 'f'.repeat(40) } }), 200, { 'content-type': 'application/json' }),
+    requestTimeoutMs: 100,
+  }), 'f'.repeat(40));
+});

@@ -328,6 +328,8 @@ function validateWorkflowContracts({ workflows, legacyDeployExists }) {
   const gate = extractJob(ci, 'gate');
   const packagePages = extractJob(ci, 'package_pages');
   const deployPages = extractJob(ci, 'deploy_pages');
+  const verifyPages = extractJob(ci, 'verify_pages');
+  const pagesSourceStep = extractNamedStep(packagePages, 'Verify Pages uses GitHub Actions source');
   const uploadPagesStep = extractNamedStep(packagePages, 'Upload Pages artifact');
 
   if (legacyDeployExists) {
@@ -406,8 +408,13 @@ function validateWorkflowContracts({ workflows, legacyDeployExists }) {
     if (/\balways\(\)/.test(packagePages)) {
       errors.push('REL-001: package_pages must not use always()');
     }
-    if (JSON.stringify(jobPermissions(packagePages)) !== JSON.stringify(['contents: read'])) {
-      errors.push('SEC-001: package_pages permissions must be exactly contents: read');
+    if (JSON.stringify(jobPermissions(packagePages)) !== JSON.stringify(['contents: read', 'pages: read'])) {
+      errors.push('SEC-001: package_pages permissions must be exactly contents: read and pages: read');
+    }
+    if (!pagesSourceStep.includes('github.rest.repos.getPages')
+      || !pagesSourceStep.includes("pages.build_type !== 'workflow'")
+      || !pagesSourceStep.includes('core.setFailed')) {
+      errors.push('CI-001: package_pages must fail closed when the authenticated Pages source is not workflow');
     }
     if (!uploadPagesStep.includes('uses: actions/upload-pages-artifact@')) {
       errors.push('ARCH-002: package_pages must upload dist with upload-pages-artifact');
@@ -436,6 +443,9 @@ function validateWorkflowContracts({ workflows, legacyDeployExists }) {
   if (!deployPages) {
     errors.push('REL-001: deploy_pages job is missing');
   } else {
+    if (!/outputs:\s*\n\s+page_url:\s*\$\{\{\s*steps\.deployment\.outputs\.page_url\s*\}\}/.test(deployPages)) {
+      errors.push('OBS-002: deploy_pages must expose its Pages URL to verification');
+    }
     if (!/^\s*needs:\s*package_pages\s*$/m.test(deployPages)) {
       errors.push('REL-001: deploy_pages must need only package_pages');
     }
@@ -482,6 +492,29 @@ function validateWorkflowContracts({ workflows, legacyDeployExists }) {
     }
   }
 
+  if (!verifyPages) {
+    errors.push('REL-001: verify_pages job is missing');
+  } else {
+    if (!/^\s*needs:\s*deploy_pages\s*$/m.test(verifyPages)
+      || !verifyPages.includes(`if: ${MAIN_PUSH_CONDITION}`)) {
+      errors.push('REL-001: verify_pages must run only after the main deploy');
+    }
+    if (JSON.stringify(jobPermissions(verifyPages)) !== JSON.stringify(['contents: read', 'pages: read'])) {
+      errors.push('SEC-004: verify_pages permissions must be exactly contents: read and pages: read');
+    }
+    if (!verifyPages.includes('scripts/verify_pages_deployment.cjs')
+      || !verifyPages.includes('needs.deploy_pages.outputs.page_url')
+      || !verifyPages.includes('actions/download-artifact@')
+      || !verifyPages.includes('digest-mismatch: error')
+      || !verifyPages.includes('npx playwright install --with-deps chromium')
+      || !verifyPages.includes('retention-days: 7')) {
+      errors.push('REL-001: verify_pages must verify the exact artifact and bounded browser smoke with retained failure evidence');
+    }
+    if (/pages:\s*write|id-token:\s*write|actions\/upload-pages-artifact@|actions\/deploy-pages@/.test(verifyPages)) {
+      errors.push('SEC-004: verify_pages must not publish or receive deployment permissions');
+    }
+  }
+
   if (!/^permissions:\s*\n\s{2}contents:\s*read\s*$/m.test(workflowHeader)) {
     errors.push('SEC-001: CI must default to contents: read');
   }
@@ -491,6 +524,9 @@ function validateWorkflowContracts({ workflows, legacyDeployExists }) {
   if (countMatches(allWorkflowSource, /^\s*pages:\s*write\s*$/gm) !== 1
     || countMatches(allWorkflowSource, /^\s*id-token:\s*write\s*$/gm) !== 1) {
     errors.push('SEC-002: Pages write and OIDC permissions must occur only once');
+  }
+  if (countMatches(allWorkflowSource, /^\s*pages:\s*read\s*$/gm) !== 2) {
+    errors.push('SEC-004: package_pages and verify_pages must each request pages: read');
   }
 
   if (!/name:\s*ci \/ gate/.test(gate)) {

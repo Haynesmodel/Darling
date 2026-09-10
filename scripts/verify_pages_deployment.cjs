@@ -297,12 +297,25 @@ async function getCurrentMainSha({ repository, token, request = globalThis.fetch
 }
 
 async function runBrowserCheck({ pages, browserFactory, screenshotPath, browserTimeoutMs = DEFAULTS.browserTimeoutMs, requestTimeoutMs = DEFAULTS.requestTimeoutMs, deadline, clock = () => Date.now() }) {
-  const scenarioDeadline = deadline || makeDeadline(clock, browserTimeoutMs);
+  const scenarioDeadline = deadline ? deadline.child(Math.min(browserTimeoutMs, DEFAULTS.browserTimeoutMs)) : makeDeadline(clock, browserTimeoutMs);
+  const cleanupReserveMs = Math.min(1_000, Math.max(5, Math.floor(scenarioDeadline.remaining() * 0.1)));
+  const operationDeadline = {
+    remaining: () => Math.max(0, scenarioDeadline.remaining() - cleanupReserveMs),
+    child: durationMs => makeDeadline(clock, Math.min(durationMs, Math.max(0, scenarioDeadline.remaining() - cleanupReserveMs))),
+  };
   if (!browserFactory) {
     const { chromium } = require('playwright');
-    browserFactory = () => chromium.launch({ headless: true });
+    browserFactory = options => chromium.launch({ headless: true, ...options });
   }
-  const browser = await withDeadline(browserFactory, scenarioDeadline, 'Chromium launch timed out');
+  let browser;
+  const launch = Promise.resolve().then(() => browserFactory({ timeout: Math.max(1, operationDeadline.remaining()) }));
+  try {
+    browser = await withDeadline(() => launch, operationDeadline, 'Chromium launch timed out');
+  } catch (error) {
+    // A late launch must still be closed when it eventually resolves.
+    launch.then(lateBrowser => withTimeout(() => lateBrowser.close(), 2_000, 'Late Chromium cleanup timed out')).catch(() => {});
+    throw error;
+  }
   const diagnostics = { requestFailures: [], consoleErrors: [], pageErrors: [], screenshots: [], screenshotErrors: [], pendingRequests: [] };
   const pending = new Map();
   const requestEpochs = new WeakMap();
@@ -318,17 +331,17 @@ async function runBrowserCheck({ pages, browserFactory, screenshotPath, browserT
   try {
     const context = await withDeadline(
       () => browser.newContext({ baseURL: pages.url }),
-      scenarioDeadline,
+      operationDeadline,
       'Chromium context creation timed out',
     );
     try {
-      const page = await withDeadline(() => context.newPage(), scenarioDeadline, 'Chromium page creation timed out');
+      const page = await withDeadline(() => context.newPage(), operationDeadline, 'Chromium page creation timed out');
       const owned = url => isAllowedUrl(url, pages);
       page.on('request', request => {
         if (!owned(request.url())) return;
         const epoch = navigationEpoch;
         requestEpochs.set(request, epoch);
-        const timeout = Math.min(requestTimeoutMs, scenarioDeadline.remaining());
+        const timeout = Math.min(requestTimeoutMs, operationDeadline.remaining());
         const timer = setTimeout(() => {
           if (!pending.has(request)) return;
           pending.delete(request);
@@ -365,14 +378,14 @@ async function runBrowserCheck({ pages, browserFactory, screenshotPath, browserT
       async function waitForReady(panel, name) {
         await withDeadline(
           () => panel.waitFor({ state: 'visible', timeout: browserTimeoutMs }),
-          scenarioDeadline,
+          operationDeadline,
           `${name} ready panel did not become visible`,
         );
         let state;
-        while (scenarioDeadline.remaining() > 0) {
+        while (operationDeadline.remaining() > 0) {
           state = await panel.getAttribute('data-feature-state');
           if (state === 'ready') return;
-          await withDeadline(() => page.waitForTimeout(Math.min(100, Math.max(1, scenarioDeadline.remaining()))), scenarioDeadline, `${name} readiness polling timed out`);
+          await withDeadline(() => page.waitForTimeout(Math.min(100, Math.max(1, operationDeadline.remaining()))), operationDeadline, `${name} readiness polling timed out`);
         }
         throw new Error(`${name} panel reached state ${state || 'missing'}, expected ready`);
       }
@@ -380,42 +393,67 @@ async function runBrowserCheck({ pages, browserFactory, screenshotPath, browserT
       async function visit(url, selector, name) {
         navigationEpoch += 1;
         await withDeadline(
-          () => page.goto(url, { waitUntil: 'domcontentloaded', timeout: browserTimeoutMs }),
-          scenarioDeadline,
+          () => page.goto(url, { waitUntil: 'domcontentloaded', timeout: Math.max(1, operationDeadline.remaining()) }),
+          operationDeadline,
           `${name} navigation timed out`,
         );
         assertAllowedUrl(page.url(), pages);
         await waitForReady(page.locator(selector), name);
         const stylesheets = await withDeadline(
           () => page.evaluate(() => Array.from(document.styleSheets).map(sheet => sheet.href || 'inline')),
-          scenarioDeadline,
+          operationDeadline,
           `${name} stylesheet inspection timed out`,
         );
         if (!stylesheets.some(href => href !== 'inline')) throw new Error(`${name} loaded no external stylesheet`);
       }
 
+      async function settleRequests(name) {
+        const settleDeadline = operationDeadline.child(requestTimeoutMs);
+        while (pending.size && settleDeadline.remaining() > 0) {
+          try {
+            await withDeadline(() => page.waitForTimeout(Math.min(25, settleDeadline.remaining())), settleDeadline, `${name} request settlement timed out`);
+          } catch (error) {
+            for (const request of pending.keys()) {
+              diagnostics.pendingRequests.push(redactUrl(request.url()));
+              recordFailure('timeout', request);
+              clearPending(request);
+            }
+            throw error;
+          }
+        }
+        if (pending.size) {
+          for (const request of pending.keys()) clearPending(request);
+          throw new Error(`${name} left app-owned requests pending`);
+        }
+      }
+
       await visit('./', '#page-pulse', 'Home');
+      await settleRequests('Home');
       const seasonLink = page.locator('#tabCurrentBtn');
       navigationEpoch += 1;
-      await withDeadline(() => seasonLink.click(), scenarioDeadline, 'Season navigation click timed out');
+      await withDeadline(() => seasonLink.click(), operationDeadline, 'Season navigation click timed out');
       await waitForReady(page.locator('#page-current'), 'Season navigation');
+      await settleRequests('Season navigation');
       await visit('./?tab=current', '#page-current', 'Current deep link');
+      await settleRequests('Current');
       await visit('./', '#page-pulse', 'Home return');
+      await settleRequests('Home return');
       if (screenshotPath) {
         try {
-          await withDeadline(() => page.screenshot({ path: screenshotPath, fullPage: true }), scenarioDeadline, 'Browser screenshot timed out');
+          await withDeadline(() => page.screenshot({ path: screenshotPath, fullPage: true }), operationDeadline, 'Browser screenshot timed out');
           diagnostics.screenshots.push(screenshotPath);
         } catch (error) {
           diagnostics.screenshotErrors.push(String(error.message || error));
           throw error;
         }
       }
-      await withDeadline(() => page.waitForTimeout(Math.min(50, scenarioDeadline.remaining())), scenarioDeadline, 'Browser settle timed out');
-      if (scenarioDeadline.remaining() <= 0) throw new Error('Browser verification exceeded its scenario budget');
+      await withDeadline(() => page.waitForTimeout(Math.min(50, operationDeadline.remaining())), operationDeadline, 'Browser settle timed out');
+      await settleRequests('Final');
+      if (operationDeadline.remaining() <= 0) throw new Error('Browser verification exceeded its scenario budget');
+      await withDeadline(() => context.close(), scenarioDeadline, 'Chromium context cleanup timed out');
       if (diagnostics.requestFailures.length || diagnostics.consoleErrors.length || diagnostics.pageErrors.length || diagnostics.pendingRequests.length) {
         throw new Error('Browser verification observed app-owned request or application errors');
       }
-      await withDeadline(() => context.close(), scenarioDeadline, 'Chromium context cleanup timed out');
       return diagnostics;
     } catch (error) {
       try {
@@ -429,7 +467,7 @@ async function runBrowserCheck({ pages, browserFactory, screenshotPath, browserT
       } catch {
         // Preserve the original browser failure when screenshot capture is unavailable.
       }
-      try { await context.close(); } catch { /* best effort cleanup */ }
+      try { await withDeadline(() => context.close(), scenarioDeadline, 'Chromium context cleanup timed out'); } catch { /* best effort cleanup */ }
       error.diagnostics = diagnostics;
       throw error;
     }
@@ -474,6 +512,9 @@ async function runVerification(options) {
       throw new Error(`${name} must be a finite number between ${minimum} and ${maximum}`);
     }
   }
+  if (typeof settings.expectedSha !== 'string' || !/^[0-9a-f]{40}$/i.test(settings.expectedSha)) {
+    throw new Error('expectedSha must be a full 40-character hexadecimal commit SHA');
+  }
   const clock = settings.clock || (() => Date.now());
   const sleep = settings.sleep || (ms => new Promise(resolve => setTimeout(resolve, ms)));
   const artifact = settings.artifact || readExpectedArtifact(settings.artifactDir);
@@ -505,16 +546,19 @@ async function runVerification(options) {
       result.status = 'SUPERSEDED';
       result.superseded = true;
       result.supersededBy = check.sha;
-      return true;
+      return { superseded: true };
     }
-    return false;
+    const required = Boolean(settings.repository && settings.token);
+    return { superseded: false, failed: required && check.status !== 'ok', status: check.status };
   }
 
   for (let attempt = 1; attempt <= settings.maxAttempts; attempt += 1) {
     result.attempts = attempt;
     if (deadline.remaining() <= 0) break;
     try {
-      if (await checkSupersession(`attempt-${attempt}-start`)) return result;
+      const startCheck = await checkSupersession(`attempt-${attempt}-start`);
+      if (startCheck.superseded) return result;
+      if (startCheck.failed) throw new Error(`GitHub main SHA preflight failed (${startCheck.status})`);
       const artifactResult = await comparePublicArtifact({
         artifact,
         pages,
@@ -537,7 +581,11 @@ async function runVerification(options) {
         });
       result.browser = browserResult;
       if (deadline.remaining() <= 0) throw new Error('Verification deadline expired during browser verification');
-      if (await checkSupersession(`attempt-${attempt}-end`)) return result;
+      if (deadline.remaining() <= 0) throw new Error('Verification deadline expired before final supersession check');
+      const endCheck = await checkSupersession(`attempt-${attempt}-end`);
+      if (endCheck.superseded) return result;
+      if (endCheck.failed) throw new Error(`GitHub main SHA final check failed (${endCheck.status})`);
+      if (deadline.remaining() <= 0) throw new Error('Verification deadline expired before PASS');
       result.status = 'PASS';
       return result;
     } catch (error) {
@@ -548,7 +596,8 @@ async function runVerification(options) {
         result.urls = error.comparison.urls;
       }
       result.errors.push(String(error.message || error));
-      if (await checkSupersession(`attempt-${attempt}-error`)) return result;
+      const errorCheck = await checkSupersession(`attempt-${attempt}-error`);
+      if (errorCheck.superseded) return result;
       if (attempt >= settings.maxAttempts || deadline.remaining() <= 0) break;
       await sleep(Math.min(settings.retryDelayMs, deadline.remaining()));
     }

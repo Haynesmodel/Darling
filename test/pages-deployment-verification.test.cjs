@@ -163,9 +163,11 @@ test('exhaustion returns FAIL with a bounded attempt count', async () => {
 });
 
 test('verification rejects budgets outside the documented hard caps', async () => {
-  await assert.rejects(() => runVerification({ artifact, pages, deadlineMs: Infinity }), /deadlineMs must be a finite number/);
-  await assert.rejects(() => runVerification({ artifact, pages, maxAttempts: 13 }), /maxAttempts must be a finite number/);
-  await assert.rejects(() => runVerification({ artifact, pages, requestTimeoutMs: -1 }), /requestTimeoutMs must be a finite number/);
+  const base = { artifact, pages, expectedSha: 'a'.repeat(40) };
+  await assert.rejects(() => runVerification({ ...base, deadlineMs: Infinity }), /deadlineMs must be a finite number/);
+  await assert.rejects(() => runVerification({ ...base, maxAttempts: 13 }), /maxAttempts must be a finite number/);
+  await assert.rejects(() => runVerification({ ...base, requestTimeoutMs: -1 }), /requestTimeoutMs must be a finite number/);
+  await assert.rejects(() => runVerification({ artifact, pages }), /expectedSha must be a full 40-character/);
 });
 
 test('artifact mismatch retains browser failure evidence when the final attempt fails', async () => {
@@ -340,10 +342,33 @@ test('browser adapter reports an owned request that remains pending past its bou
       browserTimeoutMs: 100,
       requestTimeoutMs: 10,
     }),
-    error => error.message.includes('app-owned request or application errors')
+    error => (error.message.includes('app-owned request or application errors') || error.message.includes('request settlement timed out'))
       && error.diagnostics.pendingRequests.length >= 1
       && error.diagnostics.requestFailures.some(failure => failure.kind === 'timeout'),
   );
+});
+
+test('browser scenario budget is a child of the global deadline', async () => {
+  const started = Date.now();
+  await runBrowserCheck({ pages, browserFactory: fakeBrowser(), browserTimeoutMs: 20, deadline: {
+    remaining: () => Math.max(0, 500 - (Date.now() - started)),
+    child: ms => ({ remaining: () => Math.max(0, Math.min(ms, 500 - (Date.now() - started))), child: () => ({ remaining: () => 0 }) }),
+  } });
+  assert.ok(Date.now() - started < 100);
+});
+
+test('late Chromium launch is closed after its launch deadline', async () => {
+  let closed = false;
+  await assert.rejects(() => runBrowserCheck({
+    pages,
+    browserTimeoutMs: 20,
+    browserFactory: async () => {
+      await new Promise(resolve => setTimeout(resolve, 40));
+      return { close: async () => { closed = true; } };
+    },
+  }), /Chromium launch timed out/);
+  await new Promise(resolve => setTimeout(resolve, 30));
+  assert.equal(closed, true);
 });
 
 test('expected artifact reader accepts complete artifacts and rejects missing files', () => {

@@ -65,9 +65,8 @@ After that job, three independent lanes run in parallel:
 
 On pushes to `main`, three post-gate jobs continue the same artifact's provenance chain:
 
-- `package_pages` needs both `quality_build` and `ci / gate`, downloads `darling-dist-<commit SHA>` with digest-mismatch enforcement, rejects an empty `index.html`, asset manifest, or hidden Vite manifest, and passes the unchanged `dist/` directory—including hidden files—to `actions/upload-pages-artifact`.
+- `package_pages` needs both `quality_build` and `ci / gate`, reads the repository Pages API and fails closed unless the source is GitHub Actions, downloads `darling-dist-<commit SHA>` with digest-mismatch enforcement, rejects an empty `index.html`, asset manifest, or hidden Vite manifest, and passes the unchanged `dist/` directory—including hidden files—to `actions/upload-pages-artifact`.
 - `deploy_pages` needs only `package_pages`, checks through the GitHub API immediately before the deploy action that the workflow SHA is still the current `main` tip, and deploys the Pages transport artifact to the `github-pages` environment.
-- `package_pages` reads the repository Pages API before packaging and fails closed unless `build_type` is `workflow`. The repository owner controls this setting at Settings → Pages → Build and deployment → Source; CI never changes it.
 - `verify_pages` runs after deployment on `main`, downloads the same SHA-named artifact, compares `index.html` and `assets/asset-manifest.json` byte-for-byte with the public URL, and exercises Home and the Current deep link in Chromium. It retries propagation mismatches for at most 12 attempts with 15-second spacing and a 240-second deadline. It has `contents: read` and `pages: read` only, cannot publish, and keeps failure diagnostics for seven days.
 
 Pull requests run the complete quality gate but skip all Pages jobs. The workflow defaults to `contents: read`; only `deploy_pages` receives job-scoped `pages: write` and `id-token: write`. Workflow-level cancellation stops superseded CI runs, a production concurrency group serializes deploy calls, and the immediately preceding current-main check provides a second stale-run defense.

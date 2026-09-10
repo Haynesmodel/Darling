@@ -146,6 +146,44 @@ test('retries propagation mismatches at most twelve times and passes after recov
   assert.equal(attempts, 6);
 });
 
+test('recovery on attempt eleven remains within the twelve-attempt ceiling', async () => {
+  let attempts = 0;
+  const result = await runVerification({
+    artifact, pages, expectedSha: '1'.repeat(40), maxAttempts: 12, retryDelayMs: 0, deadlineMs: 1000,
+    request: async url => {
+      const attempt = Math.floor(attempts / 2) + 1;
+      attempts += 1;
+      const body = attempt < 11 ? Buffer.from('old') : (url.endsWith('asset-manifest.json') ? manifest : index);
+      return response(body, 200, url.endsWith('asset-manifest.json') ? { 'content-type': 'application/json' } : undefined);
+    },
+    browserCheck: async () => ({ requestFailures: [], consoleErrors: [], pageErrors: [] }),
+  });
+  assert.equal(result.status, 'PASS');
+  assert.equal(result.attempts, 11);
+});
+
+test('attempt twelve exhaustion is reported without a thirteenth try', async () => {
+  const result = await runVerification({
+    artifact, pages, expectedSha: '2'.repeat(40), maxAttempts: 12, retryDelayMs: 0, deadlineMs: 1000,
+    request: pageRequest({ indexBody: Buffer.from('old') }),
+    browserCheck: async () => ({ requestFailures: [], consoleErrors: [], pageErrors: [] }),
+  });
+  assert.equal(result.status, 'FAIL');
+  assert.equal(result.attempts, 12);
+});
+
+test('default retry spacing is fifteen seconds when sleep is injected', async () => {
+  const sleeps = [];
+  const result = await runVerification({
+    artifact, pages, expectedSha: '3'.repeat(40), maxAttempts: 2, deadlineMs: 20000,
+    request: pageRequest({ indexBody: Buffer.from('old') }),
+    sleep: async ms => sleeps.push(ms),
+    browserCheck: async () => ({ requestFailures: [], consoleErrors: [], pageErrors: [] }),
+  });
+  assert.equal(result.status, 'FAIL');
+  assert.deepEqual(sleeps, [15000]);
+});
+
 test('exhaustion returns FAIL with a bounded attempt count', async () => {
   const result = await runVerification({
     artifact,
@@ -230,7 +268,7 @@ test('browser errors are retried and included in the final result', async () => 
   assert.deepEqual(result.browser.requestFailures, [{ url: '/Darling/assets/app.js' }]);
 });
 
-function fakeBrowser({ failNavigation = false, emitErrors = false, hangingRequest = false } = {}) {
+function fakeBrowser({ failNavigation = false, emitErrors = false, hangingRequest = false, requestState, browserState, hangScreenshot = false, hangContextClose = false } = {}) {
   const listeners = new Map();
   let currentUrl = pages.url;
   const page = {
@@ -243,6 +281,7 @@ function fakeBrowser({ failNavigation = false, emitErrors = false, hangingReques
       if (hangingRequest) listeners.get('request')?.({
         url: () => `${pages.url}assets/hanging.css`,
         resourceType: () => 'stylesheet',
+        abort: async () => { if (requestState) requestState.aborted = true; },
       });
       if (emitErrors) {
         listeners.get('response')?.({ url: () => `${pages.url}missing.js`, status: () => 404 });
@@ -271,17 +310,18 @@ function fakeBrowser({ failNavigation = false, emitErrors = false, hangingReques
       if (hangingRequest) await new Promise(resolve => setTimeout(resolve, ms));
     },
     async screenshot({ path: screenshotPath }) {
+      if (hangScreenshot) return new Promise(() => {});
       fs.writeFileSync(screenshotPath, 'PNG');
     },
   };
   const context = {
     async newPage() { return page; },
     pages() { return [page]; },
-    async close() {},
+    async close() { if (hangContextClose) return new Promise(() => {}); },
   };
   const browser = {
     async newContext() { return context; },
-    async close() {},
+    async close() { if (browserState) browserState.closed = true; },
   };
   return async () => browser;
 }
@@ -369,6 +409,32 @@ test('late Chromium launch is closed after its launch deadline', async () => {
   }), /Chromium launch timed out/);
   await new Promise(resolve => setTimeout(resolve, 30));
   assert.equal(closed, true);
+});
+
+test('timed out browser requests are actively cancelled', async () => {
+  const state = { aborted: false };
+  await assert.rejects(() => runBrowserCheck({
+    pages, browserFactory: fakeBrowser({ hangingRequest: true, requestState: state }),
+    browserTimeoutMs: 100, requestTimeoutMs: 10,
+  }));
+  assert.equal(state.aborted, true);
+});
+
+test('failure cleanup starts even when screenshot or context close hangs', async () => {
+  for (const option of ['hangScreenshot', 'hangContextClose']) {
+    const state = { closed: false };
+    await assert.rejects(() => runBrowserCheck({
+      pages,
+      browserFactory: fakeBrowser({
+        failNavigation: option === 'hangScreenshot',
+        [option]: true,
+        browserState: state,
+      }),
+      browserTimeoutMs: 30,
+      screenshotPath: option === 'hangScreenshot' ? path.join(os.tmpdir(), `darling-${option}.png`) : undefined,
+    }));
+    assert.equal(state.closed, true, option);
+  }
 });
 
 test('expected artifact reader accepts complete artifacts and rejects missing files', () => {

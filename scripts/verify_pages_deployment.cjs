@@ -119,6 +119,18 @@ async function withTimeout(task, timeoutMs, message) {
   return withDeadline(task, makeDeadline(() => Date.now(), timeoutMs), message);
 }
 
+async function startCleanup(task, deadline, message) {
+  // Invoke cleanup before checking the deadline so an expired budget cannot
+  // prevent browser/context cancellation from starting.
+  const cleanup = Promise.resolve().then(task);
+  if (deadline.remaining() <= 0) return;
+  try {
+    await withDeadline(() => cleanup, deadline, message);
+  } catch {
+    // Cleanup is best effort; the original verification failure wins.
+  }
+}
+
 async function fetchResponse(url, {
   request = globalThis.fetch,
   requestTimeoutMs = DEFAULTS.requestTimeoutMs,
@@ -319,6 +331,7 @@ async function runBrowserCheck({ pages, browserFactory, screenshotPath, browserT
   const diagnostics = { requestFailures: [], consoleErrors: [], pageErrors: [], screenshots: [], screenshotErrors: [], pendingRequests: [] };
   const pending = new Map();
   const requestEpochs = new WeakMap();
+  let requestTimeoutError;
   let navigationEpoch = 0;
   const clearPending = request => {
     const timer = pending.get(request);
@@ -347,6 +360,13 @@ async function runBrowserCheck({ pages, browserFactory, screenshotPath, browserT
           pending.delete(request);
           diagnostics.pendingRequests.push(redactUrl(request.url()));
           recordFailure('timeout', request, { epoch });
+          requestTimeoutError = new Error(`App-owned request timed out after ${requestTimeoutMs}ms: ${redactUrl(request.url())}`);
+          // Playwright Request objects cannot be aborted directly. Closing the
+          // page/context cancels the network operation and all of its streams.
+          const cancel = typeof request.abort === 'function'
+            ? () => request.abort()
+            : (typeof page?.close === 'function' ? () => page.close() : () => context.close());
+          Promise.resolve().then(cancel).catch(() => {});
         }, Math.max(1, timeout));
         pending.set(request, timer);
       });
@@ -416,6 +436,10 @@ async function runBrowserCheck({ pages, browserFactory, screenshotPath, browserT
             for (const request of pending.keys()) {
               diagnostics.pendingRequests.push(redactUrl(request.url()));
               recordFailure('timeout', request);
+              const cancel = typeof request.abort === 'function'
+                ? () => request.abort()
+                : (typeof page?.close === 'function' ? () => page.close() : () => context.close());
+              Promise.resolve().then(cancel).catch(() => {});
               clearPending(request);
             }
             throw error;
@@ -425,6 +449,7 @@ async function runBrowserCheck({ pages, browserFactory, screenshotPath, browserT
           for (const request of pending.keys()) clearPending(request);
           throw new Error(`${name} left app-owned requests pending`);
         }
+        if (requestTimeoutError) throw requestTimeoutError;
       }
 
       await visit('./', '#page-pulse', 'Home');
@@ -460,21 +485,25 @@ async function runBrowserCheck({ pages, browserFactory, screenshotPath, browserT
         if (screenshotPath) {
           const pagesInContext = context.pages();
           if (pagesInContext[0]) {
-            await withDeadline(() => pagesInContext[0].screenshot({ path: screenshotPath, fullPage: true }), scenarioDeadline, 'Failure screenshot timed out');
-            if (!diagnostics.screenshots.includes(screenshotPath)) diagnostics.screenshots.push(screenshotPath);
+            if (scenarioDeadline.remaining() <= 0) {
+              diagnostics.screenshotErrors.push('Failure screenshot skipped: no cleanup budget remaining');
+            } else {
+              await withDeadline(() => pagesInContext[0].screenshot({ path: screenshotPath, fullPage: true }), scenarioDeadline, 'Failure screenshot timed out');
+              if (!diagnostics.screenshots.includes(screenshotPath)) diagnostics.screenshots.push(screenshotPath);
+            }
           }
         }
       } catch {
         // Preserve the original browser failure when screenshot capture is unavailable.
       }
-      try { await withDeadline(() => context.close(), scenarioDeadline, 'Chromium context cleanup timed out'); } catch { /* best effort cleanup */ }
+      await startCleanup(() => context.close(), scenarioDeadline, 'Chromium context cleanup timed out');
       error.diagnostics = diagnostics;
       throw error;
     }
   } finally {
     for (const timer of pending.values()) clearTimeout(timer);
     pending.clear();
-    try { await withDeadline(() => browser.close(), scenarioDeadline, 'Chromium cleanup timed out'); } catch { /* best effort cleanup */ }
+    await startCleanup(() => browser.close(), scenarioDeadline, 'Chromium cleanup timed out');
   }
 }
 
@@ -526,6 +555,12 @@ async function runVerification(options) {
     attempts: 0,
     superseded: false,
     pages,
+    index: { expected: summarizeBytes(artifact.index) },
+    manifest: { expected: summarizeBytes(artifact.manifest) },
+    urls: {
+      index: redactUrl(pages.url),
+      manifest: redactUrl(`${pages.url}assets/asset-manifest.json`),
+    },
     errors: [],
     supersessionChecks: [],
   };
@@ -570,6 +605,7 @@ async function runVerification(options) {
       });
       result.index = artifactResult.index;
       result.manifest = artifactResult.manifest;
+      result.urls = artifactResult.urls || result.urls;
       const browserResult = await (settings.browserCheck || runBrowserCheck)({
           pages,
           browserFactory: settings.browserFactory,

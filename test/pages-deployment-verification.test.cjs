@@ -200,6 +200,25 @@ test('exhaustion returns FAIL with a bounded attempt count', async () => {
   assert.match(result.error, /mismatch/);
 });
 
+test('HTTP and timeout failures retain requested artifact URLs', async () => {
+  const httpFailure = await runVerification({
+    artifact, pages, expectedSha: '4'.repeat(40), maxAttempts: 1, retryDelayMs: 0, deadlineMs: 1000,
+    request: pageRequest({ indexStatus: 503 }),
+  });
+  assert.deepEqual(httpFailure.urls, {
+    index: pages.url,
+    manifest: `${pages.url}assets/asset-manifest.json`,
+  });
+  const timeoutFailure = await runVerification({
+    artifact, pages, expectedSha: '5'.repeat(40), maxAttempts: 1, retryDelayMs: 0, deadlineMs: 20, requestTimeoutMs: 10,
+    request: async () => new Promise(() => {}),
+  });
+  assert.deepEqual(timeoutFailure.urls, {
+    index: pages.url,
+    manifest: `${pages.url}assets/asset-manifest.json`,
+  });
+});
+
 test('verification rejects budgets outside the documented hard caps', async () => {
   const base = { artifact, pages, expectedSha: 'a'.repeat(40) };
   await assert.rejects(() => runVerification({ ...base, deadlineMs: Infinity }), /deadlineMs must be a finite number/);
@@ -394,10 +413,17 @@ test('browser adapter reports an owned request that remains pending past its bou
 
 test('browser scenario budget is a child of the global deadline', async () => {
   const started = Date.now();
+  const childDeadline = ms => {
+    const childStarted = Date.now();
+    return {
+      remaining: () => Math.max(0, Math.min(ms - (Date.now() - childStarted), 500 - (Date.now() - started))),
+      child: childDeadline,
+    };
+  };
   await assert.rejects(
     () => runBrowserCheck({ pages, browserFactory: fakeBrowser({ navigationDelayMs: 50 }), browserTimeoutMs: 20, deadline: {
       remaining: () => Math.max(0, 500 - (Date.now() - started)),
-      child: ms => ({ remaining: () => Math.max(0, Math.min(ms, 500 - (Date.now() - started))), child: n => ({ remaining: () => Math.max(0, Math.min(n, 500 - (Date.now() - started))) }) }),
+      child: childDeadline,
     } }),
     /Home navigation timed out/,
   );

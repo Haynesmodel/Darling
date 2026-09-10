@@ -630,7 +630,7 @@ async function runVerification(options) {
       if (error.comparison) {
         result.index = error.comparison.index;
         result.manifest = error.comparison.manifest;
-        result.urls = error.comparison.urls;
+        if (error.comparison.urls) result.urls = { ...result.urls, ...error.comparison.urls };
       }
       result.errors.push(String(error.message || error));
       const errorCheck = await checkSupersession(`attempt-${attempt}-error`);

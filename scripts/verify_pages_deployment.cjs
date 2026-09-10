@@ -123,6 +123,7 @@ async function startCleanup(task, deadline, message) {
   // Invoke cleanup before checking the deadline so an expired budget cannot
   // prevent browser/context cancellation from starting.
   const cleanup = Promise.resolve().then(task);
+  cleanup.catch(() => {});
   if (deadline.remaining() <= 0) return;
   try {
     await withDeadline(() => cleanup, deadline, message);

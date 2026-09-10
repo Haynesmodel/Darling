@@ -268,7 +268,7 @@ test('browser errors are retried and included in the final result', async () => 
   assert.deepEqual(result.browser.requestFailures, [{ url: '/Darling/assets/app.js' }]);
 });
 
-function fakeBrowser({ failNavigation = false, emitErrors = false, hangingRequest = false, requestState, browserState, hangScreenshot = false, hangContextClose = false } = {}) {
+function fakeBrowser({ failNavigation = false, emitErrors = false, hangingRequest = false, requestState, browserState, hangScreenshot = false, hangContextClose = false, navigationDelayMs = 0, rejectBrowserClose = false } = {}) {
   const listeners = new Map();
   let currentUrl = pages.url;
   const page = {
@@ -278,6 +278,7 @@ function fakeBrowser({ failNavigation = false, emitErrors = false, hangingReques
     async goto(url) {
       currentUrl = new URL(url, pages.url).toString();
       if (failNavigation) throw new Error('navigation failed');
+      if (navigationDelayMs) await new Promise(resolve => setTimeout(resolve, navigationDelayMs));
       if (hangingRequest) listeners.get('request')?.({
         url: () => `${pages.url}assets/hanging.css`,
         resourceType: () => 'stylesheet',
@@ -321,7 +322,10 @@ function fakeBrowser({ failNavigation = false, emitErrors = false, hangingReques
   };
   const browser = {
     async newContext() { return context; },
-    async close() { if (browserState) browserState.closed = true; },
+    async close() {
+      if (browserState) browserState.closed = true;
+      if (rejectBrowserClose) throw new Error('browser close failed');
+    },
   };
   return async () => browser;
 }
@@ -390,10 +394,13 @@ test('browser adapter reports an owned request that remains pending past its bou
 
 test('browser scenario budget is a child of the global deadline', async () => {
   const started = Date.now();
-  await runBrowserCheck({ pages, browserFactory: fakeBrowser(), browserTimeoutMs: 20, deadline: {
-    remaining: () => Math.max(0, 500 - (Date.now() - started)),
-    child: ms => ({ remaining: () => Math.max(0, Math.min(ms, 500 - (Date.now() - started))), child: () => ({ remaining: () => 0 }) }),
-  } });
+  await assert.rejects(
+    () => runBrowserCheck({ pages, browserFactory: fakeBrowser({ navigationDelayMs: 50 }), browserTimeoutMs: 20, deadline: {
+      remaining: () => Math.max(0, 500 - (Date.now() - started)),
+      child: ms => ({ remaining: () => Math.max(0, Math.min(ms, 500 - (Date.now() - started))), child: n => ({ remaining: () => Math.max(0, Math.min(n, 500 - (Date.now() - started))) }) }),
+    } }),
+    /Home navigation timed out/,
+  );
   assert.ok(Date.now() - started < 100);
 });
 
@@ -435,6 +442,16 @@ test('failure cleanup starts even when screenshot or context close hangs', async
     }));
     assert.equal(state.closed, true, option);
   }
+});
+
+test('expired cleanup consumes rejected close promises without an unhandled rejection', async () => {
+  const state = { closed: false };
+  await assert.rejects(() => runBrowserCheck({
+    pages,
+    browserFactory: fakeBrowser({ navigationDelayMs: 50, browserState: state, rejectBrowserClose: true }),
+    browserTimeoutMs: 20,
+  }), /Home navigation timed out/);
+  assert.equal(state.closed, true);
 });
 
 test('expected artifact reader accepts complete artifacts and rejects missing files', () => {

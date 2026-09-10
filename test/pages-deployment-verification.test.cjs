@@ -98,6 +98,31 @@ test('request timeout covers a response body that never completes', async () => 
   );
 });
 
+test('one deadline covers headers, redirects, and body consumption', async () => {
+  const verifier = require('../scripts/verify_pages_deployment.cjs');
+  const started = Date.now();
+  const deadlineStart = Date.now();
+  const deadline = {
+    remaining: () => Math.max(0, 50 - (Date.now() - deadlineStart)),
+    child: ms => ({ remaining: () => Math.max(0, Math.min(ms, 50 - (Date.now() - deadlineStart))) }),
+  };
+  let calls = 0;
+  await assert.rejects(
+    () => verifier.fetchBytes(pages.url, {
+      pages, deadline, requestTimeoutMs: 100,
+      request: async () => {
+        await new Promise(resolve => setTimeout(resolve, 35));
+        calls += 1;
+        return calls === 1
+          ? response(null, 302, { location: '/Darling/index.html' })
+          : { status: 200, headers: new Map(), arrayBuffer: () => new Promise(resolve => setTimeout(() => resolve(index), 35)) };
+      },
+    }),
+    /timed out/,
+  );
+  assert.ok(Date.now() - started < 130);
+});
+
 test('retries propagation mismatches at most twelve times and passes after recovery', async () => {
   let attempts = 0;
   const result = await runVerification({
@@ -135,6 +160,12 @@ test('exhaustion returns FAIL with a bounded attempt count', async () => {
   assert.equal(result.status, 'FAIL');
   assert.equal(result.attempts, 3);
   assert.match(result.error, /mismatch/);
+});
+
+test('verification rejects budgets outside the documented hard caps', async () => {
+  await assert.rejects(() => runVerification({ artifact, pages, deadlineMs: Infinity }), /deadlineMs must be a finite number/);
+  await assert.rejects(() => runVerification({ artifact, pages, maxAttempts: 13 }), /maxAttempts must be a finite number/);
+  await assert.rejects(() => runVerification({ artifact, pages, requestTimeoutMs: -1 }), /requestTimeoutMs must be a finite number/);
 });
 
 test('artifact mismatch retains browser failure evidence when the final attempt fails', async () => {
@@ -197,7 +228,7 @@ test('browser errors are retried and included in the final result', async () => 
   assert.deepEqual(result.browser.requestFailures, [{ url: '/Darling/assets/app.js' }]);
 });
 
-function fakeBrowser({ failNavigation = false, emitErrors = false } = {}) {
+function fakeBrowser({ failNavigation = false, emitErrors = false, hangingRequest = false } = {}) {
   const listeners = new Map();
   let currentUrl = pages.url;
   const page = {
@@ -207,6 +238,10 @@ function fakeBrowser({ failNavigation = false, emitErrors = false } = {}) {
     async goto(url) {
       currentUrl = new URL(url, pages.url).toString();
       if (failNavigation) throw new Error('navigation failed');
+      if (hangingRequest) listeners.get('request')?.({
+        url: () => `${pages.url}assets/hanging.css`,
+        resourceType: () => 'stylesheet',
+      });
       if (emitErrors) {
         listeners.get('response')?.({ url: () => `${pages.url}missing.js`, status: () => 404 });
         listeners.get('requestfailed')?.({ url: () => `${pages.url}failed.js`, failure: () => ({ errorText: 'offline' }) });
@@ -230,7 +265,9 @@ function fakeBrowser({ failNavigation = false, emitErrors = false } = {}) {
     async evaluate() {
       return [`${pages.url}assets/app.css`];
     },
-    async waitForTimeout() {},
+    async waitForTimeout(ms) {
+      if (hangingRequest) await new Promise(resolve => setTimeout(resolve, ms));
+    },
     async screenshot({ path: screenshotPath }) {
       fs.writeFileSync(screenshotPath, 'PNG');
     },
@@ -295,6 +332,20 @@ test('browser adapter fails when app-owned request or console errors are observe
   );
 });
 
+test('browser adapter reports an owned request that remains pending past its bound', async () => {
+  await assert.rejects(
+    () => runBrowserCheck({
+      pages,
+      browserFactory: fakeBrowser({ hangingRequest: true }),
+      browserTimeoutMs: 100,
+      requestTimeoutMs: 10,
+    }),
+    error => error.message.includes('app-owned request or application errors')
+      && error.diagnostics.pendingRequests.length >= 1
+      && error.diagnostics.requestFailures.some(failure => failure.kind === 'timeout'),
+  );
+});
+
 test('expected artifact reader accepts complete artifacts and rejects missing files', () => {
   const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-artifact-'));
   fs.mkdirSync(path.join(outputDir, 'assets'));
@@ -308,17 +359,17 @@ test('expected artifact reader accepts complete artifacts and rejects missing fi
 });
 
 test('GitHub SHA lookup handles missing auth, API errors, and valid responses', async () => {
-  assert.equal(await getCurrentMainSha({ repository: 'Haynesmodel/Darling' }), null);
-  assert.equal(await getCurrentMainSha({
+  assert.deepEqual(await getCurrentMainSha({ repository: 'Haynesmodel/Darling' }), { sha: null, status: 'missing-auth' });
+  assert.deepEqual(await getCurrentMainSha({
     repository: 'Haynesmodel/Darling',
     token: 'secret',
     request: async () => response('denied', 403),
     requestTimeoutMs: 100,
-  }), null);
-  assert.equal(await getCurrentMainSha({
+  }), { sha: null, status: 'http-403', httpStatus: 403 });
+  assert.deepEqual(await getCurrentMainSha({
     repository: 'Haynesmodel/Darling',
     token: 'secret',
     request: async () => response(JSON.stringify({ commit: { sha: 'f'.repeat(40) } }), 200, { 'content-type': 'application/json' }),
     requestTimeoutMs: 100,
-  }), 'f'.repeat(40));
+  }), { sha: 'f'.repeat(40), status: 'ok' });
 });

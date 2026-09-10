@@ -63,7 +63,7 @@ After that job, three independent lanes run in parallel:
 
 `ci / gate` uses `if: always()` and requires every lane to conclude successfully. Branch protection requires only this stable context.
 
-On pushes to `main`, two post-gate jobs continue the same artifact's provenance chain:
+On pushes to `main`, three post-gate jobs continue the same artifact's provenance chain:
 
 - `package_pages` needs both `quality_build` and `ci / gate`, downloads `darling-dist-<commit SHA>` with digest-mismatch enforcement, rejects an empty `index.html`, asset manifest, or hidden Vite manifest, and passes the unchanged `dist/` directory—including hidden files—to `actions/upload-pages-artifact`.
 - `deploy_pages` needs only `package_pages`, checks through the GitHub API immediately before the deploy action that the workflow SHA is still the current `main` tip, and deploys the Pages transport artifact to the `github-pages` environment.

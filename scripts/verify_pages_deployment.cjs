@@ -93,10 +93,15 @@ function makeDeadline(clock, durationMs) {
     remaining() {
       return Math.max(0, this.expiresAt - clock());
     },
+    child(durationMs) {
+      return makeDeadline(clock, Math.min(durationMs, this.remaining()));
+    },
   };
 }
 
-async function withTimeout(task, timeoutMs, message) {
+async function withDeadline(task, deadline, message) {
+  const timeoutMs = deadline.remaining();
+  if (timeoutMs <= 0) throw new Error(message);
   let timer;
   try {
     return await Promise.race([
@@ -110,29 +115,45 @@ async function withTimeout(task, timeoutMs, message) {
   }
 }
 
+async function withTimeout(task, timeoutMs, message) {
+  return withDeadline(task, makeDeadline(() => Date.now(), timeoutMs), message);
+}
+
 async function fetchResponse(url, {
   request = globalThis.fetch,
   requestTimeoutMs = DEFAULTS.requestTimeoutMs,
   pages,
   headers,
   maxRedirects = 5,
+  deadline,
+  clock = () => Date.now(),
 } = {}) {
+  const operationDeadline = deadline
+    ? deadline.child(requestTimeoutMs)
+    : makeDeadline(clock, requestTimeoutMs);
+  const controller = new AbortController();
+  let timer = setTimeout(() => controller.abort(), operationDeadline.remaining());
   let currentUrl = url;
-  for (let redirectCount = 0; redirectCount <= maxRedirects; redirectCount += 1) {
-    assertAllowedUrl(currentUrl, pages);
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), requestTimeoutMs);
-    let response;
-    try {
-      response = await withTimeout(
-        () => request(currentUrl, {
-          headers,
-          redirect: 'manual',
-          signal: controller.signal,
-        }),
-        requestTimeoutMs,
-        `Request timed out after ${requestTimeoutMs}ms: ${redactUrl(currentUrl)}`,
-      );
+  try {
+    for (let redirectCount = 0; redirectCount <= maxRedirects; redirectCount += 1) {
+      assertAllowedUrl(currentUrl, pages);
+      let response;
+      try {
+        response = await withDeadline(
+          () => request(currentUrl, {
+            headers,
+            redirect: 'manual',
+            signal: controller.signal,
+          }),
+          operationDeadline,
+          `Request timed out after ${requestTimeoutMs}ms: ${redactUrl(currentUrl)}`,
+        );
+      } catch (error) {
+        if (error?.name === 'AbortError') {
+          throw new Error(`Request timed out after ${requestTimeoutMs}ms: ${redactUrl(currentUrl)}`);
+        }
+        throw error;
+      }
       const status = Number(response.status);
       if (status >= 300 && status < 400) {
         const location = headerValue(response.headers, 'location');
@@ -142,34 +163,37 @@ async function fetchResponse(url, {
         currentUrl = nextUrl;
         continue;
       }
-      return { response, finalUrl: currentUrl };
-    } catch (error) {
-      if (error?.name === 'AbortError') {
-        throw new Error(`Request timed out after ${requestTimeoutMs}ms: ${redactUrl(currentUrl)}`);
-      }
-      throw error;
-    } finally {
-      clearTimeout(timer);
+      return {
+        response,
+        finalUrl: currentUrl,
+        deadline: operationDeadline,
+        cancel() { controller.abort(); clearTimeout(timer); timer = undefined; },
+      };
     }
+    throw new Error(`Too many redirects while fetching ${redactUrl(url)}`);
+  } catch (error) {
+    controller.abort();
+    clearTimeout(timer);
+    throw error;
   }
-  throw new Error(`Too many redirects while fetching ${redactUrl(url)}`);
 }
 
 async function fetchBytes(url, options) {
-  const { response, finalUrl } = await fetchResponse(url, options);
-  if (Number(response.status) !== 200) {
-    throw new Error(`Expected HTTP 200 from ${redactUrl(finalUrl)}; observed ${response.status}`);
+  const requestTimeoutMs = options?.requestTimeoutMs || DEFAULTS.requestTimeoutMs;
+  const { response, finalUrl, deadline, cancel } = await fetchResponse(url, options);
+  try {
+    if (Number(response.status) !== 200) {
+      throw new Error(`Expected HTTP 200 from ${redactUrl(finalUrl)}; observed ${response.status}`);
+    }
+    const bytes = Buffer.from(await withDeadline(
+      () => response.arrayBuffer(),
+      deadline,
+      `Response body timed out after ${requestTimeoutMs}ms: ${redactUrl(finalUrl)}`,
+    ));
+    return { bytes, finalUrl, contentType: headerValue(response.headers, 'content-type') || '' };
+  } finally {
+    cancel();
   }
-  const bytes = Buffer.from(await withTimeout(
-    () => response.arrayBuffer(),
-    options?.requestTimeoutMs || DEFAULTS.requestTimeoutMs,
-    `Response body timed out after ${options?.requestTimeoutMs || DEFAULTS.requestTimeoutMs}ms: ${redactUrl(finalUrl)}`,
-  ));
-  return {
-    bytes,
-    finalUrl,
-    contentType: headerValue(response.headers, 'content-type') || '',
-  };
 }
 
 function compareArtifactBytes({ name, expected, observed }) {
@@ -199,28 +223,52 @@ function readExpectedArtifact(artifactDir) {
   };
 }
 
-async function comparePublicArtifact({ artifact, pages, request, requestTimeoutMs, expectedSha }) {
-  const index = await fetchBytes(pages.url, { pages, request, requestTimeoutMs });
-  const manifest = await fetchBytes(`${pages.url}assets/asset-manifest.json`, {
-    pages,
-    request,
-    requestTimeoutMs,
-  });
-  return {
+async function comparePublicArtifact({ artifact, pages, request, requestTimeoutMs, expectedSha, deadline, clock }) {
+  const result = {
     expectedSha,
-    index: compareArtifactBytes({ name: 'public index.html', expected: artifact.index, observed: index.bytes }),
-    manifest: compareArtifactBytes({ name: 'public asset-manifest.json', expected: artifact.manifest, observed: manifest.bytes }),
-    urls: { index: redactUrl(index.finalUrl), manifest: redactUrl(manifest.finalUrl) },
+    index: { expected: summarizeBytes(artifact.index) },
+    manifest: { expected: summarizeBytes(artifact.manifest) },
+    errors: [],
   };
+  let index;
+  let manifest;
+  try {
+    index = await fetchBytes(pages.url, { pages, request, requestTimeoutMs, deadline, clock });
+    result.urls = { ...(result.urls || {}), index: redactUrl(index.finalUrl) };
+    result.index = { ...result.index, ...compareArtifactBytes({ name: 'public index.html', expected: artifact.index, observed: index.bytes }) };
+  } catch (error) {
+    result.errors.push(String(error.message || error));
+    if (error.expected && error.observed) result.index = { expected: error.expected, observed: error.observed };
+  }
+  try {
+    manifest = await fetchBytes(`${pages.url}assets/asset-manifest.json`, {
+      pages,
+      request,
+      requestTimeoutMs, deadline, clock,
+    });
+    result.urls = { ...(result.urls || {}), manifest: redactUrl(manifest.finalUrl) };
+    result.manifest = { ...result.manifest, ...compareArtifactBytes({ name: 'public asset-manifest.json', expected: artifact.manifest, observed: manifest.bytes }) };
+  } catch (error) {
+    result.errors.push(String(error.message || error));
+    if (error.expected && error.observed) result.manifest = { expected: error.expected, observed: error.observed };
+  }
+  if (result.errors.length) {
+    const error = new Error(result.errors.join('; '));
+    error.comparison = result;
+    throw error;
+  }
+  delete result.errors;
+  return result;
 }
 
-async function getCurrentMainSha({ repository, token, request = globalThis.fetch, apiUrl = 'https://api.github.com', requestTimeoutMs }) {
-  if (!repository || !token) return null;
+async function getCurrentMainSha({ repository, token, request = globalThis.fetch, apiUrl = 'https://api.github.com', requestTimeoutMs = DEFAULTS.requestTimeoutMs, deadline, clock = () => Date.now() }) {
+  if (!repository || !token) return { sha: null, status: 'missing-auth' };
   const endpoint = `${apiUrl.replace(/\/$/, '')}/repos/${repository}/branches/main`;
+  const operationDeadline = deadline ? deadline.child(requestTimeoutMs) : makeDeadline(clock, requestTimeoutMs);
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), requestTimeoutMs);
+  let timer = setTimeout(() => controller.abort(), operationDeadline.remaining());
   try {
-    const response = await withTimeout(
+    const response = await withDeadline(
       () => request(endpoint, {
         headers: {
           accept: 'application/vnd.github+json',
@@ -229,39 +277,66 @@ async function getCurrentMainSha({ repository, token, request = globalThis.fetch
         },
         signal: controller.signal,
       }),
-      requestTimeoutMs,
+      operationDeadline,
       `GitHub API request timed out after ${requestTimeoutMs}ms`,
     );
-    if (response.status !== 200) return null;
-    const body = await withTimeout(
+    if (response.status !== 200) return { sha: null, status: `http-${response.status}`, httpStatus: Number(response.status) };
+    const body = await withDeadline(
       () => response.json(),
-      requestTimeoutMs,
+      operationDeadline,
       `GitHub API response body timed out after ${requestTimeoutMs}ms`,
     );
-    return typeof body?.commit?.sha === 'string' ? body.commit.sha : null;
-  } catch {
-    return null;
+    if (typeof body?.commit?.sha !== 'string') return { sha: null, status: 'invalid-body' };
+    return { sha: body.commit.sha, status: 'ok' };
+  } catch (error) {
+    return { sha: null, status: error?.message?.includes('timed out') ? 'timeout' : 'error' };
   } finally {
+    controller.abort();
     clearTimeout(timer);
   }
 }
 
-async function runBrowserCheck({ pages, browserFactory, screenshotPath, browserTimeoutMs }) {
+async function runBrowserCheck({ pages, browserFactory, screenshotPath, browserTimeoutMs = DEFAULTS.browserTimeoutMs, requestTimeoutMs = DEFAULTS.requestTimeoutMs, deadline, clock = () => Date.now() }) {
+  const scenarioDeadline = deadline || makeDeadline(clock, browserTimeoutMs);
   if (!browserFactory) {
     const { chromium } = require('playwright');
     browserFactory = () => chromium.launch({ headless: true });
   }
-  const browser = await withTimeout(browserFactory, browserTimeoutMs, 'Chromium launch timed out');
-  const diagnostics = { requestFailures: [], consoleErrors: [], pageErrors: [], screenshots: [] };
+  const browser = await withDeadline(browserFactory, scenarioDeadline, 'Chromium launch timed out');
+  const diagnostics = { requestFailures: [], consoleErrors: [], pageErrors: [], screenshots: [], screenshotErrors: [], pendingRequests: [] };
+  const pending = new Map();
+  const requestEpochs = new WeakMap();
+  let navigationEpoch = 0;
+  const clearPending = request => {
+    const timer = pending.get(request);
+    if (timer) clearTimeout(timer);
+    pending.delete(request);
+  };
+  const recordFailure = (kind, request, extra = {}) => diagnostics.requestFailures.push({
+    kind, url: redactUrl(request.url()), ...extra,
+  });
   try {
-    const context = await withTimeout(
+    const context = await withDeadline(
       () => browser.newContext({ baseURL: pages.url }),
-      browserTimeoutMs,
+      scenarioDeadline,
       'Chromium context creation timed out',
     );
     try {
-      const page = await context.newPage();
+      const page = await withDeadline(() => context.newPage(), scenarioDeadline, 'Chromium page creation timed out');
       const owned = url => isAllowedUrl(url, pages);
+      page.on('request', request => {
+        if (!owned(request.url())) return;
+        const epoch = navigationEpoch;
+        requestEpochs.set(request, epoch);
+        const timeout = Math.min(requestTimeoutMs, scenarioDeadline.remaining());
+        const timer = setTimeout(() => {
+          if (!pending.has(request)) return;
+          pending.delete(request);
+          diagnostics.pendingRequests.push(redactUrl(request.url()));
+          recordFailure('timeout', request, { epoch });
+        }, Math.max(1, timeout));
+        pending.set(request, timer);
+      });
       page.on('response', response => {
         if (owned(response.url()) && response.status() >= 400) {
           diagnostics.requestFailures.push({
@@ -274,70 +349,81 @@ async function runBrowserCheck({ pages, browserFactory, screenshotPath, browserT
       page.on('requestfailed', request => {
         if (owned(request.url())) {
           const errorText = request.failure()?.errorText || 'unknown request failure';
-          if (errorText === 'net::ERR_ABORTED') return;
-          diagnostics.requestFailures.push({
-            kind: 'requestfailed',
-            url: redactUrl(request.url()),
-            error: errorText,
-          });
+          clearPending(request);
+          const resourceType = typeof request.resourceType === 'function' ? request.resourceType() : '';
+          const intentionalNavigationAbort = errorText === 'net::ERR_ABORTED'
+            && resourceType !== 'document' && (requestEpochs.get(request) ?? navigationEpoch) < navigationEpoch;
+          if (!intentionalNavigationAbort) recordFailure('requestfailed', request, { error: errorText });
         }
       });
+      page.on('requestfinished', request => clearPending(request));
       page.on('console', message => {
         if (message.type() === 'error') diagnostics.consoleErrors.push(message.text().slice(0, 500));
       });
       page.on('pageerror', error => diagnostics.pageErrors.push(String(error).slice(0, 500)));
 
       async function waitForReady(panel, name) {
-        await withTimeout(
+        await withDeadline(
           () => panel.waitFor({ state: 'visible', timeout: browserTimeoutMs }),
-          browserTimeoutMs,
+          scenarioDeadline,
           `${name} ready panel did not become visible`,
         );
-        const readyUntil = Date.now() + browserTimeoutMs;
         let state;
-        do {
+        while (scenarioDeadline.remaining() > 0) {
           state = await panel.getAttribute('data-feature-state');
           if (state === 'ready') return;
-          if (Date.now() >= readyUntil) break;
-          await page.waitForTimeout(Math.min(100, Math.max(1, readyUntil - Date.now())));
-        } while (Date.now() < readyUntil);
+          await withDeadline(() => page.waitForTimeout(Math.min(100, Math.max(1, scenarioDeadline.remaining()))), scenarioDeadline, `${name} readiness polling timed out`);
+        }
         throw new Error(`${name} panel reached state ${state || 'missing'}, expected ready`);
       }
 
       async function visit(url, selector, name) {
-        await withTimeout(
+        navigationEpoch += 1;
+        await withDeadline(
           () => page.goto(url, { waitUntil: 'domcontentloaded', timeout: browserTimeoutMs }),
-          browserTimeoutMs,
+          scenarioDeadline,
           `${name} navigation timed out`,
         );
         assertAllowedUrl(page.url(), pages);
         await waitForReady(page.locator(selector), name);
+        const stylesheets = await withDeadline(
+          () => page.evaluate(() => Array.from(document.styleSheets).map(sheet => sheet.href || 'inline')),
+          scenarioDeadline,
+          `${name} stylesheet inspection timed out`,
+        );
+        if (!stylesheets.some(href => href !== 'inline')) throw new Error(`${name} loaded no external stylesheet`);
       }
 
       await visit('./', '#page-pulse', 'Home');
-      const stylesheets = await page.evaluate(() => Array.from(document.styleSheets).map(sheet => sheet.href || 'inline'));
-      if (!stylesheets.some(href => href !== 'inline')) throw new Error('Home loaded no external stylesheet');
       const seasonLink = page.locator('#tabCurrentBtn');
-      await seasonLink.click();
+      navigationEpoch += 1;
+      await withDeadline(() => seasonLink.click(), scenarioDeadline, 'Season navigation click timed out');
       await waitForReady(page.locator('#page-current'), 'Season navigation');
       await visit('./?tab=current', '#page-current', 'Current deep link');
       await visit('./', '#page-pulse', 'Home return');
-      if (diagnostics.requestFailures.length || diagnostics.consoleErrors.length || diagnostics.pageErrors.length) {
+      if (screenshotPath) {
+        try {
+          await withDeadline(() => page.screenshot({ path: screenshotPath, fullPage: true }), scenarioDeadline, 'Browser screenshot timed out');
+          diagnostics.screenshots.push(screenshotPath);
+        } catch (error) {
+          diagnostics.screenshotErrors.push(String(error.message || error));
+          throw error;
+        }
+      }
+      await withDeadline(() => page.waitForTimeout(Math.min(50, scenarioDeadline.remaining())), scenarioDeadline, 'Browser settle timed out');
+      if (scenarioDeadline.remaining() <= 0) throw new Error('Browser verification exceeded its scenario budget');
+      if (diagnostics.requestFailures.length || diagnostics.consoleErrors.length || diagnostics.pageErrors.length || diagnostics.pendingRequests.length) {
         throw new Error('Browser verification observed app-owned request or application errors');
       }
-      if (screenshotPath) {
-        await page.screenshot({ path: screenshotPath, fullPage: true });
-        diagnostics.screenshots.push(screenshotPath);
-      }
-      await context.close();
+      await withDeadline(() => context.close(), scenarioDeadline, 'Chromium context cleanup timed out');
       return diagnostics;
     } catch (error) {
       try {
         if (screenshotPath) {
           const pagesInContext = context.pages();
           if (pagesInContext[0]) {
-            await pagesInContext[0].screenshot({ path: screenshotPath, fullPage: true });
-            diagnostics.screenshots.push(screenshotPath);
+            await withDeadline(() => pagesInContext[0].screenshot({ path: screenshotPath, fullPage: true }), scenarioDeadline, 'Failure screenshot timed out');
+            if (!diagnostics.screenshots.includes(screenshotPath)) diagnostics.screenshots.push(screenshotPath);
           }
         }
       } catch {
@@ -348,7 +434,9 @@ async function runBrowserCheck({ pages, browserFactory, screenshotPath, browserT
       throw error;
     }
   } finally {
-    try { await browser.close(); } catch { /* best effort cleanup */ }
+    for (const timer of pending.values()) clearTimeout(timer);
+    pending.clear();
+    try { await withDeadline(() => browser.close(), scenarioDeadline, 'Chromium cleanup timed out'); } catch { /* best effort cleanup */ }
   }
 }
 
@@ -362,14 +450,30 @@ function appendSummary(summaryPath, result) {
     `- Superseded: ${result.superseded ? 'yes' : 'no'}`,
   ];
   if (result.pages) lines.push(`- URL: ${result.pages.url}`);
-  if (result.index) lines.push(`- index.html: expected ${result.index.expected.sha256}, observed ${result.index.observed.sha256}`);
-  if (result.manifest) lines.push(`- asset-manifest.json: expected ${result.manifest.expected.sha256}, observed ${result.manifest.observed.sha256}`);
+  if (result.index) lines.push(`- index.html: expected ${result.index.expected?.sha256 || 'unknown'}, observed ${result.index.observed?.sha256 || 'unavailable'}`);
+  if (result.manifest) lines.push(`- asset-manifest.json: expected ${result.manifest.expected?.sha256 || 'unknown'}, observed ${result.manifest.observed?.sha256 || 'unavailable'}`);
+  if (result.urls) lines.push(`- Checked URLs: index ${result.urls.index || 'unavailable'}, manifest ${result.urls.manifest || 'unavailable'}`);
+  if (result.supersessionChecks?.length) {
+    lines.push(`- Supersession checks: ${result.supersessionChecks.map(check => `${check.stage}=${check.status}`).join(', ')}`);
+  }
   if (result.error) lines.push(`- Error: ${result.error}`);
   fs.appendFileSync(summaryPath, `${lines.join('\n')}\n`);
 }
 
 async function runVerification(options) {
   const settings = { ...DEFAULTS, ...options };
+  const numericLimits = [
+    ['maxAttempts', 1, 12],
+    ['deadlineMs', 1, 240_000],
+    ['requestTimeoutMs', 1, 10_000],
+    ['browserTimeoutMs', 1, 30_000],
+    ['retryDelayMs', 0, 240_000],
+  ];
+  for (const [name, minimum, maximum] of numericLimits) {
+    if (!Number.isFinite(settings[name]) || settings[name] < minimum || settings[name] > maximum) {
+      throw new Error(`${name} must be a finite number between ${minimum} and ${maximum}`);
+    }
+  }
   const clock = settings.clock || (() => Date.now());
   const sleep = settings.sleep || (ms => new Promise(resolve => setTimeout(resolve, ms)));
   const artifact = settings.artifact || readExpectedArtifact(settings.artifactDir);
@@ -382,51 +486,69 @@ async function runVerification(options) {
     superseded: false,
     pages,
     errors: [],
+    supersessionChecks: [],
   };
   let lastError;
+
+  async function checkSupersession(stage) {
+    const check = await getCurrentMainSha({
+      repository: settings.repository,
+      token: settings.token,
+      request: settings.apiRequest || settings.request,
+      apiUrl: settings.apiUrl,
+      requestTimeoutMs: Math.min(settings.requestTimeoutMs, deadline.remaining()),
+      deadline,
+      clock,
+    });
+    result.supersessionChecks.push({ stage, status: check.status, ...(check.sha ? { sha: check.sha } : {}) });
+    if (settings.expectedSha && check.sha && check.sha !== settings.expectedSha) {
+      result.status = 'SUPERSEDED';
+      result.superseded = true;
+      result.supersededBy = check.sha;
+      return true;
+    }
+    return false;
+  }
 
   for (let attempt = 1; attempt <= settings.maxAttempts; attempt += 1) {
     result.attempts = attempt;
     if (deadline.remaining() <= 0) break;
     try {
+      if (await checkSupersession(`attempt-${attempt}-start`)) return result;
       const artifactResult = await comparePublicArtifact({
         artifact,
         pages,
         request: settings.request,
         requestTimeoutMs: Math.min(settings.requestTimeoutMs, deadline.remaining()),
         expectedSha: settings.expectedSha,
+        deadline,
+        clock,
       });
       result.index = artifactResult.index;
       result.manifest = artifactResult.manifest;
-      const browserResult = await withTimeout(
-        () => (settings.browserCheck || runBrowserCheck)({
+      const browserResult = await (settings.browserCheck || runBrowserCheck)({
           pages,
           browserFactory: settings.browserFactory,
           screenshotPath: settings.screenshotPath,
           browserTimeoutMs: Math.min(settings.browserTimeoutMs, deadline.remaining()),
-        }),
-        Math.min(settings.browserTimeoutMs, deadline.remaining()),
-        'Browser verification exceeded its 30-second scenario budget',
-      );
+          requestTimeoutMs: settings.requestTimeoutMs,
+          deadline,
+          clock,
+        });
       result.browser = browserResult;
+      if (deadline.remaining() <= 0) throw new Error('Verification deadline expired during browser verification');
+      if (await checkSupersession(`attempt-${attempt}-end`)) return result;
       result.status = 'PASS';
       return result;
     } catch (error) {
       lastError = error;
-      result.errors.push(String(error.message || error));
-      const currentMainSha = await getCurrentMainSha({
-        repository: settings.repository,
-        token: settings.token,
-        request: settings.apiRequest || settings.request,
-        apiUrl: settings.apiUrl,
-        requestTimeoutMs: Math.min(settings.requestTimeoutMs, deadline.remaining()),
-      });
-      if (settings.expectedSha && currentMainSha && currentMainSha !== settings.expectedSha) {
-        result.status = 'SUPERSEDED';
-        result.superseded = true;
-        result.supersededBy = currentMainSha;
-        return result;
+      if (error.comparison) {
+        result.index = error.comparison.index;
+        result.manifest = error.comparison.manifest;
+        result.urls = error.comparison.urls;
       }
+      result.errors.push(String(error.message || error));
+      if (await checkSupersession(`attempt-${attempt}-error`)) return result;
       if (attempt >= settings.maxAttempts || deadline.remaining() <= 0) break;
       await sleep(Math.min(settings.retryDelayMs, deadline.remaining()));
     }
@@ -434,16 +556,15 @@ async function runVerification(options) {
 
   if (lastError && !lastError.diagnostics && settings.screenshotPath && !settings.browserCheck && deadline.remaining() > 0) {
     try {
-      result.browser = await withTimeout(
-        () => runBrowserCheck({
+      result.browser = await runBrowserCheck({
           pages,
           browserFactory: settings.browserFactory,
           screenshotPath: settings.screenshotPath,
           browserTimeoutMs: Math.min(settings.browserTimeoutMs, deadline.remaining()),
-        }),
-        Math.min(settings.browserTimeoutMs, deadline.remaining()),
-        'Failure screenshot browser check exceeded its remaining deadline',
-      );
+          requestTimeoutMs: settings.requestTimeoutMs,
+          deadline,
+          clock,
+        });
     } catch (browserError) {
       result.browser = browserError.diagnostics || { requestFailures: [], consoleErrors: [], pageErrors: [] };
     }
@@ -470,18 +591,30 @@ async function main() {
   fs.mkdirSync(outputDir, { recursive: true });
   const screenshotPath = path.join(outputDir, 'pages-verification.png');
   const summaryPath = process.env.GITHUB_STEP_SUMMARY;
-  const result = await runVerification({
-    artifactDir: path.resolve(args.artifactDir || process.env.ARTIFACT_DIR || 'dist'),
-    expectedSha: args.expectedSha || process.env.EXPECTED_SHA || process.env.GITHUB_SHA,
-    pagesUrl: args.pagesUrl || process.env.PAGES_URL || process.env.GITHUB_PAGES_URL,
-    repository: args.repository || process.env.GITHUB_REPOSITORY,
-    token: process.env.GITHUB_TOKEN || process.env.GH_TOKEN,
-    apiUrl: process.env.GITHUB_API_URL || 'https://api.github.com',
-    screenshotPath,
-    maxAttempts: Number(args.maxAttempts || process.env.MAX_ATTEMPTS || DEFAULTS.maxAttempts),
-    retryDelayMs: Number(args.retryDelayMs || process.env.RETRY_DELAY_MS || DEFAULTS.retryDelayMs),
-    deadlineMs: Number(args.deadlineMs || process.env.DEADLINE_MS || DEFAULTS.deadlineMs),
-  });
+  let result;
+  try {
+    result = await runVerification({
+      artifactDir: path.resolve(args.artifactDir || process.env.ARTIFACT_DIR || 'dist'),
+      expectedSha: args.expectedSha || process.env.EXPECTED_SHA || process.env.GITHUB_SHA,
+      pagesUrl: args.pagesUrl || process.env.PAGES_URL || process.env.GITHUB_PAGES_URL,
+      repository: args.repository || process.env.GITHUB_REPOSITORY,
+      token: process.env.GITHUB_TOKEN || process.env.GH_TOKEN,
+      apiUrl: process.env.GITHUB_API_URL || 'https://api.github.com',
+      screenshotPath,
+      maxAttempts: Number(args.maxAttempts || process.env.MAX_ATTEMPTS || DEFAULTS.maxAttempts),
+      retryDelayMs: Number(args.retryDelayMs || process.env.RETRY_DELAY_MS || DEFAULTS.retryDelayMs),
+      deadlineMs: Number(args.deadlineMs || process.env.DEADLINE_MS || DEFAULTS.deadlineMs),
+    });
+  } catch (error) {
+    result = {
+      status: 'FAIL',
+      expectedSha: args.expectedSha || process.env.EXPECTED_SHA || process.env.GITHUB_SHA,
+      attempts: 0,
+      superseded: false,
+      errors: [String(error.message || error)],
+      error: String(error.message || error),
+    };
+  }
   const diagnosticsPath = path.join(outputDir, 'verification-summary.json');
   fs.writeFileSync(diagnosticsPath, `${JSON.stringify({ ...result, token: undefined }, null, 2)}\n`);
   appendSummary(summaryPath, result);

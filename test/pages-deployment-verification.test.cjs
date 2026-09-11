@@ -9,7 +9,9 @@ const {
   fetchBytes,
   fetchResponse,
   getCurrentMainSha,
+  installResponseObserver,
   isAllowedUrl,
+  isIntentionalAbort,
   normalizePagesUrl,
   readExpectedArtifact,
   runBrowserCheck,
@@ -37,6 +39,84 @@ test('normalizes Pages origin and rejects lookalike base paths', () => {
   assert.equal(isAllowedUrl('https://example.test/Darling/assets/app.js', pages), true);
   assert.equal(isAllowedUrl('https://example.test/Darling2/assets/app.js', pages), false);
   assert.equal(isAllowedUrl('https://other.test/Darling/assets/app.js', pages), false);
+});
+
+test('only superseded document aborts are ignored', () => {
+  const jsonRequest = { url: () => `${pages.url}assets/CurrentSeason.json`, resourceType: () => 'fetch' };
+  const documentRequest = { url: () => pages.url, resourceType: () => 'document' };
+  const cssRequest = { url: () => `${pages.url}assets/app.css`, resourceType: () => 'stylesheet' };
+  assert.equal(isIntentionalAbort(jsonRequest, 'net::ERR_ABORTED', 2, 2), false);
+  assert.equal(isIntentionalAbort(jsonRequest, 'net::ERR_ABORTED', 1, 2), false);
+  assert.equal(isIntentionalAbort(documentRequest, 'net::ERR_ABORTED', 1, 2), true);
+  assert.equal(isIntentionalAbort(cssRequest, 'net::ERR_ABORTED', 1, 2), false);
+  assert.equal(isIntentionalAbort(cssRequest, 'net::ERR_ABORTED', 2, 2), false);
+  assert.equal(isIntentionalAbort(jsonRequest, 'net::ERR_FAILED', 2, 2), false);
+});
+
+test('response observer drains exact in-scope JSON clones and retains failures', async () => {
+  const reads = [];
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  const responses = new Map();
+  const makeResponse = ({ url, ok = true, chunks = ['data'], readError = false }) => ({
+    url,
+    ok,
+    clone() {
+      return {
+        body: {
+          getReader() {
+            let started = false;
+            return {
+              async read() {
+                reads.push(url);
+                if (!started) {
+                  started = true;
+                  await gate;
+                }
+                if (readError) throw new Error('truncated stream');
+                const value = chunks.shift();
+                return value === undefined ? { done: true } : { done: false, value };
+              },
+            };
+          },
+        },
+      };
+    },
+  });
+  const good = makeResponse({ url: `${pages.url}assets/CurrentSeason.json`, chunks: ['one', 'two'] });
+  const failed = makeResponse({ url: `${pages.url}assets/SeasonSummary.json`, readError: true });
+  responses.set(good.url, good);
+  responses.set(failed.url, failed);
+  const sandbox = {
+    URL,
+    Set,
+    window: {
+      location: { href: pages.url },
+      fetch: async url => responses.get(String(url)) || makeResponse({ url: String(url) }),
+    },
+  };
+  const previousWindow = globalThis.window;
+  globalThis.window = sandbox.window;
+  try {
+    installResponseObserver({ origin: pages.origin, basePath: pages.basePath });
+    assert.equal(await sandbox.window.fetch(good.url), good);
+    assert.equal(await sandbox.window.fetch(failed.url), failed);
+    await sandbox.window.fetch(`${pages.origin}/Other/assets/ignored.json`);
+    await sandbox.window.fetch(`${pages.origin}${pages.basePath}assets/ignored.css`);
+    const observers = [...sandbox.window.__darlingVerifierResponseObservers];
+    assert.equal(observers.length, 2);
+    release();
+    const settled = await Promise.allSettled(observers);
+    assert.equal(settled.filter(result => result.status === 'fulfilled').length, 1);
+    assert.equal(settled.filter(result => result.status === 'rejected').length, 1);
+    assert.equal(sandbox.window.__darlingVerifierResponseObserverErrors.length, 1);
+    assert.equal(sandbox.window.__darlingVerifierResponseObserverErrors[0].url, failed.url);
+    assert.equal(new Set(reads).size, 2);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(sandbox.window.__darlingVerifierResponseObservers.size, 0);
+  } finally {
+    globalThis.window = previousWindow;
+  }
 });
 
 test('compares exact artifact bytes and reports hashes', () => {
@@ -287,7 +367,7 @@ test('browser errors are retried and included in the final result', async () => 
   assert.deepEqual(result.browser.requestFailures, [{ url: '/Darling/assets/app.js' }]);
 });
 
-function fakeBrowser({ failNavigation = false, emitErrors = false, hangingRequest = false, requestState, browserState, hangScreenshot = false, hangContextClose = false, navigationDelayMs = 0, rejectBrowserClose = false } = {}) {
+function fakeBrowser({ failNavigation = false, emitErrors = false, hangingRequest = false, requestState, browserState, observerState, hangScreenshot = false, hangContextClose = false, navigationDelayMs = 0, rejectBrowserClose = false, hangReady = false } = {}) {
   const listeners = new Map();
   let currentUrl = pages.url;
   const page = {
@@ -311,10 +391,12 @@ function fakeBrowser({ failNavigation = false, emitErrors = false, hangingReques
       }
     },
     url: () => currentUrl,
+    ...(observerState ? { async addInitScript() { observerState.registered = true; } } : {}),
     locator(selector) {
       return {
         async waitFor() {},
         async getAttribute(name) {
+          if (hangReady) return new Promise(() => {});
           if (name === 'data-feature-state' && selector.startsWith('#page-')) return 'ready';
           return null;
         },
@@ -324,6 +406,7 @@ function fakeBrowser({ failNavigation = false, emitErrors = false, hangingReques
       };
     },
     async evaluate() {
+      if (observerState) observerState.awaited = true;
       return [`${pages.url}assets/app.css`];
     },
     async waitForTimeout(ms) {
@@ -364,6 +447,13 @@ test('browser adapter verifies Home, Current, navigation, styles, and captures a
   assert.deepEqual(diagnostics.screenshots, [screenshotPath]);
   assert.equal(fs.readFileSync(screenshotPath, 'utf8'), 'PNG');
   fs.rmSync(outputDir, { recursive: true, force: true });
+});
+
+test('browser adapter registers and awaits streamed response observation', async () => {
+  const observerState = { registered: false, awaited: false };
+  await runBrowserCheck({ pages, browserFactory: fakeBrowser({ observerState }), browserTimeoutMs: 100 });
+  assert.equal(observerState.registered, true);
+  assert.equal(observerState.awaited, true);
 });
 
 test('browser adapter preserves diagnostics and screenshot on navigation failure', async () => {
@@ -477,6 +567,18 @@ test('expired cleanup consumes rejected close promises without an unhandled reje
     browserFactory: fakeBrowser({ navigationDelayMs: 50, browserState: state, rejectBrowserClose: true }),
     browserTimeoutMs: 20,
   }), /Home navigation timed out/);
+  assert.equal(state.closed, true);
+});
+
+test('ready-state inspection is bounded and closes the browser when it hangs', async () => {
+  const state = { closed: false };
+  const started = Date.now();
+  await assert.rejects(() => runBrowserCheck({
+    pages,
+    browserFactory: fakeBrowser({ hangReady: true, browserState: state }),
+    browserTimeoutMs: 30,
+  }), /ready state inspection timed out/);
+  assert.ok(Date.now() - started < 100);
   assert.equal(state.closed, true);
 });
 

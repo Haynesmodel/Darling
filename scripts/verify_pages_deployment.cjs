@@ -60,6 +60,43 @@ function assertAllowedUrl(value, pages) {
   }
 }
 
+function isIntentionalAbort(request, errorText, requestEpoch, navigationEpoch) {
+  if (errorText !== 'net::ERR_ABORTED') return false;
+  const resourceType = typeof request.resourceType === 'function' ? request.resourceType() : '';
+  return resourceType === 'document' && requestEpoch < navigationEpoch;
+}
+
+// Installed in each browser document so streamed JSON response completion is
+// observed without changing the app's fetch result or suppressing failures.
+function installResponseObserver({ origin, basePath }) {
+  const observers = new Set();
+  const observerErrors = [];
+  window.__darlingVerifierResponseObservers = observers;
+  window.__darlingVerifierResponseObserverErrors = observerErrors;
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = async (...args) => {
+    const response = await originalFetch(...args);
+    const input = args[0];
+    const requestUrl = typeof input === 'string' ? input : input?.url || response.url;
+    const parsed = new URL(requestUrl, window.location.href);
+    const baseWithoutTrailingSlash = basePath.replace(/\/$/, '');
+    const inBase = parsed.pathname === baseWithoutTrailingSlash || parsed.pathname.startsWith(basePath);
+    if (response.ok && parsed.origin === origin && inBase && /\/assets\/[^/?]+\.json(?:\?|$)/.test(parsed.pathname + parsed.search)) {
+      const clone = response.clone();
+      const reader = clone.body?.getReader?.();
+      const observer = reader
+        ? (async () => { while (!(await reader.read()).done) {} })()
+        : clone.arrayBuffer();
+      observers.add(observer);
+      observer
+        .catch(error => observerErrors.push({ url: parsed.href, error: String(error?.message || error) }))
+        .finally(() => observers.delete(observer))
+        .catch(() => {});
+    }
+    return response;
+  };
+}
+
 function sha256(bytes) {
   return crypto.createHash('sha256').update(bytes).digest('hex');
 }
@@ -351,6 +388,13 @@ async function runBrowserCheck({ pages, browserFactory, screenshotPath, browserT
     try {
       const page = await withDeadline(() => context.newPage(), operationDeadline, 'Chromium page creation timed out');
       const owned = url => isAllowedUrl(url, pages);
+      if (typeof page.addInitScript === 'function') {
+        await withDeadline(
+          () => page.addInitScript(installResponseObserver, { origin: pages.origin, basePath: pages.basePath }),
+          operationDeadline,
+          'Browser response observer setup timed out',
+        );
+      }
       page.on('request', request => {
         if (!owned(request.url())) return;
         const epoch = navigationEpoch;
@@ -384,13 +428,20 @@ async function runBrowserCheck({ pages, browserFactory, screenshotPath, browserT
         if (owned(request.url())) {
           const errorText = request.failure()?.errorText || 'unknown request failure';
           clearPending(request);
-          const resourceType = typeof request.resourceType === 'function' ? request.resourceType() : '';
-          const intentionalNavigationAbort = errorText === 'net::ERR_ABORTED'
-            && resourceType !== 'document' && (requestEpochs.get(request) ?? navigationEpoch) < navigationEpoch;
-          if (!intentionalNavigationAbort) recordFailure('requestfailed', request, { error: errorText });
+          const epoch = requestEpochs.get(request) ?? navigationEpoch;
+          const intentionalNavigationAbort = isIntentionalAbort(
+            request, errorText, epoch, navigationEpoch,
+          );
+          if (intentionalNavigationAbort) {
+            return;
+          } else {
+            recordFailure('requestfailed', request, { error: errorText });
+          }
         }
       });
-      page.on('requestfinished', request => clearPending(request));
+      page.on('requestfinished', request => {
+        clearPending(request);
+      });
       page.on('console', message => {
         if (message.type() === 'error') diagnostics.consoleErrors.push(message.text().slice(0, 500));
       });
@@ -398,13 +449,17 @@ async function runBrowserCheck({ pages, browserFactory, screenshotPath, browserT
 
       async function waitForReady(panel, name) {
         await withDeadline(
-          () => panel.waitFor({ state: 'visible', timeout: browserTimeoutMs }),
+          () => panel.waitFor({ state: 'visible', timeout: Math.max(1, operationDeadline.remaining()) }),
           operationDeadline,
           `${name} ready panel did not become visible`,
         );
         let state;
         while (operationDeadline.remaining() > 0) {
-          state = await panel.getAttribute('data-feature-state');
+          state = await withDeadline(
+            () => panel.getAttribute('data-feature-state', { timeout: Math.max(1, operationDeadline.remaining()) }),
+            operationDeadline,
+            `${name} ready state inspection timed out`,
+          );
           if (state === 'ready') return;
           await withDeadline(() => page.waitForTimeout(Math.min(100, Math.max(1, operationDeadline.remaining()))), operationDeadline, `${name} readiness polling timed out`);
         }
@@ -449,6 +504,24 @@ async function runBrowserCheck({ pages, browserFactory, screenshotPath, browserT
         if (pending.size) {
           for (const request of pending.keys()) clearPending(request);
           throw new Error(`${name} left app-owned requests pending`);
+        }
+        if (typeof page.evaluate === 'function') {
+          const responseState = await withDeadline(
+            () => page.evaluate(async () => {
+              await Promise.allSettled([...window.__darlingVerifierResponseObservers || []]);
+              return { errors: window.__darlingVerifierResponseObserverErrors || [] };
+            }),
+            operationDeadline,
+            `${name} response body inspection timed out`,
+          );
+          for (const failure of responseState?.errors || []) {
+            diagnostics.requestFailures.push({
+              kind: 'responsebody',
+              url: redactUrl(failure.url),
+              error: failure.error,
+            });
+          }
+          if (responseState?.errors?.length) throw new Error(`${name} streamed response body did not complete`);
         }
         if (requestTimeoutError) throw requestTimeoutError;
       }
@@ -732,7 +805,9 @@ module.exports = {
   fetchBytes,
   fetchResponse,
   getCurrentMainSha,
+  installResponseObserver,
   isAllowedUrl,
+  isIntentionalAbort,
   normalizeBasePath,
   normalizePagesUrl,
   readExpectedArtifact,

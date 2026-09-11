@@ -288,7 +288,28 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      pages: read
     steps:
+      - name: Verify Pages uses GitHub Actions source
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            try {
+              const { data: pages } = await github.rest.repos.getPages({
+                ...context.repo,
+              });
+              if (pages.build_type !== 'workflow') {
+                core.setFailed(
+                  `GitHub Pages source must be GitHub Actions (build_type=workflow); observed build_type=${pages.build_type || 'unknown'}, source=${JSON.stringify(pages.source || null)}. Repository owner must change Settings > Pages > Build and deployment > Source to GitHub Actions.`,
+                );
+              } else {
+                core.info(`GitHub Pages source verified: build_type=${pages.build_type}`);
+              }
+            } catch (error) {
+              core.setFailed(
+                `Unable to read GitHub Pages source setting (HTTP ${error.status || 'unknown'}). Repository owner must grant Pages read access and set the Pages source to GitHub Actions.`,
+              );
+            }
       - name: Download tested production artifact
         id: dist
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -329,6 +350,8 @@ jobs:
     name: Deploy Pages
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: package_pages
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:
@@ -368,3 +391,53 @@ jobs:
             echo "- Source SHA: ${GITHUB_SHA}"
             echo "- URL: ${DEPLOYED_URL}"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  verify_pages:
+    name: Verify Pages deployment
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: deploy_pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - name: Select npm 11.18.0
+        run: npm install --global npm@11.18.0
+      - name: Install dependencies
+        run: npm ci
+      - name: Download tested production artifact
+        id: dist
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: darling-dist-${{ github.sha }}
+          path: dist/
+          digest-mismatch: error
+      - name: Validate production artifact
+        run: |
+          test -s dist/index.html
+          test -s dist/assets/asset-manifest.json
+          test -s dist/.vite/manifest.json
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Verify public artifact and browser routes
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          PAGES_URL: ${{ needs.deploy_pages.outputs.page_url }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/verify_pages_deployment.cjs --artifact-dir dist --output-dir pages-verification
+      - name: Upload Pages verification evidence
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pages-verification-${{ github.run_id }}-${{ github.run_attempt }}
+          path: pages-verification/
+          if-no-files-found: ignore
+          retention-days: 7

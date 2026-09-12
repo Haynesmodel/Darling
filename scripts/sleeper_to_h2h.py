@@ -202,16 +202,25 @@ def build_bracket_roster_pairs(league_id: str):
         if not isinstance(items, list):
             return
         for g in items:
+            if not isinstance(g, dict):
+                raise ValueError("bracket row must be an object")
             p = g.get("p", 0)
+            if p is not None and (isinstance(p, bool) or not isinstance(p, int) or p < 0):
+                raise ValueError("bracket placement must be a nonnegative integer")
+            round_number = g.get("r")
+            if round_number is not None and (isinstance(round_number, bool) or not isinstance(round_number, int)):
+                raise ValueError("bracket round must be an integer")
             # Sleeper uses 'p' to indicate placement/consolation games (e.g., 5th place, 7th place).
             # Exclude ANY bracket row with a positive placement value.
-            if p is not None and int(p) > 0 and not (int(p) == 1 and int(g.get("r", 0)) == 3):
+            if p is not None and p > 0 and not (p == 1 and round_number == 3):
                 continue  # placement/consolation game
             t1 = g.get("t1")
             t2 = g.get("t2")
             if t1 is None or t2 is None:
                 continue
-            a, b = int(t1), int(t2)
+            if isinstance(t1, bool) or isinstance(t2, bool) or not isinstance(t1, int) or not isinstance(t2, int) or t1 == t2:
+                raise ValueError("bracket roster IDs must be distinct integers")
+            a, b = t1, t2
             dest_set.add((a, b) if a < b else (b, a))
 
     ingest(get_winners_bracket(league_id), playoff_pairs)

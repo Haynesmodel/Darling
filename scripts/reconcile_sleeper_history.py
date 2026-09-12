@@ -77,11 +77,22 @@ def _live_fixture(league: str, season: int, weeks: list[int], mapping: dict[str,
         losers = _fetch_json(f"{base}/losers_bracket", list)
         def add_pairs(items: list[dict[str, Any]], destination: set[tuple[int, int]]) -> None:
             for item in items:
-                if not isinstance(item, dict) or (item.get("p") not in (None, 0) and not (item.get("p") == 1 and item.get("r") == 3)):
+                if not isinstance(item, dict):
+                    raise ValueError("Sleeper bracket response contains a malformed row")
+                placement = item.get("p")
+                round_number = item.get("r")
+                if placement is not None and (isinstance(placement, bool) or not isinstance(placement, int) or placement < 0):
+                    raise ValueError("Sleeper bracket placement is invalid")
+                if round_number is not None and (isinstance(round_number, bool) or not isinstance(round_number, int)):
+                    raise ValueError("Sleeper bracket round is invalid")
+                if placement not in (None, 0) and not (placement == 1 and round_number == 3):
                     continue
                 first, second = item.get("t1"), item.get("t2")
-                if isinstance(first, bool) or isinstance(second, bool) or not isinstance(first, int) or not isinstance(second, int):
+                if first is None or second is None:
                     continue
+                if (isinstance(first, bool) or isinstance(second, bool) or not isinstance(first, int)
+                        or not isinstance(second, int) or first == second):
+                    raise ValueError("Sleeper bracket roster IDs are invalid")
                 destination.add(tuple(sorted((first, second))))
         add_pairs(winners, playoff_pairs); add_pairs(losers, saunders_pairs)
     for week in weeks:

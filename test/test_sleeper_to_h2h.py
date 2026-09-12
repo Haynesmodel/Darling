@@ -59,6 +59,17 @@ class SleeperToH2HTests(unittest.TestCase):
         self.assertEqual(playoff_pairs, {(1, 4), (5, 6)})
         self.assertEqual(saunders_pairs, {(2, 3), (6, 7)})
 
+    def test_build_bracket_roster_pairs_rejects_coerced_metadata(self):
+        for bad in (
+            [{'p': True, 't1': 1, 't2': 2}],
+            [{'p': 1.0, 't1': 1, 't2': 2}],
+            [{'p': 1, 'r': 3.9, 't1': 1, 't2': 2}],
+            [{'p': 1, 'r': 3, 't1': 1.5, 't2': 2}],
+            [{'p': 1, 'r': 3, 't1': 1, 't2': 1}],
+        ):
+            with patch.object(module, 'get_winners_bracket', return_value=bad), patch.object(module, 'get_losers_bracket', return_value=[]):
+                with self.assertRaises(ValueError): module.build_bracket_roster_pairs('league')
+
     def test_postseason_labels_match_the_league_mapping(self):
         self.assertEqual(module.postseason_label_for_week(15, 'Playoff'), 'Wild Card')
         self.assertEqual(module.postseason_label_for_week(16, 'Playoff'), 'Semi Final')

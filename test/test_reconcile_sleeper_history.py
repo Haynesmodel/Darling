@@ -193,4 +193,52 @@ class ReconciliationFixtureTests(unittest.TestCase):
         with patch.object(recon, 'urlopen', fake_open):
             with self.assertRaises(ValueError): recon._live_fixture('league', 2025, [15], {'1': 'A', '2': 'B'})
 
+    def test_postseason_null_matchup_rows_are_ignored_but_regular_null_is_rejected(self):
+        value = {'retrieved_at': '2025-09-20T12:00:00Z', 'weeks': {
+            '15': [
+                {'roster_id': 1, 'matchup_id': 7, 'points': 80},
+                {'roster_id': 2, 'matchup_id': 7, 'points': 75},
+                {'roster_id': 3, 'matchup_id': None, 'points': 0},
+            ]}}
+        directory, path = self.fixture(value)
+        try:
+            rows, _ = load_fixture(path, 2025, {'1': 'A', '2': 'B', '3': 'C'})
+            self.assertEqual(len(rows), 1)
+        finally:
+            directory.cleanup()
+        value['weeks'] = {'1': value['weeks']['15']}
+        directory, path = self.fixture(value)
+        try:
+            with self.assertRaises(ValueError): load_fixture(path, 2025, {'1': 'A', '2': 'B', '3': 'C'})
+        finally:
+            directory.cleanup()
+        value['weeks'] = {'15': [
+            {'roster_id': 1, 'matchup_id': None, 'points': 1},
+            {'roster_id': 1, 'matchup_id': None, 'points': 2},
+        ]}
+        directory, path = self.fixture(value)
+        try:
+            with self.assertRaises(ValueError): load_fixture(path, 2025, {'1': 'A'})
+        finally:
+            directory.cleanup()
+
+    def test_live_postseason_null_rows_are_ignored(self):
+        class Response:
+            headers = {}
+            def __init__(self, value): self.value = value
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self, limit): return json.dumps(self.value).encode()
+        def fake_open(request, timeout=0):
+            url = request.full_url
+            if url.endswith('/league/league'): return Response({'season': '2025'})
+            if url.endswith('/winners_bracket'): return Response([{'p': 0, 't1': 1, 't2': 2}])
+            if url.endswith('/losers_bracket'): return Response([])
+            if url.endswith('/matchups/15'):
+                return Response([{'roster_id': 1, 'matchup_id': 1, 'points': 80}, {'roster_id': 2, 'matchup_id': 1, 'points': 75}, {'roster_id': 3, 'matchup_id': None, 'points': 0}])
+            raise AssertionError(url)
+        with patch.object(recon, 'urlopen', fake_open):
+            rows, _ = recon._live_fixture('league', 2025, [15], {'1': 'A', '2': 'B', '3': 'C'})
+        self.assertEqual(len(rows), 1)
+
 if __name__=='__main__': unittest.main()

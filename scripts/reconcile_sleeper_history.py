@@ -77,7 +77,7 @@ def _live_fixture(league: str, season: int, weeks: list[int], mapping: dict[str,
         losers = _fetch_json(f"{base}/losers_bracket", list)
         def add_pairs(items: list[dict[str, Any]], destination: set[tuple[int, int]]) -> None:
             for item in items:
-                if not isinstance(item, dict) or item.get("p") not in (None, 0):
+                if not isinstance(item, dict) or (item.get("p") not in (None, 0) and not (item.get("p") == 1 and item.get("r") == 3)):
                     continue
                 first, second = item.get("t1"), item.get("t2")
                 if isinstance(first, bool) or isinstance(second, bool) or not isinstance(first, int) or not isinstance(second, int):
@@ -90,13 +90,20 @@ def _live_fixture(league: str, season: int, weeks: list[int], mapping: dict[str,
             rows_by_week[str(week)] = upstream
             continue
         grouped: dict[Any, list[dict[str, Any]]] = {}
+        seen_rosters: set[int] = set()
         for raw in upstream:
             if not isinstance(raw, dict):
                 raise ValueError("Sleeper matchup response contains a malformed row")
             roster_id = raw.get("roster_id")
             if isinstance(roster_id, bool) or not isinstance(roster_id, int) or str(roster_id) not in mapping:
                 raise ValueError("Sleeper matchup response contains an invalid roster")
+            if roster_id in seen_rosters:
+                raise ValueError("Sleeper matchup response repeats a roster")
+            seen_rosters.add(roster_id)
             if raw.get("matchup_id") is None or isinstance(raw.get("matchup_id"), (dict, list, bool)):
+                if raw.get("matchup_id") is None and week > 14:
+                    _score(raw.get("points"))
+                    continue
                 raise ValueError("Sleeper matchup response contains an invalid matchup")
             _score(raw.get("points"))
             grouped.setdefault(raw.get("matchup_id"), []).append(raw)
@@ -180,12 +187,15 @@ def load_fixture_value(value: Any, season: int, mapping: dict[str, Any]) -> tupl
             matchup_id = raw.get("matchup_id")
             if isinstance(roster_id, bool) or not isinstance(roster_id, int) or str(roster_id) not in mapping:
                 raise ValueError("raw row has unknown or invalid roster_id")
-            if matchup_id is None or isinstance(matchup_id, (dict, list, bool)):
-                raise ValueError("raw row has invalid matchup_id")
-            _score(raw.get("points"))
             if roster_id in week_rosters:
                 raise ValueError("roster appears in multiple matchups in one week")
             week_rosters.add(roster_id)
+            if matchup_id is None or isinstance(matchup_id, (dict, list, bool)):
+                if matchup_id is None and week > 14:
+                    _score(raw.get("points"))
+                    continue
+                raise ValueError("raw row has invalid matchup_id")
+            _score(raw.get("points"))
             by_matchup.setdefault(matchup_id, []).append(raw)
         for matchup_id, pair in by_matchup.items():
             if len(pair) != 2 or pair[0].get("roster_id") == pair[1].get("roster_id"):

@@ -1,5 +1,20 @@
 # Data pipeline
 
+## Weekly scoring completion and corrections
+
+Automated snapshots run Tuesday at 14:00 UTC. A week is provisional until the
+shared completion resolver confirms the NFL/league state and that the week’s
+Tuesday 13:00 UTC safety boundary has elapsed. Provisional scores may appear in
+`CurrentSeason.json`, but never enter append-only `H2H.json`; missing points are
+not equivalent to an explicit zero, and a verified 0–0 result is final.
+
+The updater records completion provenance in its candidate report. Manual runs
+may pass `--completed-through-week N --reason "..."` for a postponed contest,
+but scheduled runs reject overrides. A discrepancy is investigated with
+`scripts/reconcile_sleeper_history.py` into a non-canonical report path; it
+never rewrites tracked assets. Any correction is a separately reviewed,
+human-authored PR preserving the original source evidence.
+
 The Darling deploys one coherent, content-addressed data snapshot. The five source JSON files remain human-reviewable inputs; schemas, generated contracts, Draft Spot observations, derived statistics, and the manifest make the snapshot safe to consume and reproduce.
 
 ## Source and generated files

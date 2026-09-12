@@ -38,6 +38,8 @@ fi
 STATE_SEASON=""
 STATE_LEAGUE_SEASON=""
 STATE_WEEK=""
+COMPLETED_THROUGH_WEEK=""
+COMPLETION_BASIS=""
 STATE_JSON="$("${PY}" - "${LEAGUE_ID}" <<'PY'
 import json
 import sys
@@ -58,6 +60,8 @@ print(json.dumps({
     "nfl_season": state.get("season"),
     "league_season": league.get("season"),
     "nfl_week": state.get("week") or state.get("display_week"),
+    "nfl_season_type": state.get("season_type") or "regular",
+    "league_status": league.get("status"),
 }))
 PY
 )"
@@ -83,10 +87,25 @@ else
 fi
 MAP_FILE="${SCRIPT_DIR}/${SEASON}_team_mapping.json"
 
+COMPLETION_JSON="$(${PY} - "${SEASON}" "${MAX_WEEK}" "${STATE_JSON}" "${SCRIPT_DIR}" <<'PY'
+import json, sys
+from datetime import datetime, timezone
+sys.path.insert(0, sys.argv[4])
+from scoring_completion import resolve_completion
+from sleeper_to_h2h import WEEK1_ANCHORS
+season, max_week, raw = int(sys.argv[1]), int(sys.argv[2]), json.loads(sys.argv[3])
+result = resolve_completion(season=season, max_week=max_week, week1_sunday=WEEK1_ANCHORS[season], league_status=raw.get('league_status'), league_season=int(raw['league_season']), nfl_state={'season': int(raw.get('nfl_season') or 0), 'season_type': raw.get('nfl_season_type'), 'week': int(raw.get('nfl_week') or 0)}, now=datetime.now(timezone.utc))
+print(json.dumps({'completed': result.completed_through_week, 'basis': result.basis}))
+PY
+)"
+COMPLETED_THROUGH_WEEK="$(node -e "const x=JSON.parse(process.argv[1]); process.stdout.write(String(x.completed));" "${COMPLETION_JSON}")"
+COMPLETION_BASIS="$(node -e "const x=JSON.parse(process.argv[1]); process.stdout.write(String(x.basis));" "${COMPLETION_JSON}")"
+
 echo "=== Sleeper -> H2H update ==="
 echo "League:       configured"
 echo "Season:       ${SEASON}"
 echo "Current week: ${CURRENT_WEEK:-auto}"
+echo "Completed through: ${COMPLETED_THROUGH_WEEK} (${COMPLETION_BASIS})"
 echo "Input:        ${IN_H2H}"
 echo "Output:       ${OUT_H2H}"
 echo "Current:      ${OUT_CURRENT}"
@@ -114,10 +133,10 @@ if [[ "${VALIDATE_ONLY}" == "1" ]]; then
 fi
 
 # 1) Regular season (safe to re-run; script de-dupes)
-${PY} "${UPDATER}"   --league "${LEAGUE_ID}"   --season "${SEASON}"   --h2h "${IN_H2H}"   --out "${OUT_H2H}"   --map "${MAP_FILE}"   --weeks "${REG_SEASON_WEEKS}"   --regular-season-max-week "${REG_SEASON_MAX_WEEK}"   --max-week "${MAX_WEEK}"   --only-played   --sort-mode season
+${PY} "${UPDATER}"   --league "${LEAGUE_ID}"   --season "${SEASON}"   --h2h "${IN_H2H}"   --out "${OUT_H2H}"   --map "${MAP_FILE}"   --weeks "${REG_SEASON_WEEKS}"   --regular-season-max-week "${REG_SEASON_MAX_WEEK}"   --max-week "${MAX_WEEK}"   --only-played   --completed-through-week "${COMPLETED_THROUGH_WEEK}" --completion-basis "${COMPLETION_BASIS}" --sort-mode season
 
 # 2) Postseason (winners + Saunders brackets), appended onto the file we just wrote
-${PY} "${UPDATER}"   --league "${LEAGUE_ID}"   --season "${SEASON}"   --h2h "${OUT_H2H}"   --out "${OUT_H2H}"   --map "${MAP_FILE}"   --weeks "${POSTSEASON_WEEKS}"   --regular-season-max-week "${REG_SEASON_MAX_WEEK}"   --max-week "${MAX_WEEK}"   --only-played   --allow-postseason   --sort-mode season
+${PY} "${UPDATER}"   --league "${LEAGUE_ID}"   --season "${SEASON}"   --h2h "${OUT_H2H}"   --out "${OUT_H2H}"   --map "${MAP_FILE}"   --weeks "${POSTSEASON_WEEKS}"   --regular-season-max-week "${REG_SEASON_MAX_WEEK}"   --max-week "${MAX_WEEK}"   --only-played   --completed-through-week "${COMPLETED_THROUGH_WEEK}" --completion-basis "${COMPLETION_BASIS}" --allow-postseason   --sort-mode season
 
 # 3) Generate CurrentSeason.json from Sleeper, using the generated H2H as a postseason fallback
 CURRENT_CMD=(
@@ -130,6 +149,8 @@ CURRENT_CMD=(
   --regular-season-max-week "${REG_SEASON_MAX_WEEK}"
   --max-week "${MAX_WEEK}"
   --h2h-fallback "${OUT_H2H}"
+  --completed-through-week "${COMPLETED_THROUGH_WEEK}"
+  --completion-basis "${COMPLETION_BASIS}"
 )
 if [[ -n "${CURRENT_WEEK}" ]]; then
   CURRENT_CMD+=(--current-week "${CURRENT_WEEK}")

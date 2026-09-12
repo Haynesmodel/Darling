@@ -1,5 +1,10 @@
 # Current Season probability model
 
+Current-season scores are explicitly provisional until the shared weekly
+completion boundary is verified. Odds and recap copy must not describe a live
+or unresolved score as a completed historical result; delayed provider state is
+withheld conservatively and can be reconciled through a report-only review.
+
 The Current Season command center keeps deterministic standings, clinched/eliminated status, and configured tiebreakers authoritative. Probabilities are a separate estimate layer and are not part of the default finalized-season recap.
 
 ## Lifecycle gate

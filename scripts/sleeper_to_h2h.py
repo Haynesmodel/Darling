@@ -251,8 +251,14 @@ def main():
                         help="Allow fetching weeks beyond regular season and classify them via bracket endpoints.")
     parser.add_argument("--sort-mode", choices=["none", "season", "global"], default="season",
                         help="Sort mode: none|season|global (default: season)")
+    parser.add_argument("--completed-through-week", type=int, default=None,
+                        help="Resolved shared completion boundary; required for safe only-played imports")
+    parser.add_argument("--completion-basis", default=None, help="Completion provenance")
 
     args = parser.parse_args()
+
+    if args.only_played and args.completed_through_week is not None and not 0 <= args.completed_through_week <= args.max_week:
+        parser.error("--completed-through-week must be between 0 and --max-week")
 
     if args.season not in WEEK1_ANCHORS:
         known = ", ".join(str(season) for season in sorted(WEEK1_ANCHORS)) or "none"
@@ -341,7 +347,9 @@ def main():
 
         fetched_weeks.append(w)
         game_date = sunday_for_week(args.season, w)
-        if args.only_played and game_date > cutoff:
+        if args.only_played and args.completed_through_week is not None and w > args.completed_through_week:
+            continue
+        if args.only_played and args.completed_through_week is None and game_date > cutoff:
             continue
 
         for a, b in pairs:
@@ -352,7 +360,7 @@ def main():
 
             scoreA = round2(a.get("points", 0.0))
             scoreB = round2(b.get("points", 0.0))
-            if args.only_played and (scoreA == 0.0 and scoreB == 0.0):
+            if args.only_played and args.completed_through_week is None and (scoreA == 0.0 and scoreB == 0.0):
                 continue
 
             k = (args.season, w, *sorted([teamA, teamB]))

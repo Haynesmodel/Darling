@@ -12,6 +12,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 import sleeper_to_h2h as sleeper
+from scoring_completion import resolve_completion
 
 
 def load_json(path):
@@ -52,8 +53,14 @@ def score_or_none(value, has_score):
     return sleeper.round2(value or 0.0)
 
 
-def matchup_status(week, current_week, game_date, cutoff, score_a, score_b):
-    if score_a == 0.0 and score_b == 0.0:
+def matchup_status(week, current_week, game_date, cutoff, score_a, score_b, completed_through_week=None, scores_present=True):
+    if completed_through_week is not None:
+        if week <= completed_through_week:
+            return "final"
+        if week > (current_week or (completed_through_week + 1)):
+            return "scheduled"
+        return "live" if scores_present else "scheduled"
+    if not scores_present or (score_a == 0.0 and score_b == 0.0):
         return "scheduled"
     if game_date <= cutoff:
         return "final"
@@ -97,6 +104,7 @@ def build_current_season_asset(args):
     teams_info, rid_to_name = validate_mapping(args.league, mapping)
     weeks = [w for w in sleeper.parse_weeks(args.weeks) if w <= args.max_week]
     cutoff = datetime.strptime(args.cutoff_date, "%Y-%m-%d").date() if args.cutoff_date else date.today()
+    completed_through_week = getattr(args, "completed_through_week", None)
 
     playoff_pairs = set()
     saunders_pairs = set()
@@ -122,9 +130,12 @@ def build_current_season_asset(args):
         for a, b in pairs:
             rid_a = int(a.get("roster_id"))
             rid_b = int(b.get("roster_id"))
+            has_a = isinstance(a.get("points"), (int, float)) and not isinstance(a.get("points"), bool)
+            has_b = isinstance(b.get("points"), (int, float)) and not isinstance(b.get("points"), bool)
             score_a_raw = sleeper.round2(a.get("points", 0.0))
             score_b_raw = sleeper.round2(b.get("points", 0.0))
-            status = matchup_status(week, args.current_week, game_date, cutoff, score_a_raw, score_b_raw)
+            status = matchup_status(week, args.current_week, game_date, cutoff, score_a_raw, score_b_raw,
+                                    completed_through_week, has_a and has_b)
 
             game_type = "Regular"
             round_name = ""
@@ -202,6 +213,8 @@ def build_current_season_asset(args):
             "cutoff_date": cutoff.isoformat(),
             "contains_live_scores": any(g["status"] == "live" for g in games),
             "contains_projected_scores": False,
+            "completed_through_week": completed_through_week,
+            "completion_basis": getattr(args, "completion_basis", None),
         },
         "max_week": args.max_week,
         "weeks_fetched": fetched_weeks,
@@ -228,6 +241,8 @@ def main():
     parser.add_argument("--max-week", type=int, default=17)
     parser.add_argument("--allow-postseason", action="store_true", default=False)
     parser.add_argument("--h2h-fallback", default=None, help="Optional H2H asset used to classify postseason pairs that Sleeper brackets omit")
+    parser.add_argument("--completed-through-week", type=int, default=None, help="Resolved shared completion boundary")
+    parser.add_argument("--completion-basis", default=None, help="Provenance for the resolved completion boundary")
     args = parser.parse_args()
 
     try:

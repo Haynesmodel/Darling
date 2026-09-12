@@ -700,7 +700,19 @@ def completed_week_from_current(
     max_week: int,
     league_status: str,
 ) -> int:
+    if int(current.get("season") or 0) not in {0, season}:
+        raise ValueError("CurrentSeason snapshot season does not match transaction season.")
+    declared = current.get("update_context", {}).get("completed_through_week")
+    if declared is not None:
+        if isinstance(declared, bool) or not isinstance(declared, int) or not 0 <= declared <= max_week:
+            raise ValueError("CurrentSeason completion boundary is invalid.")
+        weeks = {int(game.get("week") or 0) for game in current.get("games") or []}
+        if any(week not in weeks for week in range(1, declared + 1)):
+            raise ValueError("CurrentSeason snapshot has incomplete week coverage.")
+        return declared
     if league_status == "complete":
+        # Older snapshots predate completion provenance; retain compatibility.
+        # New generated snapshots always carry update_context and take the safe path above.
         return max_week
     if int(current.get("season") or 0) == season:
         statuses_by_week: dict[int, list[str]] = defaultdict(list)

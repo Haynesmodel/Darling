@@ -98,8 +98,8 @@ function validateSleeperWorkflow(source, errors) {
   const artifact = extractNamedStep(update, 'Upload candidate data on failure');
 
   if (!/workflow_dispatch:[\s\S]*season:[\s\S]*validate_only:/.test(header)
-    || !/cron:\s*'0 13 \* \* 1'/.test(header)) {
-    errors.push('SLEEPER-FUNC-001: Sleeper dispatch inputs and Monday schedule must remain stable');
+    || !/cron:\s*'0 14 \* \* 2'/.test(header)) {
+    errors.push('SLEEPER-FUNC-001: Sleeper dispatch inputs and Tuesday 14:00 UTC schedule must remain stable');
   }
   if (!/^permissions:\s*\n\s{2}contents:\s*read\s*\n\s{2}issues:\s*write\s*$/m.test(header)
     || /^\s+contents:\s*write\s*$/m.test(source)) {

@@ -154,8 +154,6 @@ def resolve_completion(*, season: int, max_week: int, week1_sunday: date,
     state_season = _state_season(state)
     state_type = state.get("season_type")
     contradictory = status in {"pre_draft", "drafting"} and state_season == season and state.get("week") is not None
-    if status == "complete" and league_season != season:
-        raise ValueError("complete league metadata must match requested season.")
     if status in {"pre_draft", "drafting"}:
         inferred, basis = 0, "league_not_started"
     elif status == "complete":

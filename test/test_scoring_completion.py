@@ -68,4 +68,10 @@ class CompletionTests(unittest.TestCase):
         result = resolve_completion(**{**base, "override": 0, "override_reason": "manual"})
         self.assertEqual((result.completed_through_week, result.active_week, result.basis, result.warnings), (0, 1, "manual_override", ()))
 
+    def test_complete_status_accepts_canonical_string_league_season(self):
+        result = resolve_completion(season=2026, max_week=17, week1_sunday=self.anchor,
+                                    league_status="complete", league_season="2026",
+                                    now=datetime(2027, 1, 5, 13, tzinfo=timezone.utc))
+        self.assertEqual(result.completed_through_week, 17)
+
 if __name__ == "__main__": unittest.main()

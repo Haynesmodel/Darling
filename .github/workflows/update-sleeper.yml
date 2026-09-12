@@ -30,6 +30,7 @@ jobs:
     timeout-minutes: 45
     env:
       CI: '1'
+      SCHEDULED_RUN: ${{ github.event_name == 'schedule' && '1' || '0' }}
       REQUESTED_SEASON: ${{ github.event.inputs.season }}
       VALIDATE_ONLY_REQUESTED: ${{ github.event.inputs.validate_only }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -69,6 +70,7 @@ jobs:
         id: resolve
         env:
           LEAGUE_ID: ${{ secrets.SLEEPER_LEAGUE_ID }}
+          COMPLETION_REPORT_PATH: ${{ runner.temp }}/darling-completion-report.json
         shell: bash
         run: |
           echo "FAILED_PHASE=season resolution" >> "$GITHUB_ENV"
@@ -273,6 +275,7 @@ jobs:
             --changed-files-file "${RUNNER_TEMP}/sleeper-changed-files.txt" \
             --body-out "${RUNNER_TEMP}/sleeper-pr-body.md" \
             --json-out "${RUNNER_TEMP}/sleeper-summary.json"
+            --completion-report "${RUNNER_TEMP}/darling-completion-report.json"
           cat "${RUNNER_TEMP}/sleeper-pr-body.md" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Record App authentication phase

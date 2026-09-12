@@ -284,7 +284,7 @@ class TransactionHistoryTests(unittest.TestCase):
             ],
         }
         self.assertEqual(completed_week_from_current(current, 2025, 17, "in_season"), 1)
-        self.assertEqual(completed_week_from_current(current, 2025, 17, "complete"), 17)
+        self.assertEqual(completed_week_from_current(current, 2025, 17, "complete"), 1)
         transactions = [
             {
                 "id": "future-swap",

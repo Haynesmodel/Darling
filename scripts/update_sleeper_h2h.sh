@@ -6,6 +6,10 @@ set -euo pipefail
 LEAGUE_ID="${LEAGUE_ID:-1257071385973362690}"
 REQUESTED_SEASON="${SEASON:-}"
 REQUESTED_CURRENT_WEEK="${CURRENT_WEEK:-}"
+CUTOFF_DATE="${CUTOFF_DATE:-}"
+COMPLETED_OVERRIDE="${COMPLETED_THROUGH_WEEK_OVERRIDE:-}"
+COMPLETED_OVERRIDE_REASON="${COMPLETED_THROUGH_WEEK_REASON:-}"
+SCHEDULED_RUN="${SCHEDULED_RUN:-0}"
 UPDATE_LIVE="${UPDATE_LIVE:-0}"
 VALIDATE_ONLY="${VALIDATE_ONLY:-0}"
 
@@ -87,19 +91,24 @@ else
 fi
 MAP_FILE="${SCRIPT_DIR}/${SEASON}_team_mapping.json"
 
-COMPLETION_JSON="$(${PY} - "${SEASON}" "${MAX_WEEK}" "${STATE_JSON}" "${SCRIPT_DIR}" <<'PY'
+COMPLETION_JSON="$(${PY} - "${SEASON}" "${MAX_WEEK}" "${STATE_JSON}" "${SCRIPT_DIR}" "${CUTOFF_DATE}" "${COMPLETED_OVERRIDE}" "${COMPLETED_OVERRIDE_REASON}" "${SCHEDULED_RUN}" <<'PY'
 import json, sys
 from datetime import datetime, timezone
 sys.path.insert(0, sys.argv[4])
 from scoring_completion import resolve_completion
 from sleeper_to_h2h import WEEK1_ANCHORS
 season, max_week, raw = int(sys.argv[1]), int(sys.argv[2]), json.loads(sys.argv[3])
-result = resolve_completion(season=season, max_week=max_week, week1_sunday=WEEK1_ANCHORS[season], league_status=raw.get('league_status'), league_season=int(raw['league_season']), nfl_state={'season': int(raw.get('nfl_season') or 0), 'season_type': raw.get('nfl_season_type'), 'week': int(raw.get('nfl_week') or 0)}, now=datetime.now(timezone.utc))
-print(json.dumps({'completed': result.completed_through_week, 'basis': result.basis}))
+clock = datetime.fromisoformat(sys.argv[5] + 'T13:00:00+00:00') if sys.argv[5] else datetime.now(timezone.utc)
+override = int(sys.argv[6]) if sys.argv[6] else None
+result = resolve_completion(season=season, max_week=max_week, week1_sunday=WEEK1_ANCHORS[season], league_status=raw.get('league_status'), league_season=int(raw['league_season']), nfl_state={'season': int(raw.get('nfl_season') or 0), 'season_type': raw.get('nfl_season_type'), 'week': raw.get('nfl_week')}, now=clock, override=override, override_reason=sys.argv[7], scheduled=sys.argv[8] == '1')
+print(json.dumps({'completed': result.completed_through_week, 'active': result.active_week, 'basis': result.basis, 'warnings': list(result.warnings), 'clock': clock.isoformat(), 'override_reason': sys.argv[7] if override is not None else None}))
 PY
 )"
 COMPLETED_THROUGH_WEEK="$(node -e "const x=JSON.parse(process.argv[1]); process.stdout.write(String(x.completed));" "${COMPLETION_JSON}")"
+COMPLETED_ACTIVE_WEEK="$(node -e "const x=JSON.parse(process.argv[1]); if (x.active != null) process.stdout.write(String(x.active));" "${COMPLETION_JSON}")"
 COMPLETION_BASIS="$(node -e "const x=JSON.parse(process.argv[1]); process.stdout.write(String(x.basis));" "${COMPLETION_JSON}")"
+COMPLETION_REPORT="${COMPLETION_REPORT_PATH:-${RUNNER_TEMP:-/tmp}/darling-completion-report.json}"
+node -e 'require("node:fs").writeFileSync(process.argv[2], process.argv[1] + "\n")' "${COMPLETION_JSON}" "${COMPLETION_REPORT}"
 
 echo "=== Sleeper -> H2H update ==="
 echo "League:       configured"
@@ -152,8 +161,8 @@ CURRENT_CMD=(
   --completed-through-week "${COMPLETED_THROUGH_WEEK}"
   --completion-basis "${COMPLETION_BASIS}"
 )
-if [[ -n "${CURRENT_WEEK}" ]]; then
-  CURRENT_CMD+=(--current-week "${CURRENT_WEEK}")
+if [[ -n "${COMPLETED_ACTIVE_WEEK}" ]]; then
+CURRENT_CMD+=(--current-week "${COMPLETED_ACTIVE_WEEK}")
 fi
 CURRENT_CMD+=(--allow-postseason)
 
@@ -168,6 +177,7 @@ TRANSACTION_CMD=(
   --max-week "${MAX_WEEK}"
   --current-season "${OUT_CURRENT}"
   --out "${OUT_TRANSACTIONS}"
+  --completed-through-week "${COMPLETED_THROUGH_WEEK}"
   --players-cache "${WORKDIR:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}}/sleeper-players-cache.json"
 )
 if [[ -f "${ASSETS_DIR}/TransactionHistory.json" ]]; then

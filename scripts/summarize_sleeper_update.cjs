@@ -349,6 +349,13 @@ function buildMarkdown(summary) {
     `- Candidate statuses (final / live / scheduled): ${current?.statuses?.final ?? 0} / ${current?.statuses?.live ?? 0} / ${current?.statuses?.scheduled ?? 0}`,
     `- Candidate live scores / projections: ${display(current?.contains_live_scores)} / ${display(current?.contains_projected_scores)}`,
     '',
+    '### Scoring completion provenance',
+    '',
+    `- Completed through / active week: ${display(summary.completion.completed)} / ${display(summary.completion.active)}`,
+    `- Basis / effective UTC clock: ${display(summary.completion.basis)} / ${display(summary.completion.clock)}`,
+    `- Warnings: ${display((summary.completion.warnings || []).join('; ') || 'none')}`,
+    `- Manual override reason: ${display(summary.completion.override_reason)}`,
+    '',
     '### Transaction history',
     '',
     `- Target-season rows: ${summary.transactions.target_rows_before} → ${summary.transactions.target_rows_after}`,
@@ -405,6 +412,9 @@ function summarize(options, environment = process.env) {
   const beforeTransactions = readOptionalJson(path.join(beforeDir, 'TransactionHistory.json'));
   const afterTransactions = readOptionalJson(path.join(afterDir, 'TransactionHistory.json'));
   const files = changedFiles(options['changed-files-file']);
+  const completion = options['completion-report'] ? readJson(options['completion-report']) : {
+    completed: null, active: null, basis: 'not provided', warnings: [], clock: null, override_reason: null,
+  };
 
   assertCurrentSeason(afterCurrent, options.season, environment.LEAGUE_ID);
   const summary = {
@@ -415,6 +425,7 @@ function summarize(options, environment = process.env) {
       base_main_sha: options['base-sha'],
       candidate_source_sha: options['candidate-sha'],
     },
+    completion,
     changed_files: files,
     h2h: analyzeH2H(beforeH2H, afterH2H, options.season),
     current_season: {

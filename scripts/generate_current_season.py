@@ -55,7 +55,7 @@ def score_or_none(value, has_score):
 def matchup_status(week, current_week, game_date, cutoff, score_a, score_b, completed_through_week=None, scores_present=True):
     if completed_through_week is not None:
         if week <= completed_through_week:
-            return "final"
+            return "final" if scores_present else "scheduled"
         if week > (current_week or (completed_through_week + 1)):
             return "scheduled"
         return "live" if scores_present else "scheduled"
@@ -134,7 +134,7 @@ def build_current_season_asset(args):
             score_a_raw = sleeper.round2(a.get("points", 0.0))
             score_b_raw = sleeper.round2(b.get("points", 0.0))
             status = matchup_status(week, args.current_week, game_date, cutoff, score_a_raw, score_b_raw,
-                                    completed_through_week, has_a and has_b)
+                                    completed_through_week, has_a or has_b)
 
             game_type = "Regular"
             round_name = ""
@@ -163,8 +163,8 @@ def build_current_season_asset(args):
                 "date": game_date.strftime("%Y-%m-%d"),
                 "teamA": rid_to_name[str(rid_a)],
                 "teamB": rid_to_name[str(rid_b)],
-                "scoreA": score_or_none(score_a_raw, status in {"final", "live"}),
-                "scoreB": score_or_none(score_b_raw, status in {"final", "live"}),
+                "scoreA": score_or_none(score_a_raw, has_a and status in {"final", "live"}),
+                "scoreB": score_or_none(score_b_raw, has_b and status in {"final", "live"}),
                 "week": week,
                 "round": round_name,
                 "type": game_type,
@@ -212,8 +212,6 @@ def build_current_season_asset(args):
             "cutoff_date": cutoff.isoformat(),
             "contains_live_scores": any(g["status"] == "live" for g in games),
             "contains_projected_scores": False,
-            "completed_through_week": completed_through_week,
-            "completion_basis": getattr(args, "completion_basis", None),
         },
         "max_week": args.max_week,
         "weeks_fetched": fetched_weeks,
@@ -243,6 +241,8 @@ def main():
     parser.add_argument("--completed-through-week", type=int, default=None, help="Resolved shared completion boundary")
     parser.add_argument("--completion-basis", default=None, help="Provenance for the resolved completion boundary")
     args = parser.parse_args()
+    if args.completed_through_week is None:
+        parser.error("--completed-through-week is required; cutoff dates do not independently finalize scores")
 
     try:
         save_json(args.out, build_current_season_asset(args))

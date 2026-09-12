@@ -61,6 +61,14 @@ def resolve_completion(*, season: int, max_week: int, week1_sunday: date,
         raise ValueError("now must be timezone-aware UTC.")
     now = now.astimezone(timezone.utc)
     status = str(league_status or "unknown").lower()
+    state = nfl_state or {}
+    state_season = _state_season(state)
+    state_type = state.get("season_type")
+    if status in {"pre_draft", "drafting"} and state_season == season and state.get("week") is not None:
+        return Completion(last_verified_completed, last_verified_completed + 1 if last_verified_completed < max_week else None,
+                          "contradictory_metadata", ("league is pre-draft/drafting but NFL state has a week",))
+    if status == "complete" and league_season != season:
+        raise ValueError("complete league metadata must match requested season.")
     if status in {"pre_draft", "drafting"}:
         inferred, basis = 0, "league_not_started"
     elif status == "complete":
@@ -68,10 +76,9 @@ def resolve_completion(*, season: int, max_week: int, week1_sunday: date,
         inferred = max_week if now >= guard else 0
         basis = "league_complete_after_guard" if inferred else "league_complete_before_guard"
     else:
-        state = nfl_state or {}
-        if _state_season(state) != season:
+        if state_season != season or not isinstance(state_type, str) or not state_type.strip():
             inferred, basis = last_verified_completed, "verified_boundary_unknown_state"
-        elif str(state.get("season_type") or "regular").lower() != "regular":
+        elif state_type.lower() != "regular":
             inferred, basis = last_verified_completed, "verified_boundary_non_regular_state"
         else:
             week = state.get("week", state.get("display_week"))

@@ -22,6 +22,7 @@ Usage (unchanged from your scripts):
 
 import argparse
 import json
+import math
 import os
 import sys
 from datetime import date, timedelta, datetime
@@ -257,7 +258,9 @@ def main():
 
     args = parser.parse_args()
 
-    if args.only_played and args.completed_through_week is not None and not 0 <= args.completed_through_week <= args.max_week:
+    if args.only_played and args.completed_through_week is None:
+        parser.error("--only-played requires an explicit resolved --completed-through-week boundary")
+    if args.completed_through_week is not None and not 0 <= args.completed_through_week <= args.max_week:
         parser.error("--completed-through-week must be between 0 and --max-week")
 
     if args.season not in WEEK1_ANCHORS:
@@ -349,8 +352,6 @@ def main():
         game_date = sunday_for_week(args.season, w)
         if args.only_played and args.completed_through_week is not None and w > args.completed_through_week:
             continue
-        if args.only_played and args.completed_through_week is None and game_date > cutoff:
-            continue
 
         for a, b in pairs:
             ridA = int(a.get("roster_id"))
@@ -360,7 +361,11 @@ def main():
 
             scoreA = round2(a.get("points", 0.0))
             scoreB = round2(b.get("points", 0.0))
-            if args.only_played and args.completed_through_week is None and (scoreA == 0.0 and scoreB == 0.0):
+            valid_scores = all(isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+                               for value in (a.get("points"), b.get("points")))
+            if args.only_played and not valid_scores:
+                continue
+            if args.only_played and (scoreA == 0.0 and scoreB == 0.0) and not valid_scores:
                 continue
 
             k = (args.season, w, *sorted([teamA, teamB]))

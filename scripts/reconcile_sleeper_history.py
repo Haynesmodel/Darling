@@ -35,7 +35,7 @@ def _key(row: dict[str, Any]) -> tuple[int, int, tuple[str, str]]:
 
 
 def _orient(row: dict[str, Any]) -> tuple[float, float]:
-    scores = (row["scoreA"], row["scoreB"])
+    scores = (sleeper.round2(row["scoreA"]), sleeper.round2(row["scoreB"]))
     return scores if str(row["teamA"]) <= str(row["teamB"]) else scores[::-1]
 
 
@@ -50,6 +50,8 @@ def load_fixture(path: str | Path, season: int, mapping: dict[str, Any]) -> tupl
     metadata = value.get("metadata", {})
     if not isinstance(metadata, dict):
         raise ValueError("metadata must be an object")
+    if not mapping or any(not str(k).strip() or not str(v).strip() for k, v in mapping.items()) or len(set(str(v) for v in mapping.values())) != len(mapping):
+        raise ValueError("mapping must contain unique nonempty canonical owners")
     for week_text, raw_rows in value["weeks"].items():
         try:
             week = int(week_text)
@@ -57,7 +59,10 @@ def load_fixture(path: str | Path, season: int, mapping: dict[str, Any]) -> tupl
             raise ValueError("week keys must be integer strings") from error
         if not 1 <= week <= 25 or not isinstance(raw_rows, list):
             raise ValueError("fixture week is invalid")
+        if str(week) != week_text or str(week) in {str(int(other)) for other in value["weeks"] if str(other) != week_text and str(other).isdigit()}:
+            raise ValueError("fixture contains duplicate-equivalent week keys")
         by_matchup: dict[Any, list[dict[str, Any]]] = {}
+        week_rosters: set[int] = set()
         for raw in raw_rows:
             if not isinstance(raw, dict):
                 raise ValueError("raw matchup rows must be objects")
@@ -68,6 +73,9 @@ def load_fixture(path: str | Path, season: int, mapping: dict[str, Any]) -> tupl
             if matchup_id is None or isinstance(matchup_id, (dict, list, bool)):
                 raise ValueError("raw row has invalid matchup_id")
             _score(raw.get("points"))
+            if roster_id in week_rosters:
+                raise ValueError("roster appears in multiple matchups in one week")
+            week_rosters.add(roster_id)
             by_matchup.setdefault(matchup_id, []).append(raw)
         for matchup_id, pair in by_matchup.items():
             if len(pair) != 2 or pair[0].get("roster_id") == pair[1].get("roster_id"):
@@ -78,9 +86,13 @@ def load_fixture(path: str | Path, season: int, mapping: dict[str, Any]) -> tupl
             if not isinstance(details, dict):
                 raise ValueError("matchup metadata must be an object")
             game_date = details.get("date") or sleeper.sunday_for_week(season, week).isoformat()
+            try: date.fromisoformat(game_date)
+            except (TypeError, ValueError) as error: raise ValueError("matchup metadata date is invalid") from error
+            game_type = details.get("type", "Regular")
+            if game_type not in {"Regular", "Playoff", "Saunders"}: raise ValueError("matchup metadata type is invalid")
             row = {"season": season, "date": game_date, "teamA": owner_a, "teamB": owner_b,
                    "scoreA": _score(pair[0]["points"]), "scoreB": _score(pair[1]["points"]),
-                   "week": week, "round": details.get("round"), "type": details.get("type", "Regular")}
+                   "week": week, "round": details.get("round"), "type": game_type}
             key = _key(row)
             if key in seen_keys:
                 raise ValueError("fixture contains duplicate canonical matchup")
@@ -91,21 +103,34 @@ def load_fixture(path: str | Path, season: int, mapping: dict[str, Any]) -> tupl
 def reconcile(canonical: list[dict[str, Any]], candidate: list[dict[str, Any]], season: int,
               source_path: str = "", mapping_path: str = "", canonical_path: str = "",
               retrieved_at: str = "") -> dict[str, Any]:
-    before = {_key(row): row for row in canonical if int(row.get("season", 0)) == season}
-    after = {_key(row): row for row in candidate if int(row.get("season", 0)) == season}
+    def index(rows: list[dict[str, Any]], label: str) -> dict[tuple[int, int, tuple[str, str]], dict[str, Any]]:
+        result = {}
+        for row in rows:
+            if not isinstance(row, dict) or int(row.get("season", 0)) != season:
+                continue
+            if not row.get("teamA") or not row.get("teamB") or row["teamA"] == row["teamB"]:
+                raise ValueError(f"{label} contains invalid owner names")
+            _score(row.get("scoreA")); _score(row.get("scoreB"))
+            key = _key(row)
+            if key in result: raise ValueError(f"{label} contains duplicate canonical key")
+            result[key] = row
+        return result
+    before = index(canonical, "canonical")
+    after = index(candidate, "candidate")
     matched, missing, new, different = [], [], [], []
     fields = ("date", "type", "round")
-    for key, row in before.items():
+    for key in sorted(before):
+        row = before[key]
         other = after.get(key)
         if other is None:
-            missing.append({"key": list(key)})
+            missing.append({"key": list(key), "before": row})
             continue
         diagnostics = {}
         if _orient(row) != _orient(other): diagnostics["scores"] = {"before": _orient(row), "after": _orient(other)}
         for field in fields:
             if row.get(field) != other.get(field): diagnostics[field] = {"before": row.get(field), "after": other.get(field)}
         (different if diagnostics else matched).append({"key": list(key), **({"before": row, "after": other, "diagnostics": diagnostics} if diagnostics else {})})
-    for key, row in after.items():
+    for key in sorted(after):
         if key not in before: new.append({"key": list(key), "after": row})
     return {"season": season, "source_path": source_path, "mapping_path": mapping_path,
             "canonical_path": canonical_path, "retrieved_at": retrieved_at,

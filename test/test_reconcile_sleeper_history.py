@@ -25,4 +25,32 @@ class ReconciliationFixtureTests(unittest.TestCase):
             try:
                 with self.assertRaises(ValueError): load_fixture(path,2025,{'1':'A','2':'B'})
             finally: directory.cleanup()
+
+    def test_rejects_duplicates_and_invalid_points_metadata(self):
+        base = lambda rows, metadata=None: {"retrieved_at": "2025-09-20T12:00:00Z", "weeks": {"1": rows}, **({"metadata": metadata} if metadata is not None else {})}
+        rows = [{"roster_id": 1, "matchup_id": 1, "points": 1}, {"roster_id": 2, "matchup_id": 1, "points": 2}]
+        for extra in ([{"roster_id": 1, "matchup_id": 2, "points": 3}, {"roster_id": 2, "matchup_id": 2, "points": 4}], rows[:1]):
+            directory, path = self.fixture(base(rows + extra))
+            try:
+                with self.assertRaises(ValueError): load_fixture(path, 2025, {"1": "A", "2": "B"})
+            finally: directory.cleanup()
+        for points in (None, True, "1", float("nan"), float("inf")):
+            bad = [{"roster_id": 1, "matchup_id": 1, "points": points}, {"roster_id": 2, "matchup_id": 1, "points": 2}]
+            directory, path = self.fixture(base(bad))
+            try:
+                with self.assertRaises(ValueError): load_fixture(path, 2025, {"1": "A", "2": "B"})
+            finally: directory.cleanup()
+        for metadata in ({"1": {"1": {"date": "bad"}}}, {"1": {"1": {"type": "Other"}}}, {"1": {"1": []}}):
+            directory, path = self.fixture(base(rows, metadata))
+            try:
+                with self.assertRaises(ValueError): load_fixture(path, 2025, {"1": "A", "2": "B"})
+            finally: directory.cleanup()
+
+    def test_duplicate_candidate_key_is_rejected(self):
+        value = {"retrieved_at": "2025-09-20T12:00:00Z", "weeks": {"1": [{"roster_id": 1, "matchup_id": 1, "points": 80}, {"roster_id": 2, "matchup_id": 1, "points": 75}]}}
+        directory, path = self.fixture(value)
+        try:
+            rows, _ = load_fixture(path, 2025, {"1": "A", "2": "B"})
+            with self.assertRaises(ValueError): reconcile(rows, rows + [dict(rows[0])], 2025)
+        finally: directory.cleanup()
 if __name__=='__main__': unittest.main()

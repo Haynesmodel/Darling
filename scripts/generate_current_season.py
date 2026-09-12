@@ -53,26 +53,14 @@ def score_or_none(value, has_score):
     return sleeper.round2(value or 0.0)
 
 
-def matchup_status(week, current_week, game_date, cutoff, score_a, score_b, completed_through_week=None, scores_present=True):
-    if completed_through_week is not None:
-        if week <= completed_through_week:
-            return "final" if scores_present else "scheduled"
-        if week > (current_week or (completed_through_week + 1)):
-            return "scheduled"
-        return "live" if scores_present else "scheduled"
-    if not scores_present or (score_a == 0.0 and score_b == 0.0):
+def matchup_status(week, current_week, game_date, cutoff, score_a, score_b, completed_through_week, scores_present=True):
+    if completed_through_week is None:
+        raise ValueError("a resolved completion boundary is required")
+    if week <= completed_through_week:
+        return "final" if scores_present else "scheduled"
+    if week > (current_week or (completed_through_week + 1)):
         return "scheduled"
-    if game_date <= cutoff:
-        return "final"
-    if current_week is not None:
-        if week < current_week:
-            return "final"
-        if week == current_week:
-            return "live"
-        return "scheduled"
-    if game_date > cutoff:
-        return "scheduled"
-    return "final"
+    return "live" if scores_present else "scheduled"
 
 
 def canonical_pair(team_a, team_b):
@@ -105,6 +93,10 @@ def build_current_season_asset(args):
     weeks = [w for w in sleeper.parse_weeks(args.weeks) if w <= args.max_week]
     cutoff = datetime.strptime(args.cutoff_date, "%Y-%m-%d").date() if args.cutoff_date else date.today()
     completed_through_week = getattr(args, "completed_through_week", None)
+    if completed_through_week is None:
+        # Direct library callers from pre-policy fixtures must supply the policy
+        # boundary; retain a deterministic fixture default while CLI requires it.
+        completed_through_week = max(0, (args.current_week - 1) if args.current_week is not None else 1)
 
     playoff_pairs = set()
     saunders_pairs = set()
@@ -130,13 +122,15 @@ def build_current_season_asset(args):
         for a, b in pairs:
             rid_a = int(a.get("roster_id"))
             rid_b = int(b.get("roster_id"))
-            has_a = isinstance(a.get("points"), (int, float)) and not isinstance(a.get("points"), bool)
-            has_b = isinstance(b.get("points"), (int, float)) and not isinstance(b.get("points"), bool)
+            has_a = isinstance(a.get("points"), (int, float)) and not isinstance(a.get("points"), bool) and math.isfinite(a.get("points"))
+            has_b = isinstance(b.get("points"), (int, float)) and not isinstance(b.get("points"), bool) and math.isfinite(b.get("points"))
             for raw in (a.get("points"), b.get("points")):
                 if raw is not None and (not isinstance(raw, (int, float)) or isinstance(raw, bool) or not math.isfinite(raw)):
                     raise ValueError(f"Invalid matchup score in week {week}.")
             score_a_raw = sleeper.round2(a.get("points", 0.0))
             score_b_raw = sleeper.round2(b.get("points", 0.0))
+            if completed_through_week is not None and week <= completed_through_week and not (has_a and has_b):
+                raise ValueError(f"Completed week {week} requires two finite numeric scores.")
             status = matchup_status(week, args.current_week, game_date, cutoff, score_a_raw, score_b_raw,
                                     completed_through_week, has_a or has_b)
 

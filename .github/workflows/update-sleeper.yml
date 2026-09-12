@@ -70,7 +70,6 @@ jobs:
         id: resolve
         env:
           LEAGUE_ID: ${{ secrets.SLEEPER_LEAGUE_ID }}
-          COMPLETION_REPORT_PATH: ${{ runner.temp }}/darling-completion-report.json
         shell: bash
         run: |
           echo "FAILED_PHASE=season resolution" >> "$GITHUB_ENV"
@@ -131,6 +130,7 @@ jobs:
       - name: Generate candidate data
         env:
           LEAGUE_ID: ${{ secrets.SLEEPER_LEAGUE_ID }}
+          COMPLETION_REPORT_PATH: ${{ runner.temp }}/darling-completion-report.json
         shell: bash
         run: |
           echo "FAILED_PHASE=Sleeper generation" >> "$GITHUB_ENV"

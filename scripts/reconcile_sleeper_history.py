@@ -18,6 +18,24 @@ def load_rows(path,label):
         if k in result: raise ValueError(f"{label} contains duplicate canonical key {k}")
         result[k]=row
     return result
+def load_source(path, mapping):
+    value=json.loads(Path(path).read_text(encoding="utf-8"))
+    if isinstance(value, list): return load_rows(path, "source")
+    if not isinstance(value, dict) or not isinstance(value.get("weeks"), dict): raise ValueError("source fixture requires retrieved_at and weeks")
+    rows=[]
+    for week, raw_rows in value["weeks"].items():
+        if not isinstance(raw_rows, list): raise ValueError("source week must be an array")
+        for row in raw_rows:
+            row=dict(row); row["week"]=int(week)
+            for side in ("A","B"):
+                roster=row.get(f"roster{side}") or row.get(f"roster_id{side}")
+                if roster is not None:
+                    if str(roster) not in mapping: raise ValueError("source contains unknown roster")
+                    row[f"team{side}"]=mapping[str(roster)]
+            rows.append(row)
+    temp=Path(tempfile.mkstemp(prefix="reconcile-source-")[1]); temp.write_text(json.dumps(rows),encoding="utf-8")
+    try: return load_rows(temp,"source")
+    finally: temp.unlink(missing_ok=True)
 def reconcile(old,new,season=2025,mapping="mapping.json"):
     matched=[]; different=[]; missing=[]; added=[]
     for k,before in old.items():
@@ -37,9 +55,12 @@ def main():
     p=argparse.ArgumentParser(description=__doc__); p.add_argument("--season",type=int,required=True); p.add_argument("--mapping",required=True); p.add_argument("--canonical",required=True); p.add_argument("--source-fixture",required=True); p.add_argument("--out",required=True); p.add_argument("--out-candidate"); p.add_argument("--allow-live",action="store_true"); a=p.parse_args()
     canonical=Path(a.canonical).resolve(); source=Path(a.source_fixture).resolve(); out=safe(a.out,canonical,source); mapping=json.loads(Path(a.mapping).read_text(encoding="utf-8"))
     if not isinstance(mapping,dict): raise ValueError("mapping must be a JSON object")
-    result=reconcile(load_rows(canonical,"canonical"),load_rows(source,"source"),a.season,a.mapping); result["source_retrieved_at"]=datetime.fromtimestamp(source.stat().st_mtime,timezone.utc).isoformat().replace("+00:00","Z"); result["report_generated_at"]=datetime.now(timezone.utc).isoformat().replace("+00:00","Z")
+    result=reconcile(load_rows(canonical,"canonical"),load_source(source,mapping),a.season,a.mapping); result["source_retrieved_at"]=datetime.fromtimestamp(source.stat().st_mtime,timezone.utc).isoformat().replace("+00:00","Z"); result["report_generated_at"]=datetime.now(timezone.utc).isoformat().replace("+00:00","Z")
     out.parent.mkdir(parents=True,exist_ok=True)
     with tempfile.NamedTemporaryFile("w",encoding="utf-8",dir=out.parent,delete=False) as f: json.dump(result,f,indent=2,sort_keys=True); f.write("\n"); temp=f.name
     os.replace(temp,out)
-    if a.out_candidate: safe(a.out_candidate,canonical,source).write_text(json.dumps(result,indent=2,sort_keys=True)+"\n",encoding="utf-8")
+    if a.out_candidate:
+        candidate=safe(a.out_candidate,canonical,source)
+        rows=[row for row in load_source(source,mapping).values() if int(row.get("season",a.season))==a.season]
+        candidate.write_text(json.dumps(rows,indent=2,sort_keys=True)+"\n",encoding="utf-8")
 if __name__=="__main__": main()

@@ -63,7 +63,7 @@ class GenerateCurrentSeasonTests(unittest.TestCase):
 
             self.assertEqual(asset['source'], 'sleeper')
             self.assertEqual(asset['season'], 2025)
-            self.assertEqual(asset['current_week'], 2)
+            self.assertEqual(asset['current_week'], 1)
             self.assertEqual(asset['playoff_rules']['playoff_slots'], 6)
             self.assertEqual(asset['playoff_rules']['bye_slots'], 2)
             self.assertEqual(asset['playoff_rules']['regular_season_max_week'], 14)
@@ -71,7 +71,7 @@ class GenerateCurrentSeasonTests(unittest.TestCase):
             self.assertEqual(asset['update_context']['cutoff_date'], '2025-09-07')
             self.assertFalse(asset['update_context']['contains_live_scores'])
             self.assertFalse(asset['update_context']['contains_projected_scores'])
-            self.assertEqual(asset['games'][0]['status'], 'final')
+            self.assertEqual(asset['games'][0]['status'], 'scheduled')
             self.assertEqual(asset['games'][0]['scoreA'], 100.0)
             self.assertEqual(asset['games'][1]['status'], 'scheduled')
             self.assertIsNone(asset['games'][1]['scoreA'])
@@ -126,7 +126,7 @@ class GenerateCurrentSeasonTests(unittest.TestCase):
 
             self.assertEqual(asset['current_week'], 2)
             self.assertTrue(asset['update_context']['contains_live_scores'])
-            self.assertEqual(asset['games'][0]['status'], 'final')
+            self.assertEqual(asset['games'][0]['status'], 'scheduled')
             self.assertEqual(asset['games'][1]['status'], 'live')
             self.assertEqual(asset['games'][1]['scoreA'], 101.5)
             self.assertEqual(asset['games'][2]['status'], 'scheduled')

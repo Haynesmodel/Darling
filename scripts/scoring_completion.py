@@ -25,9 +25,12 @@ def retained_boundary_from_snapshot(snapshot: dict[str, Any], season: int, max_w
     weeks_fetched = snapshot.get("weeks_fetched")
     teams = snapshot.get("teams")
     games = snapshot.get("games")
-    if not isinstance(weeks_fetched, list) or not isinstance(teams, list) or not isinstance(games, list) or not teams:
+    if not isinstance(weeks_fetched, list) or len(set(weeks_fetched)) != len(weeks_fetched) or not isinstance(teams, list) or not isinstance(games, list) or not teams:
         raise ValueError("same-season CurrentSeason snapshot lacks coverage metadata")
-    owner_count = len(teams)
+    team_ids = [team.get("roster_id") for team in teams if isinstance(team, dict)]
+    if len(team_ids) != len(teams) or any(not isinstance(value, int) or isinstance(value, bool) for value in team_ids) or len(set(team_ids)) != len(team_ids):
+        raise ValueError("CurrentSeason teams have invalid or duplicate roster IDs")
+    owner_count = len(team_ids)
     game_by_week: dict[int, list[dict[str, Any]]] = {}
     for game in games:
         if not isinstance(game, dict): raise ValueError("CurrentSeason game must be an object")
@@ -48,7 +51,7 @@ def retained_boundary_from_snapshot(snapshot: dict[str, Any], season: int, max_w
                 break
             rosters.update(pair); matchups.add(game.get("matchup_id"))
         else:
-            if len(rosters) == owner_count: boundary = week; continue
+            if rosters == set(team_ids): boundary = week; continue
         break
     return boundary
 
@@ -79,7 +82,9 @@ def resolve_completion(*, season: int, max_week: int, week1_sunday: date,
     last_verified_completed = _integer(last_verified_completed, "last_verified_completed", 0, max_week)
     if week1_sunday.weekday() != 6:
         raise ValueError("week1_sunday must be a Sunday.")
-    if league_season is not None and league_season != season:
+    if not isinstance(league_season, int) or isinstance(league_season, bool):
+        raise ValueError("league metadata season must be an integer")
+    if league_season != season:
         raise ValueError("league metadata season does not match requested season.")
     if override is not None:
         _integer(override, "completed-through-week", 0, max_week)

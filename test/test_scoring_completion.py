@@ -11,14 +11,14 @@ class CompletionTests(unittest.TestCase):
         state = {"season": 2026, "season_type": "regular", "week": 2}
         for second, expected in [(12 * 3600 + 59 * 60 + 59, 0), (13 * 3600, 1), (13 * 3600 + 1, 1)]:
             now = datetime(2026, 9, 15, tzinfo=timezone.utc).replace(hour=0) + __import__('datetime').timedelta(seconds=second)
-            self.assertEqual(resolve_completion(season=2026, max_week=17, week1_sunday=self.anchor, nfl_state=state, now=now).completed_through_week, expected)
+            self.assertEqual(resolve_completion(season=2026, max_week=17, week1_sunday=self.anchor, league_season=2026, nfl_state=state, now=now).completed_through_week, expected)
     def test_unknown_state_retains_verified_boundary(self):
-        result = resolve_completion(season=2026, max_week=17, week1_sunday=self.anchor, last_verified_completed=2, nfl_state={"season": 2025}, now=datetime.now(timezone.utc))
+        result = resolve_completion(season=2026, max_week=17, week1_sunday=self.anchor, league_season=2026, last_verified_completed=2, nfl_state={"season": 2025}, now=datetime.now(timezone.utc))
         self.assertEqual(result.completed_through_week, 2)
     def test_override_requires_reason_and_is_not_scheduled(self):
-        with self.assertRaises(ValueError): resolve_completion(season=2026, max_week=17, week1_sunday=self.anchor, override=1)
-        with self.assertRaises(ValueError): resolve_completion(season=2026, max_week=17, week1_sunday=self.anchor, override=1, override_reason="x", scheduled=True)
-        self.assertEqual(resolve_completion(season=2026, max_week=17, week1_sunday=self.anchor, override=1, override_reason="postponed").basis, "manual_override")
+        with self.assertRaises(ValueError): resolve_completion(season=2026, max_week=17, week1_sunday=self.anchor, league_season=2026, override=1)
+        with self.assertRaises(ValueError): resolve_completion(season=2026, max_week=17, week1_sunday=self.anchor, league_season=2026, override=1, override_reason="x", scheduled=True)
+        self.assertEqual(resolve_completion(season=2026, max_week=17, week1_sunday=self.anchor, league_season=2026, override=1, override_reason="postponed").basis, "manual_override")
     def test_retained_boundary_requires_exact_verified_snapshot(self):
         snapshot = {"season": 2026, "weeks_fetched": [1], "teams": [{"roster_id": 1}, {"roster_id": 2}], "games": [{"week": 1, "status": "final", "rosterA": 1, "rosterB": 2, "matchup_id": 1, "scoreA": 0.0, "scoreB": 0.0}]}
         self.assertEqual(retained_boundary_from_snapshot(snapshot, 2026, 17), 1)

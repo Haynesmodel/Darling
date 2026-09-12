@@ -136,9 +136,17 @@ def validate_completed_matchups(matchups, roster_ids):
     expected = {int(value) for value in roster_ids}
     seen = set(); mids = {}
     for row in matchups:
+        if not isinstance(row, dict):
+            raise ValueError("completed week contains a malformed matchup row")
         rid = row.get("roster_id"); mid = row.get("matchup_id")
-        if not isinstance(rid, int) or rid not in expected or rid in seen or mid is None or mids.get(mid, 0) >= 2:
-            if rid in seen or mids.get(mid, 0) >= 2: raise ValueError("duplicate roster or matchup in completed week")
+        if isinstance(rid, bool) or not isinstance(rid, int) or rid not in expected or rid in seen:
+            raise ValueError("completed week has invalid or duplicate roster coverage")
+        if mid is None or isinstance(mid, bool):
+            raise ValueError("completed week has an invalid matchup id")
+        try:
+            hash(mid)
+        except TypeError as error:
+            raise ValueError("completed week has an invalid matchup id") from error
         seen.add(rid)
         mids[mid] = mids.get(mid, 0) + 1
     pairs = pair_matchups(matchups)

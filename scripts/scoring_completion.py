@@ -104,10 +104,13 @@ def _integer(value: Any, label: str, minimum: int, maximum: int) -> int:
 
 def _state_season(state: dict[str, Any]) -> int | None:
     value = state.get("season")
-    try:
-        return int(value) if not isinstance(value, bool) else None
-    except (TypeError, ValueError):
+    if isinstance(value, bool):
         return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.isdigit() and str(int(value)) == value:
+        return int(value)
+    return None
 
 
 def resolve_completion(*, season: int, max_week: int, week1_sunday: date,
@@ -122,9 +125,10 @@ def resolve_completion(*, season: int, max_week: int, week1_sunday: date,
     last_verified_completed = _integer(last_verified_completed, "last_verified_completed", 0, max_week)
     if week1_sunday.weekday() != 6:
         raise ValueError("week1_sunday must be a Sunday.")
-    if not isinstance(league_season, int) or isinstance(league_season, bool):
+    parsed_league_season = _state_season({"season": league_season})
+    if parsed_league_season is None:
         raise ValueError("league metadata season must be an integer")
-    if league_season != season:
+    if parsed_league_season != season:
         raise ValueError("league metadata season does not match requested season.")
     if override is not None:
         _integer(override, "completed-through-week", 0, max_week)

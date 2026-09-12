@@ -144,6 +144,12 @@ def _orient(row: dict[str, Any]) -> tuple[float, float]:
     return scores if str(row["teamA"]) <= str(row["teamB"]) else scores[::-1]
 
 
+def _canonical_row(row: dict[str, Any]) -> dict[str, Any]:
+    if str(row["teamA"]) <= str(row["teamB"]):
+        return dict(row, scoreA=sleeper.round2(row["scoreA"]), scoreB=sleeper.round2(row["scoreB"]))
+    return dict(row, teamA=row["teamB"], teamB=row["teamA"], scoreA=sleeper.round2(row["scoreB"]), scoreB=sleeper.round2(row["scoreA"]))
+
+
 def load_fixture_value(value: Any, season: int, mapping: dict[str, Any]) -> tuple[list[dict[str, Any]], str]:
     if not isinstance(value, dict) or not isinstance(value.get("weeks"), dict):
         raise ValueError("fixture must contain retrieved_at and weeks")
@@ -209,7 +215,7 @@ def load_fixture_value(value: Any, season: int, mapping: dict[str, Any]) -> tupl
             key = _key(row)
             if key in seen_keys:
                 raise ValueError("fixture contains duplicate canonical matchup")
-            seen_keys.add(key); rows.append(row)
+            seen_keys.add(key); rows.append(_canonical_row(row))
     return rows, retrieved_at
 
 
@@ -249,7 +255,7 @@ def reconcile(canonical: list[dict[str, Any]], candidate: list[dict[str, Any]], 
                 raise ValueError(f"{label} contains invalid type")
             key = _key(row)
             if key in result: raise ValueError(f"{label} contains duplicate canonical key")
-            result[key] = row
+            result[key] = _canonical_row(row)
         return result
     before = index(canonical, "canonical")
     after = index(candidate, "candidate")

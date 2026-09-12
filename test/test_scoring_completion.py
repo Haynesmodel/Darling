@@ -47,6 +47,8 @@ class CompletionTests(unittest.TestCase):
         from datetime import timedelta
         base = dict(season=2026, max_week=17, week1_sunday=self.anchor, league_status="in_season", league_season=2026,
                     nfl_state={"season": 2026, "season_type": "regular", "week": 2})
+        for now in (datetime(2026, 9, 13, 12, tzinfo=timezone.utc), datetime(2026, 9, 14, 12, tzinfo=timezone.utc)):
+            self.assertEqual(resolve_completion(**base, now=now).completed_through_week, 0)
         for offset, expected in ((timedelta(days=2, seconds=12 * 3600 + 59 * 60 + 59), 0), (timedelta(days=3), 1)):
             result = resolve_completion(**base, now=datetime(2026, 9, 13, tzinfo=timezone.utc) + offset)
             self.assertEqual(result.completed_through_week, expected)

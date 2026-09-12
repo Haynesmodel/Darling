@@ -12,7 +12,7 @@ class ReconciliationFixtureTests(unittest.TestCase):
         value={'retrieved_at':'2025-09-20T12:00:00Z','weeks':{'1':[{'roster_id':1,'matchup_id':7,'points':80.004},{'roster_id':2,'matchup_id':7,'points':80.005}]}}
         directory,path=self.fixture(value)
         try:
-            rows,retrieved=load_fixture(path,2025,{'1':'Zed','2':'Amy'}); self.assertEqual(retrieved,value['retrieved_at']); self.assertEqual(rows[0]['teamA'],'Zed')
+            rows,retrieved=load_fixture(path,2025,{'1':'Zed','2':'Amy'}); self.assertEqual(retrieved,value['retrieved_at']); self.assertEqual(rows[0]['teamA'],'Amy')
             reversed_candidate=[dict(rows[0], teamA='Amy', teamB='Zed', scoreA=80.00, scoreB=80.004)]
             self.assertEqual(reconcile(rows,reversed_candidate,2025,retrieved_at=retrieved)['summary']['matched'],1)
         finally: directory.cleanup()

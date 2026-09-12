@@ -29,4 +29,18 @@ class CompletionTests(unittest.TestCase):
         self.assertEqual(resolve_completion(season=2026, max_week=17, week1_sunday=self.anchor, league_status="pre_draft", league_season=2026, last_verified_completed=0, nfl_state={"season": 2026, "season_type": "regular", "week": 3}, now=now).completed_through_week, 0)
         self.assertEqual(resolve_completion(season=2026, max_week=17, week1_sunday=self.anchor, league_season=2026, nfl_state={"season": 2026, "week": 3}, now=now).completed_through_week, 0)
 
+    def test_published_postseason_snapshot_retains_boundary_seventeen(self):
+        import json
+        snapshot = json.loads((Path(__file__).parents[1] / "assets" / "CurrentSeason.json").read_text())
+        self.assertEqual(retained_boundary_from_snapshot(snapshot, 2025, 17), 17)
+        delayed = resolve_completion(season=2025, max_week=17, week1_sunday=date(2025, 9, 7), league_season=2025,
+                                     last_verified_completed=15, nfl_state={"season": 2024}, now=datetime(2025, 12, 1, tzinfo=timezone.utc))
+        self.assertEqual(delayed.completed_through_week, 15)
+
+    def test_postseason_snapshot_missing_game_stops_before_that_week(self):
+        import json
+        snapshot = json.loads((Path(__file__).parents[1] / "assets" / "CurrentSeason.json").read_text())
+        snapshot["games"] = [game for game in snapshot["games"] if not (game["week"] == 16 and game["type"] == "Playoff")]
+        self.assertEqual(retained_boundary_from_snapshot(snapshot, 2025, 17), 15)
+
 if __name__ == "__main__": unittest.main()

@@ -18,6 +18,23 @@ class Completion:
     basis: str
     warnings: tuple[str, ...] = ()
 
+
+def postseason_expected(snapshot: dict[str, Any], regular_max: int) -> dict[int, dict[tuple[str, str], int]]:
+    rules = snapshot.get("playoff_rules") if isinstance(snapshot, dict) else None
+    if not isinstance(regular_max, int) or isinstance(regular_max, bool) or regular_max < 1:
+        raise ValueError("regular season boundary is invalid")
+    if not isinstance(rules, dict):
+        raise ValueError("CurrentSeason playoff rules are missing")
+    for key, expected in (("playoff_slots", 6), ("bye_slots", 2), ("saunders_slots", 6)):
+        value = rules.get(key)
+        if isinstance(value, bool) or not isinstance(value, int) or value != expected:
+            raise ValueError("CurrentSeason playoff rules are invalid")
+    return {
+        regular_max + 1: {("Playoff", "Wild Card"): 2, ("Saunders", "Saunders Wild Card"): 2},
+        regular_max + 2: {("Playoff", "Semi Final"): 2, ("Saunders", "Saunders Semi Final"): 2},
+        regular_max + 3: {("Playoff", "Championship"): 1, ("Saunders", "Saunders Final"): 1},
+    }
+
 def retained_boundary_from_snapshot(snapshot: dict[str, Any], season: int, max_week: int) -> int:
     """Return a trusted contiguous boundary, or zero for a different season."""
     if not isinstance(snapshot, dict) or snapshot.get("season") != season:
@@ -40,8 +57,11 @@ def retained_boundary_from_snapshot(snapshot: dict[str, Any], season: int, max_w
         if not isinstance(week, int) or not 1 <= week <= max_week: raise ValueError("invalid CurrentSeason week")
         game_by_week.setdefault(week, []).append(game)
     boundary = 0
-    regular_max = int(snapshot.get("regular_season_max_week") or snapshot.get("playoff_rules", {}).get("regular_season_max_week", 14))
-    postseason_counts = {15: {"Playoff": 2, "Saunders": 2}, 16: {"Playoff": 2, "Saunders": 2}, 17: {"Playoff": 1, "Saunders": 1}}
+    regular_value = snapshot.get("regular_season_max_week", 14)
+    if isinstance(regular_value, bool) or not isinstance(regular_value, int):
+        raise ValueError("CurrentSeason regular season boundary is invalid")
+    regular_max = regular_value
+    postseason_counts = None
     for week in range(1, max_week + 1):
         if week not in weeks_fetched: break
         rows = game_by_week.get(week, [])
@@ -52,22 +72,25 @@ def retained_boundary_from_snapshot(snapshot: dict[str, Any], season: int, max_w
         for game in rows:
             if not all(isinstance(game.get(field), (int, float)) and not isinstance(game.get(field), bool) and math.isfinite(game[field]) for field in ("scoreA", "scoreB")):
                 break
-            pair = (game.get("rosterA"), game.get("rosterB"))
-            if any(not isinstance(value, int) or value in rosters for value in pair) or game.get("matchup_id") in matchups:
+            pair = (game.get("rosterA"), game.get("rosterB")); matchup_id = game.get("matchup_id")
+            if (any(isinstance(value, bool) or not isinstance(value, int) or value in rosters for value in pair)
+                    or matchup_id is None or isinstance(matchup_id, bool) or matchup_id in matchups):
                 break
-            rosters.update(pair); matchups.add(game.get("matchup_id"))
+            rosters.update(pair); matchups.add(matchup_id)
         else:
             if week <= regular_max:
                 if rosters == set(team_ids): boundary = week; continue
+            if postseason_counts is None:
+                postseason_counts = postseason_expected(snapshot, regular_max)
             counts = {}
             valid = True
             for game in rows:
                 game_type = game.get("type")
                 round_name = str(game.get("round") or "")
-                if game_type not in {"Playoff", "Saunders"} or not round_name:
+                if (game_type, round_name) not in postseason_counts.get(week, {}):
                     valid = False; break
-                counts[game_type] = counts.get(game_type, 0) + 1
-            if valid and counts == postseason_counts.get(week, counts):
+                counts[(game_type, round_name)] = counts.get((game_type, round_name), 0) + 1
+            if valid and counts == postseason_counts.get(week):
                 boundary = week; continue
         break
     return boundary

@@ -9,6 +9,7 @@ from collections import Counter, defaultdict
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
+from scoring_completion import postseason_expected
 
 SCHEMA_VERSION = 1
 GENERATOR_VERSION = 2
@@ -770,14 +771,18 @@ def validate_current_snapshot(current: dict[str, Any], season: int, max_week: in
     for game in current.get("games") or []:
         if not isinstance(game, dict): raise ValueError("CurrentSeason game must be an object")
         by_week.setdefault(game.get("week"), []).append(game)
+    regular_max = current.get("regular_season_max_week", 14)
+    if isinstance(regular_max, bool) or not isinstance(regular_max, int) or regular_max < 1:
+        raise ValueError("CurrentSeason regular season boundary is invalid")
     for week in range(1, boundary + 1):
         rows = by_week.get(week, []); seen: set[int] = set(); mids: set[Any] = set()
-        regular_max = int(current.get("regular_season_max_week") or 14)
         if week <= regular_max and len(rows) * 2 != len(expected_rosters):
             raise ValueError("CurrentSeason completed week is partial")
         for game in rows:
             a, b, mid = game.get("rosterA"), game.get("rosterB"), game.get("matchup_id")
-            if not isinstance(a, int) or not isinstance(b, int) or a == b or a not in expected_rosters or b not in expected_rosters or a in seen or b in seen or mid is None or mid in mids:
+            if (isinstance(a, bool) or isinstance(b, bool) or not isinstance(a, int) or not isinstance(b, int)
+                    or a == b or a not in expected_rosters or b not in expected_rosters or a in seen or b in seen
+                    or mid is None or isinstance(mid, bool) or mid in mids):
                 raise ValueError("CurrentSeason completed matchup coverage is invalid")
             if game.get("status") != "final" or any(isinstance(game.get(field), bool) or not isinstance(game.get(field), (int, float)) or not math.isfinite(game[field]) for field in ("scoreA", "scoreB")):
                 raise ValueError("CurrentSeason completed matchup scores/status are invalid")
@@ -785,13 +790,9 @@ def validate_current_snapshot(current: dict[str, Any], season: int, max_week: in
         if week <= regular_max:
             if seen != expected_rosters: raise ValueError("CurrentSeason completed roster coverage is invalid")
         else:
-            expected_counts = {15: {"Playoff": 2, "Saunders": 2}, 16: {"Playoff": 2, "Saunders": 2}, 17: {"Playoff": 1, "Saunders": 1}}
-            counts = Counter(str(game.get("type")) for game in rows)
-            if counts != expected_counts.get(week, counts) or any(
-                game.get("type") not in {"Playoff", "Saunders"}
-                or not str(game.get("round") or "").strip()
-                for game in rows
-            ):
+            expected_counts = postseason_expected(current, regular_max)
+            counts = Counter((game.get("type"), game.get("round")) for game in rows)
+            if counts != expected_counts.get(week):
                 raise ValueError("CurrentSeason postseason coverage is invalid")
 
 

@@ -132,6 +132,23 @@ def pair_matchups(matchups):
         by_mid.setdefault(mid, []).append(m)
     return [(items[0], items[1]) for items in by_mid.values() if len(items) == 2]
 
+def validate_completed_matchups(matchups, roster_ids):
+    expected = {int(value) for value in roster_ids}
+    seen = set(); mids = {}
+    for row in matchups:
+        rid = row.get("roster_id"); mid = row.get("matchup_id")
+        if not isinstance(rid, int) or rid not in expected or rid in seen or mid is None or mids.get(mid, 0) >= 2:
+            if rid in seen or mids.get(mid, 0) >= 2: raise ValueError("duplicate roster or matchup in completed week")
+        seen.add(rid)
+        mids[mid] = mids.get(mid, 0) + 1
+    pairs = pair_matchups(matchups)
+    if len(seen) != len(expected) or len(pairs) * 2 != len(expected) or any(count != 2 for count in mids.values()):
+        raise ValueError("completed week has incomplete matchup coverage")
+    for a, b in pairs:
+        if not all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) for v in (a.get("points"), b.get("points"))):
+            raise ValueError("completed week has missing or invalid scores")
+    return pairs
+
 def round2(x):
     return float(f"{float(x):.2f}")
 
@@ -344,7 +361,7 @@ def main():
 
     for w in weeks:
         matchups = get_matchups(args.league, w)
-        pairs = pair_matchups(matchups)
+        pairs = validate_completed_matchups(matchups, roster_ids) if args.completed_through_week is not None and w <= args.completed_through_week else pair_matchups(matchups)
         if not pairs:
             continue
 

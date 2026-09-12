@@ -94,9 +94,7 @@ def build_current_season_asset(args):
     cutoff = datetime.strptime(args.cutoff_date, "%Y-%m-%d").date() if args.cutoff_date else date.today()
     completed_through_week = getattr(args, "completed_through_week", None)
     if completed_through_week is None:
-        # Direct library callers from pre-policy fixtures must supply the policy
-        # boundary; retain a deterministic fixture default while CLI requires it.
-        completed_through_week = max(0, (args.current_week - 1) if args.current_week is not None else 1)
+        raise ValueError("a resolved completion boundary is required")
 
     playoff_pairs = set()
     saunders_pairs = set()

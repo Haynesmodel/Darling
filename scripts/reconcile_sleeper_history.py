@@ -1,66 +1,115 @@
 #!/usr/bin/env python3
-"""Read-only Sleeper history reconciliation; never mutates canonical assets."""
+"""Offline, report-only comparison of Sleeper matchup fixtures."""
+
 from __future__ import annotations
-import argparse, json, math, os, tempfile
-from datetime import datetime, timezone
+
+import json
+import math
+from datetime import date, datetime, timezone
 from pathlib import Path
-CANONICAL={"H2H.json","CurrentSeason.json","TransactionHistory.json"}
-def pair(r): return tuple(sorted((str(r.get("teamA","")),str(r.get("teamB","")))))
-def key(r): return (int(r.get("season",0)),int(r.get("week",0)),pair(r))
-def cents(v): return None if v is None or isinstance(v,bool) or not isinstance(v,(int,float)) or not math.isfinite(v) else round(float(v)*100)
-def score(r):
-    v=(r.get("scoreA"),r.get("scoreB")); t=(str(r.get("teamA","")),str(r.get("teamB",""))); return v if t[0]<=t[1] else v[::-1]
-def load_rows(path,label):
-    value=json.loads(Path(path).read_text(encoding="utf-8")); result={}
-    if not isinstance(value,list): raise ValueError(f"{label} must be a JSON array")
-    for row in value:
-        k=key(row)
-        if k in result: raise ValueError(f"{label} contains duplicate canonical key {k}")
-        result[k]=row
-    return result
-def load_source(path, mapping):
-    value=json.loads(Path(path).read_text(encoding="utf-8"))
-    if isinstance(value, list): return load_rows(path, "source")
-    if not isinstance(value, dict) or not isinstance(value.get("weeks"), dict): raise ValueError("source fixture requires retrieved_at and weeks")
-    rows=[]
-    for week, raw_rows in value["weeks"].items():
-        if not isinstance(raw_rows, list): raise ValueError("source week must be an array")
-        for row in raw_rows:
-            row=dict(row); row["week"]=int(week)
-            for side in ("A","B"):
-                roster=row.get(f"roster{side}") or row.get(f"roster_id{side}")
-                if roster is not None:
-                    if str(roster) not in mapping: raise ValueError("source contains unknown roster")
-                    row[f"team{side}"]=mapping[str(roster)]
-            rows.append(row)
-    temp=Path(tempfile.mkstemp(prefix="reconcile-source-")[1]); temp.write_text(json.dumps(rows),encoding="utf-8")
-    try: return load_rows(temp,"source")
-    finally: temp.unlink(missing_ok=True)
-def reconcile(old,new,season=2025,mapping="mapping.json"):
-    matched=[]; different=[]; missing=[]; added=[]
-    for k,before in old.items():
-        if k[0]!=season: continue
-        after=new.get(k)
-        if after is None: missing.append({"key":list(k)}); continue
-        if tuple(cents(v) for v in score(before))==tuple(cents(v) for v in score(after)) and before.get("status")==after.get("status"): matched.append({"key":list(k)})
-        else: different.append({"key":list(k),"before":{"scores":score(before),"status":before.get("status")},"after":{"scores":score(after),"status":after.get("status")}})
-    for k,v in new.items():
-        if k[0]==season and k not in old: added.append({"key":list(k),"after":v})
-    return {"season":season,"mapping":str(Path(mapping).resolve()),"matched":matched,"different":different,"missing":missing,"new":added,"summary":{"matched":len(matched),"different":len(different),"missing":len(missing),"new":len(added)},"downstream_consequences":"Differences may affect records, trophies, odds, recaps, and derived statistics; no assets are changed."}
-def safe(path,canonical,source):
-    target=Path(path).resolve(); roots=(canonical.resolve(),source.resolve())
-    if target.name in CANONICAL or any(root==target or root in target.parents for root in roots): raise ValueError("output must be outside canonical and source paths")
-    return target
-def main():
-    p=argparse.ArgumentParser(description=__doc__); p.add_argument("--season",type=int,required=True); p.add_argument("--mapping",required=True); p.add_argument("--canonical",required=True); p.add_argument("--source-fixture",required=True); p.add_argument("--out",required=True); p.add_argument("--out-candidate"); p.add_argument("--allow-live",action="store_true"); a=p.parse_args()
-    canonical=Path(a.canonical).resolve(); source=Path(a.source_fixture).resolve(); out=safe(a.out,canonical,source); mapping=json.loads(Path(a.mapping).read_text(encoding="utf-8"))
-    if not isinstance(mapping,dict): raise ValueError("mapping must be a JSON object")
-    result=reconcile(load_rows(canonical,"canonical"),load_source(source,mapping),a.season,a.mapping); result["source_retrieved_at"]=datetime.fromtimestamp(source.stat().st_mtime,timezone.utc).isoformat().replace("+00:00","Z"); result["report_generated_at"]=datetime.now(timezone.utc).isoformat().replace("+00:00","Z")
-    out.parent.mkdir(parents=True,exist_ok=True)
-    with tempfile.NamedTemporaryFile("w",encoding="utf-8",dir=out.parent,delete=False) as f: json.dump(result,f,indent=2,sort_keys=True); f.write("\n"); temp=f.name
-    os.replace(temp,out)
-    if a.out_candidate:
-        candidate=safe(a.out_candidate,canonical,source)
-        rows=[row for row in load_source(source,mapping).values() if int(row.get("season",a.season))==a.season]
-        candidate.write_text(json.dumps(rows,indent=2,sort_keys=True)+"\n",encoding="utf-8")
-if __name__=="__main__": main()
+from typing import Any
+
+import sleeper_to_h2h as sleeper
+
+
+def _utc_timestamp(value: Any) -> str:
+    if not isinstance(value, str) or not value.endswith("Z"):
+        raise ValueError("retrieved_at must be an ISO-8601 UTC timestamp")
+    try:
+        parsed = datetime.fromisoformat(value[:-1] + "+00:00")
+    except ValueError as error:
+        raise ValueError("retrieved_at must be an ISO-8601 UTC timestamp") from error
+    if parsed.tzinfo is None:
+        raise ValueError("retrieved_at must include UTC")
+    return value
+
+
+def _score(value: Any) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        raise ValueError("points must be finite numeric values")
+    return sleeper.round2(value)
+
+
+def _key(row: dict[str, Any]) -> tuple[int, int, tuple[str, str]]:
+    return int(row["season"]), int(row["week"]), tuple(sorted((str(row["teamA"]), str(row["teamB"]))))
+
+
+def _orient(row: dict[str, Any]) -> tuple[float, float]:
+    scores = (row["scoreA"], row["scoreB"])
+    return scores if str(row["teamA"]) <= str(row["teamB"]) else scores[::-1]
+
+
+def load_fixture(path: str | Path, season: int, mapping: dict[str, Any]) -> tuple[list[dict[str, Any]], str]:
+    fixture_path = Path(path).resolve()
+    value = json.loads(fixture_path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict) or not isinstance(value.get("weeks"), dict):
+        raise ValueError("fixture must contain retrieved_at and weeks")
+    retrieved_at = _utc_timestamp(value.get("retrieved_at"))
+    rows: list[dict[str, Any]] = []
+    seen_keys: set[tuple[int, int, tuple[str, str]]] = set()
+    metadata = value.get("metadata", {})
+    if not isinstance(metadata, dict):
+        raise ValueError("metadata must be an object")
+    for week_text, raw_rows in value["weeks"].items():
+        try:
+            week = int(week_text)
+        except (TypeError, ValueError) as error:
+            raise ValueError("week keys must be integer strings") from error
+        if not 1 <= week <= 25 or not isinstance(raw_rows, list):
+            raise ValueError("fixture week is invalid")
+        by_matchup: dict[Any, list[dict[str, Any]]] = {}
+        for raw in raw_rows:
+            if not isinstance(raw, dict):
+                raise ValueError("raw matchup rows must be objects")
+            roster_id = raw.get("roster_id")
+            matchup_id = raw.get("matchup_id")
+            if isinstance(roster_id, bool) or not isinstance(roster_id, int) or str(roster_id) not in mapping:
+                raise ValueError("raw row has unknown or invalid roster_id")
+            if matchup_id is None or isinstance(matchup_id, (dict, list, bool)):
+                raise ValueError("raw row has invalid matchup_id")
+            _score(raw.get("points"))
+            by_matchup.setdefault(matchup_id, []).append(raw)
+        for matchup_id, pair in by_matchup.items():
+            if len(pair) != 2 or pair[0].get("roster_id") == pair[1].get("roster_id"):
+                raise ValueError("each matchup must contain exactly two distinct rosters")
+            owner_a = str(mapping[str(pair[0]["roster_id"])])
+            owner_b = str(mapping[str(pair[1]["roster_id"])])
+            details = metadata.get(str(week), {}).get(str(matchup_id), {})
+            if not isinstance(details, dict):
+                raise ValueError("matchup metadata must be an object")
+            game_date = details.get("date") or sleeper.sunday_for_week(season, week).isoformat()
+            row = {"season": season, "date": game_date, "teamA": owner_a, "teamB": owner_b,
+                   "scoreA": _score(pair[0]["points"]), "scoreB": _score(pair[1]["points"]),
+                   "week": week, "round": details.get("round"), "type": details.get("type", "Regular")}
+            key = _key(row)
+            if key in seen_keys:
+                raise ValueError("fixture contains duplicate canonical matchup")
+            seen_keys.add(key); rows.append(row)
+    return rows, retrieved_at
+
+
+def reconcile(canonical: list[dict[str, Any]], candidate: list[dict[str, Any]], season: int,
+              source_path: str = "", mapping_path: str = "", canonical_path: str = "",
+              retrieved_at: str = "") -> dict[str, Any]:
+    before = {_key(row): row for row in canonical if int(row.get("season", 0)) == season}
+    after = {_key(row): row for row in candidate if int(row.get("season", 0)) == season}
+    matched, missing, new, different = [], [], [], []
+    fields = ("date", "type", "round")
+    for key, row in before.items():
+        other = after.get(key)
+        if other is None:
+            missing.append({"key": list(key)})
+            continue
+        diagnostics = {}
+        if _orient(row) != _orient(other): diagnostics["scores"] = {"before": _orient(row), "after": _orient(other)}
+        for field in fields:
+            if row.get(field) != other.get(field): diagnostics[field] = {"before": row.get(field), "after": other.get(field)}
+        (different if diagnostics else matched).append({"key": list(key), **({"before": row, "after": other, "diagnostics": diagnostics} if diagnostics else {})})
+    for key, row in after.items():
+        if key not in before: new.append({"key": list(key), "after": row})
+    return {"season": season, "source_path": source_path, "mapping_path": mapping_path,
+            "canonical_path": canonical_path, "retrieved_at": retrieved_at,
+            "generated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+            "matched": matched, "missing": missing, "new": new, "different": different,
+            "summary": {"matched": len(matched), "missing": len(missing), "new": len(new), "different": len(different)},
+            "downstream_consequences": "Differences may affect records, trophies, odds, recaps, and derived statistics."}

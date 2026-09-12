@@ -11,7 +11,7 @@ class CompletionTests(unittest.TestCase):
         state = {"season": 2026, "season_type": "regular", "week": 2}
         for second, expected in [(12 * 3600 + 59 * 60 + 59, 0), (13 * 3600, 1), (13 * 3600 + 1, 1)]:
             now = datetime(2026, 9, 15, tzinfo=timezone.utc).replace(hour=0) + __import__('datetime').timedelta(seconds=second)
-            self.assertEqual(resolve_completion(season=2026, max_week=17, week1_sunday=self.anchor, league_season=2026, nfl_state=state, now=now).completed_through_week, expected)
+            self.assertEqual(resolve_completion(season=2026, max_week=17, week1_sunday=self.anchor, league_status="in_season", league_season=2026, nfl_state=state, now=now).completed_through_week, expected)
     def test_unknown_state_retains_verified_boundary(self):
         result = resolve_completion(season=2026, max_week=17, week1_sunday=self.anchor, league_season=2026, last_verified_completed=2, nfl_state={"season": 2025}, now=datetime.now(timezone.utc))
         self.assertEqual(result.completed_through_week, 2)

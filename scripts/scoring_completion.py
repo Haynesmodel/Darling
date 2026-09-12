@@ -140,7 +140,12 @@ def resolve_completion(*, season: int, max_week: int, week1_sunday: date,
     if now.tzinfo is None:
         raise ValueError("now must be timezone-aware UTC.")
     now = now.astimezone(timezone.utc)
-    status = str(league_status or "unknown").lower()
+    if league_status is not None and not isinstance(league_status, str):
+        raise ValueError("league_status must be a string")
+    if nfl_state is not None and not isinstance(nfl_state, dict):
+        raise ValueError("nfl_state must be an object")
+    status = (league_status or "unknown").lower()
+    known_statuses = {"pre_draft", "drafting", "in_season", "complete"}
     state = nfl_state or {}
     state_season = _state_season(state)
     state_type = state.get("season_type")
@@ -153,6 +158,8 @@ def resolve_completion(*, season: int, max_week: int, week1_sunday: date,
         guard = datetime.combine(week1_sunday + timedelta(days=7 * (max_week - 1) + 2), time(13), timezone.utc)
         inferred = max_week if now >= guard else 0
         basis = "league_complete_after_guard" if inferred else "league_complete_before_guard"
+    elif status != "in_season":
+        inferred, basis = last_verified_completed, "verified_boundary_unknown_status"
     else:
         if state_season != season or not isinstance(state_type, str) or not state_type.strip():
             inferred, basis = last_verified_completed, "verified_boundary_unknown_state"

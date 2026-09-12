@@ -116,7 +116,7 @@ function classifyGame(game) {
   return 'Playoff';
 }
 
-function analyzeH2H(beforeGames, afterGames, season) {
+function analyzeH2H(beforeGames, afterGames, season, completed) {
   assertGameArray(beforeGames, 'Before H2H');
   assertGameArray(afterGames, 'After H2H');
 
@@ -150,10 +150,12 @@ function analyzeH2H(beforeGames, afterGames, season) {
       `Target-season safety failed: ${outOfSeasonAdds.length} record(s) were added outside season ${season}.`,
     );
   }
-
   const targetBefore = beforeGames.filter(game => Number(game.season) === season);
   const targetAfter = afterGames.filter(game => Number(game.season) === season);
   const targetAdds = added.filter(game => Number(game.season) === season);
+  if (targetAdds.some(game => !Number.isInteger(Number(game.week)) || Number(game.week) > completed)) {
+    throw new Error(`Completion boundary safety failed: H2H contains an added game after week ${completed}.`);
+  }
   const addedByType = emptyTypeCounts();
   const owners = new Set();
   targetAdds.forEach((game) => {
@@ -208,6 +210,24 @@ function assertCurrentSeason(value, season, expectedLeagueId) {
   if (String(value.league_id) !== String(expectedLeagueId)) {
     throw new Error('CurrentSeason safety failed: candidate league_id does not match the configured league.');
   }
+}
+
+function validateCompletion(completion, season, current) {
+  const max = completion.max_week;
+  if (completion.season !== season || !Number.isInteger(max) || max < 1 || max > 25 || max !== current.max_week) {
+    throw new Error('Completion report season/max_week is malformed or disagrees with CurrentSeason.');
+  }
+  if (!Number.isInteger(completion.completed) || completion.completed < 0 || completion.completed > max) {
+    throw new Error('Completion report completed boundary is malformed.');
+  }
+  if (completion.active !== null && completion.active !== completion.completed + 1) {
+    throw new Error('Completion report active week is malformed.');
+  }
+  if (completion.completed === max && completion.active !== null) throw new Error('Completion report active week must be null at max.');
+  if (!['manual_override', 'nfl_state_and_calendar_guard', 'league_complete_after_guard', 'league_complete_before_guard', 'league_not_started', 'verified_boundary_unknown_state', 'verified_boundary_unknown_status', 'verified_boundary_non_regular_state', 'verified_boundary_unknown_week', 'contradictory_metadata'].includes(completion.basis)) throw new Error('Completion report basis is not recognized.');
+  if (!Array.isArray(completion.warnings) || completion.warnings.some(value => typeof value !== 'string')) throw new Error('Completion report warnings are malformed.');
+  if (typeof completion.clock !== 'string' || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z$/.test(completion.clock) || Number.isNaN(Date.parse(completion.clock))) throw new Error('Completion report clock is malformed.');
+  if (completion.basis === 'manual_override' ? typeof completion.override_reason !== 'string' || !completion.override_reason.trim() : completion.override_reason !== null) throw new Error('Completion report override reason is malformed.');
 }
 
 function manifestStats(value) {
@@ -417,13 +437,8 @@ function summarize(options, environment = process.env) {
   const completion = options['completion-report'] ? readJson(options['completion-report']) : {
     completed: null, active: null, basis: 'not provided', warnings: [], clock: null, override_reason: null,
   };
-  if (!completion || !Number.isInteger(completion.completed) || completion.completed < 0 || completion.completed > 25 ||
-      (completion.active !== null && !Number.isInteger(completion.active)) || typeof completion.basis !== 'string' ||
-      !Array.isArray(completion.warnings) || typeof completion.clock !== 'string') {
-    throw new Error('Completion report is malformed.');
-  }
-
   assertCurrentSeason(afterCurrent, options.season, environment.LEAGUE_ID);
+  validateCompletion(completion, options.season, afterCurrent);
   const summary = {
     season: options.season,
     source: {
@@ -434,7 +449,7 @@ function summarize(options, environment = process.env) {
     },
     completion,
     changed_files: files,
-    h2h: analyzeH2H(beforeH2H, afterH2H, options.season),
+    h2h: analyzeH2H(beforeH2H, afterH2H, options.season, completion.completed),
     current_season: {
       before: currentSeasonStats(beforeCurrent),
       after: currentSeasonStats(afterCurrent),
@@ -456,6 +471,9 @@ function summarize(options, environment = process.env) {
     },
     validation_commands: VALIDATION_COMMANDS,
   };
+  const candidateGames = afterCurrent.games || [];
+  if (candidateGames.some(game => Number(game.week) <= completion.completed && game.status !== 'final')) throw new Error('Completion boundary safety failed: completed CurrentSeason game is not final.');
+  if (candidateGames.some(game => Number(game.week) > completion.completed && game.status === 'final')) throw new Error('Completion boundary safety failed: provisional CurrentSeason game is final.');
   if (summary.transactions.completed_week_after !== completion.completed) {
     throw new Error(`Completion boundary ${completion.completed} does not match TransactionHistory ${summary.transactions.completed_week_after}.`);
   }

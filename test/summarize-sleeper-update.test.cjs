@@ -35,6 +35,7 @@ function current(overrides = {}) {
     source: 'sleeper',
     league_id: 'league-123',
     season: 2025,
+    max_week: 17,
     current_week: 1,
     teams: [{ owner: 'Joe' }, { owner: 'Shap' }],
     games: [{ ...game(), status: 'final' }],
@@ -67,7 +68,7 @@ function transactions(overrides = {}) {
         complete_count: 1,
         failed_count: 0,
         pending_count: 0,
-        completed_week: 1,
+        completed_week: 17,
         missing_player_metadata: 0,
         type_counts: { waiver: 1, free_agent: 0, trade: 0, commissioner: 0 },
       },
@@ -105,7 +106,7 @@ function fixture({
   const changedFile = path.join(root, 'changed.txt');
   fs.writeFileSync(changedFile, changed.join('\n'));
   const completionReport = path.join(root, 'completion.json');
-  fs.writeFileSync(completionReport, JSON.stringify({ completed: 1, active: 2, basis: 'fixture', warnings: [], clock: '2025-09-16T13:00:00Z', override_reason: null }));
+  fs.writeFileSync(completionReport, JSON.stringify({ season: 2025, max_week: 17, completed: 17, active: null, basis: 'nfl_state_and_calendar_guard', warnings: [], clock: '2025-09-16T13:00:00Z', override_reason: null }));
   return {
     root,
     options: {
@@ -197,6 +198,10 @@ test('CurrentSeason statistics include teams, games, weeks, statuses, and flags'
     update_context: { contains_live_scores: true, contains_projected_scores: true },
   });
   withFixture({ beforeCurrent: null, afterCurrent }, (value) => {
+    fs.writeFileSync(path.join(value.root, 'completion.json'), JSON.stringify({ season: 2025, max_week: 17, completed: 1, active: 2, basis: 'nfl_state_and_calendar_guard', warnings: [], clock: '2025-09-16T13:00:00Z', override_reason: null }));
+    const afterTransactions = transactions();
+    afterTransactions.seasons[0].coverage.completed_week = 1;
+    fs.writeFileSync(path.join(value.options['after-dir'], 'TransactionHistory.json'), JSON.stringify(afterTransactions));
     const stats = runSummary(value).summary.current_season;
     assert.equal(stats.before, null);
     assert.deepEqual(stats.after.statuses, { final: 1, live: 1, scheduled: 1 });

@@ -137,8 +137,8 @@ def build_current_season_asset(args):
             for raw in (a.get("points"), b.get("points")):
                 if raw is not None and (not isinstance(raw, (int, float)) or isinstance(raw, bool) or not math.isfinite(raw)):
                     raise ValueError(f"Invalid matchup score in week {week}.")
-            score_a_raw = sleeper.round2(a.get("points", 0.0))
-            score_b_raw = sleeper.round2(b.get("points", 0.0))
+            score_a_raw = sleeper.round2(a["points"]) if has_a else 0.0
+            score_b_raw = sleeper.round2(b["points"]) if has_b else 0.0
             if completed_through_week is not None and week <= completed_through_week and not (has_a and has_b):
                 raise ValueError(f"Completed week {week} requires two finite numeric scores.")
             status = matchup_status(week, args.current_week, game_date, cutoff, score_a_raw, score_b_raw,

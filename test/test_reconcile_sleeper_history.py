@@ -10,7 +10,9 @@ class ReconciliationFixtureTests(unittest.TestCase):
         value={'retrieved_at':'2025-09-20T12:00:00Z','weeks':{'1':[{'roster_id':1,'matchup_id':7,'points':80.004},{'roster_id':2,'matchup_id':7,'points':80.005}]}}
         directory,path=self.fixture(value)
         try:
-            rows,retrieved=load_fixture(path,2025,{'1':'Zed','2':'Amy'}); self.assertEqual(retrieved,value['retrieved_at']); self.assertEqual(rows[0]['teamA'],'Zed'); self.assertEqual(reconcile(rows,rows,2025,retrieved_at=retrieved)['summary']['matched'],1)
+            rows,retrieved=load_fixture(path,2025,{'1':'Zed','2':'Amy'}); self.assertEqual(retrieved,value['retrieved_at']); self.assertEqual(rows[0]['teamA'],'Zed')
+            reversed_candidate=[dict(rows[0], teamA='Amy', teamB='Zed', scoreA=80.00, scoreB=80.004)]
+            self.assertEqual(reconcile(rows,reversed_candidate,2025,retrieved_at=retrieved)['summary']['matched'],1)
         finally: directory.cleanup()
     def test_reports_field_difference(self):
         value={'retrieved_at':'2025-09-20T12:00:00Z','weeks':{'1':[{'roster_id':1,'matchup_id':7,'points':80},{'roster_id':2,'matchup_id':7,'points':75}]}}
@@ -53,4 +55,22 @@ class ReconciliationFixtureTests(unittest.TestCase):
             rows, _ = load_fixture(path, 2025, {"1": "A", "2": "B"})
             with self.assertRaises(ValueError): reconcile(rows, rows + [dict(rows[0])], 2025)
         finally: directory.cleanup()
+
+    def test_combined_counts_and_payloads(self):
+        row = {"season": 2025, "week": 1, "teamA": "A", "teamB": "B", "scoreA": 1, "scoreB": 2, "date": "2025-09-07", "type": "Regular", "round": None}
+        canonical = [row, dict(row, week=2, scoreA=3, scoreB=4, date="2025-09-14")]
+        candidate = [row, dict(row, week=2, scoreA=9), dict(row, week=3, scoreA=5, scoreB=6)]
+        report = reconcile(canonical, candidate, 2025)
+        self.assertEqual(report["summary"], {"matched": 1, "missing": 0, "new": 1, "different": 1})
+        self.assertEqual(report["new"][0]["after"], candidate[2])
+
+    def test_duplicate_canonical_and_invalid_round_rejected(self):
+        row = {"season": 2025, "week": 1, "teamA": "A", "teamB": "B", "scoreA": 1, "scoreB": 2, "date": "2025-09-07", "type": "Regular", "round": None}
+        with self.assertRaises(ValueError): reconcile([row, dict(row)], [], 2025)
+        value = {"retrieved_at": "2025-09-20T12:00:00Z", "weeks": {"1": [{"roster_id": 1, "matchup_id": 1, "points": 1}, {"roster_id": 2, "matchup_id": 1, "points": 2}]}, "metadata": {"1": {"1": {"type": "Playoff", "round": "Bad"}}}}
+        directory, path = self.fixture(value)
+        try:
+            with self.assertRaises(ValueError): load_fixture(path, 2025, {"1": "A", "2": "B"})
+        finally: directory.cleanup()
+
 if __name__=='__main__': unittest.main()

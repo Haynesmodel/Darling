@@ -82,7 +82,10 @@ def load_fixture(path: str | Path, season: int, mapping: dict[str, Any]) -> tupl
                 raise ValueError("each matchup must contain exactly two distinct rosters")
             owner_a = str(mapping[str(pair[0]["roster_id"])])
             owner_b = str(mapping[str(pair[1]["roster_id"])])
-            details = metadata.get(str(week), {}).get(str(matchup_id), {})
+            week_metadata = metadata.get(str(week), {})
+            if not isinstance(week_metadata, dict):
+                raise ValueError("metadata week must be an object")
+            details = week_metadata.get(str(matchup_id), {})
             if not isinstance(details, dict):
                 raise ValueError("matchup metadata must be an object")
             game_date = details.get("date") or sleeper.sunday_for_week(season, week).isoformat()
@@ -90,9 +93,15 @@ def load_fixture(path: str | Path, season: int, mapping: dict[str, Any]) -> tupl
             except (TypeError, ValueError) as error: raise ValueError("matchup metadata date is invalid") from error
             game_type = details.get("type", "Regular")
             if game_type not in {"Regular", "Playoff", "Saunders"}: raise ValueError("matchup metadata type is invalid")
+            round_name = details.get("round")
+            valid_rounds = {"Playoff": {"Wild Card", "Semi Final", "Championship"}, "Saunders": {"Saunders Wild Card", "Saunders Semi Final", "Saunders Final"}}
+            if game_type == "Regular" and round_name not in (None, ""):
+                raise ValueError("Regular matchup round must be empty")
+            if game_type in valid_rounds and round_name not in valid_rounds[game_type]:
+                raise ValueError("postseason matchup round is invalid")
             row = {"season": season, "date": game_date, "teamA": owner_a, "teamB": owner_b,
                    "scoreA": _score(pair[0]["points"]), "scoreB": _score(pair[1]["points"]),
-                   "week": week, "round": details.get("round"), "type": game_type}
+                   "week": week, "round": round_name, "type": game_type}
             key = _key(row)
             if key in seen_keys:
                 raise ValueError("fixture contains duplicate canonical matchup")
@@ -131,7 +140,7 @@ def reconcile(canonical: list[dict[str, Any]], candidate: list[dict[str, Any]], 
             if row.get(field) != other.get(field): diagnostics[field] = {"before": row.get(field), "after": other.get(field)}
         (different if diagnostics else matched).append({"key": list(key), **({"before": row, "after": other, "diagnostics": diagnostics} if diagnostics else {})})
     for key in sorted(after):
-        if key not in before: new.append({"key": list(key), "after": row})
+        if key not in before: new.append({"key": list(key), "after": after[key]})
     return {"season": season, "source_path": source_path, "mapping_path": mapping_path,
             "canonical_path": canonical_path, "retrieved_at": retrieved_at,
             "generated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),

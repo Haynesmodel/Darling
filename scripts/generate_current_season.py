@@ -57,7 +57,7 @@ def matchup_status(week, current_week, game_date, cutoff, score_a, score_b, comp
     if completed_through_week is None:
         raise ValueError("a resolved completion boundary is required")
     if week <= completed_through_week:
-        return "final" if scores_present else "scheduled"
+        return "final"
     if week > (current_week or (completed_through_week + 1)):
         return "scheduled"
     return "live" if scores_present else "scheduled"
@@ -139,12 +139,13 @@ def build_current_season_asset(args):
             for raw in (a.get("points"), b.get("points")):
                 if raw is not None and (not isinstance(raw, (int, float)) or isinstance(raw, bool) or not math.isfinite(raw)):
                     raise ValueError(f"Invalid matchup score in week {week}.")
-            score_a_raw = sleeper.round2(a["points"]) if has_a else 0.0
-            score_b_raw = sleeper.round2(b["points"]) if has_b else 0.0
+            score_a_raw = sleeper.round2(a["points"]) if has_a else None
+            score_b_raw = sleeper.round2(b["points"]) if has_b else None
             if completed_through_week is not None and week <= completed_through_week and not (has_a and has_b):
                 raise ValueError(f"Completed week {week} requires two finite numeric scores.")
+            score_evidence = (has_a or has_b) and not (has_a and has_b and score_a_raw == 0 and score_b_raw == 0)
             status = matchup_status(week, args.current_week, game_date, cutoff, score_a_raw, score_b_raw,
-                                    completed_through_week, has_a or has_b)
+                                    completed_through_week, score_evidence)
 
             game_type = "Regular"
             round_name = ""

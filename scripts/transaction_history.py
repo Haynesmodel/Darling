@@ -276,6 +276,30 @@ def _matchup_index(
     return index
 
 
+def _validate_raw_matchups(matchups: dict[int, list[dict[str, Any]]], owners: dict[int, str], boundary: int) -> None:
+    """Validate the complete Sleeper source used for player scoring."""
+    for week in range(1, boundary + 1):
+        rows = matchups.get(week)
+        if not isinstance(rows, list):
+            raise ValueError(f"matchup week {week} is missing")
+        seen_rosters: set[int] = set()
+        grouped: dict[Any, list[dict[str, Any]]] = defaultdict(list)
+        for row in rows:
+            if not isinstance(row, dict):
+                raise ValueError(f"matchup week {week} contains a malformed row")
+            roster_id = row.get("roster_id"); matchup_id = row.get("matchup_id")
+            if isinstance(roster_id, bool) or not isinstance(roster_id, int) or roster_id not in owners or roster_id in seen_rosters:
+                raise ValueError(f"matchup week {week} has invalid roster coverage")
+            if matchup_id is None or isinstance(matchup_id, (dict, list, bool)):
+                raise ValueError(f"matchup week {week} has an invalid matchup id")
+            points = row.get("points")
+            if isinstance(points, bool) or not isinstance(points, (int, float)) or not math.isfinite(points):
+                raise ValueError(f"matchup week {week} has invalid points")
+            seen_rosters.add(roster_id); grouped[matchup_id].append(row)
+        if seen_rosters != set(owners) or any(len(pair) != 2 for pair in grouped.values()):
+            raise ValueError(f"matchup week {week} has incomplete matchup coverage")
+
+
 def _movement_events(
     draft: dict[str, Any],
     transactions: list[dict[str, Any]],
@@ -748,7 +772,9 @@ def validate_current_snapshot(current: dict[str, Any], season: int, max_week: in
         by_week.setdefault(game.get("week"), []).append(game)
     for week in range(1, boundary + 1):
         rows = by_week.get(week, []); seen: set[int] = set(); mids: set[Any] = set()
-        if len(rows) * 2 != len(expected_rosters): raise ValueError("CurrentSeason completed week is partial")
+        regular_max = int(current.get("regular_season_max_week") or 14)
+        if week <= regular_max and len(rows) * 2 != len(expected_rosters):
+            raise ValueError("CurrentSeason completed week is partial")
         for game in rows:
             a, b, mid = game.get("rosterA"), game.get("rosterB"), game.get("matchup_id")
             if not isinstance(a, int) or not isinstance(b, int) or a == b or a not in expected_rosters or b not in expected_rosters or a in seen or b in seen or mid is None or mid in mids:
@@ -756,7 +782,17 @@ def validate_current_snapshot(current: dict[str, Any], season: int, max_week: in
             if game.get("status") != "final" or any(isinstance(game.get(field), bool) or not isinstance(game.get(field), (int, float)) or not math.isfinite(game[field]) for field in ("scoreA", "scoreB")):
                 raise ValueError("CurrentSeason completed matchup scores/status are invalid")
             seen.update((a, b)); mids.add(mid)
-        if seen != expected_rosters: raise ValueError("CurrentSeason completed roster coverage is invalid")
+        if week <= regular_max:
+            if seen != expected_rosters: raise ValueError("CurrentSeason completed roster coverage is invalid")
+        else:
+            expected_counts = {15: {"Playoff": 2, "Saunders": 2}, 16: {"Playoff": 2, "Saunders": 2}, 17: {"Playoff": 1, "Saunders": 1}}
+            counts = Counter(str(game.get("type")) for game in rows)
+            if counts != expected_counts.get(week, counts) or any(
+                game.get("type") not in {"Playoff", "Saunders"}
+                or not str(game.get("round") or "").strip()
+                for game in rows
+            ):
+                raise ValueError("CurrentSeason postseason coverage is invalid")
 
 
 def rosters_at_completed_week(
@@ -808,6 +844,7 @@ def build_season(
         raise ValueError("resolved transaction boundary is invalid")
     completed_week = completed_week_override
     validate_current_snapshot(current, season, max_week, completed_week, set(owners))
+    _validate_raw_matchups(matchups, owners, completed_week)
     draft = _normalize_draft_asset(selected_draft, draft_picks, owners)
     transactions = normalize_transactions(transaction_rounds, owners, max_week)
     boundary_rosters = rosters_at_completed_week(rosters, owners, transactions, completed_week)

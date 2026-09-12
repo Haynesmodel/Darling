@@ -277,6 +277,8 @@ def main():
 
     if args.only_played and args.completed_through_week is None:
         parser.error("--only-played requires an explicit resolved --completed-through-week boundary")
+    if not args.list_teams and args.completed_through_week is None:
+        parser.error("appending H2H requires an explicit resolved --completed-through-week boundary")
     if args.completed_through_week is not None and not 0 <= args.completed_through_week <= args.max_week:
         parser.error("--completed-through-week must be between 0 and --max-week")
 
@@ -367,7 +369,7 @@ def main():
 
         fetched_weeks.append(w)
         game_date = sunday_for_week(args.season, w)
-        if args.only_played and args.completed_through_week is not None and w > args.completed_through_week:
+        if args.completed_through_week is not None and w > args.completed_through_week:
             continue
 
         for a, b in pairs:

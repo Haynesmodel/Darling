@@ -25,7 +25,9 @@ def retained_boundary_from_snapshot(snapshot: dict[str, Any], season: int, max_w
     weeks_fetched = snapshot.get("weeks_fetched")
     teams = snapshot.get("teams")
     games = snapshot.get("games")
-    if not isinstance(weeks_fetched, list) or len(set(weeks_fetched)) != len(weeks_fetched) or not isinstance(teams, list) or not isinstance(games, list) or not teams:
+    if (not isinstance(weeks_fetched, list) or len(set(weeks_fetched)) != len(weeks_fetched)
+            or any(isinstance(week, bool) or not isinstance(week, int) for week in weeks_fetched)
+            or not isinstance(teams, list) or not isinstance(games, list) or not teams):
         raise ValueError("same-season CurrentSeason snapshot lacks coverage metadata")
     team_ids = [team.get("roster_id") for team in teams if isinstance(team, dict)]
     if len(team_ids) != len(teams) or any(not isinstance(value, int) or isinstance(value, bool) for value in team_ids) or len(set(team_ids)) != len(team_ids):
@@ -38,10 +40,14 @@ def retained_boundary_from_snapshot(snapshot: dict[str, Any], season: int, max_w
         if not isinstance(week, int) or not 1 <= week <= max_week: raise ValueError("invalid CurrentSeason week")
         game_by_week.setdefault(week, []).append(game)
     boundary = 0
+    regular_max = int(snapshot.get("regular_season_max_week") or snapshot.get("playoff_rules", {}).get("regular_season_max_week", 14))
+    postseason_counts = {15: {"Playoff": 2, "Saunders": 2}, 16: {"Playoff": 2, "Saunders": 2}, 17: {"Playoff": 1, "Saunders": 1}}
     for week in range(1, max_week + 1):
         if week not in weeks_fetched: break
         rows = game_by_week.get(week, [])
-        if len(rows) != owner_count // 2 or owner_count % 2 or any(game.get("status") != "final" for game in rows): break
+        if week <= regular_max and (len(rows) != owner_count // 2 or owner_count % 2): break
+        if week > regular_max and len(rows) == 0: break
+        if any(game.get("status") != "final" for game in rows): break
         rosters: set[int] = set(); matchups: set[Any] = set()
         for game in rows:
             if not all(isinstance(game.get(field), (int, float)) and not isinstance(game.get(field), bool) and math.isfinite(game[field]) for field in ("scoreA", "scoreB")):
@@ -51,7 +57,18 @@ def retained_boundary_from_snapshot(snapshot: dict[str, Any], season: int, max_w
                 break
             rosters.update(pair); matchups.add(game.get("matchup_id"))
         else:
-            if rosters == set(team_ids): boundary = week; continue
+            if week <= regular_max:
+                if rosters == set(team_ids): boundary = week; continue
+            counts = {}
+            valid = True
+            for game in rows:
+                game_type = game.get("type")
+                round_name = str(game.get("round") or "")
+                if game_type not in {"Playoff", "Saunders"} or not round_name:
+                    valid = False; break
+                counts[game_type] = counts.get(game_type, 0) + 1
+            if valid and counts == postseason_counts.get(week, counts):
+                boundary = week; continue
         break
     return boundary
 

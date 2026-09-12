@@ -5,7 +5,6 @@ set -euo pipefail
 # League settings (override per season)
 LEAGUE_ID="${LEAGUE_ID:-1257071385973362690}"
 REQUESTED_SEASON="${SEASON:-}"
-REQUESTED_CURRENT_WEEK="${CURRENT_WEEK:-}"
 CUTOFF_DATE="${CUTOFF_DATE:-}"
 COMPLETED_OVERRIDE="${COMPLETED_THROUGH_WEEK_OVERRIDE:-}"
 COMPLETED_OVERRIDE_REASON="${COMPLETED_THROUGH_WEEK_REASON:-}"
@@ -92,13 +91,6 @@ if [[ "${STATE_LEAGUE_SEASON}" != "${SEASON}" ]]; then
   echo "ERROR: requested season ${SEASON} does not match Sleeper league season ${STATE_LEAGUE_SEASON}; refusing extraction." >&2
   exit 2
 fi
-if [[ -n "${REQUESTED_CURRENT_WEEK}" ]]; then
-  CURRENT_WEEK="${REQUESTED_CURRENT_WEEK}"
-elif [[ -n "${STATE_WEEK}" && "${STATE_SEASON}" == "${SEASON}" ]]; then
-  CURRENT_WEEK="${STATE_WEEK}"
-else
-  CURRENT_WEEK=""
-fi
 MAP_FILE="${SCRIPT_DIR}/${SEASON}_team_mapping.json"
 
 COMPLETION_JSON="$(${PY} - "${SEASON}" "${MAX_WEEK}" "${STATE_JSON}" "${SCRIPT_DIR}" "${CUTOFF_DATE}" "${COMPLETED_OVERRIDE}" "${COMPLETED_OVERRIDE_REASON}" "${SCHEDULED_RUN}" "${ASSETS_DIR}/CurrentSeason.json" <<'PY'
@@ -127,7 +119,7 @@ node -e 'require("node:fs").writeFileSync(process.argv[2], process.argv[1] + "\n
 echo "=== Sleeper -> H2H update ==="
 echo "League:       configured"
 echo "Season:       ${SEASON}"
-echo "Current week: ${CURRENT_WEEK:-auto}"
+echo "Provider week: ${STATE_WEEK:-unknown}"
 echo "Completed through: ${COMPLETED_THROUGH_WEEK} (${COMPLETION_BASIS})"
 echo "Input:        ${IN_H2H}"
 echo "Output:       ${OUT_H2H}"

@@ -238,7 +238,7 @@ def main():
     parser.add_argument("--out", required=True, help="Path to write CurrentSeason.json")
     parser.add_argument("--map", required=True, help="Path to roster_id -> canonical team name mapping json")
     parser.add_argument("--weeks", default="1-17", help="Weeks to fetch, e.g. '1-14' or '1-17'")
-    parser.add_argument("--cutoff-date", default=None, help="Optional YYYY-MM-DD cutoff for final/scheduled status")
+    parser.add_argument("--cutoff-date", default=None, help="Optional reproducible metadata clock; never determines final/scheduled status")
     parser.add_argument("--current-week", type=int, default=None, help="Override current week")
     parser.add_argument("--regular-season-max-week", type=int, default=14)
     parser.add_argument("--playoff-slots", type=int, default=6)

@@ -269,8 +269,8 @@ def main():
     parser.add_argument("--list-teams", action="store_true", help="Only list teams from Sleeper and exit")
     parser.add_argument("--weeks", type=str, default="1-14", help="Weeks to fetch, e.g. '1-14' or '15-17'")
     parser.add_argument("--only-played", dest="only_played", action="store_true", default=False,
-                        help="Include only games that have happened (by week Sunday) and are not 0-0")
-    parser.add_argument("--cutoff-date", type=str, default=None, help="Optional YYYY-MM-DD cutoff for only-played")
+                        help="Deprecated compatibility flag; completion is governed only by the explicit resolved boundary")
+    parser.add_argument("--cutoff-date", type=str, default=None, help="Optional reproducible metadata clock; never asserts completion")
     parser.add_argument("--max-week", type=int, default=17, help="Hard cap for weeks (default: 17)")
     parser.add_argument("--regular-season-max-week", type=int, default=14, help="Regular season last week (default: 14)")
     parser.add_argument("--allow-postseason", action="store_true", default=False,

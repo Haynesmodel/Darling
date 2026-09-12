@@ -164,7 +164,7 @@ Failures identify the workflow phase, retain safe allowlisted candidate/review e
 Local validation-only example:
 
 ```sh
-UPDATE_LIVE=1 VALIDATE_ONLY=1 SEASON=2025 CURRENT_WEEK=1 scripts/update_sleeper_h2h.sh
+UPDATE_LIVE=1 VALIDATE_ONLY=1 SEASON=2025 scripts/update_sleeper_h2h.sh
 ```
 
 ### Report-only Sleeper history reconciliation

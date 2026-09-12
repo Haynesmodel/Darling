@@ -149,7 +149,6 @@ def resolve_completion(*, season: int, max_week: int, week1_sunday: date,
     if nfl_state is not None and not isinstance(nfl_state, dict):
         raise ValueError("nfl_state must be an object")
     status = (league_status or "unknown").lower()
-    known_statuses = {"pre_draft", "drafting", "in_season", "complete"}
     state = nfl_state or {}
     state_season = _state_season(state)
     state_type = state.get("season_type")

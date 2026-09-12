@@ -152,9 +152,10 @@ def _orient(row: dict[str, Any]) -> tuple[float, float]:
 
 
 def _canonical_row(row: dict[str, Any]) -> dict[str, Any]:
+    normalized_round = None if row.get("type") == "Regular" and row.get("round") in (None, "") else row.get("round")
     if str(row["teamA"]) <= str(row["teamB"]):
-        return dict(row, scoreA=sleeper.round2(row["scoreA"]), scoreB=sleeper.round2(row["scoreB"]))
-    return dict(row, teamA=row["teamB"], teamB=row["teamA"], scoreA=sleeper.round2(row["scoreB"]), scoreB=sleeper.round2(row["scoreA"]))
+        return dict(row, round=normalized_round, scoreA=sleeper.round2(row["scoreA"]), scoreB=sleeper.round2(row["scoreB"]))
+    return dict(row, round=normalized_round, teamA=row["teamB"], teamB=row["teamA"], scoreA=sleeper.round2(row["scoreB"]), scoreB=sleeper.round2(row["scoreA"]))
 
 
 def load_fixture_value(value: Any, season: int, mapping: dict[str, Any]) -> tuple[list[dict[str, Any]], str]:

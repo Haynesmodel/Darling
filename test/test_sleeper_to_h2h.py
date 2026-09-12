@@ -42,20 +42,22 @@ class SleeperToH2HTests(unittest.TestCase):
     def test_build_bracket_roster_pairs_filters_placement_rows(self):
         winners = [
             {'p': 0, 't1': 1, 't2': 4},
-            {'p': 1, 't1': 5, 't2': 6},
+            {'p': 1, 'r': 3, 't1': 5, 't2': 6},
+            {'p': 3, 'r': 3, 't1': 7, 't2': 8},
             {'p': 0, 't1': None, 't2': 7},
         ]
         losers = [
             {'p': 0, 't1': 2, 't2': 3},
-            {'p': 2, 't1': 6, 't2': 7},
+            {'p': 1, 'r': 3, 't1': 6, 't2': 7},
+            {'p': 5, 'r': 3, 't1': 8, 't2': 9},
         ]
 
         with patch.object(module, 'get_winners_bracket', return_value=winners), \
              patch.object(module, 'get_losers_bracket', return_value=losers):
             playoff_pairs, saunders_pairs = module.build_bracket_roster_pairs('league')
 
-        self.assertEqual(playoff_pairs, {(1, 4)})
-        self.assertEqual(saunders_pairs, {(2, 3)})
+        self.assertEqual(playoff_pairs, {(1, 4), (5, 6)})
+        self.assertEqual(saunders_pairs, {(2, 3), (6, 7)})
 
     def test_postseason_labels_match_the_league_mapping(self):
         self.assertEqual(module.postseason_label_for_week(15, 'Playoff'), 'Wild Card')

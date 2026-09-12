@@ -191,7 +191,8 @@ def game_key(game):
 def build_bracket_roster_pairs(league_id: str):
     """Return (playoff_pairs, saunders_pairs) where each is a set of (min_rid, max_rid) ints.
 
-    Excludes placement games via p==1.
+    Excludes placement games while retaining the actual championship/final rows
+    represented by r=3,p=1 in Sleeper's bracket response.
     Excludes placeholders with missing t1/t2.
     """
     playoff_pairs = set()
@@ -204,7 +205,7 @@ def build_bracket_roster_pairs(league_id: str):
             p = g.get("p", 0)
             # Sleeper uses 'p' to indicate placement/consolation games (e.g., 5th place, 7th place).
             # Exclude ANY bracket row with a positive placement value.
-            if p is not None and int(p) > 0:
+            if p is not None and int(p) > 0 and not (int(p) == 1 and int(g.get("r", 0)) == 3):
                 continue  # placement/consolation game
             t1 = g.get("t1")
             t2 = g.get("t2")

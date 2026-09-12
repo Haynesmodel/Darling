@@ -1,6 +1,8 @@
 import json, tempfile, unittest, sys, subprocess
+from unittest.mock import patch
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).parents[1]/'scripts'))
+import reconcile_sleeper_history as recon
 from reconcile_sleeper_history import load_fixture, reconcile
 
 class ReconciliationFixtureTests(unittest.TestCase):
@@ -96,5 +98,28 @@ class ReconciliationFixtureTests(unittest.TestCase):
         self.assertIn('--allow-live', completed.stderr)
         self.assertFalse((root/'report.json').exists())
         directory.cleanup()
+
+    def test_live_fixture_checks_season_and_classifies_postseason(self):
+        class Response:
+            def __init__(self, value): self.value = value; self.headers = {}
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self, limit): return json.dumps(self.value).encode()
+        def fake_open(request, timeout=0):
+            self.assertEqual(timeout, 30)
+            url = request.full_url
+            if url.endswith('/league/league'): return Response({'season': '2025'})
+            if url.endswith('/winners_bracket'): return Response([{'p': 0, 't1': 1, 't2': 2}])
+            if url.endswith('/losers_bracket'): return Response([])
+            if url.endswith('/matchups/1') or url.endswith('/matchups/15'):
+                return Response([{'roster_id': 1, 'matchup_id': 7, 'points': 80}, {'roster_id': 2, 'matchup_id': 7, 'points': 75}])
+            raise AssertionError(url)
+        with patch.object(recon, 'urlopen', fake_open):
+            rows, retrieved = recon._live_fixture('league', 2025, [1, 15], {'1': 'A', '2': 'B'})
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0]['type'], 'Regular')
+        self.assertEqual(rows[1]['type'], 'Playoff')
+        self.assertEqual(rows[1]['round'], 'Wild Card')
+        self.assertTrue(retrieved.endswith('Z'))
 
 if __name__=='__main__': unittest.main()

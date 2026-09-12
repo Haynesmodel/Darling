@@ -32,30 +32,83 @@ def _safe_outputs(canonical: Path, mapping: Path, source: Path | None, out: Path
     paths = [canonical, mapping] + ([source] if source else [])
     if candidate and candidate == out: raise ValueError("report and candidate outputs must differ")
     for target in [out] + ([candidate] if candidate else []):
+        try:
+            inside_assets = target == canonical.parent or canonical.parent in target.parents
+        except (OSError, ValueError):
+            inside_assets = False
         if (target.name in {"H2H.json", "CurrentSeason.json", "TransactionHistory.json", canonical.name}
-                or target.parent == canonical.parent or any(target == item for item in paths)):
+                or inside_assets or any(target == item for item in paths)):
             raise ValueError("output path is canonical or unsafe")
 
-def _live_fixture(league: str, season: int, weeks: list[int], mapping: dict[str, Any]) -> tuple[list[dict[str, Any]], str]:
-    def get(url: str):
-        request = Request(url, headers={"User-Agent": "Darling-Reconciliation/1.0"})
-        with urlopen(request, timeout=30) as response:
-            length = response.headers.get("Content-Length")
-            if length and int(length) > MAX_RESPONSE_BYTES: raise ValueError("Sleeper response exceeds size limit")
-            body = response.read(MAX_RESPONSE_BYTES + 1)
-            if len(body) > MAX_RESPONSE_BYTES: raise ValueError("Sleeper response exceeds size limit")
+def _fetch_json(url: str, expected: type) -> Any:
+    request = Request(url, headers={"User-Agent": "Darling-Reconciliation/1.0"})
+    with urlopen(request, timeout=30) as response:
+        length = response.headers.get("Content-Length")
+        if length and int(length) > MAX_RESPONSE_BYTES:
+            raise ValueError("Sleeper response exceeds size limit")
+        body = response.read(MAX_RESPONSE_BYTES + 1)
+        if len(body) > MAX_RESPONSE_BYTES:
+            raise ValueError("Sleeper response exceeds size limit")
+        try:
             value = json.loads(body.decode("utf-8"))
-            if not isinstance(value, list): raise ValueError("Sleeper matchup response must be an array")
-            return value
-    rows=[]
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise ValueError("Sleeper response is not valid JSON") from error
+        if not isinstance(value, expected):
+            raise ValueError("Sleeper response has an invalid shape")
+        return value
+
+
+def _live_fixture(league: str, season: int, weeks: list[int], mapping: dict[str, Any]) -> tuple[list[dict[str, Any]], str]:
+    base = f"https://api.sleeper.app/v1/league/{league}"
+    league_info = _fetch_json(base, dict)
+    try:
+        reported_season = int(league_info.get("season"))
+    except (TypeError, ValueError) as error:
+        raise ValueError("Sleeper league metadata has no valid season") from error
+    if reported_season != season:
+        raise ValueError("Sleeper league season does not match requested season")
+    metadata: dict[str, dict[str, dict[str, Any]]] = {}
+    rows_by_week: dict[str, list[dict[str, Any]]] = {}
+    postseason_weeks = [week for week in weeks if week > 14]
+    playoff_pairs: set[tuple[int, int]] = set()
+    saunders_pairs: set[tuple[int, int]] = set()
+    if postseason_weeks:
+        winners = _fetch_json(f"{base}/winners_bracket", list)
+        losers = _fetch_json(f"{base}/losers_bracket", list)
+        def add_pairs(items: list[dict[str, Any]], destination: set[tuple[int, int]]) -> None:
+            for item in items:
+                if not isinstance(item, dict) or item.get("p") not in (None, 0):
+                    continue
+                first, second = item.get("t1"), item.get("t2")
+                if isinstance(first, bool) or isinstance(second, bool) or not isinstance(first, int) or not isinstance(second, int):
+                    continue
+                destination.add(tuple(sorted((first, second))))
+        add_pairs(winners, playoff_pairs); add_pairs(losers, saunders_pairs)
     for week in weeks:
-        rows.extend({"week": week, **row} for row in get(f"https://api.sleeper.app/v1/league/{league}/matchups/{week}"))
-    fixture = {"retrieved_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"), "weeks": {str(week): [row for row in rows if row["week"] == week] for week in weeks}}
-    descriptor, temporary_name = tempfile.mkstemp(prefix="darling-live-")
-    os.close(descriptor)
-    temporary = Path(temporary_name); temporary.write_text(json.dumps(fixture), encoding="utf-8")
-    try: return load_fixture(temporary, season, mapping)
-    finally: temporary.unlink(missing_ok=True)
+        upstream = _fetch_json(f"{base}/matchups/{week}", list)
+        if week <= 14:
+            rows_by_week[str(week)] = upstream
+            continue
+        grouped: dict[Any, list[dict[str, Any]]] = {}
+        for raw in upstream:
+            if not isinstance(raw, dict):
+                raise ValueError("Sleeper matchup response contains a malformed row")
+            grouped.setdefault(raw.get("matchup_id"), []).append(raw)
+        classified: list[dict[str, Any]] = []
+        for pair in grouped.values():
+            if len(pair) != 2:
+                continue
+            first, second = pair[0].get("roster_id"), pair[1].get("roster_id")
+            game_type, round_name = sleeper.classify_postseason_game(first, second, playoff_pairs, saunders_pairs, week)
+            if not game_type:
+                continue
+            classified.extend(pair)
+            metadata.setdefault(str(week), {})[str(pair[0].get("matchup_id"))] = {"type": game_type, "round": round_name}
+        if upstream and not classified:
+            raise ValueError(f"no classified postseason games for week {week}")
+        rows_by_week[str(week)] = classified
+    fixture = {"retrieved_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"), "weeks": rows_by_week, "metadata": metadata}
+    return load_fixture_value(fixture, season, mapping)
 
 
 def _utc_timestamp(value: Any) -> str:
@@ -85,9 +138,7 @@ def _orient(row: dict[str, Any]) -> tuple[float, float]:
     return scores if str(row["teamA"]) <= str(row["teamB"]) else scores[::-1]
 
 
-def load_fixture(path: str | Path, season: int, mapping: dict[str, Any]) -> tuple[list[dict[str, Any]], str]:
-    fixture_path = Path(path).resolve()
-    value = json.loads(fixture_path.read_text(encoding="utf-8"))
+def load_fixture_value(value: Any, season: int, mapping: dict[str, Any]) -> tuple[list[dict[str, Any]], str]:
     if not isinstance(value, dict) or not isinstance(value.get("weeks"), dict):
         raise ValueError("fixture must contain retrieved_at and weeks")
     retrieved_at = _utc_timestamp(value.get("retrieved_at"))
@@ -156,17 +207,40 @@ def load_fixture(path: str | Path, season: int, mapping: dict[str, Any]) -> tupl
     return rows, retrieved_at
 
 
+def load_fixture(path: str | Path, season: int, mapping: dict[str, Any]) -> tuple[list[dict[str, Any]], str]:
+    try:
+        value = json.loads(Path(path).resolve().read_text(encoding="utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("fixture is not valid UTF-8 JSON") from error
+    return load_fixture_value(value, season, mapping)
+
+
 def reconcile(canonical: list[dict[str, Any]], candidate: list[dict[str, Any]], season: int,
               source_path: str = "", mapping_path: str = "", canonical_path: str = "",
               retrieved_at: str = "") -> dict[str, Any]:
     def index(rows: list[dict[str, Any]], label: str) -> dict[tuple[int, int, tuple[str, str]], dict[str, Any]]:
         result = {}
         for row in rows:
-            if not isinstance(row, dict) or int(row.get("season", 0)) != season:
+            if not isinstance(row, dict):
+                raise ValueError(f"{label} contains a malformed row")
+            try:
+                row_season = int(row.get("season"))
+                week = int(row.get("week"))
+            except (TypeError, ValueError) as error:
+                raise ValueError(f"{label} contains invalid season/week") from error
+            if row_season != season:
                 continue
+            if not 1 <= week <= 25:
+                raise ValueError(f"{label} contains invalid week")
             if not row.get("teamA") or not row.get("teamB") or row["teamA"] == row["teamB"]:
                 raise ValueError(f"{label} contains invalid owner names")
             _score(row.get("scoreA")); _score(row.get("scoreB"))
+            try:
+                date.fromisoformat(row.get("date"))
+            except (TypeError, ValueError) as error:
+                raise ValueError(f"{label} contains invalid date") from error
+            if row.get("type") not in {"Regular", "Playoff", "Saunders"}:
+                raise ValueError(f"{label} contains invalid type")
             key = _key(row)
             if key in result: raise ValueError(f"{label} contains duplicate canonical key")
             result[key] = row

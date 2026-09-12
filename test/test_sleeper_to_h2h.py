@@ -2,6 +2,9 @@ import importlib.util
 import pathlib
 import sys
 import unittest
+import tempfile
+import json
+from types import SimpleNamespace
 from unittest.mock import patch
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -116,6 +119,22 @@ class SleeperToH2HTests(unittest.TestCase):
                 {'season': 2025, 'date': '2025-09-14', 'week': 2, 'teamA': 'B', 'teamB': 'A'},
             ],
         )
+
+    def test_append_requires_boundary_and_excludes_later_nonzero_week(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory); h2h = root / 'h2h.json'; out = root / 'out.json'; mapping = root / 'map.json'
+            h2h.write_text('[]'); mapping.write_text('{"1":"A","2":"B"}')
+            args = ['tool', '--league', 'league', '--season', '2025', '--h2h', str(h2h), '--out', str(out), '--map', str(mapping), '--weeks', '1-2', '--max-week', '2']
+            with patch.object(sys, 'argv', args):
+                with self.assertRaises(SystemExit): module.main()
+            rows = {1: [{'roster_id': 1, 'matchup_id': 1, 'points': 80}], 2: [{'roster_id': 2, 'matchup_id': 1, 'points': 75}]}
+            rows[1].append({'roster_id': 2, 'matchup_id': 1, 'points': 75})
+            rows[2] = [{'roster_id': 1, 'matchup_id': 2, 'points': 90}, {'roster_id': 2, 'matchup_id': 2, 'points': 80}]
+            teams = [{'roster_id': 1, 'display_name': 'A', 'sleeper_team_name': ''}, {'roster_id': 2, 'display_name': 'B', 'sleeper_team_name': ''}]
+            args += ['--only-played', '--completed-through-week', '1']
+            with patch.object(sys, 'argv', args), patch.object(module, 'list_teams', return_value=teams), patch.object(module, 'get_matchups', side_effect=lambda _l, week: rows[week]):
+                module.main()
+            self.assertEqual([row['week'] for row in json.loads(out.read_text())], [1])
 
 
 if __name__ == '__main__':

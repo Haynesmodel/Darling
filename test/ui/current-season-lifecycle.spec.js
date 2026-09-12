@@ -89,9 +89,11 @@ test('provisional current scores do not create final recap claims', async ({ pag
   await fixture.install(page);
   await page.goto('/?tab=current&currentView=recap');
   await page.waitForLoadState('networkidle');
-  await expect(page.getByText('Copy matchup link').first()).toBeVisible();
   await expect(page.getByRole('button', { name: /Share .* card/i })).toHaveCount(0);
   await expect(page.locator('#currentRecap')).not.toContainText(/Joe\s+defeated\s+Shap/i);
+  await page.goto('/?tab=current&currentView=command');
+  await page.waitForLoadState('networkidle');
+  await expect(page.getByText('Copy matchup link').first()).toBeVisible();
 });
 
 test('live regular season retains command movement, owner paths, and odds', async ({ page }) => {

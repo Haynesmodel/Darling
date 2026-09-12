@@ -43,4 +43,27 @@ class CompletionTests(unittest.TestCase):
         snapshot["games"] = [game for game in snapshot["games"] if not (game["week"] == 16 and game["type"] == "Playoff")]
         self.assertEqual(retained_boundary_from_snapshot(snapshot, 2025, 17), 15)
 
+    def test_resolver_truth_table_and_input_validation(self):
+        from datetime import timedelta
+        base = dict(season=2026, max_week=17, week1_sunday=self.anchor, league_status="in_season", league_season=2026,
+                    nfl_state={"season": 2026, "season_type": "regular", "week": 2})
+        for offset, expected in ((timedelta(days=2, seconds=12 * 3600 + 59 * 60 + 59), 0), (timedelta(days=3), 1)):
+            result = resolve_completion(**base, now=datetime(2026, 9, 13, tzinfo=timezone.utc) + offset)
+            self.assertEqual(result.completed_through_week, expected)
+        for state in ({"season": 2025, "season_type": "regular", "week": 2}, {"season": 2027, "season_type": "regular", "week": 2},
+                      {"season": 2026, "season_type": "postseason", "week": 2}, {"season": 2026, "season_type": "regular"},
+                      {"season": 2026, "season_type": 4, "week": 2}):
+            result = resolve_completion(**{**base, "nfl_state": state}, last_verified_completed=3, now=datetime.now(timezone.utc))
+            self.assertEqual(result.completed_through_week, 3)
+            self.assertTrue(result.warnings)
+        with self.assertRaises(ValueError): resolve_completion(**{**base, "nfl_state": []})
+        unknown = resolve_completion(**{**base, "league_status": "mystery"}, last_verified_completed=2, now=datetime.now(timezone.utc))
+        self.assertEqual((unknown.completed_through_week, unknown.basis, unknown.active_week), (2, "verified_boundary_unknown_status", 3))
+        for kwargs in ({"league_season": 2025}, {"override": -1, "override_reason": "x"}, {"override": 18, "override_reason": "x"},
+                       {"override": True, "override_reason": "x"}, {"override": 2, "last_verified_completed": 3, "override_reason": "x"},
+                       {"override": 1, "override_reason": ""}, {"override": 1, "override_reason": "x", "scheduled": True}):
+            with self.assertRaises(ValueError): resolve_completion(**{**base, **kwargs})
+        result = resolve_completion(**{**base, "override": 0, "override_reason": "manual"})
+        self.assertEqual((result.completed_through_week, result.active_week, result.basis, result.warnings), (0, 1, "manual_override", ()))
+
 if __name__ == "__main__": unittest.main()

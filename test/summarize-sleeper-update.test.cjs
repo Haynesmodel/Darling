@@ -163,7 +163,8 @@ test('summary rejects cross-output completion boundary violations and exposes pr
   withFixture({}, (value) => {
     const valid = runSummary(value);
     assert.equal(valid.summary.completion.season, 2025);
-    assert.match(valid.markdown, /Scoring completion provenance/);
+  assert.match(valid.markdown, /Scoring completion provenance/);
+  assert.match(valid.markdown, /Runtime:/);
   });
   const violations = [
     { afterH2H: [game({ week: 2 })] },

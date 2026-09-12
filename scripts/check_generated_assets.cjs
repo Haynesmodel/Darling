@@ -33,7 +33,7 @@ async function checkGeneratedAssets(root = process.cwd()) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-data-generated-'));
   try {
     const draftOutput = path.join(temp, GENERATED_ASSETS.DraftSpot.path);
-    const draftResult = spawnSync('python3', [
+    const draftResult = spawnSync(process.env.PYTHON || 'python3', [
       path.join(root, 'scripts/generate_draft_spot_asset.py'),
       '--season-summary',
       path.join(root, 'assets/SeasonSummary.json'),

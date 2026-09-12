@@ -104,6 +104,12 @@ function validateSleeperWorkflow(source, errors) {
   if (!/SCHEDULED_RUN:\s*\$\{\{\s*github\.event_name\s*==\s*'schedule'/.test(source)) {
     errors.push('SLEEPER-FUNC-003: scheduled runs must set SCHEDULED_RUN from the schedule event');
   }
+  if (!generateCandidate.includes('scripts/build_sleeper_candidate.cjs')
+    || !generateCandidate.includes('--source-root "${GITHUB_WORKSPACE}"')
+    || !generateCandidate.includes('--candidate-root "${CANDIDATE_ROOT}"')
+    || !generateCandidate.includes('--mode')) {
+    errors.push('SLEEPER-REL-013: validation-only and full runs must use the same isolated candidate builder');
+  }
   if (!generateCandidate.includes('COMPLETION_REPORT_PATH: ${{ runner.temp }}/darling-completion-report.json')
     || !summarizeCandidate.includes('--completion-report "${RUNNER_TEMP}/darling-completion-report.json"')) {
     errors.push('SLEEPER-OBS-002: generation and summary must share the runner completion report path');
@@ -233,15 +239,20 @@ function validateSleeperWorkflow(source, errors) {
       errors.push(`SLEEPER-DATA-002: workflow must run ${command}`);
     }
   }
-  if (!regenerate.includes('H2H_CHANGED=0')
-    || countMatches(regenerate, /H2H_CHANGED=1/g) !== 1
-    || countMatches(regenerate, /node scripts\/compare_json\.cjs/g) !== 3
-    || !/if \[\[ ! -f assets\/TransactionHistory\.json \]\] \|\| ! node scripts\/compare_json\.cjs assets\/TransactionHistory\.updated\.json assets\/TransactionHistory\.json; then/.test(regenerate)
-    || !/if ! node scripts\/compare_json\.cjs assets\/H2H\.updated\.json assets\/H2H\.json; then[\s\S]*?H2H_CHANGED=1[\s\S]*?fi/.test(regenerate)
-    || !/if \[\[ ! -f assets\/CurrentSeason\.json \]\] \|\| ! node scripts\/compare_json\.cjs assets\/CurrentSeason\.updated\.json assets\/CurrentSeason\.json; then/.test(regenerate)
-    || !/if \[\[ "\$\{H2H_CHANGED\}" == "1" \]\]; then[\s\S]*?generate_season_summary_draft\.py[\s\S]*?npm run generate:derived[\s\S]*?fi/.test(regenerate)
-    || !/if \[\[ "\$\{SOURCE_CHANGED\}" == "1" \]\]; then[\s\S]*?npm run generate:manifest[\s\S]*?fi/.test(regenerate)) {
-    errors.push('SLEEPER-DATA-003: semantic H2H-only outputs must not block CurrentSeason-only preseason promotion');
+  if (!regenerate.includes('CANDIDATE_ROOT') || !regenerate.includes('source_changed=${SOURCE_CHANGED}')
+    || !regenerate.includes('cp "${CANDIDATE_ROOT}/assets/H2H.json" assets/H2H.json')
+    || !regenerate.includes('cp "${CANDIDATE_ROOT}/assets/CurrentSeason.json" assets/CurrentSeason.json')
+    || !regenerate.includes('cp "${CANDIDATE_ROOT}/assets/TransactionHistory.json" assets/TransactionHistory.json')
+    || !regenerate.includes('cp "${CANDIDATE_ROOT}/assets/SeasonSummary.draft.json" assets/SeasonSummary.draft.json')
+    || !regenerate.includes('cp "${CANDIDATE_ROOT}/assets/DerivedStats.json" assets/DerivedStats.json')
+    || !regenerate.includes('cp "${CANDIDATE_ROOT}/assets/asset-manifest.json" assets/asset-manifest.json')) {
+    errors.push('SLEEPER-DATA-003: promotion must copy only the approved candidate bundle after isolated safety checks');
+  }
+  const validationIndex = update.indexOf('- name: Validate promoted snapshot');
+  const appIndex = update.indexOf('actions/create-github-app-token@');
+  if (validationIndex === -1 || appIndex === -1 || validationIndex > appIndex
+    || !summarizeCandidate.includes('node scripts/summarize_sleeper_update.cjs')) {
+    errors.push('SLEEPER-SEC-003: validation and summary safety must finish before App authentication');
   }
   if (!update.includes('--base-sha "${{ steps.source.outputs.sha }}"')
     || !update.includes('--candidate-sha "${{ steps.source.outputs.sha }}"')
@@ -302,10 +313,11 @@ function validateSleeperWorkflow(source, errors) {
   const phases = [
     'setup',
     'season resolution',
-    'Sleeper generation',
-    'local promotion/regeneration',
-    'validation',
-    'change safety',
+    'staging',
+    'extraction',
+    'derived',
+    'promotion',
+    'allowlist',
     'summary',
     'App authentication',
     'branch publication',
@@ -317,7 +329,7 @@ function validateSleeperWorkflow(source, errors) {
   if (!artifact.includes("steps.resolve.outputs.season || 'unknown'")
     || !artifact.includes('${{ github.run_id }}-${{ github.run_attempt }}')
     || !artifact.includes('retention-days: 7')
-    || !artifact.includes('assets/TransactionHistory.updated.json')
+    || !artifact.includes('darling-sleeper-candidate/assets/TransactionHistory.json')
     || artifact.includes('assets/CurrentSeason.updated.json')) {
     errors.push('SLEEPER-REL-010: failure artifact must be unique, seven-day, retain the transaction candidate, and omit the credential-valued CurrentSeason candidate');
   }
@@ -337,6 +349,7 @@ function validateWorkflowContracts({ workflows, legacyDeployExists }) {
   const workflowHeader = ci.split(/^jobs:\s*$/m)[0] || '';
   const qualityBuild = extractJob(ci, 'quality_build');
   const chromium = extractJob(ci, 'chromium');
+  const coverage = extractJob(ci, 'coverage');
   const webkit = extractJob(ci, 'webkit_smoke');
   const gate = extractJob(ci, 'gate');
   const packagePages = extractJob(ci, 'package_pages');
@@ -553,6 +566,17 @@ function validateWorkflowContracts({ workflows, legacyDeployExists }) {
 
   if (!/name:\s*ci \/ gate/.test(gate)) {
     errors.push('ARCH-003: gate name must remain exactly ci / gate');
+  }
+  for (const [jobName, job] of [['quality_build', qualityBuild], ['coverage', coverage]]) {
+    if (!job.includes("actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97")
+      || !job.includes("python-version: '3.13'")) {
+      errors.push(`CI-001: ${jobName} must select Python 3.13 for transitive generator checks`);
+    }
+  }
+  for (const [jobName, job] of [['chromium', chromium], ['webkit_smoke', webkit]]) {
+    if (job.includes('actions/setup-python@') || job.includes("python-version: '3.13'")) {
+      errors.push(`CI-001: ${jobName} must not install Python because it has no Python lane`);
+    }
   }
   if (!/if:\s*always\(\)/.test(gate)) {
     errors.push('ARCH-003: gate must retain if: always()');
@@ -878,8 +902,8 @@ test('Sleeper contract rejects token access from validation-only or no-change pa
 test('Sleeper contract rejects token creation before summary safety', () => {
   const fixture = readRepositoryFixture();
   const mutated = mutateSleeper(fixture, source => source.replace(
-    '          node scripts/summarize_sleeper_update.cjs \\\n',
-    '          node scripts/unsafe_summary.cjs \\\n',
+    'node scripts/summarize_sleeper_update.cjs --before-dir',
+    'node scripts/unsafe_summary.cjs --before-dir',
   ));
   assert.match(
     validateWorkflowContracts(mutated).join('\n'),
@@ -942,28 +966,16 @@ test('Sleeper contract rejects staging all optional allowlist paths in one git a
 test('Sleeper contract rejects preseason promotion coupled to H2H-only outputs', () => {
   const fixture = readRepositoryFixture();
   const cases = [
-    source => source.replace(
-      'if ! node scripts/compare_json.cjs assets/H2H.updated.json assets/H2H.json; then',
-      'if ! cmp -s assets/H2H.updated.json assets/H2H.json; then',
-    ),
-    source => source.replace(
-      'if [[ "${H2H_CHANGED}" == "1" ]]; then',
-      'if [[ "${SOURCE_CHANGED}" == "1" ]]; then',
-    ),
-    source => source.replace(
-      '            H2H_CHANGED=1\n',
-      '',
-    ),
-    source => source.replace(
-      '          if [[ "${SOURCE_CHANGED}" == "1" ]]; then\n            npm run generate:manifest',
-      '          if [[ "${H2H_CHANGED}" == "1" ]]; then\n            npm run generate:manifest',
-    ),
+    source => source.replace('cp "${CANDIDATE_ROOT}/assets/H2H.json" assets/H2H.json', '# removed H2H promotion'),
+    source => source.replace('cp "${CANDIDATE_ROOT}/assets/CurrentSeason.json" assets/CurrentSeason.json', '# removed CurrentSeason promotion'),
+    source => source.replace('cp "${CANDIDATE_ROOT}/assets/TransactionHistory.json" assets/TransactionHistory.json', '# removed TransactionHistory promotion'),
+    source => source.replace('cp "${CANDIDATE_ROOT}/assets/DerivedStats.json" assets/DerivedStats.json', '# removed derived promotion'),
   ];
   for (const mutate of cases) {
     const mutated = mutateSleeper(fixture, mutate);
     assert.match(
       validateWorkflowContracts(mutated).join('\n'),
-      /H2H-only outputs must not block CurrentSeason-only preseason promotion/,
+      /promotion must copy only the approved candidate bundle/,
     );
   }
 });
@@ -1071,10 +1083,7 @@ test('Sleeper contract rejects failure-artifact and recovery regressions', () =>
       /failure artifact must be unique/,
     ],
     [
-      source => source.replace(
-        '            assets/TransactionHistory.updated.json\n            assets/TransactionHistory.json',
-        '            assets/TransactionHistory.missing.json\n            assets/TransactionHistory.json',
-      ),
+      source => source.replace('darling-sleeper-candidate/assets/TransactionHistory.json', 'darling-sleeper-candidate/assets/TransactionHistory.missing.json'),
       /failure artifact must be unique, seven-day, retain the transaction candidate/,
     ],
     [
@@ -1085,10 +1094,7 @@ test('Sleeper contract rejects failure-artifact and recovery regressions', () =>
       /only successful full runs may close/,
     ],
     [
-      source => source.replace(
-        '            assets/H2H.updated.json\n',
-        '            assets/H2H.updated.json\n            assets/CurrentSeason.updated.json\n',
-      ),
+      source => source.replace('darling-sleeper-candidate/assets/TransactionHistory.json', 'darling-sleeper-candidate/assets/CurrentSeason.json'),
       /omit the credential-valued CurrentSeason candidate/,
     ],
   ];

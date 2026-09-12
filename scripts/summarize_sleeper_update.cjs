@@ -26,6 +26,7 @@ function parseArgs(argv) {
     'body-out',
     'json-out',
     'completion-report',
+    'allow-no-change',
   ]);
   for (let index = 0; index < argv.length; index += 1) {
     const key = argv[index];
@@ -350,6 +351,7 @@ function buildMarkdown(summary) {
     `- Source workflow: [run ${escapeMarkdown(summary.source.run_id)}](${summary.source.run_url})`,
     `- Base main SHA: ${inlineCode(summary.source.base_main_sha)}`,
     `- Candidate source SHA: ${inlineCode(summary.source.candidate_source_sha)}`,
+    `- Runtime: ${inlineCode(summary.runtime.node)} / ${inlineCode(summary.runtime.npm)} / ${inlineCode(summary.runtime.python)}`,
     `- Manifest data version: ${inlineCode(display(summary.manifest.before.data_version))} → ${inlineCode(display(summary.manifest.after.data_version))}`,
     `- H2H hash: ${inlineCode(display(summary.manifest.before.h2h_sha256))} → ${inlineCode(display(summary.manifest.after.h2h_sha256))}`,
     `- CurrentSeason hash: ${inlineCode(display(summary.manifest.before.current_season_sha256))} → ${inlineCode(display(summary.manifest.after.current_season_sha256))}`,
@@ -447,6 +449,11 @@ function summarize(options, environment = process.env) {
       base_main_sha: options['base-sha'],
       candidate_source_sha: options['candidate-sha'],
     },
+    runtime: {
+      node: environment.NODE_RUNTIME || process.version,
+      npm: environment.NPM_RUNTIME || 'not reported',
+      python: environment.PYTHON_RUNTIME || 'not reported',
+    },
     completion,
     changed_files: files,
     h2h: analyzeH2H(beforeH2H, afterH2H, options.season, completion.completed),
@@ -480,7 +487,9 @@ function summarize(options, environment = process.env) {
   if (summary.season_summary_draft.canonical_summary_modified) {
     throw new Error('Safety failed: assets/SeasonSummary.json must never be modified by Sleeper automation.');
   }
-  if (summary.changed_files.length === 0) throw new Error('Summary requires at least one changed file.');
+  if (summary.changed_files.length === 0 && options['allow-no-change'] !== '1') {
+    throw new Error('Summary requires at least one changed file.');
+  }
 
   return {
     summary,

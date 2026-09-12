@@ -93,11 +93,17 @@ def _live_fixture(league: str, season: int, weeks: list[int], mapping: dict[str,
         for raw in upstream:
             if not isinstance(raw, dict):
                 raise ValueError("Sleeper matchup response contains a malformed row")
+            roster_id = raw.get("roster_id")
+            if isinstance(roster_id, bool) or not isinstance(roster_id, int) or str(roster_id) not in mapping:
+                raise ValueError("Sleeper matchup response contains an invalid roster")
+            if raw.get("matchup_id") is None or isinstance(raw.get("matchup_id"), (dict, list, bool)):
+                raise ValueError("Sleeper matchup response contains an invalid matchup")
+            _score(raw.get("points"))
             grouped.setdefault(raw.get("matchup_id"), []).append(raw)
         classified: list[dict[str, Any]] = []
         for pair in grouped.values():
             if len(pair) != 2:
-                continue
+                raise ValueError("Sleeper matchup group must contain exactly two rows")
             first, second = pair[0].get("roster_id"), pair[1].get("roster_id")
             game_type, round_name = sleeper.classify_postseason_game(first, second, playoff_pairs, saunders_pairs, week)
             if not game_type:

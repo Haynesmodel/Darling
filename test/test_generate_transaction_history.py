@@ -42,6 +42,7 @@ def fixture_args(output):
         draft_id=None,
         players_cache=None,
         fixture_dir=str(FIXTURES),
+        completed_through_week=2,
     )
 
 

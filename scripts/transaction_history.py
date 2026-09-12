@@ -769,11 +769,12 @@ def build_season(
     owners = owner_map(mapping, rosters)
     teams = [{"roster_id": roster_id, "owner": owner} for roster_id, owner in sorted(owners.items())]
     league_status = str(league.get("status") or "unknown")
-    completed_week = completed_week_from_current(current, season, max_week, league_status)
-    if completed_week_override is not None:
-        if isinstance(completed_week_override, bool) or not 0 <= completed_week_override <= max_week:
-            raise ValueError("resolved transaction boundary is invalid")
-        completed_week = completed_week_override
+    if completed_week_override is None:
+        raise ValueError("explicit resolved transaction boundary is required")
+    if isinstance(completed_week_override, bool) or not 0 <= completed_week_override <= max_week:
+        raise ValueError("resolved transaction boundary is invalid")
+    completed_week = completed_week_override
+    if current.get("weeks_fetched") is not None:
         for game in current.get("games") or []:
             if int(game.get("week") or 0) <= completed_week:
                 if game.get("status") != "final" or any(isinstance(game.get(field), bool) or not isinstance(game.get(field), (int, float)) for field in ("scoreA", "scoreB")):

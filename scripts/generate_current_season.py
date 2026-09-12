@@ -66,6 +66,17 @@ def matchup_status(week, current_week, game_date, cutoff, score_a, score_b, comp
 def canonical_pair(team_a, team_b):
     return tuple(sorted([str(team_a), str(team_b)]))
 
+def strict_completed_pairs(matchups, roster_ids):
+    expected = set(roster_ids); seen = set(); by_id = {}
+    for row in matchups:
+        rid = row.get("roster_id"); mid = row.get("matchup_id")
+        if not isinstance(rid, int) or rid not in expected or rid in seen or mid is None:
+            raise ValueError("completed week has invalid or duplicate roster/matchup coverage")
+        seen.add(rid); by_id.setdefault(mid, []).append(row)
+    if seen != expected or any(len(rows) != 2 for rows in by_id.values()):
+        raise ValueError("completed week has incomplete matchup coverage")
+    return [(rows[0], rows[1]) for rows in by_id.values()]
+
 
 def postseason_fallback_rows(path, season, regular_season_max_week):
     if not path:
@@ -110,7 +121,8 @@ def build_current_season_asset(args):
         if week > args.regular_season_max_week and not args.allow_postseason:
             continue
 
-        pairs = sleeper.pair_matchups(sleeper.get_matchups(args.league, week))
+        raw_matchups = sleeper.get_matchups(args.league, week)
+        pairs = strict_completed_pairs(raw_matchups, {int(team["roster_id"]) for team in teams_info}) if week <= completed_through_week else sleeper.pair_matchups(raw_matchups)
         if not pairs:
             continue
 

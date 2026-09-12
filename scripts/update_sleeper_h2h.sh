@@ -114,7 +114,8 @@ if snapshot_path.exists(): retained = retained_boundary_from_snapshot(json.loads
 clock = datetime.fromisoformat(sys.argv[5] + 'T13:00:00+00:00') if sys.argv[5] else datetime.now(timezone.utc)
 override = int(sys.argv[6]) if sys.argv[6] else None
 result = resolve_completion(season=season, max_week=max_week, week1_sunday=WEEK1_ANCHORS[season], league_status=raw.get('league_status'), league_season=int(raw['league_season']), nfl_state={'season': raw.get('nfl_season'), 'season_type': raw.get('nfl_season_type'), 'week': raw.get('nfl_week')}, last_verified_completed=retained, now=clock, override=override, override_reason=sys.argv[7], scheduled=sys.argv[8] == '1')
-print(json.dumps({'season': season, 'max_week': max_week, 'completed': result.completed_through_week, 'active': result.active_week, 'basis': result.basis, 'warnings': list(result.warnings), 'clock': clock.isoformat(), 'override_reason': sys.argv[7] if override is not None else None}))
+clock_text = clock.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')
+print(json.dumps({'season': season, 'max_week': max_week, 'completed': result.completed_through_week, 'active': result.active_week, 'basis': result.basis, 'warnings': list(result.warnings), 'clock': clock_text, 'override_reason': sys.argv[7] if override is not None else None}))
 PY
 )"
 COMPLETED_THROUGH_WEEK="$(node -e "const x=JSON.parse(process.argv[1]); process.stdout.write(String(x.completed));" "${COMPLETION_JSON}")"

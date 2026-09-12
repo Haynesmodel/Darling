@@ -137,6 +137,54 @@ function runSummary(value) {
   return summarize(value.options, { LEAGUE_ID: 'league-123' });
 }
 
+function rewriteCompletion(value, patch) {
+  const file = value.options['completion-report'];
+  const base = { season: 2025, max_week: 17, completed: 1, active: 2, basis: 'nfl_state_and_calendar_guard', warnings: [], clock: '2025-09-16T13:00:00Z', override_reason: null };
+  fs.writeFileSync(file, typeof patch === 'string' ? patch : JSON.stringify({ ...base, ...patch }));
+}
+
+test('completion report rejects malformed provenance and boundary cases', () => {
+  const cases = [
+    'not json', { season: 2024 }, { max_week: 0 }, { completed: true }, { completed: -1 }, { completed: 18 },
+    { active: null }, { active: true }, { active: 4 }, { active: 18 }, { basis: '' }, { basis: 'unknown' },
+    { warnings: {} }, { warnings: [1] }, { clock: '2025-09-16T13:00:00+00:00' }, { clock: 'not-a-clock' },
+    { basis: 'manual_override', override_reason: null }, { basis: 'manual_override', override_reason: ' ' },
+    { basis: 'nfl_state_and_calendar_guard', override_reason: 'unexpected' },
+  ];
+  for (const patch of cases) {
+    withFixture({}, (value) => {
+      rewriteCompletion(value, patch);
+      assert.throws(() => runSummary(value));
+    });
+  }
+});
+
+test('summary rejects cross-output completion boundary violations and exposes provenance', () => {
+  withFixture({}, (value) => {
+    const valid = runSummary(value);
+    assert.equal(valid.summary.completion.season, 2025);
+    assert.match(valid.markdown, /Scoring completion provenance/);
+  });
+  const violations = [
+    { afterH2H: [game({ week: 2 })] },
+    { afterCurrent: current({ games: [{ ...game(), status: 'live' }] }) },
+    { afterCurrent: current({ games: [{ ...game({ week: 2 }), status: 'final' }] }) },
+    { afterTransactions: transactions({ coverage: { ...transactions().seasons[0].coverage, completed_week: 2 } }) },
+  ];
+  for (const options of violations) {
+    if (options.afterH2H) options.afterH2H = [game(), ...options.afterH2H];
+    withFixture(options, (value) => {
+      rewriteCompletion(value, {});
+      if (!options.afterTransactions) {
+        const afterTransactions = transactions();
+        afterTransactions.seasons[0].coverage.completed_week = 1;
+        fs.writeFileSync(path.join(value.options['after-dir'], 'TransactionHistory.json'), JSON.stringify(afterTransactions));
+      }
+      assert.throws(() => runSummary(value), /Completion boundary|CurrentSeason/);
+    });
+  }
+});
+
 test('identical and reordered H2H rows produce no semantic change', () => {
   const second = game({ week: 2, date: '2025-09-14', teamA: 'Joel', teamB: 'Nuss' });
   withFixture({ beforeH2H: [game(), second], afterH2H: [second, game()] }, (value) => {

@@ -101,6 +101,19 @@ function validateSleeperWorkflow(source, errors) {
     || !/cron:\s*'0 14 \* \* 2'/.test(header)) {
     errors.push('SLEEPER-FUNC-001: Sleeper dispatch inputs and Tuesday 14:00 UTC schedule must remain stable');
   }
+  if (!/SCHEDULED_RUN:\s*\$\{\{\s*github\.event_name\s*==\s*'schedule'/.test(source)) {
+    errors.push('SLEEPER-FUNC-003: scheduled runs must set SCHEDULED_RUN from the schedule event');
+  }
+  if (!generateCandidate.includes('COMPLETION_REPORT_PATH: ${{ runner.temp }}/darling-completion-report.json')
+    || !summarizeCandidate.includes('--completion-report "${RUNNER_TEMP}/darling-completion-report.json"')) {
+    errors.push('SLEEPER-OBS-002: generation and summary must share the runner completion report path');
+  }
+  const updater = fs.readFileSync(path.join(root, 'scripts', 'update_sleeper_h2h.sh'), 'utf8');
+  if ((updater.match(/--completed-through-week/g) || []).length < 4
+    || !/generate_current_season\.py[\s\S]*--completed-through-week/.test(updater)
+    || !/generate_transaction_history\.py[\s\S]*--completed-through-week/.test(updater)) {
+    errors.push('SLEEPER-FUNC-004: every generator invocation must receive the resolved boundary');
+  }
   if (!/^permissions:\s*\n\s{2}contents:\s*read\s*\n\s{2}issues:\s*write\s*$/m.test(header)
     || /^\s+contents:\s*write\s*$/m.test(source)) {
     errors.push('SLEEPER-SEC-001: default permissions must be exactly contents read and issues write');

@@ -220,7 +220,7 @@ function validateCompletion(completion, season, current) {
   if (!Number.isInteger(completion.completed) || completion.completed < 0 || completion.completed > max) {
     throw new Error('Completion report completed boundary is malformed.');
   }
-  if (completion.active !== null && completion.active !== completion.completed + 1) {
+  if (completion.completed < max && completion.active !== completion.completed + 1) {
     throw new Error('Completion report active week is malformed.');
   }
   if (completion.completed === max && completion.active !== null) throw new Error('Completion report active week must be null at max.');

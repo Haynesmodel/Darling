@@ -25,6 +25,7 @@ function parseArgs(argv) {
     'changed-files-file',
     'body-out',
     'json-out',
+    'completion-report',
   ]);
   for (let index = 0; index < argv.length; index += 1) {
     const key = argv[index];
@@ -50,6 +51,7 @@ function parseArgs(argv) {
     'changed-files-file',
     'body-out',
     'json-out',
+    'completion-report',
   ]) {
     if (!args[key]) throw new Error(`Missing required --${key}`);
   }
@@ -415,6 +417,11 @@ function summarize(options, environment = process.env) {
   const completion = options['completion-report'] ? readJson(options['completion-report']) : {
     completed: null, active: null, basis: 'not provided', warnings: [], clock: null, override_reason: null,
   };
+  if (!completion || !Number.isInteger(completion.completed) || completion.completed < 0 || completion.completed > 25 ||
+      (completion.active !== null && !Number.isInteger(completion.active)) || typeof completion.basis !== 'string' ||
+      !Array.isArray(completion.warnings) || typeof completion.clock !== 'string') {
+    throw new Error('Completion report is malformed.');
+  }
 
   assertCurrentSeason(afterCurrent, options.season, environment.LEAGUE_ID);
   const summary = {
@@ -449,6 +456,9 @@ function summarize(options, environment = process.env) {
     },
     validation_commands: VALIDATION_COMMANDS,
   };
+  if (summary.transactions.completed_week_after !== completion.completed) {
+    throw new Error(`Completion boundary ${completion.completed} does not match TransactionHistory ${summary.transactions.completed_week_after}.`);
+  }
   if (summary.season_summary_draft.canonical_summary_modified) {
     throw new Error('Safety failed: assets/SeasonSummary.json must never be modified by Sleeper automation.');
   }

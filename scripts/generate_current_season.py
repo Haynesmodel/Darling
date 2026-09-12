@@ -7,6 +7,7 @@ games can be displayed without adding unplayed rows to assets/H2H.json.
 
 import argparse
 import json
+import math
 import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -131,6 +132,9 @@ def build_current_season_asset(args):
             rid_b = int(b.get("roster_id"))
             has_a = isinstance(a.get("points"), (int, float)) and not isinstance(a.get("points"), bool)
             has_b = isinstance(b.get("points"), (int, float)) and not isinstance(b.get("points"), bool)
+            for raw in (a.get("points"), b.get("points")):
+                if raw is not None and (not isinstance(raw, (int, float)) or isinstance(raw, bool) or not math.isfinite(raw)):
+                    raise ValueError(f"Invalid matchup score in week {week}.")
             score_a_raw = sleeper.round2(a.get("points", 0.0))
             score_b_raw = sleeper.round2(b.get("points", 0.0))
             status = matchup_status(week, args.current_week, game_date, cutoff, score_a_raw, score_b_raw,

@@ -104,6 +104,8 @@ function fixture({
   if (afterTransactions !== null) fs.writeFileSync(path.join(afterDir, 'TransactionHistory.json'), JSON.stringify(afterTransactions));
   const changedFile = path.join(root, 'changed.txt');
   fs.writeFileSync(changedFile, changed.join('\n'));
+  const completionReport = path.join(root, 'completion.json');
+  fs.writeFileSync(completionReport, JSON.stringify({ completed: 1, active: 2, basis: 'fixture', warnings: [], clock: '2025-09-16T13:00:00Z', override_reason: null }));
   return {
     root,
     options: {
@@ -116,6 +118,7 @@ function fixture({
       'changed-files-file': changedFile,
       'body-out': path.join(root, 'body.md'),
       'json-out': path.join(root, 'summary.json'),
+      'completion-report': completionReport,
     },
   };
 }
@@ -339,6 +342,7 @@ test('CLI rejects invalid season, URL, SHA, and any league-id argument', () => {
     '--changed-files-file', '/tmp/changed',
     '--body-out', '/tmp/body',
     '--json-out', '/tmp/json',
+    '--completion-report', '/tmp/completion.json',
   ];
   assert.throws(() => parseArgs(required.map(value => value === '2025' ? '1999' : value)), /Invalid season/);
   assert.throws(() => parseArgs(required.map(value => value.startsWith('https://') ? 'file:///tmp/run' : value)), /Run URL must use HTTPS/);

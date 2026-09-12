@@ -364,7 +364,7 @@ def main():
             valid_scores = all(isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
                                for value in (a.get("points"), b.get("points")))
             if args.only_played and not valid_scores:
-                continue
+                raise ValueError(f"Missing or invalid scores in completed week {w}; refusing archive.")
             if args.only_played and (scoreA == 0.0 and scoreB == 0.0) and not valid_scores:
                 continue
 

@@ -6,6 +6,7 @@ fixture-driven runs use exactly the same boundary calculation.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Any
 
@@ -16,6 +17,40 @@ class Completion:
     active_week: int | None
     basis: str
     warnings: tuple[str, ...] = ()
+
+def retained_boundary_from_snapshot(snapshot: dict[str, Any], season: int, max_week: int) -> int:
+    """Return a trusted contiguous boundary, or zero for a different season."""
+    if not isinstance(snapshot, dict) or snapshot.get("season") != season:
+        return 0
+    weeks_fetched = snapshot.get("weeks_fetched")
+    teams = snapshot.get("teams")
+    games = snapshot.get("games")
+    if not isinstance(weeks_fetched, list) or not isinstance(teams, list) or not isinstance(games, list) or not teams:
+        raise ValueError("same-season CurrentSeason snapshot lacks coverage metadata")
+    owner_count = len(teams)
+    game_by_week: dict[int, list[dict[str, Any]]] = {}
+    for game in games:
+        if not isinstance(game, dict): raise ValueError("CurrentSeason game must be an object")
+        week = game.get("week")
+        if not isinstance(week, int) or not 1 <= week <= max_week: raise ValueError("invalid CurrentSeason week")
+        game_by_week.setdefault(week, []).append(game)
+    boundary = 0
+    for week in range(1, max_week + 1):
+        if week not in weeks_fetched: break
+        rows = game_by_week.get(week, [])
+        if len(rows) != owner_count // 2 or owner_count % 2 or any(game.get("status") != "final" for game in rows): break
+        rosters: set[int] = set(); matchups: set[Any] = set()
+        for game in rows:
+            if not all(isinstance(game.get(field), (int, float)) and not isinstance(game.get(field), bool) and math.isfinite(game[field]) for field in ("scoreA", "scoreB")):
+                break
+            pair = (game.get("rosterA"), game.get("rosterB"))
+            if any(not isinstance(value, int) or value in rosters for value in pair) or game.get("matchup_id") in matchups:
+                break
+            rosters.update(pair); matchups.add(game.get("matchup_id"))
+        else:
+            if len(rosters) == owner_count: boundary = week; continue
+        break
+    return boundary
 
 
 def _integer(value: Any, label: str, minimum: int, maximum: int) -> int:
@@ -64,9 +99,7 @@ def resolve_completion(*, season: int, max_week: int, week1_sunday: date,
     state = nfl_state or {}
     state_season = _state_season(state)
     state_type = state.get("season_type")
-    if status in {"pre_draft", "drafting"} and state_season == season and state.get("week") is not None:
-        return Completion(last_verified_completed, last_verified_completed + 1 if last_verified_completed < max_week else None,
-                          "contradictory_metadata", ("league is pre-draft/drafting but NFL state has a week",))
+    contradictory = status in {"pre_draft", "drafting"} and state_season == season and state.get("week") is not None
     if status == "complete" and league_season != season:
         raise ValueError("complete league metadata must match requested season.")
     if status in {"pre_draft", "drafting"}:
@@ -89,6 +122,9 @@ def resolve_completion(*, season: int, max_week: int, week1_sunday: date,
                             if datetime.combine(week1_sunday + timedelta(days=7 * (w - 1) + 2), time(13), timezone.utc) <= now]
                 inferred = min(max_week, week - 1, max(eligible, default=0))
                 basis = "nfl_state_and_calendar_guard"
+    if contradictory:
+        inferred = 0
+        basis = "contradictory_metadata"
     if inferred < last_verified_completed:
         raise ValueError("upstream state would regress the verified completion boundary; refusing ambiguity.")
     active = inferred + 1 if inferred < max_week else None

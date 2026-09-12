@@ -10,6 +10,16 @@ CUTOFF_DATE="${CUTOFF_DATE:-}"
 COMPLETED_OVERRIDE="${COMPLETED_THROUGH_WEEK_OVERRIDE:-}"
 COMPLETED_OVERRIDE_REASON="${COMPLETED_THROUGH_WEEK_REASON:-}"
 SCHEDULED_RUN="${SCHEDULED_RUN:-0}"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --completed-through-week) [[ -z "${COMPLETED_OVERRIDE}" && $# -ge 2 ]] || { echo "ERROR: duplicate/missing completed-through-week" >&2; exit 2; }; COMPLETED_OVERRIDE="$2"; shift 2 ;;
+    --reason) [[ -z "${COMPLETED_OVERRIDE_REASON}" && $# -ge 2 ]] || { echo "ERROR: duplicate/missing reason" >&2; exit 2; }; COMPLETED_OVERRIDE_REASON="$2"; shift 2 ;;
+    --cutoff-date) [[ -z "${CUTOFF_DATE}" && $# -ge 2 ]] || { echo "ERROR: duplicate/missing cutoff-date" >&2; exit 2; }; CUTOFF_DATE="$2"; shift 2 ;;
+    *) echo "ERROR: unknown argument $1" >&2; exit 2 ;;
+  esac
+done
+if [[ -n "${COMPLETED_OVERRIDE_REASON}" && -z "${COMPLETED_OVERRIDE}" ]]; then echo "ERROR: --reason requires --completed-through-week" >&2; exit 2; fi
 UPDATE_LIVE="${UPDATE_LIVE:-0}"
 VALIDATE_ONLY="${VALIDATE_ONLY:-0}"
 
@@ -64,7 +74,7 @@ print(json.dumps({
     "nfl_season": state.get("season"),
     "league_season": league.get("season"),
     "nfl_week": state.get("week") or state.get("display_week"),
-    "nfl_season_type": state.get("season_type") or "regular",
+    "nfl_season_type": state.get("season_type"),
     "league_status": league.get("status"),
 }))
 PY
@@ -91,16 +101,19 @@ else
 fi
 MAP_FILE="${SCRIPT_DIR}/${SEASON}_team_mapping.json"
 
-COMPLETION_JSON="$(${PY} - "${SEASON}" "${MAX_WEEK}" "${STATE_JSON}" "${SCRIPT_DIR}" "${CUTOFF_DATE}" "${COMPLETED_OVERRIDE}" "${COMPLETED_OVERRIDE_REASON}" "${SCHEDULED_RUN}" <<'PY'
+COMPLETION_JSON="$(${PY} - "${SEASON}" "${MAX_WEEK}" "${STATE_JSON}" "${SCRIPT_DIR}" "${CUTOFF_DATE}" "${COMPLETED_OVERRIDE}" "${COMPLETED_OVERRIDE_REASON}" "${SCHEDULED_RUN}" "${ASSETS_DIR}/CurrentSeason.json" <<'PY'
 import json, sys
 from datetime import datetime, timezone
 sys.path.insert(0, sys.argv[4])
-from scoring_completion import resolve_completion
+from scoring_completion import resolve_completion, retained_boundary_from_snapshot
 from sleeper_to_h2h import WEEK1_ANCHORS
 season, max_week, raw = int(sys.argv[1]), int(sys.argv[2]), json.loads(sys.argv[3])
+import pathlib
+snapshot_path = pathlib.Path(sys.argv[9]); retained = 0
+if snapshot_path.exists(): retained = retained_boundary_from_snapshot(json.loads(snapshot_path.read_text()), season, max_week)
 clock = datetime.fromisoformat(sys.argv[5] + 'T13:00:00+00:00') if sys.argv[5] else datetime.now(timezone.utc)
 override = int(sys.argv[6]) if sys.argv[6] else None
-result = resolve_completion(season=season, max_week=max_week, week1_sunday=WEEK1_ANCHORS[season], league_status=raw.get('league_status'), league_season=int(raw['league_season']), nfl_state={'season': int(raw.get('nfl_season') or 0), 'season_type': raw.get('nfl_season_type'), 'week': raw.get('nfl_week')}, now=clock, override=override, override_reason=sys.argv[7], scheduled=sys.argv[8] == '1')
+result = resolve_completion(season=season, max_week=max_week, week1_sunday=WEEK1_ANCHORS[season], league_status=raw.get('league_status'), league_season=int(raw['league_season']), nfl_state={'season': raw.get('nfl_season'), 'season_type': raw.get('nfl_season_type'), 'week': raw.get('nfl_week')}, last_verified_completed=retained, now=clock, override=override, override_reason=sys.argv[7], scheduled=sys.argv[8] == '1')
 print(json.dumps({'completed': result.completed_through_week, 'active': result.active_week, 'basis': result.basis, 'warnings': list(result.warnings), 'clock': clock.isoformat(), 'override_reason': sys.argv[7] if override is not None else None}))
 PY
 )"

@@ -69,8 +69,10 @@ def canonical_pair(team_a, team_b):
 def strict_completed_pairs(matchups, roster_ids):
     expected = set(roster_ids); seen = set(); by_id = {}
     for row in matchups:
+        if not isinstance(row, dict):
+            raise ValueError("completed week contains a malformed matchup row")
         rid = row.get("roster_id"); mid = row.get("matchup_id")
-        if not isinstance(rid, int) or rid not in expected or rid in seen or mid is None:
+        if isinstance(rid, bool) or not isinstance(rid, int) or rid not in expected or rid in seen or mid is None:
             raise ValueError("completed week has invalid or duplicate roster/matchup coverage")
         seen.add(rid); by_id.setdefault(mid, []).append(row)
     if seen != expected or any(len(rows) != 2 for rows in by_id.values()):

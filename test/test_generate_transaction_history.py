@@ -77,6 +77,7 @@ class TransactionHistoryTests(unittest.TestCase):
                 "--season", "2025",
                 "--map", str(Path(directory) / "missing-map.json"),
                 "--max-week", "2",
+                "--completed-through-week", "0",
                 "--current-season", str(FIXTURES / "current-season.json"),
                 "--out", str(output),
                 "--fixture-dir", str(FIXTURES),

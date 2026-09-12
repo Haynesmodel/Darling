@@ -84,7 +84,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--draft-id")
     result.add_argument("--players-cache")
     result.add_argument("--fixture-dir")
-    result.add_argument("--completed-through-week", type=int)
+    result.add_argument("--completed-through-week", type=int, required=True)
     return result
 
 

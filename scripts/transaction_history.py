@@ -733,13 +733,14 @@ def validate_current_snapshot(current: dict[str, Any], season: int, max_week: in
     if isinstance(boundary, bool) or not isinstance(boundary, int) or not 0 <= boundary <= max_week:
         raise ValueError("resolved transaction boundary is invalid")
     weeks = current.get("weeks_fetched")
-    if not isinstance(weeks, list) or len(set(weeks)) != len(weeks) or any(not isinstance(w, int) for w in weeks):
+    if not isinstance(weeks, list) or len(set(weeks)) != len(weeks) or any(isinstance(w, bool) or not isinstance(w, int) for w in weeks):
         raise ValueError("CurrentSeason weeks_fetched is invalid")
     if any(week not in weeks for week in range(1, boundary + 1)):
         raise ValueError("CurrentSeason snapshot has missing completed week coverage")
     teams = current.get("teams")
-    team_ids = {team.get("roster_id") for team in teams} if isinstance(teams, list) else set()
-    if not teams or any(not isinstance(value, int) or isinstance(value, bool) for value in team_ids) or team_ids != expected_rosters:
+    team_values = [team.get("roster_id") for team in teams] if isinstance(teams, list) else []
+    team_ids = set(team_values)
+    if not teams or len(team_values) != len(team_ids) or any(not isinstance(value, int) or isinstance(value, bool) for value in team_values) or team_ids != expected_rosters:
         raise ValueError("CurrentSeason team roster set does not match league rosters")
     by_week: dict[int, list[dict[str, Any]]] = defaultdict(list)
     for game in current.get("games") or []:

@@ -9,12 +9,16 @@ class ReconciliationFixtureTests(unittest.TestCase):
     def fixture(self,value):
         directory=tempfile.TemporaryDirectory(); path=Path(directory.name)/'source.json'; path.write_text(json.dumps(value),encoding='utf-8'); return directory,path
     def test_normalizes_orientation_ties_and_rounding(self):
-        value={'retrieved_at':'2025-09-20T12:00:00Z','weeks':{'1':[{'roster_id':1,'matchup_id':7,'points':80.004},{'roster_id':2,'matchup_id':7,'points':80.005}]}}
+        value={'retrieved_at':'2025-09-20T12:00:00Z','weeks':{'1':[{'roster_id':1,'matchup_id':7,'points':80.004},{'roster_id':2,'matchup_id':7,'points':75.125}]}}
         directory,path=self.fixture(value)
         try:
-            rows,retrieved=load_fixture(path,2025,{'1':'Zed','2':'Amy'}); self.assertEqual(retrieved,value['retrieved_at']); self.assertEqual(rows[0]['teamA'],'Amy')
-            reversed_candidate=[dict(rows[0], teamA='Amy', teamB='Zed', scoreA=80.00, scoreB=80.004)]
-            self.assertEqual(reconcile(rows,reversed_candidate,2025,retrieved_at=retrieved)['summary']['matched'],1)
+            rows,retrieved=load_fixture(path,2025,{'1':'Zed','2':'Amy'}); self.assertEqual(retrieved,value['retrieved_at'])
+            self.assertEqual((rows[0]['teamA'], rows[0]['teamB'], rows[0]['scoreA'], rows[0]['scoreB']), ('Amy', 'Zed', 75.12, 80.0))
+            reversed_candidate=[dict(rows[0], teamA='Zed', teamB='Amy', scoreA=80.0, scoreB=75.12, date='2025-09-08')]
+            report=reconcile(rows,reversed_candidate,2025,retrieved_at=retrieved)
+            self.assertEqual(report['summary']['different'],1)
+            self.assertEqual((report['different'][0]['before']['teamA'], report['different'][0]['before']['scoreA']), ('Amy', 75.12))
+            self.assertEqual((report['different'][0]['after']['teamA'], report['different'][0]['after']['scoreA']), ('Amy', 75.12))
         finally: directory.cleanup()
     def test_reports_field_difference(self):
         value={'retrieved_at':'2025-09-20T12:00:00Z','weeks':{'1':[{'roster_id':1,'matchup_id':7,'points':80},{'roster_id':2,'matchup_id':7,'points':75}]}}

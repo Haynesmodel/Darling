@@ -82,6 +82,26 @@ class SleeperToH2HTests(unittest.TestCase):
             (None, ''),
         )
 
+    def test_validate_completed_matchups_rejects_malformed_matrix_and_accepts_zero_zero(self):
+        valid = [{'roster_id': 1, 'matchup_id': 1, 'points': 0}, {'roster_id': 2, 'matchup_id': 1, 'points': 0}]
+        self.assertEqual(module.validate_completed_matchups(valid, [1, 2]), [(valid[0], valid[1])])
+        cases = [
+            [None, valid[1]],
+            [dict(valid[0], roster_id=3), valid[1]],
+            [dict(valid[0], roster_id=True), valid[1]],
+            [valid[0], dict(valid[1], roster_id=1)],
+            [dict(valid[0], matchup_id=None), valid[1]],
+            [dict(valid[0], matchup_id=True), valid[1]],
+            [dict(valid[0], matchup_id=[]), valid[1]],
+            [valid[0]],
+            [*valid, dict(valid[0], roster_id=3, matchup_id=2)],
+        ]
+        for points in (None, True, '0', float('nan'), float('inf')):
+            cases.append([dict(valid[0], points=points), valid[1]])
+        for rows in cases:
+            with self.assertRaises(ValueError):
+                module.validate_completed_matchups(rows, [1, 2])
+
     def test_game_key_normalizes_team_order(self):
         self.assertEqual(
             module.game_key({'season': 2025, 'week': 15, 'teamA': 'Shap', 'teamB': 'Joe'}),

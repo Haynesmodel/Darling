@@ -33,6 +33,10 @@ jobs:
           cache: npm
       - name: Select npm 11.18.0
         run: npm install --global npm@11.18.0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
       - name: Install dependencies
         run: npm ci
       - name: Audit dependencies
@@ -70,6 +74,7 @@ jobs:
             echo '### Quality + build'
             echo "- Node: $(node --version)"
             echo "- npm: $(npm --version)"
+            echo "- Python: $(python3 --version)"
             echo "- Dependency audit: ${AUDIT_RESULT}"
             echo "- Unit/data checks: ${UNIT_DATA_RESULT}"
             echo "- Production build: ${BUILD_RESULT}"
@@ -100,6 +105,10 @@ jobs:
           cache: npm
       - name: Select npm 11.18.0
         run: npm install --global npm@11.18.0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
       - name: Install dependencies
         run: npm ci
       - name: Download production artifact
@@ -164,6 +173,10 @@ jobs:
           cache: npm
       - name: Select npm 11.18.0
         run: npm install --global npm@11.18.0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
       - name: Install dependencies
         run: npm ci
       - name: Install Chromium
@@ -218,6 +231,10 @@ jobs:
           cache: npm
       - name: Select npm 11.18.0
         run: npm install --global npm@11.18.0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
       - name: Install dependencies
         run: npm ci
       - name: Download production artifact

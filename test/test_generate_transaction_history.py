@@ -42,6 +42,7 @@ def fixture_args(output):
         draft_id=None,
         players_cache=None,
         fixture_dir=str(FIXTURES),
+        completed_through_week=2,
     )
 
 
@@ -76,6 +77,7 @@ class TransactionHistoryTests(unittest.TestCase):
                 "--season", "2025",
                 "--map", str(Path(directory) / "missing-map.json"),
                 "--max-week", "2",
+                "--completed-through-week", "0",
                 "--current-season", str(FIXTURES / "current-season.json"),
                 "--out", str(output),
                 "--fixture-dir", str(FIXTURES),
@@ -284,7 +286,7 @@ class TransactionHistoryTests(unittest.TestCase):
             ],
         }
         self.assertEqual(completed_week_from_current(current, 2025, 17, "in_season"), 1)
-        self.assertEqual(completed_week_from_current(current, 2025, 17, "complete"), 17)
+        self.assertEqual(completed_week_from_current(current, 2025, 17, "complete"), 1)
         transactions = [
             {
                 "id": "future-swap",

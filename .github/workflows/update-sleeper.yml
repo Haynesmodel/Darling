@@ -13,7 +13,7 @@ on:
         type: boolean
         default: false
   schedule:
-    - cron: '0 13 * * 1'
+    - cron: '0 14 * * 2'
 
 permissions:
   contents: read
@@ -30,6 +30,7 @@ jobs:
     timeout-minutes: 45
     env:
       CI: '1'
+      SCHEDULED_RUN: ${{ github.event_name == 'schedule' && '1' || '0' }}
       REQUESTED_SEASON: ${{ github.event.inputs.season }}
       VALIDATE_ONLY_REQUESTED: ${{ github.event.inputs.validate_only }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -129,6 +130,7 @@ jobs:
       - name: Generate candidate data
         env:
           LEAGUE_ID: ${{ secrets.SLEEPER_LEAGUE_ID }}
+          COMPLETION_REPORT_PATH: ${{ runner.temp }}/darling-completion-report.json
         shell: bash
         run: |
           echo "FAILED_PHASE=Sleeper generation" >> "$GITHUB_ENV"
@@ -272,7 +274,8 @@ jobs:
             --candidate-sha "${{ steps.source.outputs.sha }}" \
             --changed-files-file "${RUNNER_TEMP}/sleeper-changed-files.txt" \
             --body-out "${RUNNER_TEMP}/sleeper-pr-body.md" \
-            --json-out "${RUNNER_TEMP}/sleeper-summary.json"
+            --json-out "${RUNNER_TEMP}/sleeper-summary.json" \
+            --completion-report "${RUNNER_TEMP}/darling-completion-report.json"
           cat "${RUNNER_TEMP}/sleeper-pr-body.md" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Record App authentication phase

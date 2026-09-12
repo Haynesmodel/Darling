@@ -35,6 +35,7 @@ function current(overrides = {}) {
     source: 'sleeper',
     league_id: 'league-123',
     season: 2025,
+    max_week: 17,
     current_week: 1,
     teams: [{ owner: 'Joe' }, { owner: 'Shap' }],
     games: [{ ...game(), status: 'final' }],
@@ -67,7 +68,7 @@ function transactions(overrides = {}) {
         complete_count: 1,
         failed_count: 0,
         pending_count: 0,
-        completed_week: 1,
+        completed_week: 17,
         missing_player_metadata: 0,
         type_counts: { waiver: 1, free_agent: 0, trade: 0, commissioner: 0 },
       },
@@ -104,6 +105,8 @@ function fixture({
   if (afterTransactions !== null) fs.writeFileSync(path.join(afterDir, 'TransactionHistory.json'), JSON.stringify(afterTransactions));
   const changedFile = path.join(root, 'changed.txt');
   fs.writeFileSync(changedFile, changed.join('\n'));
+  const completionReport = path.join(root, 'completion.json');
+  fs.writeFileSync(completionReport, JSON.stringify({ season: 2025, max_week: 17, completed: 17, active: null, basis: 'nfl_state_and_calendar_guard', warnings: [], clock: '2025-09-16T13:00:00Z', override_reason: null }));
   return {
     root,
     options: {
@@ -116,6 +119,7 @@ function fixture({
       'changed-files-file': changedFile,
       'body-out': path.join(root, 'body.md'),
       'json-out': path.join(root, 'summary.json'),
+      'completion-report': completionReport,
     },
   };
 }
@@ -132,6 +136,54 @@ function withFixture(options, callback) {
 function runSummary(value) {
   return summarize(value.options, { LEAGUE_ID: 'league-123' });
 }
+
+function rewriteCompletion(value, patch) {
+  const file = value.options['completion-report'];
+  const base = { season: 2025, max_week: 17, completed: 1, active: 2, basis: 'nfl_state_and_calendar_guard', warnings: [], clock: '2025-09-16T13:00:00Z', override_reason: null };
+  fs.writeFileSync(file, typeof patch === 'string' ? patch : JSON.stringify({ ...base, ...patch }));
+}
+
+test('completion report rejects malformed provenance and boundary cases', () => {
+  const cases = [
+    'not json', { season: 2024 }, { max_week: 0 }, { completed: true }, { completed: -1 }, { completed: 18 },
+    { active: null }, { active: true }, { active: 4 }, { active: 18 }, { basis: '' }, { basis: 'unknown' },
+    { warnings: {} }, { warnings: [1] }, { clock: '2025-09-16T13:00:00+00:00' }, { clock: 'not-a-clock' },
+    { basis: 'manual_override', override_reason: null }, { basis: 'manual_override', override_reason: ' ' },
+    { basis: 'nfl_state_and_calendar_guard', override_reason: 'unexpected' },
+  ];
+  for (const patch of cases) {
+    withFixture({}, (value) => {
+      rewriteCompletion(value, patch);
+      assert.throws(() => runSummary(value));
+    });
+  }
+});
+
+test('summary rejects cross-output completion boundary violations and exposes provenance', () => {
+  withFixture({}, (value) => {
+    const valid = runSummary(value);
+    assert.equal(valid.summary.completion.season, 2025);
+    assert.match(valid.markdown, /Scoring completion provenance/);
+  });
+  const violations = [
+    { afterH2H: [game({ week: 2 })] },
+    { afterCurrent: current({ games: [{ ...game(), status: 'live' }] }) },
+    { afterCurrent: current({ games: [{ ...game({ week: 2 }), status: 'final' }] }) },
+    { afterTransactions: transactions({ coverage: { ...transactions().seasons[0].coverage, completed_week: 2 } }) },
+  ];
+  for (const options of violations) {
+    if (options.afterH2H) options.afterH2H = [game(), ...options.afterH2H];
+    withFixture(options, (value) => {
+      rewriteCompletion(value, {});
+      if (!options.afterTransactions) {
+        const afterTransactions = transactions();
+        afterTransactions.seasons[0].coverage.completed_week = 1;
+        fs.writeFileSync(path.join(value.options['after-dir'], 'TransactionHistory.json'), JSON.stringify(afterTransactions));
+      }
+      assert.throws(() => runSummary(value), /Completion boundary|CurrentSeason/);
+    });
+  }
+});
 
 test('identical and reordered H2H rows produce no semantic change', () => {
   const second = game({ week: 2, date: '2025-09-14', teamA: 'Joel', teamB: 'Nuss' });
@@ -194,6 +246,10 @@ test('CurrentSeason statistics include teams, games, weeks, statuses, and flags'
     update_context: { contains_live_scores: true, contains_projected_scores: true },
   });
   withFixture({ beforeCurrent: null, afterCurrent }, (value) => {
+    fs.writeFileSync(path.join(value.root, 'completion.json'), JSON.stringify({ season: 2025, max_week: 17, completed: 1, active: 2, basis: 'nfl_state_and_calendar_guard', warnings: [], clock: '2025-09-16T13:00:00Z', override_reason: null }));
+    const afterTransactions = transactions();
+    afterTransactions.seasons[0].coverage.completed_week = 1;
+    fs.writeFileSync(path.join(value.options['after-dir'], 'TransactionHistory.json'), JSON.stringify(afterTransactions));
     const stats = runSummary(value).summary.current_season;
     assert.equal(stats.before, null);
     assert.deepEqual(stats.after.statuses, { final: 1, live: 1, scheduled: 1 });
@@ -339,6 +395,7 @@ test('CLI rejects invalid season, URL, SHA, and any league-id argument', () => {
     '--changed-files-file', '/tmp/changed',
     '--body-out', '/tmp/body',
     '--json-out', '/tmp/json',
+    '--completion-report', '/tmp/completion.json',
   ];
   assert.throws(() => parseArgs(required.map(value => value === '2025' ? '1999' : value)), /Invalid season/);
   assert.throws(() => parseArgs(required.map(value => value.startsWith('https://') ? 'file:///tmp/run' : value)), /Run URL must use HTTPS/);

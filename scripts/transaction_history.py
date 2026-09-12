@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import json
+import math
 from collections import Counter, defaultdict
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
+from scoring_completion import postseason_expected
 
 SCHEMA_VERSION = 1
 GENERATOR_VERSION = 2
@@ -273,6 +275,30 @@ def _matchup_index(
         row["total_points"] = round2(row["total_points"])
         row["starter_points"] = round2(row["starter_points"])
     return index
+
+
+def _validate_raw_matchups(matchups: dict[int, list[dict[str, Any]]], owners: dict[int, str], boundary: int) -> None:
+    """Validate the complete Sleeper source used for player scoring."""
+    for week in range(1, boundary + 1):
+        rows = matchups.get(week)
+        if not isinstance(rows, list):
+            raise ValueError(f"matchup week {week} is missing")
+        seen_rosters: set[int] = set()
+        grouped: dict[Any, list[dict[str, Any]]] = defaultdict(list)
+        for row in rows:
+            if not isinstance(row, dict):
+                raise ValueError(f"matchup week {week} contains a malformed row")
+            roster_id = row.get("roster_id"); matchup_id = row.get("matchup_id")
+            if isinstance(roster_id, bool) or not isinstance(roster_id, int) or roster_id not in owners or roster_id in seen_rosters:
+                raise ValueError(f"matchup week {week} has invalid roster coverage")
+            if matchup_id is None or isinstance(matchup_id, (dict, list, bool)):
+                raise ValueError(f"matchup week {week} has an invalid matchup id")
+            points = row.get("points")
+            if isinstance(points, bool) or not isinstance(points, (int, float)) or not math.isfinite(points):
+                raise ValueError(f"matchup week {week} has invalid points")
+            seen_rosters.add(roster_id); grouped[matchup_id].append(row)
+        if seen_rosters != set(owners) or any(len(pair) != 2 for pair in grouped.values()):
+            raise ValueError(f"matchup week {week} has incomplete matchup coverage")
 
 
 def _movement_events(
@@ -700,8 +726,16 @@ def completed_week_from_current(
     max_week: int,
     league_status: str,
 ) -> int:
-    if league_status == "complete":
-        return max_week
+    if int(current.get("season") or 0) != season:
+        raise ValueError("CurrentSeason snapshot season does not match transaction season.")
+    declared = current.get("update_context", {}).get("completed_through_week")
+    if declared is not None:
+        if isinstance(declared, bool) or not isinstance(declared, int) or not 0 <= declared <= max_week:
+            raise ValueError("CurrentSeason completion boundary is invalid.")
+        weeks = {int(game.get("week") or 0) for game in current.get("games") or []}
+        if any(week not in weeks for week in range(1, declared + 1)):
+            raise ValueError("CurrentSeason snapshot has incomplete week coverage.")
+        return declared
     if int(current.get("season") or 0) == season:
         statuses_by_week: dict[int, list[str]] = defaultdict(list)
         for game in current.get("games") or []:
@@ -716,6 +750,50 @@ def completed_week_from_current(
             completed = week
         return completed
     return 0
+
+def validate_current_snapshot(current: dict[str, Any], season: int, max_week: int,
+                              boundary: int, expected_rosters: set[int]) -> None:
+    if not isinstance(current, dict) or current.get("season") != season:
+        raise ValueError("CurrentSeason snapshot season does not match transaction season.")
+    if isinstance(boundary, bool) or not isinstance(boundary, int) or not 0 <= boundary <= max_week:
+        raise ValueError("resolved transaction boundary is invalid")
+    weeks = current.get("weeks_fetched")
+    if not isinstance(weeks, list) or len(set(weeks)) != len(weeks) or any(isinstance(w, bool) or not isinstance(w, int) for w in weeks):
+        raise ValueError("CurrentSeason weeks_fetched is invalid")
+    if any(week not in weeks for week in range(1, boundary + 1)):
+        raise ValueError("CurrentSeason snapshot has missing completed week coverage")
+    teams = current.get("teams")
+    team_values = [team.get("roster_id") for team in teams] if isinstance(teams, list) else []
+    team_ids = set(team_values)
+    if not teams or len(team_values) != len(team_ids) or any(not isinstance(value, int) or isinstance(value, bool) for value in team_values) or team_ids != expected_rosters:
+        raise ValueError("CurrentSeason team roster set does not match league rosters")
+    by_week: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for game in current.get("games") or []:
+        if not isinstance(game, dict): raise ValueError("CurrentSeason game must be an object")
+        by_week.setdefault(game.get("week"), []).append(game)
+    regular_max = current.get("regular_season_max_week", 14)
+    if isinstance(regular_max, bool) or not isinstance(regular_max, int) or regular_max < 1:
+        raise ValueError("CurrentSeason regular season boundary is invalid")
+    for week in range(1, boundary + 1):
+        rows = by_week.get(week, []); seen: set[int] = set(); mids: set[Any] = set()
+        if week <= regular_max and len(rows) * 2 != len(expected_rosters):
+            raise ValueError("CurrentSeason completed week is partial")
+        for game in rows:
+            a, b, mid = game.get("rosterA"), game.get("rosterB"), game.get("matchup_id")
+            if (isinstance(a, bool) or isinstance(b, bool) or not isinstance(a, int) or not isinstance(b, int)
+                    or a == b or a not in expected_rosters or b not in expected_rosters or a in seen or b in seen
+                    or mid is None or isinstance(mid, bool) or mid in mids):
+                raise ValueError("CurrentSeason completed matchup coverage is invalid")
+            if game.get("status") != "final" or any(isinstance(game.get(field), bool) or not isinstance(game.get(field), (int, float)) or not math.isfinite(game[field]) for field in ("scoreA", "scoreB")):
+                raise ValueError("CurrentSeason completed matchup scores/status are invalid")
+            seen.update((a, b)); mids.add(mid)
+        if week <= regular_max:
+            if seen != expected_rosters: raise ValueError("CurrentSeason completed roster coverage is invalid")
+        else:
+            expected_counts = postseason_expected(current, regular_max)
+            counts = Counter((game.get("type"), game.get("round")) for game in rows)
+            if counts != expected_counts.get(week):
+                raise ValueError("CurrentSeason postseason coverage is invalid")
 
 
 def rosters_at_completed_week(
@@ -756,11 +834,18 @@ def build_season(
     current: dict[str, Any],
     player_directory: dict[str, dict[str, Any]],
     max_week: int,
+    completed_week_override: int | None = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     owners = owner_map(mapping, rosters)
     teams = [{"roster_id": roster_id, "owner": owner} for roster_id, owner in sorted(owners.items())]
     league_status = str(league.get("status") or "unknown")
-    completed_week = completed_week_from_current(current, season, max_week, league_status)
+    if completed_week_override is None:
+        raise ValueError("explicit resolved transaction boundary is required")
+    if isinstance(completed_week_override, bool) or not 0 <= completed_week_override <= max_week:
+        raise ValueError("resolved transaction boundary is invalid")
+    completed_week = completed_week_override
+    validate_current_snapshot(current, season, max_week, completed_week, set(owners))
+    _validate_raw_matchups(matchups, owners, completed_week)
     draft = _normalize_draft_asset(selected_draft, draft_picks, owners)
     transactions = normalize_transactions(transaction_rounds, owners, max_week)
     boundary_rosters = rosters_at_completed_week(rosters, owners, transactions, completed_week)

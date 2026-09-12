@@ -22,6 +22,7 @@ Usage (unchanged from your scripts):
 
 import argparse
 import json
+import math
 import os
 import sys
 from datetime import date, timedelta, datetime
@@ -131,6 +132,31 @@ def pair_matchups(matchups):
         by_mid.setdefault(mid, []).append(m)
     return [(items[0], items[1]) for items in by_mid.values() if len(items) == 2]
 
+def validate_completed_matchups(matchups, roster_ids):
+    expected = {int(value) for value in roster_ids}
+    seen = set(); mids = {}
+    for row in matchups:
+        if not isinstance(row, dict):
+            raise ValueError("completed week contains a malformed matchup row")
+        rid = row.get("roster_id"); mid = row.get("matchup_id")
+        if isinstance(rid, bool) or not isinstance(rid, int) or rid not in expected or rid in seen:
+            raise ValueError("completed week has invalid or duplicate roster coverage")
+        if mid is None or isinstance(mid, bool):
+            raise ValueError("completed week has an invalid matchup id")
+        try:
+            hash(mid)
+        except TypeError as error:
+            raise ValueError("completed week has an invalid matchup id") from error
+        seen.add(rid)
+        mids[mid] = mids.get(mid, 0) + 1
+    pairs = pair_matchups(matchups)
+    if len(seen) != len(expected) or len(pairs) * 2 != len(expected) or any(count != 2 for count in mids.values()):
+        raise ValueError("completed week has incomplete matchup coverage")
+    for a, b in pairs:
+        if not all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) for v in (a.get("points"), b.get("points"))):
+            raise ValueError("completed week has missing or invalid scores")
+    return pairs
+
 def round2(x):
     return float(f"{float(x):.2f}")
 
@@ -165,7 +191,8 @@ def game_key(game):
 def build_bracket_roster_pairs(league_id: str):
     """Return (playoff_pairs, saunders_pairs) where each is a set of (min_rid, max_rid) ints.
 
-    Excludes placement games via p==1.
+    Excludes placement games while retaining the actual championship/final rows
+    represented by r=3,p=1 in Sleeper's bracket response.
     Excludes placeholders with missing t1/t2.
     """
     playoff_pairs = set()
@@ -175,16 +202,25 @@ def build_bracket_roster_pairs(league_id: str):
         if not isinstance(items, list):
             return
         for g in items:
+            if not isinstance(g, dict):
+                raise ValueError("bracket row must be an object")
             p = g.get("p", 0)
+            if p is not None and (isinstance(p, bool) or not isinstance(p, int) or p < 0):
+                raise ValueError("bracket placement must be a nonnegative integer")
+            round_number = g.get("r")
+            if round_number is not None and (isinstance(round_number, bool) or not isinstance(round_number, int)):
+                raise ValueError("bracket round must be an integer")
             # Sleeper uses 'p' to indicate placement/consolation games (e.g., 5th place, 7th place).
             # Exclude ANY bracket row with a positive placement value.
-            if p is not None and int(p) > 0:
+            if p is not None and p > 0 and not (p == 1 and round_number == 3):
                 continue  # placement/consolation game
             t1 = g.get("t1")
             t2 = g.get("t2")
             if t1 is None or t2 is None:
                 continue
-            a, b = int(t1), int(t2)
+            if isinstance(t1, bool) or isinstance(t2, bool) or not isinstance(t1, int) or not isinstance(t2, int) or t1 == t2:
+                raise ValueError("bracket roster IDs must be distinct integers")
+            a, b = t1, t2
             dest_set.add((a, b) if a < b else (b, a))
 
     ingest(get_winners_bracket(league_id), playoff_pairs)
@@ -243,16 +279,26 @@ def main():
     parser.add_argument("--list-teams", action="store_true", help="Only list teams from Sleeper and exit")
     parser.add_argument("--weeks", type=str, default="1-14", help="Weeks to fetch, e.g. '1-14' or '15-17'")
     parser.add_argument("--only-played", dest="only_played", action="store_true", default=False,
-                        help="Include only games that have happened (by week Sunday) and are not 0-0")
-    parser.add_argument("--cutoff-date", type=str, default=None, help="Optional YYYY-MM-DD cutoff for only-played")
+                        help="Deprecated compatibility flag; completion is governed only by the explicit resolved boundary")
+    parser.add_argument("--cutoff-date", type=str, default=None, help="Optional reproducible metadata clock; never asserts completion")
     parser.add_argument("--max-week", type=int, default=17, help="Hard cap for weeks (default: 17)")
     parser.add_argument("--regular-season-max-week", type=int, default=14, help="Regular season last week (default: 14)")
     parser.add_argument("--allow-postseason", action="store_true", default=False,
                         help="Allow fetching weeks beyond regular season and classify them via bracket endpoints.")
     parser.add_argument("--sort-mode", choices=["none", "season", "global"], default="season",
                         help="Sort mode: none|season|global (default: season)")
+    parser.add_argument("--completed-through-week", type=int, default=None,
+                        help="Resolved shared completion boundary; required for safe only-played imports")
+    parser.add_argument("--completion-basis", default=None, help="Completion provenance")
 
     args = parser.parse_args()
+
+    if args.only_played and args.completed_through_week is None:
+        parser.error("--only-played requires an explicit resolved --completed-through-week boundary")
+    if not args.list_teams and args.completed_through_week is None:
+        parser.error("appending H2H requires an explicit resolved --completed-through-week boundary")
+    if args.completed_through_week is not None and not 0 <= args.completed_through_week <= args.max_week:
+        parser.error("--completed-through-week must be between 0 and --max-week")
 
     if args.season not in WEEK1_ANCHORS:
         known = ", ".join(str(season) for season in sorted(WEEK1_ANCHORS)) or "none"
@@ -335,13 +381,13 @@ def main():
 
     for w in weeks:
         matchups = get_matchups(args.league, w)
-        pairs = pair_matchups(matchups)
+        pairs = validate_completed_matchups(matchups, roster_ids) if args.completed_through_week is not None and w <= args.completed_through_week else pair_matchups(matchups)
         if not pairs:
             continue
 
         fetched_weeks.append(w)
         game_date = sunday_for_week(args.season, w)
-        if args.only_played and game_date > cutoff:
+        if args.completed_through_week is not None and w > args.completed_through_week:
             continue
 
         for a, b in pairs:
@@ -352,7 +398,11 @@ def main():
 
             scoreA = round2(a.get("points", 0.0))
             scoreB = round2(b.get("points", 0.0))
-            if args.only_played and (scoreA == 0.0 and scoreB == 0.0):
+            valid_scores = all(isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+                               for value in (a.get("points"), b.get("points")))
+            if args.only_played and not valid_scores:
+                raise ValueError(f"Missing or invalid scores in completed week {w}; refusing archive.")
+            if args.only_played and (scoreA == 0.0 and scoreB == 0.0) and not valid_scores:
                 continue
 
             k = (args.season, w, *sorted([teamA, teamB]))

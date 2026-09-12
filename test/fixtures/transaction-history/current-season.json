@@ -1,7 +1,9 @@
 {
   "season": 2025,
+  "weeks_fetched": [1, 2],
+  "teams": [{"roster_id": 1}, {"roster_id": 2}],
   "games": [
-    { "week": 1, "status": "final" },
-    { "week": 2, "status": "final" }
+    { "week": 1, "status": "final", "rosterA": 1, "rosterB": 2, "matchup_id": 1, "scoreA": 100, "scoreB": 90 },
+    { "week": 2, "status": "final", "rosterA": 1, "rosterB": 2, "matchup_id": 2, "scoreA": 101, "scoreB": 99 }
   ]
 }

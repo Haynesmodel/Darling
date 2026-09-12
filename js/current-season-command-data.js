@@ -16,7 +16,7 @@ const DEFAULT_PLAYOFF_RULES = Object.freeze({
   saunders_slots: 6,
 });
 
-const CURRENT_VIEW_MODES = Object.freeze(['command', 'matchups', 'standings', 'owners']);
+const CURRENT_VIEW_MODES = Object.freeze(['command', 'recap', 'matchups', 'standings', 'owners']);
 const CURRENT_PROJECTION_MODES = Object.freeze(['current', 'ifScoresHold']);
 
 function numeric(value) {
@@ -45,8 +45,9 @@ function clampNonNegativeSlots(value, fallback, teamCount) {
   return teamCount > 0 ? Math.min(n, teamCount) : n;
 }
 
-function normalizeCurrentView(value) {
-  return CURRENT_VIEW_MODES.includes(value) ? value : 'command';
+function normalizeCurrentView(value, fallback = 'command') {
+  const normalizedFallback = CURRENT_VIEW_MODES.includes(fallback) ? fallback : 'command';
+  return CURRENT_VIEW_MODES.includes(value) ? value : normalizedFallback;
 }
 
 function normalizeProjectionMode(value) {

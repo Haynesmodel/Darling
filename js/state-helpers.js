@@ -22,6 +22,7 @@ function isFiniteInput(value) {
 const GAME_RESULTS = new Set(['W', 'L', 'T']);
 const GAME_SORTS = new Set(['dateDesc', 'scoreDesc', 'scoreAsc', 'marginDesc', 'marginAsc', 'combinedDesc']);
 const FOCUS_TARGETS = new Set(['top', 'overview', 'games', 'curses', 'standings', 'playoff-picture']);
+const TRANSACTION_VIEWS = new Set(['overview', 'trades', 'waivers', 'players', 'owners', 'draft']);
 
 function enumParam(params, key, allowed) {
   const value = params.get(key);
@@ -62,6 +63,12 @@ function parseUrlState(search) {
   const rounds = parseList('rounds');
   const team = params.get('team') || null;
   const tab = params.get('tab') || null;
+  const owner = params.get('owner') || null;
+  const transactionSeason = numericParam(params, 'txSeason', { integer: true, min: 2025, max: 2100 });
+  const transactionView = enumParam(params, 'txView', TRANSACTION_VIEWS);
+  const transactionOwner = params.get('txOwner') || null;
+  const transactionPlayer = params.get('txPlayer') || null;
+  const transactionId = params.get('txId') || null;
   const rivalryTeamA = params.get('rivalryTeamA') || null;
   const rivalryTeamB = params.get('rivalryTeamB') || null;
   const rivalryScope = params.get('rivalryScope') || null;
@@ -89,6 +96,7 @@ function parseUrlState(search) {
   const draftZone = params.get('draftZone') || null;
   const draftMinSample = params.get('draftMinSample');
   const draftNormalize = params.get('draftNormalize') || null;
+  const draftLocation = params.get('draftLocation') || null;
   const parsedDraftStart = isFiniteInput(draftStart) ? +draftStart : null;
   const parsedDraftEnd = isFiniteInput(draftEnd) ? +draftEnd : null;
   const parsedDraftPick = isFiniteInput(draftPick) ? +draftPick : null;
@@ -113,9 +121,11 @@ function parseUrlState(search) {
   const hasCurrent = !!(tab === 'current' || parsedCurrentSeason !== null || parsedCurrentWeek !== null || currentOwner || currentView || currentProjection);
   const hasDynasty = !!(tab === 'dynasty' || dynastyMode || dynastyOwner || parsedDynastyStart !== null || parsedDynastyEnd !== null || parsedDynastyMinSeasons !== null || parsedDynastySaunders !== null);
   const hasGauntlet = !!(tab === 'gauntlet' || gauntletA || gauntletB || gauntletModel || parsedGauntletIncludePostseason !== null || parsedGauntletSimulations !== null || gauntletSeed);
-  const hasDraft = !!(tab === 'draft' || draftOwner || draftMode || parsedDraftStart !== null || parsedDraftEnd !== null || draftMetric || parsedDraftPick !== null || draftZone || parsedDraftMinSample !== null || draftNormalize);
+  const hasDraft = !!(tab === 'draft' || draftOwner || draftMode || parsedDraftStart !== null || parsedDraftEnd !== null || draftMetric || parsedDraftPick !== null || draftZone || parsedDraftMinSample !== null || draftNormalize || draftLocation);
   const hasGameQuery = !!(gameResult || gameMinScore !== null || gameMaxScore !== null || gameSort || gameLimit !== null);
-  const hasAny = !!(team || trophyOwner || hasCurrent || hasDynasty || hasGauntlet || hasDraft || hasGameQuery || focus || (seasons && seasons.length) || (weeks && weeks.length) || (opps && opps.length) || (types && types.length) || (rounds && rounds.length));
+  const hasOwner = tab === 'owner' || !!owner;
+  const hasTransactions = !!(tab === 'transactions' || transactionSeason !== null || transactionView || transactionOwner || transactionPlayer || transactionId);
+  const hasAny = !!(team || owner || trophyOwner || hasTransactions || hasCurrent || hasDynasty || hasGauntlet || hasDraft || hasGameQuery || focus || (seasons && seasons.length) || (weeks && weeks.length) || (opps && opps.length) || (types && types.length) || (rounds && rounds.length));
   return {
     team,
     seasons: seasons ? new Set(seasons) : null,
@@ -124,6 +134,12 @@ function parseUrlState(search) {
     types: types ? new Set(types) : null,
     rounds: rounds ? new Set(rounds) : null,
     tab,
+    owner,
+    transactionSeason,
+    transactionView,
+    transactionOwner,
+    transactionPlayer,
+    transactionId,
     rivalryTeamA,
     rivalryTeamB,
     rivalryScope,
@@ -147,6 +163,7 @@ function parseUrlState(search) {
     draftZone,
     draftMinSample: parsedDraftMinSample,
     draftNormalize,
+    draftLocation,
     trophyOwner,
     dynastyMode,
     dynastyOwner,
@@ -162,6 +179,8 @@ function parseUrlState(search) {
     focus,
     hasGameQuery,
     hasRivalry: tab === 'rivalry' || !!rivalryTeamA || !!rivalryTeamB,
+    hasOwner,
+    hasTransactions,
     hasCurrent,
     hasDraft,
     hasGauntlet,
@@ -201,6 +220,12 @@ function buildUrlFromState(opts = {}) {
   const allTeams = opts.allTeams || '__ALL__';
   const selectedTeam = Object.prototype.hasOwnProperty.call(opts, 'selectedTeam') ? opts.selectedTeam : allTeams;
   const tab = Object.prototype.hasOwnProperty.call(opts, 'tab') ? opts.tab : null;
+  const selectedOwner = Object.prototype.hasOwnProperty.call(opts, 'selectedOwner') ? opts.selectedOwner : null;
+  const selectedTransactionSeason = Object.prototype.hasOwnProperty.call(opts, 'selectedTransactionSeason') ? opts.selectedTransactionSeason : null;
+  const selectedTransactionView = Object.prototype.hasOwnProperty.call(opts, 'selectedTransactionView') ? opts.selectedTransactionView : null;
+  const selectedTransactionOwner = Object.prototype.hasOwnProperty.call(opts, 'selectedTransactionOwner') ? opts.selectedTransactionOwner : null;
+  const selectedTransactionPlayer = Object.prototype.hasOwnProperty.call(opts, 'selectedTransactionPlayer') ? opts.selectedTransactionPlayer : null;
+  const selectedTransactionId = Object.prototype.hasOwnProperty.call(opts, 'selectedTransactionId') ? opts.selectedTransactionId : null;
   const selectedRivalryTeamA = Object.prototype.hasOwnProperty.call(opts, 'selectedRivalryTeamA') ? opts.selectedRivalryTeamA : null;
   const selectedRivalryTeamB = Object.prototype.hasOwnProperty.call(opts, 'selectedRivalryTeamB') ? opts.selectedRivalryTeamB : null;
   const selectedRivalryScope = Object.prototype.hasOwnProperty.call(opts, 'selectedRivalryScope') ? opts.selectedRivalryScope : null;
@@ -208,6 +233,7 @@ function buildUrlFromState(opts = {}) {
   const selectedCurrentWeek = Object.prototype.hasOwnProperty.call(opts, 'selectedCurrentWeek') ? opts.selectedCurrentWeek : null;
   const selectedCurrentOwner = Object.prototype.hasOwnProperty.call(opts, 'selectedCurrentOwner') ? opts.selectedCurrentOwner : null;
   const selectedCurrentView = Object.prototype.hasOwnProperty.call(opts, 'selectedCurrentView') ? opts.selectedCurrentView : null;
+  const defaultCurrentView = Object.prototype.hasOwnProperty.call(opts, 'defaultCurrentView') ? opts.defaultCurrentView : 'command';
   const selectedCurrentProjection = Object.prototype.hasOwnProperty.call(opts, 'selectedCurrentProjection') ? opts.selectedCurrentProjection : null;
   const selectedDynastyMode = Object.prototype.hasOwnProperty.call(opts, 'selectedDynastyMode') ? opts.selectedDynastyMode : null;
   const selectedDynastyOwner = Object.prototype.hasOwnProperty.call(opts, 'selectedDynastyOwner') ? opts.selectedDynastyOwner : null;
@@ -230,6 +256,7 @@ function buildUrlFromState(opts = {}) {
   const selectedDraftNormalize = Object.prototype.hasOwnProperty.call(opts, 'selectedDraftNormalize') ? opts.selectedDraftNormalize : null;
   const selectedDraftPick = Object.prototype.hasOwnProperty.call(opts, 'selectedDraftPick') ? opts.selectedDraftPick : null;
   const selectedDraftZone = Object.prototype.hasOwnProperty.call(opts, 'selectedDraftZone') ? opts.selectedDraftZone : null;
+  const selectedDraftLocation = Object.prototype.hasOwnProperty.call(opts, 'selectedDraftLocation') ? opts.selectedDraftLocation : null;
   const selectedGameResult = Object.prototype.hasOwnProperty.call(opts, 'selectedGameResult') ? opts.selectedGameResult : null;
   const selectedGameMinScore = Object.prototype.hasOwnProperty.call(opts, 'selectedGameMinScore') ? opts.selectedGameMinScore : null;
   const selectedGameMaxScore = Object.prototype.hasOwnProperty.call(opts, 'selectedGameMaxScore') ? opts.selectedGameMaxScore : null;
@@ -248,7 +275,15 @@ function buildUrlFromState(opts = {}) {
   const params = new URLSearchParams();
   if (tab === 'pulse') return pathname;
   if (tab) params.set('tab', tab);
-  if (tab !== 'trophy' && tab !== 'dynasty' && tab !== 'gauntlet' && tab !== 'draft' && selectedTeam && selectedTeam !== allTeams) params.set('team', selectedTeam);
+  if (tab === 'owner' && selectedOwner) params.set('owner', selectedOwner);
+  if (tab !== 'trophy' && tab !== 'dynasty' && tab !== 'gauntlet' && tab !== 'draft' && tab !== 'transactions' && selectedTeam && selectedTeam !== allTeams) params.set('team', selectedTeam);
+  if (tab === 'transactions') {
+    if (isFiniteInput(selectedTransactionSeason)) params.set('txSeason', `${selectedTransactionSeason}`);
+    if (TRANSACTION_VIEWS.has(selectedTransactionView) && selectedTransactionView !== 'overview') params.set('txView', selectedTransactionView);
+    if (selectedTransactionOwner) params.set('txOwner', selectedTransactionOwner);
+    if (selectedTransactionPlayer) params.set('txPlayer', selectedTransactionPlayer);
+    if (selectedTransactionId) params.set('txId', selectedTransactionId);
+  }
   if (tab === 'rivalry') {
     if (selectedRivalryTeamA) params.set('rivalryTeamA', selectedRivalryTeamA);
     if (selectedRivalryTeamB) params.set('rivalryTeamB', selectedRivalryTeamB);
@@ -258,7 +293,7 @@ function buildUrlFromState(opts = {}) {
     if (isFiniteInput(selectedCurrentSeason)) params.set('currentSeason', `${selectedCurrentSeason}`);
     if (isFiniteInput(selectedCurrentWeek)) params.set('currentWeek', `${selectedCurrentWeek}`);
     if (selectedCurrentOwner) params.set('currentOwner', selectedCurrentOwner);
-    if (selectedCurrentView && selectedCurrentView !== 'command') params.set('currentView', selectedCurrentView);
+    if (selectedCurrentView && selectedCurrentView !== defaultCurrentView) params.set('currentView', selectedCurrentView);
     if (selectedCurrentProjection && selectedCurrentProjection !== 'ifScoresHold') params.set('currentProjection', selectedCurrentProjection);
   }
   if (tab === 'trophy') {
@@ -273,15 +308,13 @@ function buildUrlFromState(opts = {}) {
     if (isFiniteInput(selectedDynastyStartSeason)) params.set('dynastyStart', `${selectedDynastyStartSeason}`);
     if (isFiniteInput(selectedDynastyEndSeason)) params.set('dynastyEnd', `${selectedDynastyEndSeason}`);
     if (isFiniteInput(selectedDynastyMinSeasons)) params.set('dynastyMinSeasons', `${selectedDynastyMinSeasons}`);
-    if (selectedDynastySaunders === true) params.set('dynastySaunders', '1');
-    if (selectedDynastySaunders === false) params.set('dynastySaunders', '0');
+    if (selectedDynastySaunders !== null) params.set('dynastySaunders', selectedDynastySaunders ? '1' : '0');
   }
   if (tab === 'gauntlet') {
     if (selectedGauntletA) params.set('ga', selectedGauntletA);
     if (selectedGauntletB) params.set('gb', selectedGauntletB);
     if (selectedGauntletModel) params.set('gm', selectedGauntletModel);
-    if (selectedGauntletIncludePostseason === true) params.set('gp', '1');
-    if (selectedGauntletIncludePostseason === false) params.set('gp', '0');
+    if (selectedGauntletIncludePostseason !== null) params.set('gp', selectedGauntletIncludePostseason ? '1' : '0');
     if (isFiniteInput(selectedGauntletSimulations)) params.set('gn', `${selectedGauntletSimulations}`);
     if (selectedGauntletSeed) params.set('gs', selectedGauntletSeed);
   }
@@ -295,9 +328,10 @@ function buildUrlFromState(opts = {}) {
     if (selectedDraftNormalize === 'percentile') params.set('draftNormalize', 'percentile');
     if (isFiniteInput(selectedDraftPick)) params.set('draftPick', `${selectedDraftPick}`);
     else if (selectedDraftZone) params.set('draftZone', selectedDraftZone);
+    if (selectedDraftLocation) params.set('draftLocation', selectedDraftLocation);
   }
   const setIf = (key, set, uni) => { if (isRestrictiveFn(set, uni)) params.set(key, [...set].join(',')); };
-  if (tab !== 'gauntlet' && tab !== 'draft') {
+  if (tab !== 'gauntlet' && tab !== 'draft' && tab !== 'transactions') {
     setIf('seasons', selectedSeasons, universe.seasons || []);
     setIf('weeks', selectedWeeks, universe.weeks || []);
     setIf('opps', selectedOpponents, universe.opponents || []);

@@ -7,9 +7,11 @@ import {
   currentSeedMovementRows,
   dynastyTrendRows,
   gauntletHistogramRows,
+  histogramBins,
   rivalryLeadRows,
   trophyCareerRows,
-} from '../js/charting/chart-data.js';
+} from '../src/charting/chart-data.ts';
+import { gauntletHistogramRows as featureGauntletHistogramRows } from '../src/features/gauntlet/gauntlet-histogram-data.ts';
 
 test('dynastyTrendRows flattens visible owner series and honors hidden owners', () => {
   const rows = dynastyTrendRows({
@@ -19,7 +21,7 @@ test('dynastyTrendRows flattens visible owner series and honors hidden owners', 
         owner: 'Joe',
         color: '#2563eb',
         finalScore: 12,
-        points: [{ season: 2024, seasonScore: 5, cumulativeScore: 5 }, { season: 2025, seasonScore: 7, cumulativeScore: 12 }],
+        points: [{ season: 2024, seasonScore: 5, cumulativeScore: 5 }, { season: 2025, seasonScore: 2, cumulativeScore: 7 }],
       },
       {
         owner: 'Shap',
@@ -32,7 +34,33 @@ test('dynastyTrendRows flattens visible owner series and honors hidden owners', 
 
   assert.equal(rows.length, 2);
   assert.deepEqual(rows.map(row => row.owner), ['Joe', 'Joe']);
-  assert.equal(rows[1].cumulativeScore, 12);
+  assert.equal(rows[1].cumulativeScore, 7);
+  assert.equal(rows[1].title, 'Joe: 7 through 2025');
+});
+
+test('dynastyTrendRows handles absent, invalid, hidden, and profiled point data', () => {
+  assert.deepEqual(dynastyTrendRows(), []);
+  assert.deepEqual(dynastyTrendRows({ hiddenOwners: null, series: null }, { hiddenOwners: null }), []);
+
+  const rows = dynastyTrendRows({
+    hiddenOwners: ['Joe'],
+    series: [
+      {
+        owner: 'Joe',
+        hidden: true,
+        points: [{ season: 'bad', seasonScore: 'bad', cumulativeScore: Infinity, profile: { season: 2025 } }],
+      },
+      { owner: 'Empty' },
+    ],
+  }, { hiddenOwners: ['Joe'], includeHidden: true });
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].season, 'bad');
+  assert.equal(rows[0].seasonScore, 0);
+  assert.equal(rows[0].cumulativeScore, 0);
+  assert.equal(rows[0].finalScore, 0);
+  assert.deepEqual(rows[0].profile, { season: 2025 });
+  assert.equal(rows[0].title, 'Joe: 0 through bad');
 });
 
 test('gauntletHistogramRows creates tidy bins and mean markers', () => {
@@ -47,6 +75,53 @@ test('gauntletHistogramRows creates tidy bins and mean markers', () => {
   assert.equal(payload.rows.some(row => row.owner === 'Joe' && row.count > 0), true);
   assert.deepEqual(payload.domain, [90, 120]);
   assert.equal(payload.maxCount > 0, true);
+});
+
+test('gauntlet histogram data handles empty, constant, bounded, and custom-bin inputs', () => {
+  assert.deepEqual(histogramBins([]), []);
+  assert.deepEqual(histogramBins([7, 7, Number.NaN]), [{ start: 6.5, end: 7.5, count: 2 }]);
+
+  const bounded = histogramBins([-5, 0, 5, 10, 15], { bins: 2, min: 0, max: 10 });
+  assert.deepEqual(bounded.map(bin => bin.count), [2, 3]);
+  assert.equal(histogramBins([1, 2], { bins: 100 }).length, 50);
+  assert.equal(histogramBins([1, 2], { bins: 0 }).length, 1);
+
+  assert.deepEqual(gauntletHistogramRows(null, null, null), {
+    rows: [], means: [], domain: [0, 1], maxCount: 0,
+  });
+  assert.deepEqual(gauntletHistogramRows(
+    { scoresA: [], scoresB: [] },
+    { owner: 'A', season: 2025, mean: 0 },
+    { owner: 'B', season: 2025, mean: 0 },
+  ), { rows: [], means: [], domain: [0, 1], maxCount: 0 });
+
+  const custom = gauntletHistogramRows(
+    { scoresA: [1, 2, Number.NaN], scoresB: [8, 9] },
+    { owner: 'A', season: 2025, mean: 1.5 },
+    { owner: 'B', season: 2025, mean: 8.5 },
+    { bins: 2, min: 0, max: 10 },
+  );
+  assert.deepEqual(custom.domain, [0, 10]);
+  assert.equal(custom.rows.length, 4);
+});
+
+test('feature-local gauntlet histogram data preserves typed titles across edge inputs', () => {
+  const teams = [
+    { owner: 'Joe', season: 2025, mean: 10 },
+    { owner: 'Joel', season: 2025, mean: 10 },
+  ];
+  assert.deepEqual(featureGauntletHistogramRows(null, teams[0], teams[1]), {
+    rows: [], means: [], domain: [0, 1], maxCount: 0,
+  });
+  assert.deepEqual(featureGauntletHistogramRows({}, teams[0], teams[1]), {
+    rows: [], means: [], domain: [0, 1], maxCount: 0,
+  });
+  const constant = featureGauntletHistogramRows({ scoresA: [10, Number.NaN], scoresB: [10] }, teams[0], teams[1]);
+  assert.equal(constant.rows.length, 2);
+  assert.match(constant.rows[0].title, /Joe 2025/);
+  assert.match(constant.means[1].title, /Joel 2025/);
+  const oneSided = featureGauntletHistogramRows({ scoresA: [8], scoresB: [] }, teams[0], teams[1]);
+  assert.equal(oneSided.rows.length, 1);
 });
 
 test('trophy, rivalry, and current-season chart rows preserve labels and selected owner state', () => {
@@ -67,6 +142,11 @@ test('trophy, rivalry, and current-season chart rows preserve labels and selecte
   ]);
   assert.equal(rivalry[0].spread, 'Joe + 1');
   assert.match(rivalry[1].title, /Series spread: Tied/);
+  const fallbackRivalry = rivalryLeadRows({ teamA: 'Joe', teamB: 'Joel' }, [{ date: '2025-09-21', lead: -2 }])[0];
+  assert.deepEqual(
+    [fallbackRivalry.season, fallbackRivalry.result, fallbackRivalry.winner, fallbackRivalry.score, fallbackRivalry.type, fallbackRivalry.round, fallbackRivalry.spread],
+    [0, 'T', 'Tie', '', '', '', 'Joel + 2'],
+  );
 
   const view = {
     commandCenter: {

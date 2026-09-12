@@ -1,0 +1,4 @@
+[
+  { "roster_id": 1, "players": ["p1", "p3"] },
+  { "roster_id": 2, "players": ["p2"] }
+]

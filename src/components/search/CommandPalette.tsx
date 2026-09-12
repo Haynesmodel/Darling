@@ -1,3 +1,6 @@
+import './command-palette.entry.css';
+
+import { createPortal } from 'preact/compat';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { DarlingSearchRuntime, SearchResult } from '../../search/search-types';
 import { focusableElements } from '../../accessibility/focus';
@@ -5,11 +8,12 @@ import SearchResultRow from './SearchResultRow';
 
 interface CommandPaletteProps {
   open: boolean;
+  portal: any;
   runtime: DarlingSearchRuntime;
   onClose(): void;
 }
 
-export default function CommandPalette({ open, runtime, onClose }: CommandPaletteProps) {
+export default function CommandPalette({ open, portal, runtime, onClose }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<any>(null);
@@ -83,7 +87,7 @@ export default function CommandPalette({ open, runtime, onClose }: CommandPalett
     }
   };
 
-  return (
+  return createPortal((
     <div class="search-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
       <div
         id="global-search-dialog"
@@ -144,5 +148,5 @@ export default function CommandPalette({ open, runtime, onClose }: CommandPalett
         </div>
       </div>
     </div>
-  );
+  ), portal);
 }

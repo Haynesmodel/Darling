@@ -1,4 +1,5 @@
 import * as core from './core-helpers.js';
+import { isLowestScoreEligible } from './lowest-score-policy.js';
 function coreFn(name) {
   const fn = core[name];
   if (typeof fn !== 'function') {
@@ -184,17 +185,17 @@ function computeWeeklyAwards(games, highScoreThreshold) {
     if (!isRegularGameFn(g)) continue;
     const d = g.date;
     if (!byDate.has(d)) byDate.set(d, []);
-    byDate.get(d).push({ team: g.teamA, score: g.scoreA });
-    byDate.get(d).push({ team: g.teamB, score: g.scoreB });
+    byDate.get(d).push({ game: g, team: g.teamA, score: g.scoreA });
+    byDate.get(d).push({ game: g, team: g.teamB, score: g.scoreB });
   }
   const topCount = new Map(), lowCount = new Map(), highCount = new Map();
   for (const arr of byDate.values()) {
     if (!arr.length) continue;
     arr.sort((a, b) => b.score - a.score);
     const top = arr[0];
-    const low = arr[arr.length - 1];
+    const low = arr.filter(row => isLowestScoreEligible(row.game, row.team)).at(-1);
     topCount.set(top.team, (topCount.get(top.team) || 0) + 1);
-    lowCount.set(low.team, (lowCount.get(low.team) || 0) + 1);
+    if (low) lowCount.set(low.team, (lowCount.get(low.team) || 0) + 1);
     for (const { team, score } of arr) {
       if (score >= highScoreThreshold) highCount.set(team, (highCount.get(team) || 0) + 1);
     }
@@ -231,6 +232,7 @@ function computeTopNWeeklyScoresAllTeams(games, n = 5) {
 
 function computeBottomNWeeklyScoresAllTeams(games, n = 5) {
   return computeLeagueRowsSingleWeeks(games)
+    .filter(row => isLowestScoreEligible(row.g, row.team))
     .sort((a, b) => a.pf - b.pf || a.team.localeCompare(b.team))
     .slice(0, n);
 }

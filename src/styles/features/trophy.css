@@ -102,27 +102,39 @@
 
 .trophy-shelf{
   display:grid;
-  grid-template-columns:repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns:repeat(4, minmax(0, 1fr));
   gap:10px;
 }
 .trophy-hardware-card{
+  --trophy-card-background:var(--surface-panel);
+  --trophy-card-border:var(--trophy-card-muted);
+  --trophy-card-text:var(--text);
+  --trophy-card-muted:var(--muted);
+  --trophy-card-label-background:var(--accent-soft);
+  --trophy-card-label-text:var(--text-link);
+
   display:grid;
   gap:8px;
   padding:14px;
-  border:1px solid var(--border);
+  border:1px solid var(--trophy-card-border);
   border-radius:16px;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--surface-panel) 92%, transparent), var(--surface-panel));
+  background:var(--trophy-card-background);
+  color:var(--trophy-card-text);
   box-shadow:var(--shadow-soft);
-  min-height:126px;
+  min-height:176px;
+  align-content:start;
 }
 .trophy-hardware-card.gold{
-  border-color:var(--season-border);
-  background:var(--season-soft);
+  --trophy-card-border:var(--trophy-card-text);
+  --trophy-card-background:var(--season-soft);
 }
 .trophy-hardware-card.scar{
-  border-color:#fecaca;
-  background:linear-gradient(180deg, rgba(255,241,242,.98), rgba(255,255,255,1));
+  --trophy-card-border:var(--status-error-text);
+  --trophy-card-background:var(--status-error-bg);
+  --trophy-card-text:var(--status-error-text);
+  --trophy-card-muted:var(--text-muted);
+  --trophy-card-label-background:var(--status-error-bg);
+  --trophy-card-label-text:var(--status-error-text);
 }
 .trophy-card-top{
   display:flex;
@@ -133,6 +145,7 @@
 .trophy-card-title{
   display:flex;
   align-items:center;
+  flex-wrap:wrap;
   gap:10px;
   min-width:0;
 }
@@ -146,7 +159,7 @@
 .trophy-card-rank{
   font-size:12px;
   font-weight:800;
-  color:var(--muted);
+  color:var(--trophy-card-muted);
 }
 .trophy-card-value{
   font-size:30px;
@@ -154,15 +167,22 @@
   line-height:1;
   letter-spacing:-.04em;
 }
-.trophy-card-years{
-  font-size:13px;
-  font-weight:700;
-  color:var(--text);
+.trophy-card-measure{display:flex;align-items:baseline;gap:8px}
+.trophy-card-measure-label,
+.trophy-card-meta-label{color:var(--trophy-card-muted);font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.trophy-card-years{font-size:13px;font-weight:700;color:var(--trophy-card-text)}
+.trophy-card-context{margin:0;font-size:12px;line-height:1.35;color:var(--trophy-card-muted)}
+.trophy-card-state{color:var(--trophy-card-muted);font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
+.trophy-hardware-card.state-empty{border-style:dashed;box-shadow:none}
+.trophy-hardware-card.gold.state-empty,
+.trophy-hardware-card.neutral.state-empty{
+  --trophy-card-background:var(--surface-panel-alt);
+  --trophy-card-border:var(--trophy-card-text);
 }
-.trophy-card-context{
-  font-size:12px;
-  line-height:1.35;
-  color:var(--muted);
+.trophy-hardware-card.scar.state-empty{
+  --trophy-card-background:var(--surface-panel-alt);
+  --trophy-card-text:var(--muted);--trophy-card-muted:var(--muted);--trophy-card-label-background:var(--surface-panel);--trophy-card-label-text:var(--muted);
+  --trophy-card-border:var(--trophy-card-text);
 }
 
 .trophy-year-chip{
@@ -171,8 +191,8 @@
   gap:6px;
   padding:4px 10px;
   border-radius:999px;
-  background:var(--accent-soft);
-  color:var(--text-link);
+  background:var(--trophy-card-label-background);
+  color:var(--trophy-card-label-text);
   font-size:11px;
   font-weight:900;
   text-transform:uppercase;
@@ -463,3 +483,15 @@
 }
 
 .trophy-ledger{overflow:auto}
+
+@media (max-width:900px){.trophy-shelf{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.trophy-toolbar{align-items:stretch}.trophy-toolbar select{width:100%;min-width:0}.trophy-hero{padding:16px}.trophy-shelf{grid-template-columns:1fr}.trophy-split{grid-template-columns:1fr}}
+@media (forced-colors:active){
+  .trophy-hardware-card,.trophy-hardware-card.gold,.trophy-hardware-card.neutral,.trophy-hardware-card.scar{border:1px solid CanvasText;background:Canvas;color:CanvasText;box-shadow:none}
+  .trophy-hardware-card.gold.state-earned{border-style:double}
+  .trophy-hardware-card.neutral.state-earned{border-style:dotted}
+  .trophy-hardware-card.scar.state-earned{border-width:3px}
+  .trophy-hardware-card.state-empty{border-style:dashed}
+  .trophy-year-chip{border:1px solid CanvasText;background:Canvas;color:CanvasText}
+  .trophy-card-context,.trophy-card-rank,.trophy-card-state,.trophy-card-measure-label,.trophy-card-meta-label{color:CanvasText}
+}

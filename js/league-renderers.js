@@ -1,5 +1,6 @@
 import * as core from './core-helpers.js';
 import * as render from './render-helpers.js';
+import { isLowestScoreEligible } from './lowest-score-policy.js';
 function renderFn(name) {
   const fn = render[name];
   if (typeof fn !== 'function') {
@@ -150,6 +151,7 @@ function buildTeamFunFactsViewModel(team, games, opts = {}) {
         pa: s.pa,
         date: g.date,
         opp: s.opp,
+        team,
         season: +g.season,
         type: normType(g.type),
         g,
@@ -158,18 +160,27 @@ function buildTeamFunFactsViewModel(team, games, opts = {}) {
   }
 
   const hi5 = perGame.slice().sort((a, b) => b.pf - a.pf || b.date.localeCompare(a.date)).slice(0, 5);
-  const lo5 = perGame.slice().sort((a, b) => a.pf - b.pf || a.date.localeCompare(b.date)).slice(0, 5);
+  const lo5 = perGame
+    .filter(row => isLowestScoreEligible(row.g, row.team))
+    .slice()
+    .sort((a, b) => a.pf - b.pf || a.date.localeCompare(b.date))
+    .slice(0, 5);
 
   const datesPlayed = unique(orderedAsc.map(g => (sidesForTeam(g, team) ? g.date : null)).filter(Boolean));
   for (const d of datesPlayed) {
     const dayGames = leagueGames.filter(x => x.date === d);
     if (dayGames.some(isTwoWeek2014)) continue;
     const maxScore = Math.max(...dayGames.flatMap(x => [x.scoreA, x.scoreB]));
-    const minScore = Math.min(...dayGames.flatMap(x => [x.scoreA, x.scoreB]));
+    const eligibleLowScores = dayGames.flatMap(x => [
+      isLowestScoreEligible(x, x.teamA) ? x.scoreA : null,
+      isLowestScoreEligible(x, x.teamB) ? x.scoreB : null,
+    ]).filter(score => score !== null);
+    const minScore = eligibleLowScores.length ? Math.min(...eligibleLowScores) : Infinity;
     const meGame = orderedAsc.find(x => x.date === d && sidesForTeam(x, team));
     const meScore = meGame ? (meGame.teamA === team ? meGame.scoreA : meGame.scoreB) : -Infinity;
+    const meEligible = meGame ? isLowestScoreEligible(meGame, team) : false;
     if (meScore === maxScore) crowns++;
-    if (meScore === minScore) turds++;
+    if (meEligible && meScore === minScore) turds++;
   }
 
   for (const g of orderedAsc) {
@@ -325,7 +336,7 @@ function leagueSummaryTablesHtml(opts = {}) {
   const regTable = `
   <div class="mini">
     <div class="mini-title">Regular Season (All-Time)</div>
-    <div class="table-wrap mini-table">
+    <div class="table-wrap mini-table" tabindex="0">
       <table>
         <thead><tr><th scope="col">Team</th><th scope="col">Record</th><th scope="col">Win%</th><th scope="col">PPG</th><th scope="col">OPPG</th></tr></thead>
         <tbody>${
@@ -339,7 +350,7 @@ function leagueSummaryTablesHtml(opts = {}) {
   const postTable = `
   <div class="mini">
     <div class="mini-title">Post Season (All-Time)</div>
-    <div class="table-wrap mini-table">
+    <div class="table-wrap mini-table" tabindex="0">
       <table>
         <thead>
           <tr>
@@ -375,7 +386,7 @@ function leagueSummaryTablesHtml(opts = {}) {
   const finishTable = `
   <div class="mini">
     <div class="mini-title">Average Finish (All-Time)</div>
-    <div class="table-wrap mini-table">
+    <div class="table-wrap mini-table" tabindex="0">
       <table>
         <thead><tr><th scope="col">Team</th><th scope="col">Avg Finish</th><th scope="col">Seasons</th></tr></thead>
         <tbody>${
@@ -615,7 +626,7 @@ function leagueFunListsAllTeamsHtml(opts = {}) {
   const mini = (title, headings, rows, emptyCols) => `
   <div class="mini">
     <div class="mini-title">${esc(title)}</div>
-    <div class="table-wrap mini-table">
+    <div class="table-wrap mini-table" tabindex="0">
       <table>
         <thead><tr>${headings.map(h => `<th scope="col">${esc(h)}</th>`).join('')}</tr></thead>
         <tbody>${rows || `<tr><td colspan="${emptyCols}" class="muted">\u2014</td></tr>`}</tbody>
@@ -662,7 +673,7 @@ function teamFunFactsView(team, games, opts = {}) {
   const listsHtml = `
   <div class="mini">
     <div class="mini-title">Top 5 Highest Scoring Games</div>
-    <div class="table-wrap mini-table">
+    <div class="table-wrap mini-table" tabindex="0">
       <table>
         <thead><tr><th scope="col">Score</th><th scope="col">Opponent</th><th scope="col">Date</th></tr></thead>
         <tbody>${vm.highestGames.map(r => `<tr><td>${esc(r.score)}</td><td>${esc(r.opponent)}</td><td>${esc(r.date)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">\u2014</td></tr>'}</tbody>
@@ -671,7 +682,7 @@ function teamFunFactsView(team, games, opts = {}) {
   </div>
   <div class="mini">
     <div class="mini-title">Bottom 5 Lowest Scoring Games</div>
-    <div class="table-wrap mini-table">
+    <div class="table-wrap mini-table" tabindex="0">
       <table>
         <thead><tr><th scope="col">Score</th><th scope="col">Opponent</th><th scope="col">Date</th></tr></thead>
         <tbody>${vm.lowestGames.map(r => `<tr><td>${esc(r.score)}</td><td>${esc(r.opponent)}</td><td>${esc(r.date)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">\u2014</td></tr>'}</tbody>

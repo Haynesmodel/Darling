@@ -20,6 +20,31 @@ function collectClosure(byId, startIds) {
   return [...ids].map(id => byId.get(id));
 }
 
+function findReachableDynamic(byId, startId, token) {
+  const visited = new Set();
+  const visitStatic = id => {
+    if (visited.has(`static:${id}`)) return null;
+    if (normalizeId(id) === 'index.html') return null;
+    visited.add(`static:${id}`);
+    const chunk = byId.get(id);
+    if (!chunk) return null;
+    for (const importId of chunk.imports || []) {
+      const nested = visitStatic(importId);
+      if (nested) return nested;
+    }
+    for (const dynamicId of chunk.dynamicImports || []) {
+      const target = byId.get(dynamicId);
+      if (normalizeId(dynamicId) === normalizeId(token) || (target && matchesToken(target, token))) return dynamicId;
+      if (!target) continue;
+      if (collectClosure(byId, [dynamicId]).some(candidate => matchesToken(candidate, token))) return dynamicId;
+      const nested = visitStatic(dynamicId);
+      if (nested) return dynamicId;
+    }
+    return null;
+  };
+  return visitStatic(startId);
+}
+
 function routeMeasurement(staticChunks, settledChunks) {
   return {
     staticChunks,
@@ -73,6 +98,13 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
     if (!found) errors.push(`required dynamic entry ${name} (${id}) is missing`);
     else if (!found.isDynamicEntry) errors.push(`required entry ${name} (${id}) is not marked as a dynamic entry`);
   }
+  const clickLoadedEntries = {};
+  for (const [name, id] of Object.entries(limits.required_click_loaded_entries || {})) {
+    const found = resolveConfiguredEntry(id);
+    clickLoadedEntries[name] = found;
+    if (!found) errors.push(`required click-loaded entry ${name} (${id}) is missing`);
+    else if (!found.isDynamicEntry) errors.push(`required click-loaded entry ${name} (${id}) is not marked as a dynamic entry`);
+  }
 
   const namedDataChunk = requiredEntries['load-league-assets']
     || chunks.find(chunk => matchesToken(chunk, 'load-league-assets'));
@@ -90,12 +122,20 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
     const settledRoots = [...roots];
     const requestedDynamics = limits.settled_dynamic_entries?.[routeName] || [];
     for (const token of requestedDynamics) {
-      const dynamicId = featureChunk.dynamicImports.find(id => {
-        const target = byId.get(id);
-        return normalizeId(id) === normalizeId(token) || (target && matchesToken(target, token));
-      });
-      if (!dynamicId) errors.push(`settled route ${routeName} cannot resolve configured dynamic import ${token}`);
-      else settledRoots.push(dynamicId);
+      let cursor = featureChunk.id;
+      let resolved = false;
+      const visited = new Set();
+      while (!visited.has(cursor)) {
+        visited.add(cursor);
+        const dynamicId = findReachableDynamic(byId, cursor, token);
+        if (!dynamicId) break;
+        settledRoots.push(dynamicId);
+        resolved = true;
+        const target = byId.get(dynamicId);
+        if (normalizeId(dynamicId) === normalizeId(token) || (target && matchesToken(target, token))) break;
+        cursor = dynamicId;
+      }
+      if (!resolved) errors.push(`settled route ${routeName} cannot resolve configured dynamic import ${token}`);
     }
     routes[routeName] = routeMeasurement(staticChunks, collectClosure(byId, settledRoots));
   }
@@ -109,6 +149,9 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
     }
     if (limits.entry_chunk_gzip_max_bytes && entry.gzipBytes > limits.entry_chunk_gzip_max_bytes) {
       errors.push(`entry chunk ${entry.gzipBytes} gzip exceeds ${limits.entry_chunk_gzip_max_bytes}`);
+    }
+    if (limits.entry_chunk_gzip_target_bytes && entry.gzipBytes > limits.entry_chunk_gzip_target_bytes) {
+      errors.push(`entry chunk ${entry.gzipBytes} gzip exceeds target ${limits.entry_chunk_gzip_target_bytes}`);
     }
   }
   if (limits.require_data_runtime_chunk && !dataChunk) {
@@ -125,6 +168,9 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
     }
     if (limits.chart_runtime_gzip_max_bytes && chartRuntime.gzipBytes > limits.chart_runtime_gzip_max_bytes) {
       errors.push(`chart-runtime ${chartRuntime.gzipBytes} gzip exceeds ${limits.chart_runtime_gzip_max_bytes}`);
+    }
+    if (limits.chart_runtime_gzip_target_bytes && chartRuntime.gzipBytes > limits.chart_runtime_gzip_target_bytes) {
+      errors.push(`chart-runtime ${chartRuntime.gzipBytes} gzip exceeds target ${limits.chart_runtime_gzip_target_bytes}`);
     }
     for (const routeName of limits.chart_runtime_excluded_routes || []) {
       if (routes[routeName]?.settledChunks.some(chunk => chunk.id === chartRuntime.id)) {
@@ -155,6 +201,13 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
       errors.push(`${routeName} settled route ${route.settledGzipBytes} gzip exceeds ${maximum}`);
     }
   }
+  for (const [routeName, maximum] of Object.entries(limits.route_static_gzip_max_bytes || {})) {
+    const route = routes[routeName];
+    if (!route) errors.push(`static route budget configured for missing route ${routeName}`);
+    else if (route.staticGzipBytes > maximum) {
+      errors.push(`${routeName} static route ${route.staticGzipBytes} gzip exceeds ${maximum}`);
+    }
+  }
   if (limits.feature_chunk_gzip_max_bytes) {
     Object.entries(requiredEntries)
       .filter(([name]) => name !== 'load-league-assets')
@@ -163,6 +216,13 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
           errors.push(`${name} feature chunk ${chunk.gzipBytes} gzip exceeds ${limits.feature_chunk_gzip_max_bytes}`);
         }
       });
+  }
+  for (const [name, maximum] of Object.entries(limits.feature_chunk_gzip_max_bytes_by_route || {})) {
+    const chunk = requiredEntries[name];
+    if (!chunk) errors.push(`feature chunk budget configured for missing route ${name}`);
+    else if (chunk.gzipBytes > maximum) {
+      errors.push(`${name} feature chunk ${chunk.gzipBytes} gzip exceeds ${maximum}`);
+    }
   }
   if (limits.non_validator_chunk_max_bytes) {
     chunks
@@ -176,6 +236,17 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
   for (const token of limits.forbidden_initial_modules || []) {
     const leaked = entryClosure.find(chunk => matchesToken(chunk, token));
     if (leaked) errors.push(`initial static closure contains forbidden module ${leaked.id}`);
+  }
+  for (const [name, chunk] of Object.entries(clickLoadedEntries)) {
+    if (!chunk) continue;
+    if (entryClosure.some(candidate => candidate.id === chunk.id)) {
+      errors.push(`initial static closure contains click-loaded entry ${name}`);
+    }
+    for (const [routeName, route] of Object.entries(routes)) {
+      if (route.settledChunks.some(candidate => candidate.id === chunk.id)) {
+        errors.push(`${routeName} settled route contains click-loaded entry ${name}`);
+      }
+    }
   }
   if (limits.plot_vendor_max_copies !== undefined && vendorCopies.length > limits.plot_vendor_max_copies) {
     errors.push(`Plot/vendor emitted ${vendorCopies.length} copies; maximum is ${limits.plot_vendor_max_copies}`);
@@ -203,6 +274,7 @@ function measureBundle(root = process.cwd(), outputDir = 'dist') {
     pulseRouteGzipBytes: pulse.staticGzipBytes,
     pulseRouteBytes: pulse.staticBytes,
     requiredEntries,
+    clickLoadedEntries,
     vendorCopies,
     budget,
   };
@@ -225,6 +297,8 @@ if (require.main === module) {
     }
     const dynamics = Object.entries(result.requiredEntries || {}).filter(([, chunk]) => chunk).map(([name]) => name);
     if (dynamics.length) console.log(`Required dynamic entries: ${dynamics.join(', ')}.`);
+    const clickLoaded = Object.entries(result.clickLoadedEntries || {}).filter(([, chunk]) => chunk).map(([name]) => name);
+    if (clickLoaded.length) console.log(`Required click-loaded entries: ${clickLoaded.join(', ')}.`);
     if (!result.errors.length) console.log(`Bundle budget passed; total JavaScript gzip ${result.totalGzipBytes} bytes.`);
   }
   if (result.errors.length) {
@@ -235,6 +309,7 @@ if (require.main === module) {
 
 module.exports = {
   collectClosure,
+  findReachableDynamic,
   measureBundle,
   normalizeId,
   routeMeasurement,

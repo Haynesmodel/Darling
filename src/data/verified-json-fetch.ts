@@ -29,6 +29,7 @@ export interface VerifiedJsonFetchOptions {
   basePath?: string;
   digestFn?: (bytes: Uint8Array) => Promise<string>;
   logger?: Pick<Console, 'warn'>;
+  maximumBytes?: number;
 }
 
 function withBasePath(path: string, basePath: string): string {
@@ -169,6 +170,7 @@ async function verifyAttempt<T>(
   digestFn: (bytes: Uint8Array) => Promise<string>,
   cache: RequestCache,
   attempt: number,
+  maximumBytes = ASSET_MAX_BYTES,
 ): Promise<Omit<VerifiedJsonResult<T>, 'attempts' | 'cacheRecovered'>> {
   const response = await checkedFetch(fetchFn, url, {
     cache,
@@ -179,7 +181,7 @@ async function verifyAttempt<T>(
     descriptor.name,
     descriptor.dataVersion,
     attempt,
-    Math.min(descriptor.bytes, ASSET_MAX_BYTES),
+    Math.min(descriptor.bytes, maximumBytes),
   );
   if (bytes.byteLength !== descriptor.bytes) {
     throw new DataLoadError('SIZE_MISMATCH', descriptor.name, `${descriptor.name}: response size does not match the manifest`, descriptor.dataVersion, {
@@ -259,12 +261,12 @@ export async function fetchVerifiedJson<T = unknown>(
   const url = versionedAssetUrl(descriptor.path, options.basePath || '/', descriptor.sha256);
   const digestFn = options.digestFn || sha256Bytes;
   try {
-    const result = await verifyAttempt<T>(descriptor, url, fetchFn, digestFn, 'force-cache', 1);
+    const result = await verifyAttempt<T>(descriptor, url, fetchFn, digestFn, 'force-cache', 1, options.maximumBytes);
     return { ...result, attempts: 1, cacheRecovered: false };
   } catch (error) {
     if (!retryable(error)) throw error;
   }
-  const result = await verifyAttempt<T>(descriptor, url, fetchFn, digestFn, 'reload', 2);
+  const result = await verifyAttempt<T>(descriptor, url, fetchFn, digestFn, 'reload', 2, options.maximumBytes);
   (options.logger || console).warn(`[Darling] ${descriptor.name} recovered after a cache-bypass verification retry`);
   return { ...result, attempts: 2, cacheRecovered: true };
 }

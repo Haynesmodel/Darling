@@ -1365,22 +1365,6 @@
   "records": {
     "bottom_scores": [
       {
-        "date": "2022-12-24",
-        "opp": "Joel",
-        "pa": 6.5,
-        "pf": 4.6,
-        "season": 2022,
-        "team": "Plot"
-      },
-      {
-        "date": "2022-12-24",
-        "opp": "Plot",
-        "pa": 4.6,
-        "pf": 6.5,
-        "season": 2022,
-        "team": "Joel"
-      },
-      {
         "date": "2019-11-17",
         "opp": "Joe",
         "pa": 92.2,
@@ -1563,6 +1547,22 @@
         "pf": 62.58,
         "season": 2021,
         "team": "Connor"
+      },
+      {
+        "date": "2017-10-29",
+        "opp": "Joel",
+        "pa": 110.4,
+        "pf": 62.6,
+        "season": 2017,
+        "team": "Nuss"
+      },
+      {
+        "date": "2025-11-09",
+        "opp": "Shap",
+        "pa": 89.42,
+        "pf": 63.3,
+        "season": 2025,
+        "team": "Snare"
       }
     ],
     "sub_70": [

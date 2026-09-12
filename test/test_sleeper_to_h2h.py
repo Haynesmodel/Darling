@@ -14,6 +14,10 @@ spec.loader.exec_module(module)
 
 
 class SleeperToH2HTests(unittest.TestCase):
+    def test_2026_anchor_matches_the_published_week_1_sunday(self):
+        self.assertEqual(module.sunday_for_week(2026, 1).isoformat(), '2026-09-13')
+        self.assertEqual(module.sunday_for_week(2026, 17).isoformat(), '2027-01-03')
+
     def test_parse_weeks_supports_ranges_and_single_weeks(self):
         self.assertEqual(module.parse_weeks('1-3,5,7-8'), [1, 2, 3, 5, 7, 8])
 

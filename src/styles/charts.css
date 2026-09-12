@@ -22,6 +22,21 @@
   overflow:visible;
   font-family:inherit;
 }
+.chart-render-host{
+  min-width:0;
+  width:100%;
+}
+.chart-load-button{
+  justify-self:center;
+}
+.chart-loading{
+  min-height:160px;
+  display:grid;
+  place-items:center;
+  color:var(--muted);
+  font-size:13px;
+  font-weight:700;
+}
 .chart-empty,
 .chart-error{
   min-height:160px;
@@ -35,6 +50,9 @@
   font-weight:700;
   text-align:center;
   padding:16px;
+}
+.chart-error .btn{
+  margin-top:12px;
 }
 .chart-error{
   color:var(--status-error-text);

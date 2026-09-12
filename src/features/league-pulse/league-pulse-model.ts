@@ -1,9 +1,14 @@
 import { buildCurseTrackerModel } from '../../../js/curse-tracker.js';
+import { isLowestScoreEligible } from '../../../js/lowest-score-policy.js';
 import { buildCurrentSeasonStandings, isCompletedGame } from '../../../js/current-season-data.js';
 import { buildLiveMovement, buildProjectedStandings, resolveCurrentSeasonRules } from '../../../js/current-season-command-data.js';
 import { buildUrlFromState } from '../../../js/state-helpers.js';
 import type { CurrentSeasonData, CurrentSeasonGame, H2HGame, RivalryDefinition, SeasonSummaryRow } from '../../data/generated/asset-types';
 import { assessDataFreshness } from '../../data/data-freshness';
+import { resolveSeasonPresentation } from '../../data/season-presentation';
+import {
+  latestCompleteSeason,
+} from '../../data/season-recap';
 import type {
   LeaguePulseViewModel,
   PulseCurseModel,
@@ -16,9 +21,9 @@ import type {
   PulseRecordModel,
   PulseSeasonState,
   PulseStandingsSection,
-  PulseSuperlative,
   PulseYearInReview,
 } from './league-pulse-types';
+import { buildLeagueNewspaper, buildSeasonYearInReview } from './league-recap-model';
 
 type Game = H2HGame | CurrentSeasonGame;
 
@@ -40,68 +45,13 @@ function canonicalPair(a: string, b: string): string {
   return [a, b].sort((left, right) => left.localeCompare(right)).join('|');
 }
 
-function completedSummaryRows(rows: SeasonSummaryRow[], season: number): { rows: SeasonSummaryRow[]; complete: boolean } {
-  const matching = rows.filter(row => Number(row.season) === season);
-  return {
-    rows: matching,
-    complete: matching.filter(row => row.champion).length === 1 && matching.filter(row => row.saunders).length === 1,
-  };
-}
-
-function latestCompleteSeason(rows: SeasonSummaryRow[]): number | null {
-  const seasons = [...new Set(rows.map(row => Number(row.season)).filter(Number.isFinite))].sort((a, b) => b - a);
-  return seasons.find(season => completedSummaryRows(rows, season).complete) ?? null;
-}
-
-function spotlightWeek(currentSeason: CurrentSeasonData): number | null {
-  const games = currentSeason.games || [];
-  const weeks = [...new Set(games.map(game => numeric(game.week)).filter(Number.isFinite))].sort((a, b) => a - b);
-  if (!weeks.length) return null;
-  const live = games.filter(game => game.status === 'live').map(game => game.week);
-  if (live.length) return Math.max(...live);
-  if (numeric(currentSeason.current_week) !== null && weeks.includes(Number(currentSeason.current_week))) return Number(currentSeason.current_week);
-  const finals = games.filter(game => game.status === 'final').map(game => game.week);
-  const latestFinal = finals.length ? Math.max(...finals) : null;
-  const future = games.filter(game => game.status === 'scheduled' && (latestFinal === null || game.week > latestFinal)).map(game => game.week);
-  if (future.length) return Math.min(...future);
-  if (finals.length) return Math.max(...finals);
-  return Math.min(...weeks);
-}
-
 export function resolvePulseSeasonState(input: {
   currentSeason: CurrentSeasonData | null;
   seasonSummaries: SeasonSummaryRow[];
   leagueGames: H2HGame[];
 }): PulseSeasonState {
-  const { currentSeason, seasonSummaries, leagueGames } = input;
-  if (!currentSeason) {
-    const completeSeason = latestCompleteSeason(seasonSummaries);
-    const historicalSeason = leagueGames.length ? Math.max(...leagueGames.map(game => Number(game.season)).filter(Number.isFinite)) : null;
-    return { phase: completeSeason !== null ? 'offseason' : 'historical-fallback', season: completeSeason ?? historicalSeason, spotlightWeek: null, isLive: false, summaryComplete: completeSeason !== null };
-  }
-  const games = currentSeason.games || [];
-  const season = Number(currentSeason.season);
-  const week = spotlightWeek(currentSeason);
-  const hasLive = games.some(game => game.status === 'live');
-  const hasFinal = games.some(game => game.status === 'final');
-  const hasScheduled = games.some(game => game.status === 'scheduled');
-  const summary = completedSummaryRows(seasonSummaries, season);
-  if (!games.length) {
-    const fallback = latestCompleteSeason(seasonSummaries);
-    return { phase: fallback !== null ? 'offseason' : 'historical-fallback', season: fallback ?? season, spotlightWeek: null, isLive: false, summaryComplete: fallback !== null };
-  }
-  if (hasScheduled && !hasFinal && !hasLive) return { phase: 'preseason', season, spotlightWeek: week, isLive: false, summaryComplete: summary.complete };
-  if (hasScheduled || hasLive) {
-    const spotlightGames = games.filter(game => game.week === week);
-    const maxRegular = numeric(currentSeason.playoff_rules?.regular_season_max_week ?? currentSeason.regular_season_max_week);
-    const postseason = (week !== null && maxRegular !== null && week > maxRegular)
-      || spotlightGames.some(game => game.type !== 'Regular' || String(game.round || '').trim());
-    return { phase: postseason ? 'postseason' : 'regular-season', season, spotlightWeek: week, isLive: hasLive, summaryComplete: summary.complete };
-  }
-  if (games.every(game => game.status === 'final')) {
-    return { phase: summary.complete ? 'offseason' : 'finalizing', season, spotlightWeek: week, isLive: false, summaryComplete: summary.complete };
-  }
-  return { phase: 'historical-fallback', season, spotlightWeek: week, isLive: hasLive, summaryComplete: summary.complete };
+  const { source: _source, ...state } = resolveSeasonPresentation(input);
+  return state;
 }
 
 function pathUrl(pathname: string, options: Record<string, unknown>): string {
@@ -259,13 +209,14 @@ function recordModel(data: PulseModelData, state: PulseSeasonState, pathname: st
     { game, owner: game.teamA, opponent: game.teamB, score: game.scoreA, opponentScore: game.scoreB },
     { game, owner: game.teamB, opponent: game.teamA, score: game.scoreB, opponentScore: game.scoreA },
   ]);
+  const eligibleLowScoreRows = sideRows.filter(row => isLowestScoreEligible(row.game, row.owner));
   const maxScore = Math.max(...sideRows.map(row => row.score));
-  const minScore = Math.min(...sideRows.map(row => row.score));
+  const minScore = eligibleLowScoreRows.length ? Math.min(...eligibleLowScoreRows.map(row => row.score)) : null;
   const maxMargin = Math.max(...games.map(game => Math.abs(game.scoreA - game.scoreB)));
   const maxCombined = Math.max(...games.map(game => game.scoreA + game.scoreB));
   const records: RecordCandidate[] = [
     ...sideRows.filter(row => row.score === maxScore).map(row => ({ order: 0, title: 'Highest individual score', value: row.score, ...row, sort: 'scoreDesc' })),
-    ...sideRows.filter(row => row.score === minScore).map(row => ({ order: 1, title: 'Lowest individual score', value: row.score, ...row, sort: 'scoreAsc' })),
+    ...(minScore === null ? [] : eligibleLowScoreRows.filter(row => row.score === minScore).map(row => ({ order: 1, title: 'Lowest individual score', value: row.score, ...row, sort: 'scoreAsc' }))),
     ...games.filter(game => Math.abs(game.scoreA - game.scoreB) === maxMargin).map(game => ({ order: 2, title: 'Largest winning margin', value: maxMargin, game, owner: game.scoreA >= game.scoreB ? game.teamA : game.teamB, opponent: game.scoreA >= game.scoreB ? game.teamB : game.teamA, sort: 'marginDesc' })),
     ...games.filter(game => game.scoreA + game.scoreB === maxCombined).map(game => ({ order: 3, title: 'Highest combined score', value: maxCombined, game, owner: game.teamA, opponent: game.teamB, sort: 'combinedDesc' })),
   ];
@@ -276,23 +227,8 @@ function recordModel(data: PulseModelData, state: PulseSeasonState, pathname: st
     label: Number(chosen.game.season) === state.season ? `New in ${state.season}` : `Still standing since ${chosen.game.date}`,
     title: chosen.title, owner: chosen.owner, opponent: chosen.opponent,
     scoreline: `${formatScore(ownerScore)}–${formatScore(opponentScore)}`, value: formatScore(chosen.value), date: chosen.game.date,
-    href: historyLink(data, pathname, { selectedTeam: chosen.owner, selectedSeasons: new Set([Number(chosen.game.season)]), selectedGameSort: chosen.sort, selectedGameLimit: 1, selectedFocus: 'games' }),
+    href: historyLink(data, pathname, { selectedTeam: chosen.owner, selectedSeasons: new Set([Number(chosen.game.season)]), selectedGameSort: chosen.sort, selectedGameLimit: 1, selectedGameMinScore: chosen.title === 'Lowest individual score' ? chosen.value : undefined, selectedFocus: 'games' }),
   };
-}
-
-function longestWinStreak(games: H2HGame[]) {
-  const owners = [...new Set(games.flatMap(game => [game.teamA, game.teamB]))];
-  const results = owners.map(owner => {
-    let current = 0; let best = 0; let ended = '';
-    games.slice().sort((a, b) => Number(a.week) - Number(b.week) || String(a.date).localeCompare(String(b.date))).forEach(game => {
-      if (game.teamA !== owner && game.teamB !== owner) return;
-      const won = game.teamA === owner ? game.scoreA > game.scoreB : game.scoreB > game.scoreA;
-      current = won ? current + 1 : 0;
-      if (current >= best) { best = current; ended = game.date; }
-    });
-    return { owner, best, ended };
-  });
-  return results.sort((a, b) => b.best - a.best || String(b.ended).localeCompare(String(a.ended)) || a.owner.localeCompare(b.owner))[0] || null;
 }
 
 function yearInReview(data: PulseModelData, state: PulseSeasonState, pathname: string): PulseYearInReview | null {
@@ -301,34 +237,7 @@ function yearInReview(data: PulseModelData, state: PulseSeasonState, pathname: s
     ? latestCompleteSeason(data.seasonSummaries.filter(row => Number(row.season) < state.season))
     : state.season;
   if (reviewSeason === null) return null;
-  const rows = completedSummaryRows(data.seasonSummaries, reviewSeason).rows.slice().sort((a, b) => a.finish - b.finish || a.owner.localeCompare(b.owner));
-  const champion = rows.find(row => row.champion);
-  const saunders = rows.find(row => row.saunders);
-  if (!champion || !saunders) return null;
-  const runnerUp = rows.find(row => row.finish === 2) || null;
-  const games = data.leagueGames.filter(game => Number(game.season) === reviewSeason);
-  const sideRows = games.flatMap(game => [{ owner: game.teamA, opponent: game.teamB, score: game.scoreA, opponentScore: game.scoreB, game }, { owner: game.teamB, opponent: game.teamA, score: game.scoreB, opponentScore: game.scoreA, game }]);
-  const points = rows.slice().sort((a, b) => b.points_for - a.points_for || a.owner.localeCompare(b.owner))[0];
-  const bestRecord = rows.slice().sort((a, b) => ((b.wins + 0.5 * b.ties) / Math.max(1, b.wins + b.losses + b.ties)) - ((a.wins + 0.5 * a.ties) / Math.max(1, a.wins + a.losses + a.ties)) || b.points_for - a.points_for || a.owner.localeCompare(b.owner))[0];
-  const high = sideRows.slice().sort((a, b) => b.score - a.score || a.owner.localeCompare(b.owner))[0];
-  const close = games.slice().sort((a, b) => Math.abs(a.scoreA - a.scoreB) - Math.abs(b.scoreA - b.scoreB) || String(a.date).localeCompare(String(b.date)))[0];
-  const streak = longestWinStreak(games);
-  const seasonHref = historyLink(data, pathname, { selectedSeasons: new Set([reviewSeason]) });
-  const superlatives: PulseSuperlative[] = [];
-  if (points) superlatives.push({ label: 'Points leader', value: points.owner, detail: `${formatScore(points.points_for)} points`, href: seasonHref });
-  if (bestRecord) superlatives.push({ label: 'Best regular-season record', value: bestRecord.owner, detail: `${bestRecord.wins}-${bestRecord.losses}${bestRecord.ties ? `-${bestRecord.ties}` : ''}`, href: seasonHref });
-  if (high) superlatives.push({ label: 'Highest weekly score', value: high.owner, detail: `${formatScore(high.score)} vs ${high.opponent}`, href: historyLink(data, pathname, { selectedTeam: high.owner, selectedSeasons: new Set([reviewSeason]), selectedGameSort: 'scoreDesc', selectedGameLimit: 1, selectedFocus: 'games' }) });
-  if (close) superlatives.push({ label: 'Closest game', value: `${close.teamA} vs ${close.teamB}`, detail: `${formatScore(close.scoreA)}–${formatScore(close.scoreB)}`, href: seasonHref });
-  if (streak?.best) superlatives.push({ label: 'Longest win streak', value: streak.owner, detail: `${streak.best} games`, href: seasonHref });
-  const championship = games
-    .filter(game => String(game.round || '').toLowerCase().includes('championship'))
-    .sort((a, b) => String(b.date).localeCompare(String(a.date)))[0] || null;
-  return {
-    season: reviewSeason, champion: champion.owner, runnerUp: runnerUp?.owner || null, saunders: saunders.owner,
-    championshipResult: championship ? `${championship.teamA} ${formatScore(championship.scoreA)}–${formatScore(championship.scoreB)} ${championship.teamB}` : null,
-    finalStandings: rows.map(row => ({ finish: row.finish, owner: row.owner, record: `${row.wins}-${row.losses}${row.ties ? `-${row.ties}` : ''}`, pointsFor: row.points_for })),
-    superlatives,
-  };
+  return buildSeasonYearInReview(data, reviewSeason, pathname);
 }
 
 function heroModel(data: PulseModelData, state: PulseSeasonState, year: PulseYearInReview | null, pathname: string): PulseHeroModel {
@@ -360,8 +269,9 @@ function heroModel(data: PulseModelData, state: PulseSeasonState, year: PulseYea
   return { phase: state.phase, season, eyebrow, title, summary, badge, generatedAt: data.currentSeason?.generated_at || null, primaryAction: { label: 'Open Current Season', href: pathUrl(pathname, { tab: 'current', selectedCurrentSeason: season, selectedCurrentWeek: state.spotlightWeek }) }, secondaryAction: { label: 'Explore League History', href: historyHref } };
 }
 
-function quickLinks(data: PulseModelData, state: PulseSeasonState, featured: PulseFeaturedMatchup | null, year: PulseYearInReview | null, pathname: string): PulseLink[] {
+function quickLinks(data: PulseModelData, state: PulseSeasonState, featured: PulseFeaturedMatchup | null, year: PulseYearInReview | null, pathname: string, favoriteOwner: string | null): PulseLink[] {
   return [
+    { label: favoriteOwner ? 'My Team' : 'Choose My Team', href: pathUrl(pathname, { tab: 'owner', selectedOwner: favoriteOwner }) },
     { label: 'Current Season', href: pathUrl(pathname, { tab: 'current', selectedCurrentSeason: state.season, selectedCurrentWeek: state.spotlightWeek }) },
     { label: 'League History', href: state.season === null ? pathUrl(pathname, { tab: 'history' }) : historyLink(data, pathname, { selectedSeasons: new Set([state.season]) }) },
     { label: 'Head to Head', href: featured?.href || pathUrl(pathname, { tab: 'rivalry' }) },
@@ -372,12 +282,27 @@ function quickLinks(data: PulseModelData, state: PulseSeasonState, featured: Pul
   ];
 }
 
-export function buildLeaguePulseModel(data: PulseModelData, options: { pathname?: string; freshness?: NonNullable<PulseModelData['diagnostics']>['freshness'] } = {}): LeaguePulseViewModel {
+export function buildLeaguePulseModel(data: PulseModelData, options: { pathname?: string; favoriteOwner?: string | null; freshness?: NonNullable<PulseModelData['diagnostics']>['freshness'] } = {}): LeaguePulseViewModel {
   const pathname = options.pathname || '/';
   const state = resolvePulseSeasonState(data);
   const matchups = matchupModels(data, state, pathname);
+  const standings = standingsSection(data, state, pathname);
   const year = yearInReview(data, state, pathname);
   const featured = featuredMatchup(data, state, matchups, pathname);
+  const favoriteOwner = options.favoriteOwner || null;
+  const favoriteMatchup = favoriteOwner ? matchups.find(matchup => matchup.ownerA === favoriteOwner || matchup.ownerB === favoriteOwner) : null;
+  const favoriteStanding = favoriteOwner ? standings?.rows.find(row => row.owner === favoriteOwner) : null;
+  const favoriteSummary = favoriteOwner ? data.seasonSummaries.filter(row => row.owner === favoriteOwner).sort((a, b) => b.season - a.season)[0] : null;
+  const myTeam = favoriteOwner ? {
+    owner: favoriteOwner,
+    summary: favoriteMatchup
+      ? `${favoriteOwner} vs ${favoriteMatchup.ownerA === favoriteOwner ? favoriteMatchup.ownerB : favoriteMatchup.ownerA}`
+      : favoriteSummary ? `${favoriteSummary.season} finish: No. ${favoriteSummary.finish}` : 'Owner Hub',
+    detail: favoriteStanding?.record
+      ? `${favoriteStanding.record}${favoriteStanding.seed ? ` · seed ${favoriteStanding.seed}` : ''}`
+      : favoriteMatchup?.result || (favoriteSummary ? `${favoriteSummary.wins}-${favoriteSummary.losses}-${favoriteSummary.ties}` : 'Current details unavailable'),
+    href: pathUrl(pathname, { tab: 'owner', selectedOwner: favoriteOwner }),
+  } : null;
   const usedFallbacks = [];
   if (!data.currentSeason) usedFallbacks.push('CurrentSeason');
   if (!data.rivalries.length) usedFallbacks.push('Rivalries');
@@ -390,9 +315,9 @@ export function buildLeaguePulseModel(data: PulseModelData, options: { pathname?
   });
   return {
     state, hero: heroModel(data, state, year, pathname), matchups,
-    standings: standingsSection(data, state, pathname), yearInReview: year,
-    featuredMatchup: featured, curse: curseModel(data, pathname), record: recordModel(data, state, pathname),
-    quickLinks: quickLinks(data, state, featured, year, pathname),
+    standings, yearInReview: year, newspaper: buildLeagueNewspaper(data, pathname),
+    featuredMatchup: featured, curse: curseModel(data, pathname), record: recordModel(data, state, pathname), myTeam,
+    quickLinks: quickLinks(data, state, featured, year, pathname, favoriteOwner),
     dataNote: {
       freshness,
       dataVersion: data.dataVersion,

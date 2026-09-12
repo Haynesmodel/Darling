@@ -1,0 +1,71 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+
+const indexHtml = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
+const gateScript = indexHtml.match(/<script>\s*((?:(?!<\/script>)[\s\S])*data-draft-weekend-dismiss[\s\S]*?)<\/script>/)?.[1];
+assert.ok(gateScript, 'the shell date gate script should be present');
+
+function runGate(iso, { dismissed = false, search = '' } = {}) {
+  const welcome = { hidden: true };
+  const dismiss = { addEventListener(type, handler) { if (type === 'click') this.click = handler; } };
+  const mainContent = { focused: false, focus() { this.focused = true; } };
+  const listeners = {};
+  const store = new Map(dismissed ? [['darling.draft-weekend-welcome.dismissed.2026', 'true']] : []);
+  const document = {
+    addEventListener() {},
+    querySelector(selector) {
+      return {
+        '[data-draft-weekend-welcome]': welcome,
+        '[data-draft-weekend-dismiss]': dismiss,
+        '#mainContent': mainContent,
+      }[selector] || null;
+    },
+  };
+  const RealDate = Date;
+  const fixedTime = new RealDate(iso).getTime();
+  class FixedDate extends RealDate {
+    constructor(...args) { super(args.length ? args[0] : fixedTime); }
+    static now() { return fixedTime; }
+  }
+  vm.runInNewContext(gateScript, {
+    Date: FixedDate,
+    Intl,
+    URLSearchParams,
+    document,
+    window: {
+      localStorage: {
+        getItem(key) { return store.get(key) ?? null; },
+        setItem(key, value) { store.set(key, value); },
+      },
+      setInterval() {},
+      addEventListener(type, handler) { listeners[type] = handler; },
+      location: { search },
+    },
+  });
+  return { welcome, dismiss, mainContent, store, listeners };
+}
+
+test('the production shell gate uses the New York calendar and the full weekend window', () => {
+  assert.equal(runGate('2026-09-04T03:59:59Z').welcome.hidden, true, 'before Friday in New York');
+  assert.equal(runGate('2026-09-04T04:00:00Z').welcome.hidden, false, 'Friday start');
+  assert.equal(runGate('2026-09-08T03:59:59Z').welcome.hidden, false, 'Monday end');
+  assert.equal(runGate('2026-09-08T04:00:00Z').welcome.hidden, true, 'after Monday in New York');
+  assert.equal(runGate('2026-09-04T12:00:00Z', { search: '?tab=draft' }).welcome.hidden, true, 'deep-linked feature route');
+  assert.equal(runGate('2026-09-04T12:00:00Z', { search: '?draftMetric=playoffRate' }).welcome.hidden, true, 'legacy deep-linked feature route');
+  assert.equal(runGate('2026-09-04T12:00:00Z', { search: '?txView=trades' }).welcome.hidden, true, 'legacy transactions route');
+  assert.equal(runGate('2026-09-04T12:00:00Z', { search: '?currentSeason=2025' }).welcome.hidden, true, 'legacy current-season route');
+  assert.equal(runGate('2026-09-04T12:00:00Z', { search: '?dynastyMode=windows' }).welcome.hidden, true, 'legacy dynasty route');
+  assert.equal(runGate('2026-09-04T12:00:00Z', { search: '?tab=pulse&draftMetric=playoffRate' }).welcome.hidden, false, 'explicit home route');
+});
+
+test('the production shell gate persists dismissal and returns focus to the app', () => {
+  const result = runGate('2026-09-04T12:00:00Z');
+  result.dismiss.click();
+  assert.equal(result.welcome.hidden, true);
+  assert.equal(result.mainContent.focused, true);
+  assert.equal(result.store.get('darling.draft-weekend-welcome.dismissed.2026'), 'true');
+  assert.equal(runGate('2026-09-04T12:00:00Z', { dismissed: true }).welcome.hidden, true);
+});

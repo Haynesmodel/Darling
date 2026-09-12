@@ -73,6 +73,19 @@ test('history renderer builds week-by-week table html for selected team', () => 
   assert.match(allHtml, /Select a team to see week-by-week games/);
 });
 
+test('history lowest-score markers exclude the outlier but keep both game rows', () => {
+  const target = { season: 2022, date: '2022-12-24', teamA: 'Joel', teamB: 'Plot', scoreA: 6.5, scoreB: 4.6, type: 'Saunders', round: 'Saunders Final', _weekByTeam: { Joel: 16, Plot: 16 } };
+  const other = { season: 2022, date: '2022-12-24', teamA: 'Joe', teamB: 'Shap', scoreA: 100, scoreB: 90, type: 'Regular', round: '', _weekByTeam: { Joe: 16, Shap: 16 } };
+  const joelRows = weekByWeekRows('Joel', [target], { allGames: [target, other] });
+  const plotRows = weekByWeekRows('Plot', [target], { allGames: [target, other] });
+  const targetOnlyRows = weekByWeekRows('Joel', [target], { allGames: [target] });
+  assert.equal(joelRows[0].isTurd, false);
+  assert.equal(plotRows[0].isTurd, false);
+  assert.equal(targetOnlyRows[0].isCrown, true);
+  assert.equal(joelRows[0].pf, 6.5);
+  assert.equal(plotRows[0].pf, 4.6);
+});
+
 test('history renderer builds season recap html and narratives', () => {
   const summaries = [
     { owner: 'Joe', season: 2025, wins: 10, losses: 4, ties: 0, finish: 1, draft_pick: 10, champion: true, saunders: false, bagels_earned: 2 },
@@ -199,9 +212,7 @@ test('history renderer builds season callout view and effect metadata', () => {
   assert.match(view.html, /Top-2 Seed/);
   assert.match(view.html, /Playoffs: 2-0-0/);
   assert.match(view.html, /2025 — COVID season/);
-  assert.equal(view.effectKey, 'Joe|2025|C');
   assert.equal(view.effectType, 'champion');
-  assert.equal(view.resetEffect, false);
 
   const reset = seasonCalloutView('Joe', {
     seasonSummaries: summaries,
@@ -209,7 +220,6 @@ test('history renderer builds season callout view and effect metadata', () => {
     allTeams: '__ALL__',
   });
   assert.equal(reset.html, '');
-  assert.equal(reset.resetEffect, true);
 
   const allView = seasonCalloutView('__ALL__', {
     seasonSummaries: summaries,
@@ -217,7 +227,6 @@ test('history renderer builds season callout view and effect metadata', () => {
     allTeams: '__ALL__',
   });
   assert.equal(allView.html, '');
-  assert.equal(allView.resetEffect, false);
 });
 
 test('history renderer view model normalizes season callout text', () => {
@@ -251,7 +260,6 @@ test('history renderer view model normalizes season callout text', () => {
   assert.equal(vm.draftPick, '#10');
   assert.match(vm.bits.join(' • '), /Champion/);
   assert.match(vm.notes.join(' • '), /2025 — COVID season/);
-  assert.equal(vm.effectKey, 'Joe|2025|C');
   assert.equal(vm.effectType, 'champion');
 });
 
@@ -326,7 +334,6 @@ test('history renderer builds opponent breakdown rows and rivalry metadata', () 
   assert.match(view.calloutsHtml, /Rivals/);
   assert.match(view.calloutsHtml, /2-0-0/);
   assert.equal(view.triggerSlug, 'rivals');
-  assert.equal(view.backdropSlug, 'rivals');
 
   const allView = opponentBreakdownView('__ALL__', games, {
     allTeams: '__ALL__',

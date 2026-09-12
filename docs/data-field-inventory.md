@@ -39,4 +39,14 @@ Required metadata fields are `source`, `league_id`, `season`, `generated_at`, `c
 
 Each team requires `roster_id`, `owner`, `display_name`, and `sleeper_team_name`. Each game requires historical game fields plus `status`, `matchup_id`, `rosterA`, and `rosterB`. Current scores may be null for scheduled/live games; final games require both scores. Allowed statuses are `scheduled`, `live`, and `final`.
 
+## TransactionHistory.json
+
+Top level: a versioned object containing a shared `players` catalog and up to 12 sorted seasons. Generation always retains the requested target season plus the 11 newest non-target seasons. The initial 2025 season contains 489 raw transactions, 417 complete transactions, 72 failed transactions, 8 completed trades, and one selected 192-pick draft.
+
+Each season records its configured league, lifecycle status, bounded coverage, canonical roster-owner mapping, selected draft, normalized transactions, player ownership stints, and materialized insights. Transactions retain status, type, week, timestamp, participants, player adds/drops, draft-pick transfers, FAAB bid, and waiver-budget transfers. Only complete moves contribute to journeys and insights.
+
+Player stints record acquisition and optional release provenance, matchup-confirmed rostered weeks, starts, total points, starter points, and final retention. A weekly matchup row can belong to only one stint for an owner/player pair; same-week overlaps resolve to the latest acquisition timestamp. Insights contain trade-side outcomes, waiver/free-agent finds, movement counts, owner activity, draft retention, and keeper return. Outcome status distinguishes `too_early`, `incomplete`, `provisional`, and `final`; future draft-pick consideration is incomplete.
+
+The strict contract is `schemas/transaction-history.schema.json`. `schema_version`, `generator_version`, and `methodology_version` make structural or interpretation changes explicit.
+
 See [data-pipeline.md](data-pipeline.md) for generation, validation, migrations, and recovery.

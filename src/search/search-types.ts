@@ -1,10 +1,11 @@
-export type SearchCategory = 'navigate' | 'owner' | 'season' | 'rivalry' | 'game-query' | 'record' | 'command';
+export type SearchCategory = 'navigate' | 'owner' | 'season' | 'rivalry' | 'game-query' | 'record' | 'command' | 'lore';
 
 export type SearchFocusTarget = 'top' | 'overview' | 'games' | 'curses' | 'standings' | 'playoff-picture';
 export type SearchCommand = 'theme-system' | 'theme-light' | 'theme-dark' | 'export-history';
 
 export type SearchAction =
   | { kind: 'navigate'; url: string; focus?: SearchFocusTarget }
+  | { kind: 'lore'; targetType: 'entry' | 'collection'; targetId: string }
   | { kind: 'command'; command: SearchCommand };
 
 export interface SearchDocument {
@@ -30,7 +31,8 @@ export type SearchIntent =
   | { kind: 'score-threshold'; owner?: string; season?: number; min?: number; max?: number }
   | { kind: 'game-extreme'; metric: 'largest-loss-margin' | 'largest-win-margin' | 'highest-score' | 'lowest-score'; owner?: string; season?: number }
   | { kind: 'game-filter'; owner?: string; season?: number; result: 'W' | 'L' | 'T' }
-  | { kind: 'feature'; feature: 'pulse' | 'history' | 'current' | 'playoff-picture' | 'trophy' | 'dynasty' | 'draft' | 'gauntlet'; owner?: string }
+  | { kind: 'feature'; feature: 'pulse' | 'owner' | 'transactions' | 'history' | 'current' | 'playoff-picture' | 'trophy' | 'dynasty' | 'draft' | 'gauntlet'; owner?: string }
+  | { kind: 'transaction-view'; view: 'trades' | 'waivers' | 'players' | 'owners' | 'draft'; owner?: string }
   | { kind: 'draft-pick'; pick: number }
   | { kind: 'draft-zone'; zone: 'early' | 'middle' | 'late' }
   | { kind: 'draft-owner'; owner: string }
@@ -54,6 +56,8 @@ export interface SearchHydrationData {
   currentSeason?: {
     teams?: Array<{ owner: string; display_name?: string; sleeper_team_name?: string }>;
   } | null;
+  loreDocuments?: SearchDocument[];
+  loreOwnerAliases?: Array<{ owner: string; aliases: string[] }>;
 }
 
 export interface SearchRuntimeSnapshot {

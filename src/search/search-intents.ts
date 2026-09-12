@@ -128,8 +128,12 @@ export function parseSearchIntents(rawQuery: string, context: SearchIntentContex
     : null;
   if (scopedQuery && /^(?:trophy|trophies|hardware|trophy case)$/.test(scopedQuery)) return [{ kind: 'feature', feature: 'trophy', owner }];
   if (scopedQuery && /^dynasty(?: rankings?)?$/.test(scopedQuery)) return [{ kind: 'feature', feature: 'dynasty', owner }];
+  if (owner && scopedQuery && /^(?:my team|owner hub|team hub)$/.test(scopedQuery)) return [{ kind: 'feature', feature: 'owner', owner }];
   if (owner && scopedQuery && /^(?:draft|draft spot|draft history)$/.test(scopedQuery)) {
     return [{ kind: 'draft-owner', owner }];
+  }
+  if (owner && scopedQuery && /^(?:moves|transactions|owner activity)$/.test(scopedQuery)) {
+    return [{ kind: 'transaction-view', view: 'owners', owner }];
   }
   const pickMatch = query.match(/^(?:draft )?pick (\d{1,2})$/);
   if (!owners.length && pickMatch && Number(pickMatch[1]) >= 1 && Number(pickMatch[1]) <= 24) {
@@ -143,8 +147,15 @@ export function parseSearchIntents(rawQuery: string, context: SearchIntentContex
     return [{ kind: 'feature', feature: 'draft' }];
   }
   if (!owners.length && /^(?:historical matchup|gauntlet)$/.test(query)) return [{ kind: 'feature', feature: 'gauntlet' }];
+  if (!owners.length && /^(?:transactions|moves|transaction history)$/.test(query)) return [{ kind: 'feature', feature: 'transactions' }];
+  if (!owners.length && /^(?:trades|trade desk|trade history)$/.test(query)) return [{ kind: 'transaction-view', view: 'trades' }];
+  if (!owners.length && /^(?:waivers|waiver wire|wire finds)$/.test(query)) return [{ kind: 'transaction-view', view: 'waivers' }];
+  if (!owners.length && /^(?:player journeys|player movement)$/.test(query)) return [{ kind: 'transaction-view', view: 'players' }];
+  if (!owners.length && /^(?:owner activity|owner moves)$/.test(query)) return [{ kind: 'transaction-view', view: 'owners' }];
+  if (!owners.length && /^(?:draft and keepers|draft retention|keeper return)$/.test(query)) return [{ kind: 'transaction-view', view: 'draft' }];
   if (!owners.length && query === 'playoff picture') return [{ kind: 'feature', feature: 'playoff-picture' }];
   if (!owners.length && /^(?:pulse|league pulse|home|dashboard)$/.test(query)) return [{ kind: 'feature', feature: 'pulse' }];
+  if (!owners.length && /^(?:my team|owner hub|team hub)$/.test(query)) return [{ kind: 'feature', feature: 'owner' }];
   if (!owners.length && query === 'current season') return [{ kind: 'feature', feature: 'current' }];
   if (query === 'league history' || query === 'history') return [{ kind: 'feature', feature: 'history' }];
 
@@ -167,6 +178,10 @@ export function parseSearchIntents(rawQuery: string, context: SearchIntentContex
   if (owner && ownerResultQuery && /^loss(?:es)?$/.test(ownerResultQuery)) return [{ kind: 'game-filter', owner, season: year, result: 'L' }];
   if (owner && ownerResultQuery && /^wins?$/.test(ownerResultQuery)) return [{ kind: 'game-filter', owner, season: year, result: 'W' }];
   if (owner && ownerQuery === '' && (year || gameType || scopedQuery === '')) {
+    if (!year && !gameType) return [
+      { kind: 'feature', feature: 'owner', owner },
+      { kind: 'owner-season', owner },
+    ];
     return [{ kind: 'owner-season', owner, season: year, gameType }];
   }
   if (!owner && owners.length === 0 && year && gameType && ownerQuery === '') return [{ kind: 'season-type', season: year, gameType }];

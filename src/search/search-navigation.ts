@@ -1,12 +1,18 @@
 import type { SearchAction } from './search-types';
 
+export type LoreActionHandler = (action: Extract<SearchAction, { kind: 'lore' }>) => void;
+
 export function navigateToSearchUrl(url: string): void {
   const current = `${window.location.pathname}${window.location.search}`;
   if (current !== url) window.history.pushState(null, '', url);
   window.dispatchEvent(new PopStateEvent('popstate'));
 }
 
-export function executeSearchAction(action: SearchAction): void {
+export function executeSearchAction(action: SearchAction, loreAction?: LoreActionHandler): void {
+  if (action.kind === 'lore') {
+    loreAction?.(action);
+    return;
+  }
   if (action.kind === 'navigate') {
     navigateToSearchUrl(action.url);
     return;

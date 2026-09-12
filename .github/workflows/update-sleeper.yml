@@ -118,6 +118,9 @@ jobs:
           mkdir -p "${BASELINE_DIR}"
           cp assets/H2H.json "${BASELINE_DIR}/H2H.json"
           cp assets/asset-manifest.json "${BASELINE_DIR}/asset-manifest.json"
+          if [[ -f assets/TransactionHistory.json ]]; then
+            cp assets/TransactionHistory.json "${BASELINE_DIR}/TransactionHistory.json"
+          fi
           if [[ -f assets/CurrentSeason.json ]]; then
             cp assets/CurrentSeason.json "${BASELINE_DIR}/CurrentSeason.json"
           fi
@@ -156,24 +159,33 @@ jobs:
           echo "FAILED_PHASE=local promotion/regeneration" >> "$GITHUB_ENV"
           test -f assets/H2H.updated.json
           test -f assets/CurrentSeason.updated.json
+          test -f assets/TransactionHistory.updated.json
 
           SOURCE_CHANGED=0
-          if ! cmp -s assets/H2H.updated.json assets/H2H.json; then
+          H2H_CHANGED=0
+          if ! node scripts/compare_json.cjs assets/H2H.updated.json assets/H2H.json; then
             cp assets/H2H.updated.json assets/H2H.json
             SOURCE_CHANGED=1
+            H2H_CHANGED=1
           fi
-          if [[ ! -f assets/CurrentSeason.json ]] || ! cmp -s assets/CurrentSeason.updated.json assets/CurrentSeason.json; then
+          if [[ ! -f assets/CurrentSeason.json ]] || ! node scripts/compare_json.cjs assets/CurrentSeason.updated.json assets/CurrentSeason.json; then
             cp assets/CurrentSeason.updated.json assets/CurrentSeason.json
             SOURCE_CHANGED=1
           fi
+          if [[ ! -f assets/TransactionHistory.json ]] || ! node scripts/compare_json.cjs assets/TransactionHistory.updated.json assets/TransactionHistory.json; then
+            cp assets/TransactionHistory.updated.json assets/TransactionHistory.json
+            SOURCE_CHANGED=1
+          fi
 
-          if [[ "${SOURCE_CHANGED}" == "1" ]]; then
+          if [[ "${H2H_CHANGED}" == "1" ]]; then
             python3 scripts/generate_season_summary_draft.py \
               --h2h assets/H2H.json \
               --existing assets/SeasonSummary.json \
               --out assets/SeasonSummary.draft.json \
               --season "${{ steps.resolve.outputs.season }}"
             npm run generate:derived
+          fi
+          if [[ "${SOURCE_CHANGED}" == "1" ]]; then
             npm run generate:manifest
           fi
           echo "source_changed=${SOURCE_CHANGED}" >> "$GITHUB_OUTPUT"
@@ -195,18 +207,20 @@ jobs:
           ALLOWLIST=(
             assets/H2H.json
             assets/CurrentSeason.json
+            assets/TransactionHistory.json
             assets/SeasonSummary.draft.json
             assets/DerivedStats.json
             assets/asset-manifest.json
           )
 
-          git add -A -- "${ALLOWLIST[@]}"
+          bash scripts/stage_optional_git_paths.sh "${ALLOWLIST[@]}"
 
           node <<'NODE'
           const { execFileSync } = require('node:child_process');
           const allowed = new Set([
             'assets/H2H.json',
             'assets/CurrentSeason.json',
+            'assets/TransactionHistory.json',
             'assets/SeasonSummary.draft.json',
             'assets/DerivedStats.json',
             'assets/asset-manifest.json',
@@ -505,6 +519,8 @@ jobs:
             assets/SeasonSummary.draft.json
             assets/DerivedStats.json
             assets/asset-manifest.json
+            assets/TransactionHistory.updated.json
+            assets/TransactionHistory.json
             ${{ runner.temp }}/sleeper-pr-body.md
             ${{ runner.temp }}/sleeper-summary.json
           if-no-files-found: ignore

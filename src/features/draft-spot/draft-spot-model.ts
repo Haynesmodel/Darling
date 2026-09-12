@@ -20,6 +20,7 @@ import {
   draftSeasons,
   resolveDraftSpotState,
 } from './draft-spot-state';
+import type { DraftLocation } from '../../data/generated/asset-types';
 
 export const DRAFT_METRICS: Record<DraftMetricKey, DraftMetricDefinition> = {
   avgFinish: { key: 'avgFinish', label: 'Avg Finish', summaryField: 'avg_finish', rowField: 'finish', lowerIsBetter: true, format: 'number' },
@@ -335,8 +336,9 @@ export function buildDraftSpotModel(
   asset: DraftSpot,
   requested: (Partial<DraftSpotState> & DraftSpotUrlState) = {},
   current: Partial<DraftSpotState> = {},
+  locations: DraftLocation[] = [],
 ): DraftSpotViewModel {
-  const resolved = resolveDraftSpotState(asset, requested, current);
+  const resolved = resolveDraftSpotState(asset, requested, current, locations);
   const rangeRows = filterDraftRows(asset.rows, {
     startSeason: resolved.startSeason,
     endSeason: resolved.endSeason,

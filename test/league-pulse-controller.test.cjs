@@ -82,6 +82,14 @@ function contextFixture() {
         return () => { calls.unsubscriptions += 1; };
       },
     },
+    ownerPreference: {
+      getSnapshot: () => ({ owner: null }),
+      subscribe(listener) {
+        calls.subscriptions += 1;
+        calls.preferenceListener = listener;
+        return () => { calls.unsubscriptions += 1; };
+      },
+    },
     header: { feature: (...args) => calls.headers.push(args) },
     theme: { league: value => calls.themes.push(value) },
     router: { update: value => calls.routes.push(value) },
@@ -99,8 +107,8 @@ test('Pulse controller mount is idempotent and activation is history-safe withou
   const controller = createFeatureController();
   controller.mount(context);
   controller.mount(context);
-  assert.equal(calls.subscriptions, 2);
-  assert.equal(calls.unsubscriptions, 1);
+  assert.equal(calls.subscriptions, 4);
+  assert.equal(calls.unsubscriptions, 2);
 
   const activation = new AbortController();
   controller.activate({ signal: activation.signal });
@@ -134,6 +142,6 @@ test('Pulse controller honors abort/deactivation and dispose unmounts cleanly', 
   assert.equal(globalThis.__pulseControllerRenders.length, activeRenderCount);
 
   controller.dispose();
-  assert.equal(calls.unsubscriptions, 1);
+  assert.equal(calls.unsubscriptions, 2);
   assert.deepEqual(globalThis.__pulseControllerRenders.at(-1), { value: null, root: rootElement });
 });

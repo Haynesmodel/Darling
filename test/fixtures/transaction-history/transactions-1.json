@@ -1,0 +1,26 @@
+[
+  {
+    "transaction_id": "failed-waiver",
+    "status": "failed",
+    "type": "waiver",
+    "created": 1000,
+    "roster_ids": [1],
+    "adds": { "p3": 1 },
+    "settings": { "waiver_bid": 7 }
+  },
+  {
+    "transaction_id": "trade-1",
+    "status": "complete",
+    "type": "trade",
+    "created": 2000,
+    "roster_ids": [1, 2],
+    "adds": { "p1": 2, "p2": 1 },
+    "drops": { "p1": 1, "p2": 2 },
+    "draft_picks": [
+      { "season": "2026", "round": 1, "roster_id": 2, "owner_id": 1, "previous_owner_id": 2 }
+    ],
+    "waiver_budget": [
+      { "sender": 2, "receiver": 1, "amount": 5 }
+    ]
+  }
+]

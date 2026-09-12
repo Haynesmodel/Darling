@@ -2,8 +2,21 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test } from './coverage-fixture.js';
 import { createSnapshotFixture } from './snapshot-fixture.js';
+import { activateFeature } from './navigation-helpers.js';
+
+test.beforeEach(async ({ page }) => {
+  // Assertions use the finalized 2025 snapshot; freeze before the next-season gap.
+  await page.clock.setFixedTime(new Date('2026-08-14T23:59:00Z'));
+});
 
 const manifest = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'assets/asset-manifest.json'), 'utf8'));
+
+test.beforeEach(async ({ page }) => {
+  // Keep canonical 2025/offseason assertions independent of the wall clock;
+  // after the August 15 publication boundary the same snapshot is correctly
+  // reported as a 2026 season gap.
+  await page.clock.setFixedTime(new Date('2026-08-14T12:00:00Z'));
+});
 
 function activeSnapshot(generatedAt, status = 'scheduled') {
   return current => {
@@ -29,7 +42,7 @@ test('global freshness badge and Pulse share the finalized snapshot status', asy
   await page.locator('.data-freshness summary').click();
   await expect(page.locator('.data-freshness-panel')).toContainText('Core data verified with SHA-256');
   await expect(page.locator('.data-freshness-panel')).toContainText(manifest.data_version.replace('sha256:', '').slice(0, 12));
-  await page.locator('#tabHistoryBtn').click();
+  await activateFeature(page, 'history');
   await expect(page.locator('.data-freshness summary')).toContainText('2025 season final');
 });
 
@@ -43,7 +56,7 @@ test('runtime requests a no-store manifest and full per-asset versions', async (
   const manifestUrl = requests.find(url => new URL(url).pathname.endsWith('/assets/asset-manifest.json'));
   expect(new URL(manifestUrl).search).toBe('');
   for (const [name, entry] of Object.entries({ ...manifest.assets, DerivedStats: manifest.derived })) {
-    if (name === 'DraftSpot') continue;
+    if (name === 'DraftSpot' || name === 'TransactionHistory') continue;
     const requestUrl = requests.find(url => new URL(url).pathname.endsWith(`/${entry.path}`));
     expect(requestUrl, `${name} request`).toBeTruthy();
     expect(new URL(requestUrl).searchParams.get('v')).toBe(entry.sha256.replace('sha256:', ''));
@@ -69,6 +82,7 @@ test('an optional integrity mismatch is visible as a partial snapshot', async ({
     return route.fulfill({ status: 200, contentType: 'application/json', body: '{"tampered":true}' });
   });
   await page.goto('/?tab=history');
+  await page.locator('#history-section-jump').selectOption('history-games');
   await expect(page.locator('#historyGamesTable')).toBeVisible();
   await expect(page.locator('.data-freshness summary')).toContainText('Snapshot partially available');
   expect(attempts).toBe(2);
@@ -95,22 +109,24 @@ test('warning disclosure is not clipped by the narrow mobile hero', async ({ pag
     if (!hero || !panel || !nav) return null;
     const heroBox = hero.getBoundingClientRect();
     const panelBox = panel.getBoundingClientRect();
-    const overlapY = Math.max(panelBox.top, nav.getBoundingClientRect().top) + 1;
-    const overlapX = panelBox.left + Math.min(16, panelBox.width / 2);
+    const titleBox = document.querySelector('.site-hero .inner')?.getBoundingClientRect();
+    const navBox = nav.getBoundingClientRect();
     return {
       overflow: getComputedStyle(hero).overflow,
       extendsPastHero: panelBox.bottom > heroBox.bottom,
       panelBottom: panelBox.bottom,
       viewportHeight: window.innerHeight,
-      overlapOwner: document.elementFromPoint(overlapX, overlapY)?.closest('.data-freshness-panel') !== null,
+      clearsTitle: titleBox ? panelBox.bottom <= titleBox.top : false,
+      clearsNavigation: panelBox.bottom <= navBox.top,
     };
   });
 
   expect(geometry).not.toBeNull();
   expect(geometry.overflow).toBe('visible');
-  expect(geometry.extendsPastHero).toBe(true);
+  expect(geometry.extendsPastHero).toBe(false);
   expect(geometry.panelBottom).toBeLessThanOrEqual(geometry.viewportHeight);
-  expect(geometry.overlapOwner).toBe(true);
+  expect(geometry.clearsTitle).toBe(true);
+  expect(geometry.clearsNavigation).toBe(true);
 });
 
 test('Draft Spot uses its own version and evicts a failed verification promise', async ({ page }) => {
@@ -126,12 +142,13 @@ test('Draft Spot uses its own version and evicts a failed verification promise',
   });
   await page.goto('/?tab=history');
   expect(requests).toEqual([]);
-  await page.locator('#tabDraftBtn').click();
+  await activateFeature(page, 'draft');
   await expect(page.locator('#draftSpotRoot')).toContainText('Draft Spot is unavailable');
   expect(attempts).toBe(2);
-  await page.locator('#tabHistoryBtn').click();
+  await activateFeature(page, 'history');
+  await page.locator('#history-section-jump').selectOption('history-games');
   await expect(page.locator('#historyGamesTable')).toBeVisible();
-  await page.locator('#tabDraftBtn').click();
+  await activateFeature(page, 'draft');
   await expect(page.locator('.draft-hero')).toBeVisible();
   expect(attempts).toBe(3);
   expect(new URL(requests.at(-1)).searchParams.get('v')).toBe(manifest.assets.DraftSpot.sha256.replace('sha256:', ''));
@@ -153,21 +170,23 @@ test('a long-open Pulse and global badge reassess together without network polli
   expect(dataRequests).toBe(bootRequests);
 });
 
-test('freshness disclosure remains available after visiting all eight tabs', async ({ page }) => {
+test('freshness disclosure remains available after visiting all ten destinations', async ({ page }) => {
   await page.goto('/');
-  const tabs = [
-    'League Pulse',
-    'League History',
-    'Current Season',
-    'Head to Head',
-    'Trophy Case',
-    'Dynasty Rankings',
-    'Draft Spot',
-    'Historical Matchup',
+  const destinations = [
+    ['pulse', 'League Pulse'],
+    ['owner', 'My Team'],
+    ['transactions', 'Transactions'],
+    ['history', 'League History'],
+    ['current', 'Current Season'],
+    ['rivalry', 'Head to Head'],
+    ['trophy', 'Trophy Case'],
+    ['dynasty', 'Dynasty Rankings'],
+    ['draft', 'Draft Spot'],
+    ['gauntlet', 'Historical Matchup'],
   ];
-  for (const name of tabs) {
-    await page.getByRole('tab', { name }).click();
-    await expect(page.getByRole('tabpanel', { name })).toBeVisible();
+  for (const [id, name] of destinations) {
+    await activateFeature(page, id);
+    await expect(page.getByRole('region', { name, exact: true })).toBeVisible();
     await expect(page.locator('.data-freshness summary')).toContainText('2025 season final');
   }
 });
@@ -269,7 +288,9 @@ test('every runtime JSON request uses the deployment base path and full manifest
   const fixture = createSnapshotFixture({ basePath });
   await fixture.install(page);
   await page.goto('/');
-  await page.getByRole('tab', { name: 'Draft Spot' }).click();
+  await activateFeature(page, 'transactions');
+  await expect(page.locator('.transactions-hero')).toBeVisible();
+  await activateFeature(page, 'draft');
   await expect(page.locator('.draft-hero')).toBeVisible();
 
   const entries = { ...fixture.manifest.assets, DerivedStats: fixture.manifest.derived };

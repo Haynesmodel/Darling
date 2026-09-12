@@ -27,6 +27,15 @@
       "season_min": 2014,
       "sha256": "sha256:ca8155035573c00dc8922d3f6de90772869a2baec9a16909c5d6562bae371d18"
     },
+    "LeagueLore": {
+      "bytes": 84796,
+      "path": "assets/LeagueLore.json",
+      "required": false,
+      "rows": 0,
+      "season_max": null,
+      "season_min": null,
+      "sha256": "sha256:9f135c3b79ae3ca8161d0f0e06549c80b2684397c27319bae0ed735457e15a03"
+    },
     "Rivalries": {
       "bytes": 2668,
       "path": "assets/Rivalries.json",
@@ -44,14 +53,23 @@
       "season_max": 2025,
       "season_min": 2014,
       "sha256": "sha256:2fac336af3e8324a1213fd34f39de5d574bcc0e5b99212ebba05ab007de8a11f"
+    },
+    "TransactionHistory": {
+      "bytes": 407684,
+      "path": "assets/TransactionHistory.json",
+      "required": false,
+      "rows": 489,
+      "season_max": 2025,
+      "season_min": 2025,
+      "sha256": "sha256:1dc2ad97f69bfd444c55ceb4d29243dc8dc96ca96f6b86142dfaad96cca61618"
     }
   },
-  "data_version": "sha256:32c57e28628162d8d48f27ff38837654710b0c5a5b6f854a66e5ba49e9b2a127",
+  "data_version": "sha256:0608fe784f844526aa6ac89cbe7000aa4b2960c062dc283719a0dfb34a3879d8",
   "derived": {
-    "bytes": 180301,
+    "bytes": 180308,
     "path": "assets/DerivedStats.json",
     "required": false,
-    "sha256": "sha256:2e5541ac09843571b5b8c4b21bcf355dd8e9733f636a056fa94851b6f6f45237",
+    "sha256": "sha256:2285988744b7a1f4cc53fb93a927d6099f3a70ade7a6a4876e3647f7fb93534e",
     "source_hashes": {
       "H2H": "sha256:ca8155035573c00dc8922d3f6de90772869a2baec9a16909c5d6562bae371d18",
       "Rivalries": "sha256:476e07f1f8d1af669854b1c4343770ca9c2539f99c6ebf3d8d5a8ae1a8cb51fa",
@@ -59,7 +77,7 @@
     }
   },
   "derived_generator_version": 1,
-  "manifest_version": 2,
+  "manifest_version": 4,
   "media": {
     "leagueHero": {
       "role": "runtime-required",
@@ -185,7 +203,9 @@
     "DerivedStats": 1,
     "DraftSpot": 1,
     "H2H": 1,
+    "LeagueLore": 1,
     "Rivalries": 1,
-    "SeasonSummary": 1
+    "SeasonSummary": 1,
+    "TransactionHistory": 1
   }
 }

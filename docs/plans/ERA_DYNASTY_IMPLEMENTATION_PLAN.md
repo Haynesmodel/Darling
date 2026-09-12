@@ -48,7 +48,7 @@ Ship first:
 Leave for later:
 
 - User-editable scoring weights.
-- Shareable dynasty cards.
+- ~~Shareable dynasty cards.~~ Fulfilled by [shareable cards and automated recaps](https://github.com/Haynesmodel/Darling/pull/53); see the [measured bundle record](../bundle-size.md#shareable-cards-and-automated-recaps).
 - Custom era naming.
 - Playoff bracket path difficulty.
 - Draft/keeper data integrations.

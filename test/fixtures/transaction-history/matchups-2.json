@@ -1,0 +1,4 @@
+[
+  { "roster_id": 1, "players": ["p2", "p3"], "starters": ["p2", "p3"], "players_points": { "p2": 12, "p3": 6 } },
+  { "roster_id": 2, "players": ["p1"], "starters": ["p1"], "players_points": { "p1": 14 } }
+]

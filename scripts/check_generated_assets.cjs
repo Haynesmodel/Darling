@@ -13,9 +13,21 @@ const CHECKED = [
   GENERATED_ASSETS.DraftSpot.path,
   GENERATED_ASSETS.AssetTypes.path,
   GENERATED_ASSETS.AssetValidators.path,
+  GENERATED_ASSETS.TransactionHistoryValidator.path,
   GENERATED_ASSETS.DerivedStats.path,
   GENERATED_ASSETS.AssetManifest.path,
 ];
+
+function compareGeneratedFiles(root, generatedRoot, checked = CHECKED) {
+  const failures = [];
+  for (const relativePath of checked) {
+    const committedPath = path.join(root, relativePath);
+    const generatedPath = path.join(generatedRoot, relativePath);
+    if (!fs.existsSync(committedPath)) failures.push(`${relativePath}: committed generated file is missing`);
+    else if (!fs.readFileSync(committedPath).equals(fs.readFileSync(generatedPath))) failures.push(`${relativePath}: stale; run npm run generate:data`);
+  }
+  return failures;
+}
 
 async function checkGeneratedAssets(root = process.cwd()) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-data-generated-'));
@@ -39,14 +51,7 @@ async function checkGeneratedAssets(root = process.cwd()) {
       outputRoot: temp,
       draftSpotPath: draftOutput,
     });
-    const failures = [];
-    for (const relativePath of CHECKED) {
-      const committedPath = path.join(root, relativePath);
-      const generatedPath = path.join(temp, relativePath);
-      if (!fs.existsSync(committedPath)) failures.push(`${relativePath}: committed generated file is missing`);
-      else if (!fs.readFileSync(committedPath).equals(fs.readFileSync(generatedPath))) failures.push(`${relativePath}: stale; run npm run generate:data`);
-    }
-    return failures;
+    return compareGeneratedFiles(root, temp);
   } finally {
     fs.rmSync(temp, { recursive: true, force: true });
   }
@@ -62,4 +67,4 @@ if (require.main === module) {
   }).catch(error => { console.error(error.message || error); process.exit(1); });
 }
 
-module.exports = { CHECKED, checkGeneratedAssets };
+module.exports = { CHECKED, checkGeneratedAssets, compareGeneratedFiles };

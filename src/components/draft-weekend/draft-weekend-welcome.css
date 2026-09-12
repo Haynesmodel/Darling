@@ -1,0 +1,168 @@
+.draft-weekend-welcome{
+  position:relative;
+  isolation:isolate;
+  max-width:1200px;
+  margin:0 auto var(--space-5);
+  overflow:hidden;
+  border:1px solid color-mix(in srgb, var(--status-champ) 46%, var(--border-strong));
+  border-radius:24px;
+  color:var(--hero-text);
+  background:
+    repeating-linear-gradient(90deg, transparent 0 72px, color-mix(in srgb, var(--hero-text) 4%, transparent) 73px 75px),
+    radial-gradient(circle at 88% 18%, color-mix(in srgb, var(--accent-secondary) 35%, transparent), transparent 30%),
+    radial-gradient(circle at 12% 110%, color-mix(in srgb, var(--status-win-text) 28%, transparent), transparent 34%),
+    linear-gradient(116deg, color-mix(in srgb, var(--accent-primary) 74%, var(--table-header)) 0%, color-mix(in srgb, var(--table-header) 86%, var(--accent-primary)) 52%, color-mix(in srgb, var(--status-win-text) 40%, var(--table-header)) 100%);
+  box-shadow:var(--shadow-pop);
+}
+.draft-weekend-welcome::before{
+  position:absolute;
+  z-index:0;
+  inset:0;
+  border:1px solid color-mix(in srgb, var(--hero-text) 16%, transparent);
+  border-radius:inherit;
+  background:repeating-linear-gradient(0deg, transparent 0 38px, color-mix(in srgb, var(--hero-text) 5%, transparent) 39px 40px);
+  content:"";
+  opacity:.7;
+  pointer-events:none;
+}
+.draft-weekend-welcome::after{
+  position:absolute;
+  z-index:0;
+  inset:18% -10% -35%;
+  border:1px solid color-mix(in srgb, var(--status-champ) 45%, transparent);
+  border-radius:50%;
+  box-shadow:0 0 0 18px color-mix(in srgb, var(--status-champ) 10%, transparent), 0 0 0 38px color-mix(in srgb, var(--hero-text) 8%, transparent);
+  content:"";
+  opacity:.7;
+  pointer-events:none;
+}
+.draft-weekend-content{position:relative;z-index:2;padding:clamp(24px,5vw,48px)}
+.draft-weekend-stadium-lights{position:absolute;z-index:1;inset:0;overflow:hidden;pointer-events:none}
+.draft-weekend-stadium-lights span{--draft-weekend-beam-angle:24deg;position:absolute;top:-56%;width:28%;height:170%;background:linear-gradient(180deg, color-mix(in srgb, var(--hero-text) 32%, transparent), transparent 68%);filter:blur(12px);opacity:.18;transform:rotate(var(--draft-weekend-beam-angle));transform-origin:top center;animation:draft-weekend-light-sweep 8s ease-in-out infinite}
+.draft-weekend-stadium-lights span:nth-child(1){inset-inline-start:4%;animation-delay:-2.5s}
+.draft-weekend-stadium-lights span:nth-child(2){--draft-weekend-beam-angle:-4deg;inset-inline-start:37%;width:34%;opacity:.13;animation-delay:-5s}
+.draft-weekend-stadium-lights span:nth-child(3){--draft-weekend-beam-angle:-25deg;inset-inline-end:4%;animation-delay:-1s}
+.draft-weekend-confetti{position:absolute;z-index:3;inset:0;overflow:hidden;pointer-events:none}
+.draft-weekend-confetti i{position:absolute;top:-14px;width:7px;height:18px;border-radius:2px;background:var(--status-champ);opacity:.9;transform:rotate(18deg);animation:draft-weekend-confetti-fall 7s linear infinite}
+.draft-weekend-confetti i:nth-child(1){inset-inline-start:7%;animation-delay:-1.2s}
+.draft-weekend-confetti i:nth-child(2){inset-inline-start:16%;height:12px;background:var(--status-win-text);animation-delay:-4.2s}
+.draft-weekend-confetti i:nth-child(3){inset-inline-start:28%;width:5px;background:var(--accent-secondary);animation-delay:-2.4s}
+.draft-weekend-confetti i:nth-child(4){inset-inline-start:42%;height:14px;background:var(--status-saunders);animation-delay:-6s}
+.draft-weekend-confetti i:nth-child(5){inset-inline-start:55%;background:var(--status-win-text);animation-delay:-3.3s}
+.draft-weekend-confetti i:nth-child(6){inset-inline-start:67%;width:5px;background:var(--accent-secondary);animation-delay:-5.5s}
+.draft-weekend-confetti i:nth-child(7){inset-inline-start:77%;height:13px;background:var(--status-saunders);animation-delay:-.8s}
+.draft-weekend-confetti i:nth-child(8){inset-inline-start:89%;background:var(--status-win-text);animation-delay:-3.8s}
+.draft-weekend-confetti i:nth-child(9){inset-inline-start:23%;height:9px;background:var(--status-champ);animation-delay:-6.8s}
+.draft-weekend-confetti i:nth-child(10){inset-inline-start:48%;width:5px;background:var(--status-champ);animation-delay:-1.8s}
+.draft-weekend-confetti i:nth-child(11){inset-inline-start:72%;height:11px;background:var(--accent-secondary);animation-delay:-4.8s}
+.draft-weekend-confetti i:nth-child(12){inset-inline-start:95%;width:5px;background:var(--status-saunders);animation-delay:-2.8s}
+.draft-weekend-scoreboard{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-4px auto 18px;padding:8px 12px;border:1px solid color-mix(in srgb, var(--hero-text) 25%, transparent);border-radius:8px;color:var(--hero-text);background:color-mix(in srgb, var(--table-header) 78%, transparent);box-shadow:0 8px 18px color-mix(in srgb, var(--table-header) 28%, transparent);font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+.draft-weekend-scoreboard-live{display:inline-flex;align-items:center;gap:7px;color:var(--status-win-text)}
+.draft-weekend-scoreboard span:last-child{color:color-mix(in srgb, var(--hero-text) 72%, transparent);font-size:10px}
+.draft-weekend-kicker{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 11px;
+  border:1px solid color-mix(in srgb, var(--hero-text) 22%, transparent);
+  border-radius:var(--radius-pill);
+  color:var(--status-win-text);
+  background:color-mix(in srgb, var(--status-win-text) 30%, transparent);
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.draft-weekend-live-dot{width:8px;height:8px;border-radius:50%;background:var(--status-win-text);box-shadow:0 0 0 5px color-mix(in srgb, var(--status-win-text) 18%, transparent);animation:draft-weekend-pulse 1.8s ease-in-out infinite}
+.draft-weekend-heading-row{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-top:20px}
+.draft-weekend-eyebrow{margin:0 0 8px;color:var(--status-champ);font-size:13px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}
+.draft-weekend-eyebrow span{display:inline-block;margin-inline-start:8px;color:var(--status-win-text);font-size:10px;vertical-align:middle}
+.draft-weekend-welcome h2{max-width:780px;margin:0;color:var(--hero-text);font-size:clamp(30px,5vw,58px);line-height:1.02;letter-spacing:-.04em;text-shadow:0 5px 0 color-mix(in srgb, var(--table-header) 42%, transparent)}
+.draft-weekend-announcement{margin:14px 0 0;color:var(--status-champ);font-size:clamp(12px,1.7vw,15px);font-weight:950;letter-spacing:.2em;text-transform:uppercase}
+.draft-weekend-announcement span{display:inline-block;margin-inline-start:5px;color:var(--status-win-text);animation:draft-weekend-sparkle 1.7s ease-in-out infinite}
+.draft-weekend-intro{max-width:640px;margin:16px 0 0;color:var(--hero-text);font-size:clamp(15px,2vw,19px);line-height:1.5}
+.draft-weekend-whistle{display:grid;flex:none;place-items:center;width:104px;height:104px;border:1px solid color-mix(in srgb, var(--hero-text) 24%, transparent);border-radius:30px;background:color-mix(in srgb, var(--hero-text) 10%, transparent);font-size:54px;transform:rotate(8deg);animation:draft-weekend-float 4s ease-in-out infinite}
+.draft-weekend-honors{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:30px}
+.draft-weekend-honor{display:grid;grid-template-columns:auto 1fr;column-gap:10px;align-items:center;min-height:82px;padding:14px;border:1px solid color-mix(in srgb, var(--hero-text) 16%, transparent);border-radius:16px;background:color-mix(in srgb, var(--table-header) 38%, transparent);backdrop-filter:blur(7px)}
+.draft-weekend-honor-icon{grid-row:span 2;font-size:24px}
+.draft-weekend-honor-label{color:var(--hero-text);font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.draft-weekend-honor strong{color:var(--hero-text);font-size:20px;line-height:1.1}
+.draft-weekend-honor-gold{border-color:color-mix(in srgb, var(--status-champ) 48%, transparent)}
+.draft-weekend-honor-violet{border-color:color-mix(in srgb, var(--status-saunders) 42%, transparent)}
+.draft-weekend-honor-green{border-color:color-mix(in srgb, var(--status-win-text) 42%, transparent)}
+.draft-weekend-honor-blue{border-color:color-mix(in srgb, var(--status-info-border) 42%, transparent)}
+.draft-order-carousel{margin-top:24px;padding:18px;border:1px solid color-mix(in srgb,var(--hero-text) 18%,transparent);border-radius:18px;background:color-mix(in srgb,var(--table-header) 52%,transparent);backdrop-filter:blur(8px)}
+.draft-order-header{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:14px}
+.draft-order-eyebrow{margin:0 0 3px;color:var(--status-champ);font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.draft-order-header h3{margin:0;color:var(--hero-text);font-size:clamp(20px,3vw,28px)}
+.draft-order-status{flex:none;padding:5px 9px;border:1px solid color-mix(in srgb,var(--hero-text) 22%,transparent);border-radius:var(--radius-pill);color:var(--hero-text);font-size:12px;font-weight:800}
+.draft-order-stage{display:grid}
+.draft-order-slide{grid-area:1/1;visibility:hidden;opacity:0;transform:translateX(18px);transition:transform .35s ease;pointer-events:none}
+.draft-order-slide.is-active{visibility:visible;opacity:1;transform:none;pointer-events:auto}
+.draft-order-group-title{margin:0 0 9px;color:var(--hero-text);font-size:13px;font-weight:800}
+.draft-order-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.draft-order-card{display:flex;flex-direction:column;min-width:0;min-height:150px;padding:12px;border:1px solid color-mix(in srgb,var(--hero-text) 16%,transparent);border-radius:13px;background:color-mix(in srgb,var(--hero-text) 7%,transparent)}
+.draft-order-finish{color:var(--status-champ);font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
+.draft-order-card h4{margin:4px 0 5px;color:var(--hero-text);font-size:20px}
+.draft-order-card p{flex:1;margin:0 0 10px;color:var(--hero-text);font-size:12px;line-height:1.4}
+.draft-order-card strong{align-self:flex-start;padding:4px 8px;border:1px solid var(--status-champ);border-radius:var(--radius-pill);color:var(--hero-text);background:color-mix(in srgb,var(--status-champ) 28%,var(--table-header));font-size:12px}
+.draft-order-footnote{margin:12px 2px 0;color:color-mix(in srgb,var(--hero-text) 82%,transparent);font-size:11px;line-height:1.45}
+.draft-order-controls{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:12px}
+.draft-order-controls button{min-height:38px;padding:7px 11px;border:1px solid color-mix(in srgb,var(--hero-text) 28%,transparent);border-radius:var(--radius-pill);color:var(--hero-text);background:color-mix(in srgb,var(--table-header) 62%,transparent);font-size:12px;font-weight:800;cursor:pointer}
+.draft-order-controls button:hover{background:color-mix(in srgb,var(--hero-text) 14%,var(--table-header))}
+.draft-order-dots{display:flex;gap:5px;margin-inline:auto 6px}
+.draft-order-dots span{width:7px;height:7px;border-radius:50%;background:color-mix(in srgb,var(--hero-text) 30%,transparent)}
+.draft-order-dots span.is-active{background:var(--status-champ);transform:scale(1.25)}
+.draft-weekend-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:26px;padding-top:20px;border-top:1px solid color-mix(in srgb, var(--hero-text) 16%, transparent)}
+.draft-weekend-footer p{margin:0;color:var(--hero-text);font-size:14px;line-height:1.45}
+.draft-weekend-dismiss{min-height:44px;padding:10px 16px;border:1px solid var(--text-primary);border-radius:var(--radius-pill);color:var(--surface-panel);background:var(--text-primary);font-weight:800;white-space:nowrap;cursor:pointer}
+.draft-weekend-dismiss:hover{background:color-mix(in srgb, var(--text-primary) 80%, var(--surface-panel))}
+.draft-weekend-dismiss span{margin-inline-start:6px;font-size:18px}
+.draft-weekend-ball{position:absolute;z-index:0;font-size:clamp(34px,5vw,64px);filter:drop-shadow(0 10px 12px color-mix(in srgb, var(--table-header) 25%, transparent));pointer-events:none}
+.draft-weekend-ball-one{inset-block-start:10%;inset-inline-end:4%;animation:draft-weekend-ball-flight 9s ease-in-out infinite}
+.draft-weekend-ball-two{inset-block-end:-4%;inset-inline-start:42%;font-size:32px;opacity:.55;animation:draft-weekend-ball-flight 12s 1s ease-in-out infinite reverse}
+.draft-weekend-glow{position:absolute;width:180px;height:180px;border-radius:50%;filter:blur(5px);opacity:.35;pointer-events:none}
+.draft-weekend-glow-one{inset-block-end:-110px;inset-inline-end:28%;background:var(--status-win-text)}
+.draft-weekend-glow-two{inset-block-start:-100px;inset-inline-start:30%;background:var(--accent-secondary)}
+@keyframes draft-weekend-pulse{0%,100%{opacity:.7;transform:scale(.92)}50%{opacity:1;transform:scale(1.08)}}
+@keyframes draft-weekend-float{0%,100%{transform:translateY(0) rotate(8deg)}50%{transform:translateY(-8px) rotate(3deg)}}
+@keyframes draft-weekend-ball-flight{0%,100%{transform:translate3d(0,0,0) rotate(-12deg)}50%{transform:translate3d(-24px,18px,0) rotate(18deg)}}
+@keyframes draft-weekend-sparkle{0%,100%{transform:scale(.82) rotate(-10deg);opacity:.6}50%{transform:scale(1.2) rotate(10deg);opacity:1}}
+@keyframes draft-weekend-light-sweep{0%,100%{opacity:.1;transform:rotate(var(--draft-weekend-beam-angle)) translateX(-12px)}50%{opacity:.24;transform:rotate(var(--draft-weekend-beam-angle)) translateX(22px)}}
+@keyframes draft-weekend-confetti-fall{0%{transform:translate3d(0,-20px,0) rotate(18deg)}45%{opacity:.95}100%{transform:translate3d(24px,540px,0) rotate(300deg);opacity:0}}
+@media (prefers-reduced-motion:reduce){
+  .draft-weekend-live-dot,.draft-weekend-whistle,.draft-weekend-ball,.draft-weekend-stadium-lights span,.draft-weekend-confetti i,.draft-weekend-announcement span{animation:none}
+  .draft-order-slide{transition:none}
+  .draft-order-dots span{transform:none}
+}
+@media (max-width:760px){
+  .draft-weekend-welcome{border-radius:18px}
+  .draft-weekend-heading-row{align-items:flex-start}
+  .draft-weekend-scoreboard{font-size:10px;letter-spacing:.08em}
+  .draft-weekend-whistle{width:70px;height:70px;border-radius:20px;font-size:34px}
+  .draft-weekend-honors{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .draft-order-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:500px){
+  .draft-weekend-content{padding:24px 18px}
+  .draft-weekend-scoreboard{align-items:flex-start;flex-wrap:wrap;gap:6px 10px;margin-inline:-4px;font-size:10px}
+  .draft-weekend-scoreboard span:last-child{width:100%;font-size:9px}
+  .draft-weekend-heading-row{display:block}
+  .draft-weekend-whistle{display:none}
+  .draft-weekend-honors{gap:8px;margin-top:24px}
+  .draft-weekend-honor{min-height:72px;padding:10px}
+  .draft-weekend-honor strong{font-size:17px}
+  .draft-order-carousel{padding:14px}
+  .draft-order-header{align-items:flex-start}
+  .draft-order-grid{grid-template-columns:1fr}
+  .draft-order-card{min-height:0}
+  .draft-order-controls{display:grid;grid-template-columns:1fr 1fr}
+  .draft-order-controls button{width:100%}
+  .draft-order-dots{grid-column:1/-1;grid-row:1;margin:0 auto 3px}
+  .draft-order-controls [data-draft-order-previous]{grid-column:1;grid-row:2}
+  .draft-order-controls [data-draft-order-next]{grid-column:2;grid-row:2}
+  .draft-order-controls [data-draft-order-toggle]{grid-column:1/-1;grid-row:3}
+  .draft-weekend-footer{display:block}
+  .draft-weekend-footer p{margin-bottom:14px}
+  .draft-weekend-dismiss{width:100%}
+}

@@ -1,7 +1,5 @@
 import './asset-validation.test.js';
 import './data-helpers.test.js';
-import './dynasty-controls.test.js';
-import './dynasty-renderers.test.js';
 import './gauntlet.test.js';
 import './state-helpers.test.js';
 import './curse-tracker.test.js';
@@ -11,6 +9,4 @@ import './current-season-data.test.js';
 import './current-season-renderers.test.js';
 import './history-renderers.test.js';
 import './league-renderers.test.js';
-import './rivalry-renderers.test.js';
-import './trophy-controls.test.js';
-import './trophy-renderers.test.js';
+import './rivalry-model.test.js';

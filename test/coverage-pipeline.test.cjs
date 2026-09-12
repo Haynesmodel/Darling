@@ -14,6 +14,7 @@ const {
   addUncoveredSourceFiles,
   assertRawCoverageSize,
   collectSourceFiles,
+  coverageLocationsSubset,
   discoverCoverageMaps,
   isCoverageSource,
   isTypeOnlySourceFile,
@@ -159,6 +160,140 @@ test('Node and browser maps for one source merge branch and function counters', 
     assert.equal(result.branches.covered, 2);
     assert.equal(result.functions.total, 2);
     assert.equal(result.functions.covered, 1);
+  });
+});
+
+test('an unexecuted remap with distinct statement locations is retained', () => {
+  withTempRepo(root => {
+    const filePath = path.join(root, 'src', 'remapped-runtime.js');
+    const strongMap = instrumentAndRun(filePath, [
+      'function choose(flag) {',
+      '  return flag ? 1 : 2;',
+      '}',
+      'choose(true);',
+      '',
+    ].join('\n'));
+    const weakMap = instrumentAndRun(filePath, [
+      'const generatedWrapper = true;',
+      'function choose(flag) {',
+      '  return flag ? 1 : 2;',
+      '}',
+      'choose(true);',
+      '',
+    ].join('\n'));
+    const weakCoverage = Object.values(weakMap)[0];
+    Object.keys(weakCoverage.s).forEach(key => { weakCoverage.s[key] = 0; });
+    Object.keys(weakCoverage.f).forEach(key => { weakCoverage.f[key] = 0; });
+    Object.keys(weakCoverage.b).forEach(key => { weakCoverage.b[key] = weakCoverage.b[key].map(() => 0); });
+    const strongPath = path.join(root, 'strong.json');
+    const weakPath = path.join(root, 'weak.json');
+    fs.writeFileSync(strongPath, JSON.stringify(strongMap));
+    fs.writeFileSync(weakPath, JSON.stringify(weakMap));
+
+    const merged = mergeCoverageMaps(root, [strongPath, weakPath]);
+    const coverage = merged.fileCoverageFor(fs.realpathSync.native(filePath));
+    const result = coverage.toSummary();
+    const strongKey = Object.keys(strongMap)[0];
+    const expected = createCoverageMap(strongMap).fileCoverageFor(strongKey).toSummary();
+    assert.ok(result.statements.total > expected.statements.total);
+    assert.ok(result.statements.covered < result.statements.total);
+  });
+});
+
+test('equal-count remaps at different authored locations are not treated as subsets', () => {
+  withTempRepo(root => {
+    const filePath = path.join(root, 'src', 'equal-count-runtime.js');
+    const executed = instrumentAndRun(filePath, [
+      'function choose(flag) {',
+      '  return flag ? 1 : 2;',
+      '}',
+      'choose(true);',
+      '',
+    ].join('\n'));
+    const shifted = instrumentAndRun(filePath, [
+      '',
+      'function choose(flag) {',
+      '  return flag ? 1 : 2;',
+      '}',
+      'choose(true);',
+      '',
+    ].join('\n'));
+    const shiftedCoverage = Object.values(shifted)[0];
+    Object.keys(shiftedCoverage.s).forEach(key => { shiftedCoverage.s[key] = 0; });
+    Object.keys(shiftedCoverage.f).forEach(key => { shiftedCoverage.f[key] = 0; });
+    Object.keys(shiftedCoverage.b).forEach(key => { shiftedCoverage.b[key] = shiftedCoverage.b[key].map(() => 0); });
+    const executedCoverage = { data: Object.values(executed)[0] };
+    assert.equal(coverageLocationsSubset({ data: shiftedCoverage }, executedCoverage), false);
+
+    const executedPath = path.join(root, 'executed-equal.json');
+    const shiftedPath = path.join(root, 'shifted-equal.json');
+    fs.writeFileSync(executedPath, JSON.stringify(executed));
+    fs.writeFileSync(shiftedPath, JSON.stringify(shifted));
+    const result = mergeCoverageMaps(root, [executedPath, shiftedPath])
+      .fileCoverageFor(fs.realpathSync.native(filePath))
+      .toSummary();
+    assert.equal(result.functions.total, 2);
+    assert.equal(result.branches.total, 4);
+    assert.equal(result.functions.covered, 1);
+    assert.equal(result.branches.covered, 1);
+  });
+});
+
+test('line-coverage remaps match authored function spans despite generated names', () => {
+  withTempRepo(root => {
+    const filePath = path.join(root, 'src', 'line-remap.js');
+    fs.writeFileSync(filePath, [
+      "import './dependency.js';",
+      'function choose(flag) {',
+      '  return flag ? 1 : 2;',
+      '}',
+      '',
+    ].join('\n'));
+    const lineLocation = line => ({ start: { line, column: 0 }, end: { line, column: 20 } });
+    const span = (start, end) => ({ start: { line: start, column: 0 }, end: { line: end, column: 1 } });
+    const candidate = { data: {
+      path: filePath,
+      statementMap: { 0: lineLocation(1), 1: lineLocation(2), 2: lineLocation(3), 3: lineLocation(4) },
+      fnMap: {
+        0: { name: 'generatedImport', decl: lineLocation(1), loc: lineLocation(1) },
+        1: { name: 'choose2', decl: span(2, 4), loc: span(2, 4) },
+      },
+      branchMap: {},
+    } };
+    const authored = { data: {
+      path: filePath,
+      statementMap: { 0: span(2, 4) },
+      fnMap: { 0: { name: 'choose', decl: span(2, 2), loc: span(2, 4) } },
+      branchMap: {},
+    } };
+    assert.equal(coverageLocationsSubset(candidate, authored), true);
+  });
+});
+
+test('an unexecuted remap is retained when it contains unique authored branches', () => {
+  withTempRepo(root => {
+    const filePath = path.join(root, 'src', 'partial-runtime.js');
+    const executed = instrumentAndRun(filePath, 'function ready(){ return true; }\nready();\n');
+    const unique = instrumentAndRun(filePath, [
+      'function ready(flag) {',
+      '  return flag ? true : false;',
+      '}',
+      'ready(true);',
+      '',
+    ].join('\n'));
+    const uniqueCoverage = Object.values(unique)[0];
+    Object.keys(uniqueCoverage.s).forEach(key => { uniqueCoverage.s[key] = 0; });
+    Object.keys(uniqueCoverage.f).forEach(key => { uniqueCoverage.f[key] = 0; });
+    Object.keys(uniqueCoverage.b).forEach(key => { uniqueCoverage.b[key] = uniqueCoverage.b[key].map(() => 0); });
+    const executedPath = path.join(root, 'executed.json');
+    const uniquePath = path.join(root, 'unique.json');
+    fs.writeFileSync(executedPath, JSON.stringify(executed));
+    fs.writeFileSync(uniquePath, JSON.stringify(unique));
+
+    const merged = mergeCoverageMaps(root, [executedPath, uniquePath]);
+    const result = merged.fileCoverageFor(fs.realpathSync.native(filePath)).toSummary();
+    assert.equal(result.branches.total, 2);
+    assert.equal(result.branches.covered, 0);
   });
 });
 

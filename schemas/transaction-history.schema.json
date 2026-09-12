@@ -1,0 +1,327 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://darling.example/schemas/transaction-history.schema.json",
+  "title": "TransactionHistory",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generator_version", "methodology_version", "source", "source_updated_ms", "players", "seasons"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "generator_version": { "const": 2 },
+    "methodology_version": { "const": 2 },
+    "source": { "const": "sleeper" },
+    "source_updated_ms": { "type": "integer", "minimum": 0 },
+    "players": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/player" }
+    },
+    "seasons": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "items": { "$ref": "#/$defs/season" }
+    }
+  },
+  "$defs": {
+    "nullableString": { "type": ["string", "null"] },
+    "owner": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "playerId": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "points": { "type": "number", "minimum": -1000, "maximum": 10000 },
+    "player": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "position", "nfl_team"],
+      "properties": {
+        "id": { "$ref": "#/$defs/playerId" },
+        "name": { "$ref": "#/$defs/nullableString" },
+        "position": { "$ref": "#/$defs/nullableString" },
+        "nfl_team": { "$ref": "#/$defs/nullableString" }
+      }
+    },
+    "team": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["roster_id", "owner"],
+      "properties": {
+        "roster_id": { "type": "integer", "minimum": 1 },
+        "owner": { "$ref": "#/$defs/owner" }
+      }
+    },
+    "draftPick": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pick_no", "round", "roster_id", "owner", "player_id", "is_keeper"],
+      "properties": {
+        "pick_no": { "type": "integer", "minimum": 1 },
+        "round": { "type": "integer", "minimum": 1 },
+        "roster_id": { "type": "integer", "minimum": 1 },
+        "owner": { "$ref": "#/$defs/owner" },
+        "player_id": { "$ref": "#/$defs/playerId" },
+        "is_keeper": { "type": "boolean" }
+      }
+    },
+    "draft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "draft_id", "pick_count", "picks"],
+      "properties": {
+        "status": { "enum": ["selected", "unavailable"] },
+        "draft_id": { "$ref": "#/$defs/nullableString" },
+        "pick_count": { "type": "integer", "minimum": 0 },
+        "picks": { "type": "array", "items": { "$ref": "#/$defs/draftPick" } }
+      }
+    },
+    "playerMovement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["player_id", "owner"],
+      "properties": {
+        "player_id": { "$ref": "#/$defs/playerId" },
+        "owner": { "$ref": "#/$defs/owner" }
+      }
+    },
+    "transactionPick": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["season", "round", "roster_id", "original_owner", "owner", "previous_owner"],
+      "properties": {
+        "season": { "type": "integer", "minimum": 2025, "maximum": 2100 },
+        "round": { "type": "integer", "minimum": 1 },
+        "roster_id": { "type": "integer", "minimum": 1 },
+        "original_owner": { "$ref": "#/$defs/owner" },
+        "owner": { "$ref": "#/$defs/owner" },
+        "previous_owner": { "anyOf": [{ "$ref": "#/$defs/owner" }, { "type": "null" }] }
+      }
+    },
+    "budgetTransfer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sender", "receiver", "amount"],
+      "properties": {
+        "sender": { "$ref": "#/$defs/owner" },
+        "receiver": { "$ref": "#/$defs/owner" },
+        "amount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "transaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "type", "week", "created_ms", "participants", "adds", "drops", "draft_picks", "faab_bid", "waiver_budget"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "status": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "type": { "enum": ["waiver", "free_agent", "trade", "commissioner"] },
+        "week": { "type": "integer", "minimum": 0, "maximum": 25 },
+        "created_ms": { "type": "integer", "minimum": 0 },
+        "participants": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/owner" } },
+        "adds": { "type": "array", "items": { "$ref": "#/$defs/playerMovement" } },
+        "drops": { "type": "array", "items": { "$ref": "#/$defs/playerMovement" } },
+        "draft_picks": { "type": "array", "items": { "$ref": "#/$defs/transactionPick" } },
+        "faab_bid": { "type": ["integer", "null"], "minimum": 0 },
+        "waiver_budget": { "type": "array", "items": { "$ref": "#/$defs/budgetTransfer" } }
+      }
+    },
+    "acquisition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "week", "transaction_id", "pick_no", "is_keeper"],
+      "properties": {
+        "kind": { "enum": ["draft", "keeper", "add", "trade_in", "commissioner"] },
+        "week": { "type": "integer", "minimum": 0, "maximum": 25 },
+        "transaction_id": { "$ref": "#/$defs/nullableString" },
+        "pick_no": { "type": ["integer", "null"], "minimum": 1 },
+        "is_keeper": { "type": "boolean" }
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "week", "transaction_id"],
+      "properties": {
+        "kind": { "enum": ["drop", "trade_out"] },
+        "week": { "type": "integer", "minimum": 0, "maximum": 25 },
+        "transaction_id": { "type": "string", "minLength": 1 }
+      }
+    },
+    "stint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner", "acquisition", "release", "rostered_weeks", "starts", "total_points", "starter_points", "retained"],
+      "properties": {
+        "owner": { "$ref": "#/$defs/owner" },
+        "acquisition": { "$ref": "#/$defs/acquisition" },
+        "release": { "anyOf": [{ "$ref": "#/$defs/release" }, { "type": "null" }] },
+        "rostered_weeks": { "type": "integer", "minimum": 0, "maximum": 25 },
+        "starts": { "type": "integer", "minimum": 0, "maximum": 25 },
+        "total_points": { "$ref": "#/$defs/points" },
+        "starter_points": { "$ref": "#/$defs/points" },
+        "retained": { "type": "boolean" }
+      }
+    },
+    "journey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["player_id", "stints"],
+      "properties": {
+        "player_id": { "$ref": "#/$defs/playerId" },
+        "stints": { "type": "array", "items": { "$ref": "#/$defs/stint" } }
+      }
+    },
+    "tradeSide": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner", "players", "picks", "faab", "starts", "starter_points", "total_points", "rostered_weeks", "retained_players"],
+      "properties": {
+        "owner": { "$ref": "#/$defs/owner" },
+        "players": { "type": "array", "items": { "$ref": "#/$defs/playerId" } },
+        "picks": { "type": "array", "items": { "$ref": "#/$defs/transactionPick" } },
+        "faab": { "type": "integer" },
+        "starts": { "type": "integer", "minimum": 0 },
+        "starter_points": { "$ref": "#/$defs/points" },
+        "total_points": { "$ref": "#/$defs/points" },
+        "rostered_weeks": { "type": "integer", "minimum": 0 },
+        "retained_players": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "trade": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["transaction_id", "week", "created_ms", "status", "even", "edge_owner", "completed_through_week", "sides"],
+      "properties": {
+        "transaction_id": { "type": "string", "minLength": 1 },
+        "week": { "type": "integer", "minimum": 0, "maximum": 25 },
+        "created_ms": { "type": "integer", "minimum": 0 },
+        "status": { "enum": ["too_early", "incomplete", "provisional", "final"] },
+        "even": { "type": "boolean" },
+        "edge_owner": { "anyOf": [{ "$ref": "#/$defs/owner" }, { "type": "null" }] },
+        "completed_through_week": { "type": "integer", "minimum": 0, "maximum": 25 },
+        "sides": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/tradeSide" } }
+      }
+    },
+    "wireFind": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["transaction_id", "player_id", "owner", "acquisition_type", "week", "starts", "starter_points", "rostered_weeks", "retained"],
+      "properties": {
+        "transaction_id": { "type": "string", "minLength": 1 },
+        "player_id": { "$ref": "#/$defs/playerId" },
+        "owner": { "$ref": "#/$defs/owner" },
+        "acquisition_type": { "enum": ["waiver", "free_agent"] },
+        "week": { "type": "integer", "minimum": 0, "maximum": 25 },
+        "starts": { "type": "integer", "minimum": 0 },
+        "starter_points": { "$ref": "#/$defs/points" },
+        "rostered_weeks": { "type": "integer", "minimum": 0 },
+        "retained": { "type": "boolean" }
+      }
+    },
+    "movementCount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["player_id", "adds", "drops"],
+      "properties": {
+        "player_id": { "$ref": "#/$defs/playerId" },
+        "adds": { "type": "integer", "minimum": 0 },
+        "drops": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "ownerActivity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner", "transactions", "adds", "drops", "trades", "commissioner_moves", "faab_spent", "distinct_incoming_players", "retention", "turnover"],
+      "properties": {
+        "owner": { "$ref": "#/$defs/owner" },
+        "transactions": { "type": "integer", "minimum": 0 },
+        "adds": { "type": "integer", "minimum": 0 },
+        "drops": { "type": "integer", "minimum": 0 },
+        "trades": { "type": "integer", "minimum": 0 },
+        "commissioner_moves": { "type": "integer", "minimum": 0 },
+        "faab_spent": { "type": "integer", "minimum": 0 },
+        "distinct_incoming_players": { "type": "integer", "minimum": 0 },
+        "retention": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "turnover": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+      }
+    },
+    "retention": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner", "available", "drafted", "retained", "retention", "turnover"],
+      "properties": {
+        "owner": { "$ref": "#/$defs/owner" },
+        "available": { "type": "boolean" },
+        "drafted": { "type": "integer", "minimum": 0 },
+        "retained": { "type": "integer", "minimum": 0 },
+        "retention": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "turnover": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+      }
+    },
+    "keeperReturn": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["player_id", "owner", "round", "starts", "starter_points"],
+      "properties": {
+        "player_id": { "$ref": "#/$defs/playerId" },
+        "owner": { "$ref": "#/$defs/owner" },
+        "round": { "type": "integer", "minimum": 1 },
+        "starts": { "type": "integer", "minimum": 0 },
+        "starter_points": { "$ref": "#/$defs/points" }
+      }
+    },
+    "insights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trades", "wire_finds", "movement_counts", "owner_activity", "draft_retention", "keeper_return"],
+      "properties": {
+        "trades": { "type": "array", "items": { "$ref": "#/$defs/trade" } },
+        "wire_finds": { "type": "array", "items": { "$ref": "#/$defs/wireFind" } },
+        "movement_counts": { "type": "array", "items": { "$ref": "#/$defs/movementCount" } },
+        "owner_activity": { "type": "array", "items": { "$ref": "#/$defs/ownerActivity" } },
+        "draft_retention": { "type": "array", "items": { "$ref": "#/$defs/retention" } },
+        "keeper_return": { "type": "array", "items": { "$ref": "#/$defs/keeperReturn" } }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["completed_week", "transaction_rounds", "matchup_weeks", "transaction_count", "complete_count", "failed_count", "pending_count", "type_counts", "missing_player_metadata", "outcome_methodology_version"],
+      "properties": {
+        "completed_week": { "type": "integer", "minimum": 0, "maximum": 25 },
+        "transaction_rounds": { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 25 } },
+        "matchup_weeks": { "type": "array", "items": { "type": "integer", "minimum": 1, "maximum": 25 } },
+        "transaction_count": { "type": "integer", "minimum": 0 },
+        "complete_count": { "type": "integer", "minimum": 0 },
+        "failed_count": { "type": "integer", "minimum": 0 },
+        "pending_count": { "type": "integer", "minimum": 0 },
+        "type_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["commissioner", "free_agent", "trade", "waiver"],
+          "properties": {
+            "commissioner": { "type": "integer", "minimum": 0 },
+            "free_agent": { "type": "integer", "minimum": 0 },
+            "trade": { "type": "integer", "minimum": 0 },
+            "waiver": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "missing_player_metadata": { "type": "integer", "minimum": 0 },
+        "outcome_methodology_version": { "const": 2 }
+      }
+    },
+    "season": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["season", "league_id", "league_status", "max_week", "coverage", "teams", "draft", "transactions", "player_journeys", "insights"],
+      "properties": {
+        "season": { "type": "integer", "minimum": 2025, "maximum": 2100 },
+        "league_id": { "type": "string", "pattern": "^[0-9]+$" },
+        "league_status": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "max_week": { "type": "integer", "minimum": 1, "maximum": 25 },
+        "coverage": { "$ref": "#/$defs/coverage" },
+        "teams": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/team" } },
+        "draft": { "$ref": "#/$defs/draft" },
+        "transactions": { "type": "array", "items": { "$ref": "#/$defs/transaction" } },
+        "player_journeys": { "type": "array", "items": { "$ref": "#/$defs/journey" } },
+        "insights": { "$ref": "#/$defs/insights" }
+      }
+    }
+  }
+}

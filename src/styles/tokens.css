@@ -10,6 +10,15 @@
   --surface-highlight:#f8fafc;
   --surface-selected:#eff6ff;
 
+  --control-rest-border:color-mix(in srgb, var(--border-strong) 72%, transparent);
+  --control-hover-border:var(--accent-primary);
+  --control-open-border:var(--accent-primary);
+  --control-rest-surface:transparent;
+  --control-hover-surface:color-mix(in srgb, var(--surface-control-hover) 72%, transparent);
+  --control-open-surface:color-mix(in srgb, var(--accent-soft) 78%, transparent);
+  --control-menu-border:var(--border-strong);
+  --control-menu-shadow:var(--shadow-soft);
+
   --text-primary:#111827;
   --text-secondary:#374151;
   --text-muted:#596273;

@@ -178,14 +178,12 @@ export default function InteractiveTable({
     enableSortingRemoval: true,
     enableMultiSort: true,
     isMultiSortEvent: (event: any) => !!event?.shiftKey,
-    autoResetPageIndex: true,
     initialState: {
       sorting: startingState.sorting,
       columnFilters: startingState.columnFilters,
       columnVisibility: startingState.columnVisibility,
       columnPinning: { start: startingState.columnPinning.left, end: startingState.columnPinning.right },
       pagination: { pageIndex: 0, pageSize: startingState.pageSize },
-      expanded: {},
     },
   } as any, (state: any) => ({
     sorting: state.sorting,
@@ -208,9 +206,10 @@ export default function InteractiveTable({
     pageSize: table.state.pagination?.pageSize || registry.defaultPageSize,
   };
 
+  useEffect(table.resetExpanded, [data, context, table.state.sorting, table.state.columnFilters, table.state.pagination]);
+
   useEffect(() => {
-    table.setPageIndex?.(0);
-    table.setExpanded?.({});
+    table.setPageIndex(0);
   }, [quickFilters]);
 
   useEffect(() => {
@@ -235,8 +234,8 @@ export default function InteractiveTable({
     table.setColumnVisibility?.(valid.columnVisibility);
     table.setColumnPinning?.({ start: valid.columnPinning.left.slice(0, 1), end: valid.columnPinning.right.slice(0, 1) });
     table.setPageSize?.(valid.pageSize);
-    table.setPageIndex?.(0);
-    table.setExpanded?.({});
+    table.setPageIndex(0);
+    table.resetExpanded();
     setQuickFilters(valid.quickFilters);
     setGameLimit(registry.id === 'history-games' && typeof nextUrlState?.gameLimit === 'number' && Number.isFinite(nextUrlState.gameLimit) ? nextUrlState.gameLimit : null);
   };

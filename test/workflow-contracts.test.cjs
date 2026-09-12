@@ -15,6 +15,7 @@ const SLEEPER_ALLOWLIST = [
   'assets/DerivedStats.json',
   'assets/H2H.json',
   'assets/SeasonSummary.draft.json',
+  'assets/TransactionHistory.json',
   'assets/asset-manifest.json',
 ];
 
@@ -86,6 +87,8 @@ function validateSleeperWorkflow(source, errors) {
   const sourceStep = extractNamedStep(update, 'Record trusted main source');
   const resolveSeason = extractNamedStep(update, 'Resolve target season');
   const generateCandidate = extractNamedStep(update, 'Generate candidate data');
+  const regenerate = extractNamedStep(update, 'Promote and regenerate candidate bundle');
+  const allowlist = extractNamedStep(update, 'Enforce change allowlist');
   const summarizeCandidate = extractNamedStep(update, 'Summarize and safety-check candidate');
   const appToken = extractNamedStep(update, 'Mint repository-scoped automation token');
   const appScope = extractNamedStep(update, 'Verify App repository scope');
@@ -197,11 +200,15 @@ function validateSleeperWorkflow(source, errors) {
     ? [...allowlistMatch[1].matchAll(/'([^']+)'/g)].map(match => match[1]).sort()
     : [];
   if (JSON.stringify(observedAllowlist) !== JSON.stringify(SLEEPER_ALLOWLIST)) {
-    errors.push('SLEEPER-DATA-001: publication allowlist must contain exactly the five reviewed data files');
+    errors.push('SLEEPER-DATA-001: publication allowlist must contain exactly the six reviewed data files');
   }
   if (!update.includes("if (status[1] !== ' ')")
     || !update.includes('Refusing an allowed path that is not fully staged')) {
     errors.push('SLEEPER-DATA-001: every allowed changed path must be fully staged before publication');
+  }
+  if (!allowlist.includes('bash scripts/stage_optional_git_paths.sh "${ALLOWLIST[@]}"')
+    || allowlist.includes('git add -A -- "${ALLOWLIST[@]}"')) {
+    errors.push('SLEEPER-DATA-001: allowlist staging must tolerate absent optional files and preserve tracked deletions');
   }
   for (const command of [
     'npm run generate:derived',
@@ -212,6 +219,16 @@ function validateSleeperWorkflow(source, errors) {
     if (!update.includes(command)) {
       errors.push(`SLEEPER-DATA-002: workflow must run ${command}`);
     }
+  }
+  if (!regenerate.includes('H2H_CHANGED=0')
+    || countMatches(regenerate, /H2H_CHANGED=1/g) !== 1
+    || countMatches(regenerate, /node scripts\/compare_json\.cjs/g) !== 3
+    || !/if \[\[ ! -f assets\/TransactionHistory\.json \]\] \|\| ! node scripts\/compare_json\.cjs assets\/TransactionHistory\.updated\.json assets\/TransactionHistory\.json; then/.test(regenerate)
+    || !/if ! node scripts\/compare_json\.cjs assets\/H2H\.updated\.json assets\/H2H\.json; then[\s\S]*?H2H_CHANGED=1[\s\S]*?fi/.test(regenerate)
+    || !/if \[\[ ! -f assets\/CurrentSeason\.json \]\] \|\| ! node scripts\/compare_json\.cjs assets\/CurrentSeason\.updated\.json assets\/CurrentSeason\.json; then/.test(regenerate)
+    || !/if \[\[ "\$\{H2H_CHANGED\}" == "1" \]\]; then[\s\S]*?generate_season_summary_draft\.py[\s\S]*?npm run generate:derived[\s\S]*?fi/.test(regenerate)
+    || !/if \[\[ "\$\{SOURCE_CHANGED\}" == "1" \]\]; then[\s\S]*?npm run generate:manifest[\s\S]*?fi/.test(regenerate)) {
+    errors.push('SLEEPER-DATA-003: semantic H2H-only outputs must not block CurrentSeason-only preseason promotion');
   }
   if (!update.includes('--base-sha "${{ steps.source.outputs.sha }}"')
     || !update.includes('--candidate-sha "${{ steps.source.outputs.sha }}"')
@@ -287,8 +304,9 @@ function validateSleeperWorkflow(source, errors) {
   if (!artifact.includes("steps.resolve.outputs.season || 'unknown'")
     || !artifact.includes('${{ github.run_id }}-${{ github.run_attempt }}')
     || !artifact.includes('retention-days: 7')
+    || !artifact.includes('assets/TransactionHistory.updated.json')
     || artifact.includes('assets/CurrentSeason.updated.json')) {
-    errors.push('SLEEPER-REL-010: failure artifact must be unique, seven-day, and omit the credential-valued CurrentSeason candidate');
+    errors.push('SLEEPER-REL-010: failure artifact must be unique, seven-day, retain the transaction candidate, and omit the credential-valued CurrentSeason candidate');
   }
   if (!recovery.includes("steps.resolve.outputs.validate_only_flag == '0'")
     || !recovery.includes("title = 'Weekly Sleeper update failed'")
@@ -310,6 +328,8 @@ function validateWorkflowContracts({ workflows, legacyDeployExists }) {
   const gate = extractJob(ci, 'gate');
   const packagePages = extractJob(ci, 'package_pages');
   const deployPages = extractJob(ci, 'deploy_pages');
+  const verifyPages = extractJob(ci, 'verify_pages');
+  const pagesSourceStep = extractNamedStep(packagePages, 'Verify Pages uses GitHub Actions source');
   const uploadPagesStep = extractNamedStep(packagePages, 'Upload Pages artifact');
 
   if (legacyDeployExists) {
@@ -388,8 +408,18 @@ function validateWorkflowContracts({ workflows, legacyDeployExists }) {
     if (/\balways\(\)/.test(packagePages)) {
       errors.push('REL-001: package_pages must not use always()');
     }
-    if (JSON.stringify(jobPermissions(packagePages)) !== JSON.stringify(['contents: read'])) {
-      errors.push('SEC-001: package_pages permissions must be exactly contents: read');
+    if (JSON.stringify(jobPermissions(packagePages)) !== JSON.stringify(['contents: read', 'pages: read'])) {
+      errors.push('SEC-001: package_pages permissions must be exactly contents: read and pages: read');
+    }
+    if (!pagesSourceStep.includes('github.rest.repos.getPages')
+      || !pagesSourceStep.includes("pages.build_type !== 'workflow'")
+      || !pagesSourceStep.includes('core.setFailed')) {
+      errors.push('CI-001: package_pages must fail closed when the authenticated Pages source is not workflow');
+    }
+    const sourceIndex = packagePages.indexOf('Verify Pages uses GitHub Actions source');
+    const packageDownloadIndex = packagePages.indexOf('Download tested production artifact');
+    if (sourceIndex < 0 || packageDownloadIndex < 0 || sourceIndex > packageDownloadIndex) {
+      errors.push('CI-001: Pages source preflight must run before artifact download and upload');
     }
     if (!uploadPagesStep.includes('uses: actions/upload-pages-artifact@')) {
       errors.push('ARCH-002: package_pages must upload dist with upload-pages-artifact');
@@ -418,6 +448,9 @@ function validateWorkflowContracts({ workflows, legacyDeployExists }) {
   if (!deployPages) {
     errors.push('REL-001: deploy_pages job is missing');
   } else {
+    if (!/outputs:\s*\n\s+page_url:\s*\$\{\{\s*steps\.deployment\.outputs\.page_url\s*\}\}/.test(deployPages)) {
+      errors.push('OBS-002: deploy_pages must expose its Pages URL to verification');
+    }
     if (!/^\s*needs:\s*package_pages\s*$/m.test(deployPages)) {
       errors.push('REL-001: deploy_pages must need only package_pages');
     }
@@ -464,6 +497,33 @@ function validateWorkflowContracts({ workflows, legacyDeployExists }) {
     }
   }
 
+  if (!verifyPages) {
+    errors.push('REL-001: verify_pages job is missing');
+  } else {
+    if (!/^\s*needs:\s*deploy_pages\s*$/m.test(verifyPages)
+      || !verifyPages.includes(`if: ${MAIN_PUSH_CONDITION}`)) {
+      errors.push('REL-001: verify_pages must run only after the main deploy');
+    }
+    if (!/^\s*timeout-minutes:\s*10\s*$/m.test(verifyPages)) {
+      errors.push('REL-001: verify_pages must allow setup, browser installation, and the bounded verifier to complete');
+    }
+    if (JSON.stringify(jobPermissions(verifyPages)) !== JSON.stringify(['contents: read', 'pages: read'])) {
+      errors.push('SEC-004: verify_pages permissions must be exactly contents: read and pages: read');
+    }
+    if (!verifyPages.includes('scripts/verify_pages_deployment.cjs')
+      || !verifyPages.includes('needs.deploy_pages.outputs.page_url')
+      || !verifyPages.includes('actions/download-artifact@')
+      || !verifyPages.includes(`name: ${REQUIRED_ARTIFACT_NAME}`)
+      || !verifyPages.includes('digest-mismatch: error')
+      || !verifyPages.includes('npx playwright install --with-deps chromium')
+      || !verifyPages.includes('retention-days: 7')) {
+      errors.push('REL-001: verify_pages must verify the exact artifact and bounded browser smoke with retained failure evidence');
+    }
+    if (/pages:\s*write|id-token:\s*write|actions\/upload-pages-artifact@|actions\/deploy-pages@/.test(verifyPages)) {
+      errors.push('SEC-004: verify_pages must not publish or receive deployment permissions');
+    }
+  }
+
   if (!/^permissions:\s*\n\s{2}contents:\s*read\s*$/m.test(workflowHeader)) {
     errors.push('SEC-001: CI must default to contents: read');
   }
@@ -473,6 +533,9 @@ function validateWorkflowContracts({ workflows, legacyDeployExists }) {
   if (countMatches(allWorkflowSource, /^\s*pages:\s*write\s*$/gm) !== 1
     || countMatches(allWorkflowSource, /^\s*id-token:\s*write\s*$/gm) !== 1) {
     errors.push('SEC-002: Pages write and OIDC permissions must occur only once');
+  }
+  if (countMatches(allWorkflowSource, /^\s*pages:\s*read\s*$/gm) !== 2) {
+    errors.push('SEC-004: package_pages and verify_pages must each request pages: read');
   }
 
   if (!/name:\s*ci \/ gate/.test(gate)) {
@@ -520,6 +583,27 @@ function assertContracts(fixture) {
   assert.deepEqual(errors, [], errors.join('\n'));
 }
 
+function extractGithubScript(step) {
+  const match = step.match(/^\s+script:\s*\|\n((?:\s{12}.*(?:\n|$))*)/m);
+  assert.ok(match, 'github-script fixture must contain an inline script');
+  return match[1].split('\n').map(line => line.startsWith(' '.repeat(12)) ? line.slice(12) : line).join('\n');
+}
+
+async function executePagesPreflight(step, pagesResult) {
+  const failures = [];
+  const infos = [];
+  const script = extractGithubScript(step);
+  await new Function('github', 'context', 'core', `return (async () => {\n${script}\n})()`)(
+    { rest: { repos: { getPages: async () => {
+      if (pagesResult instanceof Error) throw pagesResult;
+      return { data: pagesResult };
+    } } } },
+    { repo: { owner: 'Haynesmodel', repo: 'Darling' } },
+    { setFailed: message => failures.push(message), info: message => infos.push(message) },
+  );
+  return { failures, infos };
+}
+
 function mutateCi(fixture, mutate) {
   return {
     legacyDeployExists: fixture.legacyDeployExists,
@@ -555,6 +639,42 @@ test('repository workflows preserve the exact tested-artifact deployment contrac
 
   assert.match(uploadPagesStep, /include-hidden-files:\s*true/);
   assertContracts(fixture);
+});
+
+test('Pages source preflight passes only for workflow deployments', async () => {
+  const fixture = readRepositoryFixture();
+  const step = extractNamedStep(extractJob(fixture.workflows['ci.yml'], 'package_pages'), 'Verify Pages uses GitHub Actions source');
+  assert.deepEqual((await executePagesPreflight(step, { build_type: 'workflow', source: null })).failures, []);
+  const legacy = await executePagesPreflight(step, { build_type: 'legacy', source: { branch: 'main', path: '/' } });
+  assert.match(legacy.failures.join('\n'), /must be GitHub Actions/);
+  const denied = await executePagesPreflight(step, Object.assign(new Error('forbidden'), { status: 403 }));
+  assert.match(denied.failures.join('\n'), /HTTP 403/);
+});
+
+test('contract rejects removed or reordered Pages source preflight', () => {
+  const fixture = readRepositoryFixture();
+  const packagePages = extractJob(fixture.workflows['ci.yml'], 'package_pages');
+  const sourceStep = extractNamedStep(packagePages, 'Verify Pages uses GitHub Actions source');
+  const removed = mutateJob(fixture, 'package_pages', block => block.replace(sourceStep, ''));
+  assert.match(validateWorkflowContracts(removed).join('\n'), /source preflight/);
+  const uploadStep = extractNamedStep(packagePages, 'Upload Pages artifact');
+  const reordered = mutateJob(fixture, 'package_pages', block => block
+    .replace(sourceStep, '')
+    .replace(uploadStep, `${uploadStep}\n${sourceStep}`));
+  assert.match(validateWorkflowContracts(reordered).join('\n'), /source preflight/);
+});
+
+test('contract rejects verifier artifact, digest, condition, and dependency mutations', () => {
+  const fixture = readRepositoryFixture();
+  const cases = [
+    [block => block.replace('darling-dist-${{ github.sha }}', 'wrong-artifact'), /verify the exact artifact/],
+    [block => block.replace('digest-mismatch: error', ''), /verify the exact artifact/],
+    [block => block.replace(`    if: ${MAIN_PUSH_CONDITION}\n`, ''), /main deploy/],
+    [block => block.replace('needs: deploy_pages', 'needs: [deploy_pages, gate]'), /main deploy/],
+  ];
+  for (const [mutate, expected] of cases) {
+    assert.match(validateWorkflowContracts(mutateJob(fixture, 'verify_pages', mutate)).join('\n'), expected);
+  }
 });
 
 test('contract rejects a removed package gate dependency', () => {
@@ -778,7 +898,7 @@ test('Sleeper contract rejects publication allowlist expansion', () => {
   ));
   assert.match(
     validateWorkflowContracts(mutated).join('\n'),
-    /publication allowlist must contain exactly the five reviewed data files/,
+    /publication allowlist must contain exactly the six reviewed data files/,
   );
 });
 
@@ -792,6 +912,47 @@ test('Sleeper contract rejects removal of the fully-staged bundle guard', () => 
     validateWorkflowContracts(mutated).join('\n'),
     /every allowed changed path must be fully staged/,
   );
+});
+
+test('Sleeper contract rejects staging all optional allowlist paths in one git add', () => {
+  const fixture = readRepositoryFixture();
+  const mutated = mutateSleeper(fixture, source => source.replace(
+    'bash scripts/stage_optional_git_paths.sh "${ALLOWLIST[@]}"',
+    'git add -A -- "${ALLOWLIST[@]}"',
+  ));
+  assert.match(
+    validateWorkflowContracts(mutated).join('\n'),
+    /allowlist staging must tolerate absent optional files and preserve tracked deletions/,
+  );
+});
+
+test('Sleeper contract rejects preseason promotion coupled to H2H-only outputs', () => {
+  const fixture = readRepositoryFixture();
+  const cases = [
+    source => source.replace(
+      'if ! node scripts/compare_json.cjs assets/H2H.updated.json assets/H2H.json; then',
+      'if ! cmp -s assets/H2H.updated.json assets/H2H.json; then',
+    ),
+    source => source.replace(
+      'if [[ "${H2H_CHANGED}" == "1" ]]; then',
+      'if [[ "${SOURCE_CHANGED}" == "1" ]]; then',
+    ),
+    source => source.replace(
+      '            H2H_CHANGED=1\n',
+      '',
+    ),
+    source => source.replace(
+      '          if [[ "${SOURCE_CHANGED}" == "1" ]]; then\n            npm run generate:manifest',
+      '          if [[ "${H2H_CHANGED}" == "1" ]]; then\n            npm run generate:manifest',
+    ),
+  ];
+  for (const mutate of cases) {
+    const mutated = mutateSleeper(fixture, mutate);
+    assert.match(
+      validateWorkflowContracts(mutated).join('\n'),
+      /H2H-only outputs must not block CurrentSeason-only preseason promotion/,
+    );
+  }
 });
 
 test('Sleeper contract rejects direct pushes, plain force, and branch-name drift', () => {
@@ -895,6 +1056,13 @@ test('Sleeper contract rejects failure-artifact and recovery regressions', () =>
     [
       source => source.replace('-${{ github.run_id }}-${{ github.run_attempt }}', ''),
       /failure artifact must be unique/,
+    ],
+    [
+      source => source.replace(
+        '            assets/TransactionHistory.updated.json\n            assets/TransactionHistory.json',
+        '            assets/TransactionHistory.missing.json\n            assets/TransactionHistory.json',
+      ),
+      /failure artifact must be unique, seven-day, retain the transaction candidate/,
     ],
     [
       source => source.replace(

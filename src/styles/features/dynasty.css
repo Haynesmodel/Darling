@@ -215,6 +215,24 @@
   font-size:18px;
   font-weight:900;
 }
+.dynasty-precision-formula{
+  display:grid;
+  gap:6px;
+  padding:14px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  background:var(--surface-panel);
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.5;
+}
+.dynasty-precision-formula p{
+  margin:0;
+}
+.dynasty-precision-formula code{
+  color:var(--text);
+  font-family:var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+}
 .dynasty-season-list{
   list-style:none;
   margin:0;

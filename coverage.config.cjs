@@ -10,10 +10,7 @@ module.exports = {
   perFile: { lines: 60, statements: 60, functions: 50, branches: 50 },
   changedFiles: { lines: 80, statements: 80, functions: 75, branches: 70 },
   overrides: {
-    // Legacy chart/helper code.
-    'js/charting/chart-runtime.js': correctedBaseline({ lines: 50.9, statements: 32.67, functions: 33.33, branches: 66.66 }),
     'js/easter-eggs.js': correctedBaseline({ lines: 28.84, statements: 25, functions: 20, branches: 13.79 }),
-    'js/rivalry-controls.js': correctedBaseline({ lines: 80.32, statements: 75.36, functions: 69.23, branches: 41.55 }),
     // Build and generated-data validation.
     'scripts/check_generated_assets.cjs': correctedBaseline({ lines: 84.61, statements: 84.61, functions: 100, branches: 42.85 }),
     'scripts/data/constants.cjs': correctedBaseline({ lines: 93.87, statements: 93.87, functions: 0, branches: 100 }),

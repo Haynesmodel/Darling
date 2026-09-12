@@ -1,6 +1,7 @@
 import * as core from './core-helpers.js';
 import * as render from './render-helpers.js';
 import * as stats from './stats-helpers.js';
+import { isLowestScoreEligible } from './lowest-score-policy.js';
 import { queryHistoryGames } from './history-game-query.js';
 function coreFn(name) {
   const fn = core[name] || stats[name];
@@ -83,12 +84,12 @@ function buildSeasonCalloutViewModel(team, opts = {}) {
   const saundersNoteFn = opts.saundersNoteFn || (() => null);
   const fmtPctFn = coreFn('fmtPct');
 
-  if (team === allTeams) return { show: false, html: '', effectKey: null, effectType: null, resetEffect: false };
-  if (selectedSeasons.size !== 1) return { show: false, html: '', effectKey: null, effectType: null, resetEffect: true };
+  if (team === allTeams) return { show: false, html: '', effectType: null };
+  if (selectedSeasons.size !== 1) return { show: false, html: '', effectType: null };
 
   const [onlySeason] = [...selectedSeasons];
   const rec = seasonSummaryLookup(team, onlySeason, seasonSummaries);
-  if (!rec) return { show: false, html: '', effectKey: null, effectType: null, resetEffect: false };
+  if (!rec) return { show: false, html: '', effectType: null };
 
   const bits = [];
   if (rec.champion) bits.push(`\ud83c\udfc6 Champion${champNoteFn(team, onlySeason) ? '*' : ''}`);
@@ -110,7 +111,6 @@ function buildSeasonCalloutViewModel(team, opts = {}) {
   if (cN) notes.push(`${onlySeason} \u2014 ${cN}`);
   const sN = saundersNoteFn(team, onlySeason);
   if (sN) notes.push(`${onlySeason} \u2014 ${sN}`);
-  const effectKey = `${team}|${onlySeason}|${rec.champion ? 'C' : ''}${rec.saunders ? 'S' : ''}`;
   const effectType = rec.champion ? 'champion' : rec.saunders ? 'saunders' : null;
 
   return {
@@ -123,9 +123,7 @@ function buildSeasonCalloutViewModel(team, opts = {}) {
     draftPick,
     bits,
     notes,
-    effectKey,
     effectType,
-    resetEffect: false,
   };
 }
 
@@ -223,11 +221,15 @@ function weekByWeekRows(team, games, opts = {}) {
       const week = (g._weekByTeam && g._weekByTeam[team]) || '';
       const dayGames = allGames.filter(x => +x.season === +g.season && x.date === g.date);
       const allScores = dayGames.flatMap(x => [x.scoreA, x.scoreB]);
+      const eligibleLowScores = dayGames.flatMap(x => [
+        isLowestScoreEligible(x, x.teamA) ? x.scoreA : null,
+        isLowestScoreEligible(x, x.teamB) ? x.scoreB : null,
+      ]).filter(score => score !== null);
       const maxScore = Math.max(...allScores);
-      const minScore = Math.min(...allScores);
+      const minScore = eligibleLowScores.length ? Math.min(...eligibleLowScores) : Infinity;
       const myScore = (g.teamA === team) ? g.scoreA : g.scoreB;
       const isCrown = myScore === maxScore;
-      const isTurd = myScore === minScore;
+      const isTurd = isLowestScoreEligible(g, team) && myScore === minScore;
       const xw = computeExpectedWinForGameFn(allGames, team, g);
 
       rows.push({
@@ -424,7 +426,7 @@ function seasonSummaryLookup(team, season, seasonSummaries) {
 
 function seasonCalloutView(team, opts = {}) {
   const vm = buildSeasonCalloutViewModel(team, opts);
-  if (!vm.show) return { html: '', effectKey: vm.effectKey, effectType: vm.effectType, resetEffect: vm.resetEffect };
+  if (!vm.show) return { html: '', effectType: vm.effectType };
 
   return {
     html: `<div class="callout">
@@ -435,9 +437,7 @@ function seasonCalloutView(team, opts = {}) {
     <div>${esc(vm.bits.join(' \u2022 ') || '\u2014')}</div>
     ${vm.notes.length ? `<div class="muted" style="margin-top:6px;font-size:12px">* ${esc(vm.notes.join(' \u2022 '))}</div>` : ''}
   </div>`,
-    effectKey: vm.effectKey,
     effectType: vm.effectType,
-    resetEffect: false,
   };
 }
 
@@ -578,13 +578,10 @@ function opponentBreakdownView(team, games, opts = {}) {
     firstCol: team === allTeams ? 'Team' : 'Opponent',
     tableHtml: opponentBreakdownTableHtml(team, games, opts),
     calloutsHtml: '',
-    shouldUpdateBackdrop: false,
-    backdropSlug: null,
     triggerSlug: null,
   };
 
   if (!rivalries.length) return view;
-  view.shouldUpdateBackdrop = true;
 
   if (team === allTeams) {
     const statGroups = rivalries.filter(r => (r.type || 'group').toLowerCase() === 'group' && groupMatched(r.members, selectedOpponents, null));
@@ -601,7 +598,6 @@ function opponentBreakdownView(team, games, opts = {}) {
         exact.sort((a, b) => b.members.length - a.members.length);
         const top = exact[0];
         if (top.slug) {
-          view.backdropSlug = top.slug;
           view.triggerSlug = top.slug;
         }
       }
@@ -635,7 +631,6 @@ function opponentBreakdownView(team, games, opts = {}) {
     exact.sort((a, b) => b.members.length - a.members.length);
     const top = exact[0];
     if (top.slug) {
-      view.backdropSlug = top.slug;
       view.triggerSlug = top.slug;
     }
   }

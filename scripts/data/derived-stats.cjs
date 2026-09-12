@@ -1,5 +1,6 @@
 const { DERIVED_GENERATOR_VERSION } = require('./constants.cjs');
 const { sha256Json } = require('./canonical-json.cjs');
+const { isLowestScoreEligible } = require('../../js/lowest-score-policy.js');
 
 function isRegular(game) {
   return String(game.type).toLowerCase() === 'regular';
@@ -117,7 +118,7 @@ function computeWeeklyAwards(games, threshold = 150) {
   for (const game of games) {
     if (!isRegular(game)) continue;
     if (!byDate.has(game.date)) byDate.set(game.date, []);
-    byDate.get(game.date).push({ team: game.teamA, score: game.scoreA }, { team: game.teamB, score: game.scoreB });
+    byDate.get(game.date).push({ game, team: game.teamA, score: game.scoreA }, { game, team: game.teamB, score: game.scoreB });
   }
   const top = new Map();
   const low = new Map();
@@ -125,8 +126,8 @@ function computeWeeklyAwards(games, threshold = 150) {
   for (const rows of byDate.values()) {
     rows.sort((a, b) => b.score - a.score);
     top.set(rows[0].team, (top.get(rows[0].team) || 0) + 1);
-    const last = rows.at(-1);
-    low.set(last.team, (low.get(last.team) || 0) + 1);
+    const last = rows.filter(row => isLowestScoreEligible(row.game, row.team)).at(-1);
+    if (last) low.set(last.team, (low.get(last.team) || 0) + 1);
     for (const row of rows) if (row.score >= threshold) high.set(row.team, (high.get(row.team) || 0) + 1);
   }
   return { top: countRows(top), low: countRows(low), high150: countRows(high) };
@@ -137,8 +138,8 @@ function scoreRows(games) {
   for (const game of games) {
     if (game.season === 2014 && !isRegular(game)) continue;
     rows.push(
-      { team: game.teamA, pf: game.scoreA, pa: game.scoreB, opp: game.teamB, date: game.date, season: game.season },
-      { team: game.teamB, pf: game.scoreB, pa: game.scoreA, opp: game.teamA, date: game.date, season: game.season }
+      { game, team: game.teamA, pf: game.scoreA, pa: game.scoreB, opp: game.teamB, date: game.date, season: game.season },
+      { game, team: game.teamB, pf: game.scoreB, pa: game.scoreA, opp: game.teamA, date: game.date, season: game.season }
     );
   }
   return rows;
@@ -278,6 +279,7 @@ function buildDerivedStats({ H2H, SeasonSummary, Rivalries }) {
   const seasonAggregates = computeSeasonAggregates(H2H, SeasonSummary);
   const weeklyAwards = computeWeeklyAwards(H2H);
   const scores = scoreRows(H2H);
+  const scoreRecord = ({ game: _game, ...row }) => row;
   return {
     schema_version: 1,
     derived_generator_version: DERIVED_GENERATOR_VERSION,
@@ -292,8 +294,8 @@ function buildDerivedStats({ H2H, SeasonSummary, Rivalries }) {
     head_to_head_pairs: computeHeadToHeadPairs(H2H),
     weekly_awards: weeklyAwards,
     records: {
-      top_scores: scores.slice().sort((a, b) => b.pf - a.pf || a.team.localeCompare(b.team)).slice(0, 25),
-      bottom_scores: scores.slice().sort((a, b) => a.pf - b.pf || a.team.localeCompare(b.team)).slice(0, 25),
+      top_scores: scores.slice().sort((a, b) => b.pf - a.pf || a.team.localeCompare(b.team)).slice(0, 25).map(scoreRecord),
+      bottom_scores: scores.slice().filter(row => isLowestScoreEligible(row.game, row.team)).sort((a, b) => a.pf - b.pf || a.team.localeCompare(b.team)).slice(0, 25).map(scoreRecord),
       sub_70: computeSubThreshold(H2H),
     },
     streaks: {

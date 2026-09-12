@@ -1,0 +1,10 @@
+[
+  {
+    "transaction_id": "add-1",
+    "status": "complete",
+    "type": "free_agent",
+    "created": 3000,
+    "roster_ids": [1],
+    "adds": { "p3": 1 }
+  }
+]

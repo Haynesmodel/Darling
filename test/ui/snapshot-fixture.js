@@ -30,6 +30,14 @@ function coverageFor(name, value) {
   };
 }
 
+// LeagueLore is authored in a compact, human-grouped JSON form whose served
+// bytes stay below the optional loader's 100 KiB cap. Keep the fixture's
+// serialized body representative of that payload while retaining canonical
+// hashing for integrity checks.
+function assetBody(name, value) {
+  return name === 'LeagueLore' ? JSON.stringify(value) : canonicalJson(value);
+}
+
 function normalizedBasePath(basePath) {
   const stripped = String(basePath || '/').replace(/^\/+|\/+$/g, '');
   return stripped ? `/${stripped}/` : '/';
@@ -61,7 +69,7 @@ function buildFixture({
 
   const manifest = clone(canonicalManifest);
   for (const [name, original] of Object.entries(canonicalManifest.assets)) {
-    const body = canonicalJson(assets[name]);
+    const body = assetBody(name, assets[name]);
     manifest.assets[name] = {
       ...original,
       ...coverageFor(name, assets[name]),
@@ -87,7 +95,7 @@ function buildFixture({
 
   const bodies = new Map([
     ['assets/asset-manifest.json', canonicalJson(manifest)],
-    ...Object.entries(manifest.assets).map(([name, entry]) => [entry.path, canonicalJson(assets[name])]),
+    ...Object.entries(manifest.assets).map(([name, entry]) => [entry.path, assetBody(name, assets[name])]),
     [manifest.derived.path, derivedBody],
   ]);
   const entriesByPath = new Map([

@@ -1,7 +1,7 @@
 import { buildIntentDocument, rebuildSearchDocument } from './search-actions';
 import { buildSearchIndex, type BuiltSearchIndex } from './search-index';
 import { parseSearchIntents } from './search-intents';
-import { executeSearchAction } from './search-navigation';
+import { executeSearchAction, type LoreActionHandler } from './search-navigation';
 import { rankSearchDocuments } from './search-rank';
 import type { DarlingSearchRuntime, SearchDocument, SearchHydrationData, SearchResult, SearchRuntimeSnapshot } from './search-types';
 
@@ -17,7 +17,7 @@ function readRecent(): string[] {
   }
 }
 
-export function createSearchRuntime(): DarlingSearchRuntime {
+export function createSearchRuntime(options: { loreAction?: LoreActionHandler } = {}): DarlingSearchRuntime {
   let data: SearchHydrationData | null = null;
   let index: BuiltSearchIndex = { documents: [], owners: [], seasons: [], ownerAliases: new Map() };
   let recentIds = readRecent();
@@ -46,7 +46,7 @@ export function createSearchRuntime(): DarlingSearchRuntime {
       if (!data) return [];
       if (!query.trim()) {
         const recent = recentDocuments();
-        const defaults = ['feature:current:all', 'feature:history:all', 'feature:trophy:all']
+        const defaults = ['feature:current:all', 'feature:owner:all', 'feature:history:all', 'feature:trophy:all']
           .map(id => index.documents.find(document => document.id === id))
           .filter(Boolean) as SearchDocument[];
         return [...recent, ...defaults.filter(document => !recent.some(item => item.id === document.id))]
@@ -69,7 +69,7 @@ export function createSearchRuntime(): DarlingSearchRuntime {
       recentIds = [result.id, ...recentIds.filter(id => id !== result.id)].slice(0, MAX_RECENT);
       try { window.localStorage.setItem(RECENT_KEY, JSON.stringify(recentIds)); } catch { /* Storage is optional. */ }
       publish();
-      executeSearchAction(result.action);
+      executeSearchAction(result.action, options.loreAction);
     },
     clearRecent() {
       recentIds = [];

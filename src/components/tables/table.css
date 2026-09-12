@@ -88,12 +88,6 @@
 .table-save-view input,
 .table-pagination select{
   min-width:0;
-  border:1px solid var(--border);
-  border-radius:8px;
-  padding:7px 8px;
-  color:var(--text);
-  background:var(--surface-control);
-  font:inherit;
 }
 
 .table-filter-fieldset{

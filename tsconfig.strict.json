@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true
+  },
+  "include": [
+    "src/charting/**/*.ts",
+    "src/components/charts/**/*.ts",
+    "src/components/charts/**/*.tsx",
+    "src/features/rivalry/**/*.ts",
+    "src/features/rivalry/**/*.tsx",
+    "src/features/trophy/**/*.ts",
+    "src/features/trophy/**/*.tsx"
+    ,"src/features/dynasty/**/*.ts"
+    ,"src/features/dynasty/**/*.tsx"
+  ],
+  "exclude": ["node_modules", "dist", "public"]
+}

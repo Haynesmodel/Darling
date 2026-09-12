@@ -1,10 +1,11 @@
 interface SearchTriggerProps {
+  busy: boolean;
   disabled: boolean;
   onOpen(): void;
   triggerRef: { current: any };
 }
 
-export default function SearchTrigger({ disabled, onOpen, triggerRef }: SearchTriggerProps) {
+export default function SearchTrigger({ busy, disabled, onOpen, triggerRef }: SearchTriggerProps) {
   return (
     <button
       ref={triggerRef}
@@ -13,6 +14,7 @@ export default function SearchTrigger({ disabled, onOpen, triggerRef }: SearchTr
       aria-haspopup="dialog"
       aria-controls="global-search-dialog"
       aria-label="Search The Darling"
+      aria-busy={busy ? 'true' : undefined}
       title="Search The Darling"
       disabled={disabled}
       onClick={onOpen}

@@ -1036,7 +1036,7 @@ function renderCurseCard(card) {
             <div class="curse-card-category">${escapeHtml(card.category)}${ownerLabel}</div>
             <div class="curse-card-title">${escapeHtml(card.title)}</div>
           </div>
-          <div class="curse-card-badge">${escapeHtml(severityLabel)} ${flames}</div>
+          <div class="curse-card-badge">${escapeHtml(severityLabel)} ${flames} <button type="button" class="curse-lore-flame" data-lore-trigger="history-curse-flame" data-lore-value="${escapeHtml(card.id)}">🔥</button></div>
         </div>
         <div class="curse-card-summary-text">${escapeHtml(card.summary)}</div>
         <div class="curse-card-meta">

@@ -10,12 +10,14 @@ export function createFeatureController(): DarlingFeatureController {
   let root: HTMLElement | null = null;
   let activeSignal: AbortSignal | null = null;
   let unsubscribeFreshness: (() => void) | null = null;
+  let unsubscribePreference: (() => void) | null = null;
 
   const renderCurrent = () => {
     if (!root || !activeSignal || activeSignal.aborted) return null;
     const model = buildLeaguePulseModel(context.data, {
       pathname: context.window.location.pathname,
       freshness: context.freshness.currentAssessment() || context.data.diagnostics.freshness,
+      favoriteOwner: context.ownerPreference.getSnapshot().owner,
     });
     render(h(LeaguePulsePage, { model }), root);
     return model;
@@ -25,10 +27,12 @@ export function createFeatureController(): DarlingFeatureController {
     id: 'pulse',
     mount(nextContext) {
       unsubscribeFreshness?.();
+      unsubscribePreference?.();
       context = nextContext;
       root = context.document.getElementById('leaguePulseRoot');
       if (!root) throw new Error('League Pulse mount #leaguePulseRoot is missing');
       unsubscribeFreshness = context.freshness.subscribe(() => { renderCurrent(); });
+      unsubscribePreference = context.ownerPreference.subscribe(() => { renderCurrent(); });
     },
     activate(input: FeatureActivation) {
       activeSignal = input.signal;
@@ -45,6 +49,8 @@ export function createFeatureController(): DarlingFeatureController {
       activeSignal = null;
       unsubscribeFreshness?.();
       unsubscribeFreshness = null;
+      unsubscribePreference?.();
+      unsubscribePreference = null;
       if (root) render(null, root);
       root = null;
     },

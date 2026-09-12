@@ -1,4 +1,37 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { expect, test } from './coverage-fixture.js';
+import { activateFeature } from './navigation-helpers.js';
+
+const manifest = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'assets/asset-manifest.json'), 'utf8'));
+
+test.beforeEach(async ({ page }) => {
+  // Keep the canonical 2025 snapshot assertions stable as the calendar advances.
+  await page.clock.setFixedTime(new Date('2026-08-14T23:59:00Z'));
+  // The legacy end-to-end suite is the open-everything parity pass: disclosure
+  // behavior itself is covered in navigation-progressive-disclosure.spec.js.
+  await page.addInitScript(() => {
+    const featureRoots = ['history', 'rivalry', 'trophy', 'dynasty', 'draft', 'gauntlet']
+      .map(id => `#page-${id}`)
+      .join(',');
+    const expand = () => {
+      for (const root of document.querySelectorAll(featureRoots)) {
+        for (const details of root.querySelectorAll('details.feature-disclosure:not([hidden]):not([open])')) {
+          details.open = true;
+        }
+      }
+    };
+    window.addEventListener('DOMContentLoaded', () => {
+      expand();
+      new MutationObserver(expand).observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['open', 'hidden'],
+        childList: true,
+        subtree: true,
+      });
+    }, { once: true });
+  });
+});
 
 test('theme context helpers cover owner, rivalry, postseason, and league fallbacks', async ({ page }) => {
   await page.goto('/');
@@ -65,6 +98,9 @@ test('theme context helpers cover owner, rivalry, postseason, and league fallbac
 });
 
 test('verified JSON transport rejects malformed and oversized browser responses', async ({ page }) => {
+  if (process.env.PLAYWRIGHT_SERVER === 'preview') {
+    await page.clock.setFixedTime(new Date('2026-08-14T12:00:00Z'));
+  }
   await page.goto('/');
   if (process.env.PLAYWRIGHT_SERVER === 'preview') {
     await expect(page.locator('.data-freshness summary')).toContainText('2025 season final');
@@ -193,7 +229,7 @@ test('verified JSON transport rejects malformed and oversized browser responses'
 test('Pulse controller guard paths reject a missing mount and remain disposable', async ({ page }) => {
   await page.goto('/');
   if (process.env.PLAYWRIGHT_SERVER === 'preview') {
-    await expect(page.getByRole('tabpanel', { name: 'League Pulse' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'League Pulse', exact: true })).toBeVisible();
     return;
   }
   const result = await page.evaluate(async () => {
@@ -284,7 +320,8 @@ test('page loads and renders the history tables', async ({ page }) => {
   await page.waitForLoadState('networkidle');
 
   await expect(page.locator('#appStatus')).toBeHidden();
-  await expect(page.locator('header h2')).toHaveText('Joe');
+  await expect(page.locator('header h2')).toHaveText('League History');
+  await expect(page.locator('#teamSelect')).toHaveValue('__ALL__');
   await expect(page.locator('.site-hero-media img')).toBeVisible();
   const heroBox = await page.locator('.site-hero-media img').boundingBox();
   expect(heroBox?.width).toBeGreaterThan(0);
@@ -292,6 +329,7 @@ test('page loads and renders the history tables', async ({ page }) => {
   expect(await page.evaluate(() => typeof window.triggerGroupEgg)).toBe('undefined');
   expect(await page.evaluate(() => typeof window.setGroupBackdrop)).toBe('undefined');
 
+  await page.locator('#teamSelect').selectOption('Joe');
   const seasonCount = await page.locator('#seasonRecapTable tbody tr').count();
   const weekCount = await page.locator('#weekTable tbody tr').count();
   const historyCount = await page.locator('#historyGamesTable tbody tr').count();
@@ -302,7 +340,7 @@ test('page loads and renders the history tables', async ({ page }) => {
   expect(weekCount).toBe(historyCount);
   const diagnostics = await page.evaluate(() => window.darlingDataDiagnostics);
   expect(diagnostics.dataVersion).toMatch(/^sha256:[a-f0-9]{64}$/);
-  expect(diagnostics.manifestVersion).toBe(2);
+  expect(diagnostics.manifestVersion).toBe(manifest.manifest_version);
   expect(diagnostics.loadedAssets).toContain('DerivedStats');
   expect(diagnostics.optionalAssetFailures).toEqual([]);
 });
@@ -365,7 +403,7 @@ test('changing the team updates the rendered rows and url state', async ({ page 
 });
 
 test('current season tab renders matchups and links to head to head context', async ({ page }) => {
-  await page.goto('/?tab=current');
+  await page.goto('/?tab=current&currentView=command');
   await page.waitForLoadState('networkidle');
 
   await expect(page.locator('#tabCurrentBtn')).toHaveClass(/active/);
@@ -373,14 +411,10 @@ test('current season tab renders matchups and links to head to head context', as
   await expect(page.locator('#currentWeekSelect')).toBeVisible();
   await expect(page.locator('#currentViewSelect')).toBeVisible();
   await expect(page.locator('#currentOwnerSelect')).toBeVisible();
-  await expect(page.locator('#currentProjectionSelect')).toBeVisible();
+  await expect(page.locator('#currentProjectionSelect')).toBeHidden();
   await expect(page.locator('#currentProjectionSelect')).toHaveValue('ifScoresHold');
   await expect(page.locator('#currentHero')).toContainText('Current Season');
-  await expect(page.locator('#currentPlayoffPicture')).toContainText('Playoff Picture');
-  await expect(page.locator('#currentPlayoffPicture')).toContainText('Saunders danger');
-  await expect(page.locator('#currentWeekNeeds')).toContainText('This Week Needs');
-  await expect(page.locator('#currentProjectedStandings')).toContainText('Projected Standings');
-  await expect(page.locator('#currentProjectedStandings')).toContainText('Method:');
+  await expect(page.locator('#currentHero')).toContainText('historical/final analysis');
   await expect(page.locator('html')).toHaveAttribute('data-season-mode', 'saunders');
 
   const matchupCount = await page.locator('.current-matchup-card').count();
@@ -404,15 +438,6 @@ test('current season tab renders matchups and links to head to head context', as
   await expect(page.locator('html')).toHaveAttribute('data-owner-theme', 'Joe');
   await expect(page.locator('#currentWeekNeeds .current-owner-focus')).toContainText('Joe');
 
-  await page.goto('/?tab=current&currentProjection=current');
-  await page.waitForLoadState('networkidle');
-  await expect(page.locator('#currentProjectionSelect')).toHaveValue('current');
-  await expect(page.locator('#currentProjectedStandings')).toContainText('Completed games only');
-  await expect(page.locator('#currentLiveMovement')).toContainText('Completed games only');
-
-  await page.locator('#currentProjectionSelect').selectOption('ifScoresHold');
-  await expect(page.locator('#currentProjectionSelect')).toHaveValue('ifScoresHold');
-  await expect(page).not.toHaveURL(/currentProjection=current/);
 });
 
 test('current season view modes hide filtered section containers', async ({ page }) => {
@@ -427,8 +452,10 @@ test('current season view modes hide filtered section containers', async ({ page
   await page.goto('/?tab=current&currentView=standings');
   await page.waitForLoadState('networkidle');
   await expect(page.locator('#currentPlayoffPicture')).toBeVisible();
-  await expect(page.locator('#currentLiveMovement')).toBeVisible();
-  await expect(page.locator('#currentProjectedStandings')).toBeVisible();
+  await expect(page.locator('#currentLiveMovement')).toBeHidden();
+  await expect(page.locator('#currentProjectedStandings')).toBeHidden();
+  await expect(page.locator('#currentStandings')).toBeHidden();
+  await page.locator('#currentStandingsDisclosure > summary').click();
   await expect(page.locator('#currentStandings')).toBeVisible();
   await expect(page.locator('#currentMatchups')).toBeHidden();
   await expect(page.locator('#currentTeamSnapshots')).toBeHidden();
@@ -437,6 +464,8 @@ test('current season view modes hide filtered section containers', async ({ page
   await page.goto('/?tab=current&currentView=owners&currentOwner=Joe');
   await page.waitForLoadState('networkidle');
   await expect(page.locator('#currentWeekNeeds')).toBeVisible();
+  await expect(page.locator('#currentTeamSnapshots')).toBeHidden();
+  await page.locator('#currentTeamSnapshotsDisclosure > summary').click();
   await expect(page.locator('#currentTeamSnapshots')).toBeVisible();
   await expect(page.locator('#currentPlayoffPicture')).toBeHidden();
   await expect(page.locator('#currentProjectedStandings')).toBeHidden();
@@ -447,7 +476,7 @@ test('current season view modes hide filtered section containers', async ({ page
 test('browser navigation restores omitted Current Season defaults', async ({ page }) => {
   await page.goto('/?tab=current');
   await page.waitForLoadState('networkidle');
-  await expect(page.locator('#currentViewSelect')).toHaveValue('command');
+  await expect(page.locator('#currentViewSelect')).toHaveValue('recap');
   await expect(page.locator('#currentOwnerSelect')).toHaveValue('');
   await expect(page.locator('#currentProjectionSelect')).toHaveValue('ifScoresHold');
 
@@ -456,7 +485,7 @@ test('browser navigation restores omitted Current Season defaults', async ({ pag
 
   await page.goBack();
   await expect.poll(() => new URL(page.url()).searchParams.get('currentView')).toBeNull();
-  await expect(page.locator('#currentViewSelect')).toHaveValue('command');
+  await expect(page.locator('#currentViewSelect')).toHaveValue('recap');
   await expect(page.locator('#currentOwnerSelect')).toHaveValue('');
   await expect(page.locator('#currentProjectionSelect')).toHaveValue('ifScoresHold');
 
@@ -465,7 +494,7 @@ test('browser navigation restores omitted Current Season defaults', async ({ pag
 });
 
 test('historical Current Season standings match the selected week snapshot', async ({ page }) => {
-  await page.goto('/?tab=current&currentSeason=2024&currentWeek=7');
+  await page.goto('/?tab=current&currentSeason=2024&currentWeek=7&currentView=standings');
   await page.waitForLoadState('networkidle');
 
   await expect(page.locator('#currentSeasonSelect')).toHaveValue('2024');
@@ -489,15 +518,15 @@ test('rivalry tab renders a tale of the tape and saved rivalry selection', async
   await expect(page.locator('#rivalryTeamA')).toBeVisible();
   await expect(page.locator('#rivalryTeamB')).toBeVisible();
   await expect(page.locator('#page-rivalry')).toContainText('Head to Head');
-  await expect(page.locator('#rivalryTeamA')).toHaveValue('Joel');
-  await expect(page.locator('header h2')).toHaveText('Joel');
+  await expect(page.locator('#rivalryTeamA')).toHaveValue('Connor');
+  await expect(page.locator('header h2')).toHaveText('Connor');
 
-  await page.locator('#tabHistoryBtn').click();
+  await activateFeature(page, 'history');
   await expect(page.locator('#tabHistoryBtn')).toHaveClass(/active/);
   await expect(page.locator('header h2')).toHaveText('Joel');
 
   await page.locator('#tabRivalryBtn').click();
-  await expect(page.locator('#rivalryTeamA')).toHaveValue('Joel');
+  await expect(page.locator('#rivalryTeamA')).toHaveValue('Connor');
   await page.locator('#rivalryTeamB').selectOption('Zook');
   await page.locator('#rivalryTeamA').selectOption('Joe');
   await page.locator('#rivalryTeamB').selectOption('Joel');
@@ -507,8 +536,17 @@ test('rivalry tab renders a tale of the tape and saved rivalry selection', async
   await expect(page.locator('#rivalryHeadline')).toContainText('Joe vs Joel');
   await expect(page.locator('#rivalryHeadline')).toContainText('Current streak:');
   await expect(page.locator('#rivalryLeadMeter')).toContainText('Joe');
-  await expect(page.locator('#rivalryHighlightBoard .rivalry-highlight')).toHaveCount(4);
+  await expect(page.locator('#rivalryHighlightBoard .rivalry-highlight')).toHaveCount(5);
+  expect(await page.locator('#rivalryHighlightBoard .rivalry-highlight-label').allTextContents()).toEqual([
+    'Biggest Blowout',
+    'Highest Combined',
+    'Longest Run',
+    'Shootouts',
+    'Stinkers',
+  ]);
+  await expect(page.locator('#rivalryHighlightBoard .rivalry-stinker')).toContainText('Both teams below 70');
   expect(await page.locator('#rivalryTapeGrid .stat').count()).toBeGreaterThan(0);
+  await page.locator('#rivalry-section-jump').selectOption('rivalry-trend');
   await expect(page.locator('#rivalryLeadTrend svg')).toBeVisible();
   await expect(page.locator('#rivalryLeadTrend')).toContainText('.500');
   await expect(page.locator('#rivalryLeadTrend')).toContainText('G1');
@@ -579,14 +617,49 @@ test('trophy case url restores the trophy page and owner selection', async ({ pa
     return [params.get('tab'), params.get('trophyOwner')].join('|');
   })).toBe('trophy|Joel');
 
-  await page.locator('#tabHistoryBtn').click();
+  await activateFeature(page, 'history');
   await expect(page.locator('#tabHistoryBtn')).toHaveClass(/active/);
   await expect(page.locator('#teamSelect')).toBeVisible();
 
   const downloadPromise = page.waitForEvent('download');
   await page.locator('#exportCsv').click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe('history_Joe.csv');
+  expect(download.suggestedFilename()).toBe('history_ALL.csv');
+});
+
+test('trophy highlights and low points stay capped, semantic, and readable on a narrow viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  await page.goto('/?tab=trophy&trophyOwner=Joe');
+  await page.waitForLoadState('networkidle');
+
+  const moments = page.locator('#trophyMomentsDisclosure');
+  if (!(await moments.getAttribute('open'))) await moments.locator('summary').click();
+  await expect.poll(() => page.evaluate(() => (
+    document.documentElement.scrollWidth <= document.documentElement.clientWidth
+  ))).toBe(true);
+
+  for (const list of [page.locator('#trophyAchievementList ul'), page.locator('#trophyScarList ul')]) {
+    await expect(list).toBeVisible();
+    expect(await list.locator('li').count()).toBeLessThanOrEqual(5);
+    const box = await list.boundingBox();
+    expect(box).toBeTruthy();
+    expect(box.width).toBeLessThanOrEqual(320);
+  }
+  const splitBounds = await page.locator('#trophyMomentsDisclosure .trophy-split > div').evaluateAll(elements => elements.map(element => {
+    const box = element.getBoundingClientRect();
+    return { left: box.left, right: box.right, top: box.top, bottom: box.bottom };
+  }));
+  expect(splitBounds).toHaveLength(2);
+  const [highlights, lowPoints] = splitBounds;
+  const overlaps = highlights.left < lowPoints.right
+    && lowPoints.left < highlights.right
+    && highlights.top < lowPoints.bottom
+    && lowPoints.top < highlights.bottom;
+  expect(overlaps).toBe(false);
+  expect(await page.locator('#trophyAchievementList .trophy-list-detail').count()).toBeGreaterThan(0);
+  expect(await page.locator('#trophyScarList .trophy-list-detail').count()).toBeGreaterThan(0);
+  await expect(page.locator('#trophyAchievementList')).toContainText('Best regular season');
+  await expect(page.locator('#trophyScarList')).toContainText('Most unlucky season');
 });
 
 test('history filters do not leak into dynasty controls', async ({ page }) => {
@@ -600,14 +673,11 @@ test('history filters do not leak into dynasty controls', async ({ page }) => {
   });
   await expect(page.locator('#seasonCountText')).toHaveText('1 selected');
 
-  await page.locator('#tabDynastyBtn').click();
+  await activateFeature(page, 'dynasty');
   await expect(page.locator('#tabDynastyBtn')).toHaveClass(/active/);
-  await expect(page.locator('#dynastyModeSelect')).toHaveValue('calculator');
-  await expect(page.locator('#dynastyOwnerSelect')).toHaveValue('Joe');
-  await expect(page.locator('#dynastyStartSeason')).toHaveValue('2023');
-  await expect(page.locator('#dynastyEndSeason')).toHaveValue('2025');
-  await expect(page.locator('#dynastyCalculatorHero')).toContainText('Joe Dynasty Score');
-  await expect(page.locator('#dynastyCalculatorHero')).toContainText('2023-2025');
+  await expect(page.locator('#dynastyModeSelect')).toHaveValue('all-time');
+  await expect(page.locator('#dynastyOwnerSelect')).toHaveValue('__ALL__');
+  await expect(page.locator('#dynastyPeriodLeaderboard')).toBeVisible();
 });
 
 test('browser back restores the previous history state after a tab change', async ({ page }) => {
@@ -622,9 +692,9 @@ test('browser back restores the previous history state after a tab change', asyn
   await expect(page.locator('#seasonCountText')).toHaveText('1 selected');
   await expect.poll(async () => page.url()).toContain('team=Joel');
 
-  await page.locator('#tabTrophyBtn').click();
+  await activateFeature(page, 'trophy');
   await expect(page.locator('#tabTrophyBtn')).toHaveClass(/active/);
-  await expect(page.locator('#trophyOwnerSelect')).toHaveValue('Joel');
+  await expect(page.locator('#trophyOwnerSelect')).toHaveValue('Connor');
 
   await page.goBack();
   await page.waitForLoadState('networkidle');
@@ -641,19 +711,28 @@ test('dynasty tab renders controls and responds to calculator changes', async ({
   await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
 
-  await page.locator('#tabDynastyBtn').click();
+  await activateFeature(page, 'dynasty');
   await expect(page.locator('#tabDynastyBtn')).toHaveClass(/active/);
   await expect(page.locator('#page-dynasty')).toBeVisible();
   await expect(page.locator('#dynastyModeSelect')).toBeVisible();
   await expect(page.locator('#dynastyOwnerSelect')).toBeVisible();
   await expect(page.locator('#dynastyStartSeason')).toBeVisible();
   await expect(page.locator('#dynastyEndSeason')).toBeVisible();
-  await expect(page.locator('#dynastyModeSelect')).toHaveValue('calculator');
-  await expect(page.locator('#dynastyOwnerSelect')).toHaveValue('Joe');
+  await expect(page.locator('#dynastyModeSelect')).toHaveValue('all-time');
+  await expect(page.locator('#dynastyOwnerSelect')).toHaveValue('__ALL__');
+  await page.locator('#dynastyModeSelect').selectOption('calculator');
+  await expect(page.locator('#dynastyOwnerSelect')).not.toHaveValue('__ALL__');
+  await expect(page.locator('#dynastyCalculatorHero')).toContainText('Dynasty Score');
+  await page.locator('#dynastyOwnerSelect').selectOption('Joe');
   await expect(page.locator('#dynastyCalculatorHero')).toContainText('Dynasty Score');
 
-  await page.locator('#dynastyStartSeason').selectOption('2021');
-  await page.locator('#dynastyEndSeason').selectOption('2023');
+  await page.locator('#dynastyStartSeason').selectOption('2023');
+  await page.locator('#dynastyEndSeason').selectOption('2021');
+  await expect.poll(async () => [await page.locator('#dynastyStartSeason').inputValue(), await page.locator('#dynastyEndSeason').inputValue()]).toEqual(['2021', '2023']);
+  await expect.poll(async () => page.evaluate(() => {
+    const params = new URL(location.href).searchParams;
+    return `${params.get('dynastyStart')}|${params.get('dynastyEnd')}`;
+  })).toBe('2021|2023');
   await page.locator('#dynastyOwnerSelect').selectOption('Joe');
   await page.waitForLoadState('networkidle');
 
@@ -661,6 +740,35 @@ test('dynasty tab renders controls and responds to calculator changes', async ({
   await expect(page.locator('#dynastyCalculatorHero')).toContainText('2021-2023');
   await expect(page.locator('#dynastyCalculatorHero')).toContainText(/Dynasty Run|Contender Stretch|Mini-Dynasty/);
   await expect(page.locator('#dynastyPeriodLeaderboard')).toContainText('Joe');
+  await expect(page.locator('#dynastyScoreBreakdown')).toContainText('postseason');
+  await expect(page.locator('#dynastyScoreBreakdown')).toContainText('scoringDominance');
+  await expect(page.locator('#dynastyScoreBreakdown')).toContainText('Win-rate precision');
+  await expect(page.locator('#dynastyScoreBreakdown')).toContainText('consistency');
+  await expect(page.locator('#dynastyScoreBreakdown')).toContainText('penalties');
+  const initialScoreDisplays = await page.locator([
+    '#dynastyCalculatorHero .dynasty-score-value',
+    '#dynastyPeriodLeaderboard tbody .dynasty-row td:nth-child(3)',
+    '#dynastyBestWindows .dynasty-score-value',
+    '#dynastyHeatmap .dynasty-heatmap-cell strong',
+  ].join(', ')).allTextContents();
+  expect(initialScoreDisplays.length).toBeGreaterThan(0);
+  expect(initialScoreDisplays.every(text => !text.trim().endsWith('.0'))).toBe(true);
+  await page.locator('#dynastyOwnerSelect').selectOption('Plot');
+  await expect(page.locator('#dynastyCalculatorHero')).toContainText('Plot Dynasty Score');
+  const saundersToggle = page.locator('#dynastySaundersToggle');
+  const scoreBeforeSaundersToggle = await page.locator('#dynastyCalculatorHero .dynasty-score-value').innerText();
+  await saundersToggle.click();
+  await expect(saundersToggle).not.toBeChecked();
+  await expect.poll(async () => page.evaluate(() => new URL(location.href).searchParams.get('dynastySaunders'))).toBe('0');
+  await expect(page.locator('#dynastyCalculatorHero .dynasty-score-value')).not.toHaveText(scoreBeforeSaundersToggle);
+  await page.locator('label.checkbox-label').click();
+  await expect(saundersToggle).toBeChecked();
+  await expect.poll(async () => page.evaluate(() => new URL(location.href).searchParams.get('dynastySaunders'))).toBe('1');
+  await expect(page.locator('#dynastyCalculatorHero .dynasty-score-value')).toHaveText(scoreBeforeSaundersToggle);
+  await saundersToggle.press('Space');
+  await expect(saundersToggle).not.toBeChecked();
+  await expect.poll(async () => page.evaluate(() => new URL(location.href).searchParams.get('dynastySaunders'))).toBe('0');
+  await page.locator('#dynastyOwnerSelect').selectOption('Joe');
   expect(await page.locator('#dynastyBestWindows .dynasty-window-card').count()).toBeGreaterThan(0);
   await page.locator('#dynastyBestWindows .dynasty-window-card').first().click();
   await expect(page.locator('#dynastyWindowModal')).toBeVisible();
@@ -670,28 +778,62 @@ test('dynasty tab renders controls and responds to calculator changes', async ({
   expect(await page.locator('#dynastyWindowModal tbody tr').count()).toBeGreaterThan(0);
   await page.locator('#dynastyWindowModal .dynasty-modal-close').click();
   await expect(page.locator('#dynastyWindowModal')).toBeHidden();
-  await expect(page.locator('#dynastyTrendChart .dynasty-trend-svg')).toBeVisible();
+  await page.locator('#dynasty-section-jump').selectOption('dynasty-trend');
+  const trendLoad = page.locator('#dynastyTrendPlot .chart-load-button');
+  await trendLoad.evaluateAll(buttons => buttons[0]?.click());
+  await expect(page.locator('#dynastyTrendChart .dynasty-trend-svg')).toBeVisible({ timeout: 15000 });
   expect(await page.locator('#dynastyTrendChart [data-dynasty-trend-toggle="1"]').count()).toBeGreaterThan(0);
   const firstTrendOwner = await page.locator('#dynastyTrendChart [data-dynasty-trend-toggle="1"]').first().getAttribute('data-owner');
+  const trendScoreDisplays = await page.locator('#dynastyTrendChart .dynasty-facet-value, #dynastyTrendChart .dynasty-trend-fallback strong').allTextContents();
+  expect(trendScoreDisplays.length).toBeGreaterThan(0);
+  expect(trendScoreDisplays.every(text => !text.trim().endsWith('.0'))).toBe(true);
   const firstOwnerTitles = page.locator('#dynastyTrendChart svg title').filter({ hasText: `${firstTrendOwner}:` });
   expect(await firstOwnerTitles.count()).toBeGreaterThan(0);
   await page.locator('#dynastyTrendChart [data-dynasty-trend-toggle="1"]').first().click();
   await expect(page.locator('#dynastyTrendChart [data-dynasty-trend-toggle="1"]').first()).toHaveAttribute('aria-pressed', 'false');
   await expect.poll(async () => firstOwnerTitles.count()).toBe(0);
   expect(await page.locator('#dynastyHeatmap .dynasty-heatmap-row').count()).toBeGreaterThan(0);
+  expect(await page.locator('#dynastyHeatmap .dynasty-heatmap-cell[style*="background"]').count()).toBeGreaterThan(0);
   await page.locator('#dynastyStartSeason').selectOption('2014');
   await page.locator('#dynastyEndSeason').selectOption('2023');
   await page.locator('#dynastyModeSelect').selectOption('rolling-5');
   await page.waitForFunction(() => document.querySelectorAll('#dynastySlumps .dynasty-slump-item').length > 0);
-  expect(await page.locator('#dynastySlumps .dynasty-slump-item').count()).toBeGreaterThan(0);
-  await page.locator('#dynastySlumps .dynasty-slump-item').first().click();
+  await page.locator('#dynasty-section-jump').selectOption('dynasty-slumps');
+  const lowestScoreButton = page.locator('#dynastySlumps .dynasty-slump-card').first().locator('.dynasty-slump-item').first();
+  expect(await lowestScoreButton.count()).toBeGreaterThan(0);
+  const lowestScoreBox = await lowestScoreButton.evaluate(button => {
+    const row = button.parentElement;
+    const rowStyle = row ? getComputedStyle(row) : null;
+    const buttonStyle = getComputedStyle(button);
+    return {
+      rowBorder: rowStyle?.borderTopWidth,
+      rowBackground: rowStyle?.backgroundColor,
+      rowPadding: rowStyle?.padding,
+      buttonBorder: buttonStyle.borderTopWidth,
+      buttonBackground: buttonStyle.backgroundColor,
+      buttonMinHeight: Number.parseFloat(buttonStyle.minHeight),
+    };
+  });
+  expect(lowestScoreBox).toEqual({
+    rowBorder: '0px',
+    rowBackground: 'rgba(0, 0, 0, 0)',
+    rowPadding: '0px',
+    buttonBorder: '1px',
+    buttonBackground: 'rgb(250, 251, 255)',
+    buttonMinHeight: 44,
+  });
+  const slumpScoreDisplays = await page.locator('#dynastySlumps .dynasty-slump-score').allTextContents();
+  expect(slumpScoreDisplays.every(text => !text.trim().endsWith('.0'))).toBe(true);
+  await expect(page.locator('#dynastySlumps')).toContainText('Biggest Drops');
+  await lowestScoreButton.click();
   await expect(page.locator('#dynastyWindowModal')).toBeVisible();
   await expect(page.locator('#dynastyWindowModal')).toContainText('Saunders Bowl Appearances');
   await expect(page.locator('#dynastyWindowModal')).toContainText('Saunders Record');
   await expect(page.locator('#dynastyWindowModal')).toContainText('Final Result');
   await page.locator('#dynastyWindowModal .dynasty-modal-close').click();
   await expect(page.locator('#dynastyWindowModal')).toBeHidden();
-  await expect(page.locator('#dynastyFormula')).toHaveCount(0);
+  await expect(page.locator('#dynastyFormula')).toContainText('round((wins + 0.5 × ties) / games × 3, 1)');
+  await expect(page.locator('#dynastyFormula')).toContainText('10-3-0=2.3');
   await expect.poll(async () => page.evaluate(() => {
     const params = new URL(location.href).searchParams;
     return [
@@ -702,6 +844,72 @@ test('dynasty tab renders controls and responds to calculator changes', async ({
       params.get('dynastyEnd'),
     ].join('|');
   })).toBe('dynasty|rolling-5|Joe|2014|2023');
+});
+
+test('dynasty heatmap empty cells use the theme surface and retain their distinction', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto('/?tab=dynasty');
+  await page.waitForLoadState('networkidle');
+
+  const heatmap = page.locator('#dynastyHeatmap');
+  await expect(heatmap).toBeVisible();
+  expect(await heatmap.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true);
+
+  const inspectEmptyCells = async () => page.locator('#dynastyHeatmap .dynasty-heatmap-row').evaluateAll((rows, owners) => {
+    const results = {};
+    for (const owner of owners) {
+      const row = rows.find(candidate => candidate.querySelector('.dynasty-heatmap-owner')?.textContent?.trim() === owner);
+      const cell = row?.querySelector('.dynasty-heatmap-cell.empty');
+      if (!cell) {
+        results[owner] = null;
+        continue;
+      }
+      const styles = getComputedStyle(cell);
+      const container = document.querySelector('#dynastyHeatmap')?.closest('.card');
+      results[owner] = {
+        background: styles.backgroundColor,
+        containerBackground: container ? getComputedStyle(container).backgroundColor : null,
+        borderColor: styles.borderColor,
+        borderStyle: styles.borderStyle,
+        color: styles.color,
+        title: cell.getAttribute('title'),
+        height: cell.getBoundingClientRect().height,
+      };
+    }
+    return results;
+  }, ['Snare', 'Shemer']);
+
+  const light = await inspectEmptyCells();
+  for (const owner of ['Snare', 'Shemer']) {
+    expect(light[owner]).not.toBeNull();
+    expect(light[owner].background).toBe(light[owner].containerBackground);
+    expect(light[owner].background).not.toBe('rgb(243, 244, 246)');
+    expect(light[owner].borderStyle).toBe('dashed');
+    expect(light[owner].borderColor).not.toBe('rgba(0, 0, 0, 0)');
+    expect(light[owner].title).toMatch(new RegExp(`^${owner} \\d{4}: No data$`));
+    expect(light[owner].height).toBeGreaterThanOrEqual(82);
+  }
+
+  await page.getByRole('button', { name: 'Dark' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-color-scheme', 'dark');
+  const dark = await inspectEmptyCells();
+  for (const owner of ['Snare', 'Shemer']) {
+    expect(dark[owner]).not.toBeNull();
+    expect(dark[owner].background).toBe(dark[owner].containerBackground);
+    expect(dark[owner].background).not.toBe('rgb(243, 244, 246)');
+    expect(dark[owner].borderStyle).toBe('dashed');
+    expect(dark[owner].borderColor).not.toBe('rgba(0, 0, 0, 0)');
+    expect(dark[owner].title).toMatch(new RegExp(`^${owner} \\d{4}: No data$`));
+  }
+
+  await page.emulateMedia({ forcedColors: 'active' });
+  const forced = await inspectEmptyCells();
+  for (const owner of ['Snare', 'Shemer']) {
+    expect(forced[owner]).not.toBeNull();
+    expect(forced[owner].borderStyle).toBe('dashed');
+    expect(forced[owner].borderColor).not.toBe('rgba(0, 0, 0, 0)');
+    expect(forced[owner].color).not.toBe('rgba(0, 0, 0, 0)');
+  }
 });
 
 test('dynasty url restores the requested owner and period', async ({ page }) => {
@@ -716,6 +924,13 @@ test('dynasty url restores the requested owner and period', async ({ page }) => 
   await expect(page.locator('#dynastyCalculatorHero')).toContainText('Joe Dynasty Score');
   await expect(page.locator('#dynastyCalculatorHero')).toContainText('2021-2023');
   await expect(page.locator('#dynastyCalculatorHero')).toContainText('#1');
+  await expect(page.locator('#dynastyCalculatorHero > .dynasty-calculator-hero')).toBeVisible();
+  await expect(page.locator('#dynastyCalculatorHero .dynasty-kicker')).toContainText(/Dynasty Run|Contender Stretch|Mini-Dynasty/);
+  await expect(page.locator('#dynastyCalculatorHero .dynasty-range')).toHaveText('2021-2023');
+  await expect(page.locator('#dynastyCalculatorHero .dynasty-score-rank')).toHaveText(/#1 of \d+/);
+  await expect(page.locator('#dynastyCalculatorHero .dynasty-score-sub')).toHaveText('Dynasty score');
+  await expect(page.locator('#dynastyCalculatorHero .dynasty-hero-summary span').first()).toBeVisible();
+  await expect(page.locator('#dynastyCalculatorHero .dynasty-coverage')).toHaveCount(0);
   await expect(page.locator('#dynastyScoreBreakdown')).toContainText('regularSeason');
   await expect(page.locator('#dynastyScoreBreakdown')).toContainText('hardware');
   await expect(page.locator('#dynastyScoreBreakdown')).toContainText('Coverage');
@@ -817,9 +1032,9 @@ test('Gauntlet preserves selections across ordinary tab reactivation', async ({ 
   await page.locator('#gauntletOwnerA').selectOption('Zook');
   await expect.poll(() => new URL(page.url()).searchParams.get('ga')).toMatch(/^Zook:/);
 
-  await page.locator('#tabTrophyBtn').click();
+  await activateFeature(page, 'trophy');
   await expect(page.locator('#trophyOwnerSelect')).toBeVisible();
-  await page.locator('#tabGauntletBtn').click();
+  await activateFeature(page, 'gauntlet');
   await expect(page.locator('#gauntletOwnerA')).toHaveValue('Zook');
 });
 
@@ -833,6 +1048,9 @@ test('gauntlet mobile layout stacks the matchup and keeps the histogram visible'
   const narrative = page.locator('#gauntletNarrative');
 
   await expect(matchup).toBeVisible();
+  await expect(histogram.locator('svg')).toHaveCount(0);
+  await expect(page.locator('#gauntletHistogramPlot')).toHaveAttribute('data-chart-state', 'idle');
+  await page.locator('#gauntlet-section-jump').selectOption('gauntlet-distribution');
   await expect(histogram.locator('svg')).toHaveCount(1);
   await expect(histogram.locator('svg').first()).toBeVisible();
   await expect(narrative).toBeVisible();
@@ -899,6 +1117,115 @@ test('trophy case first viewport stacks hero shelf and rank strip without overla
   expect(heroBox.y + heroBox.height).toBeLessThanOrEqual(shelfBox.y + 2);
   expect(shelfBox.y + shelfBox.height).toBeLessThanOrEqual(rankBox.y + 2);
   expect(await page.locator('#trophyHero').textContent()).toContain('Joe');
+});
+
+test('trophy hardware shelf exposes complete earned and empty states for each owner', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.goto('/?tab=trophy&trophyOwner=Snare');
+  await page.waitForLoadState('networkidle');
+
+  const cards = page.locator('#trophyHardwareShelf .trophy-hardware-card');
+  await expect(cards).toHaveCount(8);
+  await expect(cards.first()).toHaveAttribute('data-state', 'empty');
+  await expect(cards.first()).toContainText('Still chasing the first one');
+  await expect(cards.first().locator('.trophy-card-years')).toContainText('—');
+  await expect(cards.first().locator('.trophy-card-context')).toBeVisible();
+  expect(await page.locator('body').evaluate(body => body.scrollWidth <= 320)).toBe(true);
+
+  await page.locator('#trophyOwnerSelect').selectOption('Connor');
+  await expect(page.locator('#trophyHardwareShelf .trophy-hardware-card.scar.state-earned').first()).toContainText('Saunders hardware');
+  await expect(page.locator('#trophyHardwareShelf .trophy-hardware-card')).toHaveCount(8);
+  await page.locator('#trophyOwnerSelect').selectOption('Snare');
+  await expect(page.locator('#trophyHardwareShelf .trophy-hardware-card.scar.state-empty').first()).toContainText('Clean / avoided');
+});
+
+test('trophy hardware categories retain forced-colors distinctions', async ({ page }) => {
+  await page.goto('/?tab=trophy&trophyOwner=Connor');
+  await page.waitForLoadState('networkidle');
+  await page.emulateMedia({ forcedColors: 'active' });
+
+  const borders = await page.locator('#trophyHardwareShelf .trophy-hardware-card.state-earned').evaluateAll(cards => Object.fromEntries(
+    cards.map(card => [
+      ['gold', 'neutral', 'scar'].find(tone => card.classList.contains(tone)),
+      {
+        borderStyle: getComputedStyle(card).borderStyle,
+        borderWidth: getComputedStyle(card).borderWidth,
+      },
+    ]),
+  ));
+  expect(borders.gold.borderStyle).toBe('double');
+  expect(borders.neutral.borderStyle).toBe('dotted');
+  expect(borders.scar.borderWidth).toBe('3px');
+});
+
+test('trophy hardware tones retain readable text and borders in light and dark themes', async ({ page }) => {
+  await page.goto('/?tab=trophy&trophyOwner=Joe');
+  await page.waitForLoadState('networkidle');
+  const owners = await page.locator('#trophyOwnerSelect option').evaluateAll(options => options.map(option => option.value));
+
+  const contrastRatios = async () => page.locator('.trophy-hardware-card').evaluateAll(cards => {
+    const parseColor = value => {
+      const channels = (value.match(/[\d.]+/g) || []).slice(0, 4).map(Number);
+      return {
+        red: channels[0] ?? 0,
+        green: channels[1] ?? 0,
+        blue: channels[2] ?? 0,
+        alpha: channels[3] ?? 1,
+      };
+    };
+    const luminance = ({ red, green, blue }) => {
+      const channel = value => {
+        const normalized = value / 255;
+        return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * channel(red) + 0.7152 * channel(green) + 0.0722 * channel(blue);
+    };
+    const blend = (foreground, background) => ({
+      red: foreground.red * foreground.alpha + background.red * (1 - foreground.alpha),
+      green: foreground.green * foreground.alpha + background.green * (1 - foreground.alpha),
+      blue: foreground.blue * foreground.alpha + background.blue * (1 - foreground.alpha),
+      alpha: 1,
+    });
+    const ratio = (foreground, background) => {
+      const foregroundLuminance = luminance(foreground);
+      const backgroundLuminance = luminance(background);
+      return (Math.max(foregroundLuminance, backgroundLuminance) + 0.05)
+        / (Math.min(foregroundLuminance, backgroundLuminance) + 0.05);
+    };
+    const pageBackground = parseColor(getComputedStyle(document.body).backgroundColor);
+    return cards.map(card => {
+      const cardStyle = getComputedStyle(card);
+      const background = blend(parseColor(cardStyle.backgroundColor), pageBackground);
+      const text = parseColor(cardStyle.color);
+      const label = card.querySelector('.trophy-year-chip');
+      const labelStyle = label ? getComputedStyle(label) : null;
+      const rank = card.querySelector('.trophy-card-rank');
+      const rankStyle = rank ? getComputedStyle(rank) : null;
+      return {
+        tone: [...card.classList].find(className => ['gold', 'neutral', 'scar'].includes(className)),
+        text: ratio(text, background),
+        label: labelStyle ? ratio(parseColor(labelStyle.color), blend(parseColor(labelStyle.backgroundColor), background)) : null,
+        rank: rankStyle ? ratio(parseColor(rankStyle.color), background) : null,
+        border: ratio(parseColor(cardStyle.borderTopColor), background),
+      };
+    });
+  });
+
+  for (const theme of ['light', 'dark']) {
+    await page.getByRole('button', { name: theme === 'light' ? 'Light' : 'Dark' }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-color-scheme', theme);
+    for (const owner of owners) {
+      await page.locator('#trophyOwnerSelect').selectOption(owner);
+      const ratios = await contrastRatios();
+      expect(ratios.map(item => item.tone), `${theme} ${owner} tone mapping`).toEqual(['gold', 'gold', 'neutral', 'neutral', 'neutral', 'scar', 'scar', 'scar']);
+      for (const item of ratios) {
+        expect(item.text, `${theme} ${owner} ${item.tone} card text`).toBeGreaterThanOrEqual(4.5);
+        expect(item.label, `${theme} ${owner} ${item.tone} card label`).toBeGreaterThanOrEqual(4.5);
+        expect(item.rank, `${theme} ${owner} ${item.tone} card rank`).toBeGreaterThanOrEqual(4.5);
+        expect(item.border, `${theme} ${owner} ${item.tone} card border`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  }
 });
 
 test('url state restores selected team and facet filters on load', async ({ page }) => {
@@ -1118,6 +1445,28 @@ test('saved rivalry and trophy views restore initialized control contexts', asyn
   await expect(page.locator('[data-table-id="trophy-seasons"] th').filter({ hasText: 'Finish' })).toHaveAttribute('aria-sort', 'ascending');
 });
 
+test('saved draft views restore initialized owner and season contexts', async ({ page }) => {
+  await page.addInitScript(() => localStorage.removeItem('darling.tableViews.v1'));
+  await page.goto('/?tab=draft&draftMode=owner&draftOwner=Joe&draftStart=2021&draftEnd=2025');
+  await page.waitForLoadState('networkidle');
+  await page.locator('#draft-section-jump').selectOption('draft-ledger');
+  const draft = page.locator('[data-table-id="draft-rows"]');
+  await draft.locator('.table-view-menu > summary').click();
+  await draft.getByPlaceholder('View name').fill('Joe draft ledger');
+  await draft.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.locator('#draftOwnerSelect').selectOption('Joel');
+  await expect(page).toHaveURL(/draftOwner=Joel/);
+
+  await page.locator('#draft-section-jump').selectOption('draft-ledger');
+  const switchedDraft = page.locator('[data-table-id="draft-rows"]');
+  await switchedDraft.locator('.table-view-menu > summary').click();
+  await switchedDraft.getByRole('button', { name: 'Joe draft ledger', exact: true }).click();
+  await expect(page.locator('#draftOwnerSelect')).toHaveValue('Joe');
+  await expect(page.locator('#draftStartSeason')).toHaveValue('2021');
+  await expect(page.locator('#draftEndSeason')).toHaveValue('2025');
+  await expect(page).toHaveURL(/draftOwner=Joe/);
+});
+
 test('interactive tables mount across rivalry, current season, and trophy pages', async ({ page }) => {
   await page.goto('/?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel');
   await page.waitForLoadState('networkidle');
@@ -1126,13 +1475,18 @@ test('interactive tables mount across rivalry, current season, and trophy pages'
   await expect(rivalryGames.locator('tbody tr')).not.toHaveCount(0);
   await rivalryGames.getByRole('button', { name: 'Last five meetings' }).click();
   await expect(rivalryGames.locator('tbody > tr:not(.table-expanded-row)')).toHaveCount(5);
-  await rivalryGames.locator('.table-expand-button').first().click();
+  const expandRivalry = rivalryGames.locator('.table-expand-button').first();
+  await expect.poll(async () => {
+    if (await rivalryGames.locator('.table-expanded-row').count()) return 1;
+    await expandRivalry.click();
+    return rivalryGames.locator('.table-expanded-row').count();
+  }).toBe(1);
   await expect(rivalryGames.locator('.table-expanded-row')).toContainText('Running series record');
 
-  await page.goto('/?tab=current&currentOwner=Joe');
+  await page.goto('/?tab=current&currentOwner=Joe&currentView=standings');
   await page.waitForLoadState('networkidle');
   await expect(page.locator('[data-table-id="current-standings"] tbody tr')).not.toHaveCount(0);
-  await expect(page.locator('[data-table-id="current-projected"] tbody tr')).not.toHaveCount(0);
+  await expect(page.locator('[data-table-id="current-projected"] tbody tr')).toHaveCount(0);
   await expect(page.locator('[data-table-id="current-standings"] .current-owner-focus-row')).toHaveCount(1);
 
   await page.goto('/?tab=trophy&trophyOwner=Joe');
@@ -1208,7 +1562,7 @@ test('history game-query deep links survive direct loads and reloads', async ({ 
   await expect(page.locator('[data-table-id="history-games"] .table-pagination')).toHaveCount(0);
 });
 
-test('dynamic structured results remain in recents after reopen and reload', async ({ page }) => {
+test('structured game results remain in recents after reopen and reload', async ({ page }) => {
   await page.goto('/?tab=history');
   await page.waitForLoadState('networkidle');
   await page.evaluate(() => window.darlingSearch.clearRecent());
@@ -1229,8 +1583,11 @@ test('dynamic structured results remain in recents after reopen and reload', asy
   await trigger.click();
   dialog = page.getByRole('dialog', { name: 'Search The Darling' });
   await expect(dialog.getByRole('option').first()).toContainText('140+ point games');
+});
 
-  await page.keyboard.press('Escape');
+test('dynamic season and rivalry results remain in recents after reload', async ({ page }) => {
+  await page.goto('/?tab=history');
+  await page.waitForLoadState('networkidle');
   const dynamicIds = await page.evaluate(() => {
     window.darlingSearch.clearRecent();
     const results = ['2024 regular season', 'Zubs vs Joe'].map(query => window.darlingSearch.search(query)[0]);
@@ -1585,8 +1942,8 @@ test('Draft Spot direct URLs restore controls, receipts, themes, and browser his
   await page.goto('/?tab=draft&draftMode=pick&draftOwner=Joe&draftStart=2021&draftEnd=2025&draftMetric=playoffRate&draftMinSample=2&draftNormalize=percentile&draftPick=10');
   await page.waitForLoadState('networkidle');
 
-  await expect(page.locator('#tabDraftBtn')).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('tabpanel', { name: 'Draft Spot' })).toBeVisible();
+  await expect(page.locator('#tabDraftBtn')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('region', { name: 'Draft Spot', exact: true })).toBeVisible();
   await expect(page.locator('#draftOwnerSelect')).toHaveValue('Joe');
   await expect(page.locator('#draftMetricSelect')).toHaveValue('playoffRate');
   await expect(page.locator('#draftNormalizeToggle')).toBeChecked();
@@ -1619,9 +1976,9 @@ test('Draft Spot preserves selections across ordinary tab reactivation', async (
   await page.locator('#draftOwnerSelect').selectOption('Joe');
   await expect.poll(() => new URL(page.url()).searchParams.get('draftOwner')).toBe('Joe');
 
-  await page.locator('#tabTrophyBtn').click();
+  await activateFeature(page, 'trophy');
   await expect(page.locator('#trophyOwnerSelect')).toBeVisible();
-  await page.locator('#tabDraftBtn').click();
+  await activateFeature(page, 'draft');
   await expect(page.locator('#draftOwnerSelect')).toHaveValue('Joe');
 });
 
@@ -1663,15 +2020,14 @@ test('optional Draft Spot fetch failure leaves the rest of the app usable', asyn
   await page.goto('/?tab=draft');
   await page.waitForLoadState('networkidle');
   await expect(page.locator('#draftSpotRoot')).toContainText('Draft Spot is unavailable');
-  await page.locator('#tabHistoryBtn').click();
+  await activateFeature(page, 'history');
   await expect(page.locator('#historyGamesTable')).toBeVisible();
 });
 
-test('Current Season displays deterministic playoff odds without replacing status labels', async ({ page }) => {
-  await page.goto('/?tab=current&currentOwner=Joe');
+test('finalized Current Season does not calculate future playoff odds', async ({ page }) => {
+  await page.goto('/?tab=current&currentOwner=Joe&currentView=command');
   await page.waitForLoadState('networkidle');
-  await expect(page.locator('.current-odds-methodology')).toBeVisible();
-  await expect(page.locator('.current-odds-chip').first()).toContainText(/Playoffs \d+%|Playoffs <1%|Playoffs >99%/);
-  await expect(page.locator('.current-status-badge').first()).toBeVisible();
-  await expect(page.locator('#currentOddsMovementPlot svg')).toBeVisible();
+  await expect(page.locator('.current-odds-methodology')).toHaveCount(0);
+  await expect(page.locator('.current-odds-chip')).toHaveCount(0);
+  await expect(page.locator('#currentOddsMovementPlot')).toHaveCount(0);
 });

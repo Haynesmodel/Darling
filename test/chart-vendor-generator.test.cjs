@@ -11,6 +11,7 @@ const {
   assertImportBoundary,
   checkVendor,
   compareVendor,
+  containsRuntimePlotImport,
   createBuildOptions,
   directPlotImports,
   generateVendor,
@@ -105,8 +106,21 @@ test('authored browser imports of the Plot package are rejected', async () => {
     fs.writeFileSync(nestedVendorSource, "const Plot = import(`@observablehq/plot/src/index.js`);\n");
     assert.deepEqual(directPlotImports({ root }), ['src/feature.ts', 'src/vendor/feature.ts']);
     assert.throws(() => assertImportBoundary({ root }), /src\/feature\.ts/);
+    fs.writeFileSync(source, "import type { Local } from './local';\nimport { plot } from '@observablehq/plot';\n");
+    assert.deepEqual(directPlotImports({ root }), ['src/feature.ts', 'src/vendor/feature.ts']);
     fs.writeFileSync(source, "import { plot } from '../js/charting/vendor/charting-vendor.js';\n");
-    fs.writeFileSync(nestedVendorSource, "import { barY } from '../../js/charting/vendor/charting-vendor.js';\n");
+    fs.writeFileSync(nestedVendorSource, "import type { PlotOptions } from '@observablehq/plot';\nimport { type Markish } from '@observablehq/plot';\nimport { barY } from '../../js/charting/vendor/charting-vendor.js';\n");
     assert.deepEqual(directPlotImports({ root }), []);
   });
+});
+
+test('runtime Plot import detection does not let a preceding type import consume another declaration', () => {
+  assert.equal(containsRuntimePlotImport(
+    "import type { Local } from './local';\nimport { plot } from '@observablehq/plot';\n",
+    'mixed.ts',
+  ), true);
+  assert.equal(containsRuntimePlotImport(
+    "import type { PlotOptions } from '@observablehq/plot';\nimport { type Markish } from '@observablehq/plot';\n",
+    'types.ts',
+  ), false);
 });

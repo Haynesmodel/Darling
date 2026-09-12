@@ -10,6 +10,7 @@ const { checkRepoHygiene } = require('../scripts/check_repo_hygiene.cjs');
 const { checkCssHygiene, runCli: runCssHygieneCli } = require('../scripts/check_css_hygiene.cjs');
 const { auditBuiltAssets } = require('../scripts/audit_built_assets.cjs');
 const { canonicalJson, sha256Json } = require('../scripts/data/canonical-json.cjs');
+const { jsonFilesEqual } = require('../scripts/compare_json.cjs');
 const { measureBundle } = require('../scripts/check_bundle_size.cjs');
 const { FORMATS, HERO_WIDTHS, generateHeroImages, resolveSource } = require('../scripts/generate_hero_images.cjs');
 const { createStaticServer, normalizeBasePath, resolvePath } = require('../scripts/serve_static.cjs');
@@ -55,6 +56,13 @@ function runShell(script, env, cwd) {
   });
 }
 
+function runGit(args, cwd) {
+  return spawnSync('git', args, {
+    cwd,
+    encoding: 'utf8',
+  });
+}
+
 function writeCssHygieneFixture(root) {
   const styles = path.join(root, 'src', 'styles');
   fs.mkdirSync(styles, { recursive: true });
@@ -77,6 +85,100 @@ function writeCssHygieneFixture(root) {
   fs.writeFileSync(path.join(styles, 'tokens.css'), ':root{--fixture-text:CanvasText}\n');
   fs.writeFileSync(path.join(styles, 'components.css'), '.fixture{color:var(--fixture-text)}\n');
 }
+
+test('JSON comparison ignores formatting but detects data changes and invalid input', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-json-compare-'));
+  const left = path.join(root, 'left.json');
+  const right = path.join(root, 'right.json');
+  const script = path.join(__dirname, '..', 'scripts', 'compare_json.cjs');
+  try {
+    fs.writeFileSync(left, '{"b":2,"a":[1,2]}');
+    fs.writeFileSync(right, '{\n  "a": [1, 2],\n  "b": 2\n}\n');
+    assert.equal(jsonFilesEqual(left, right), true);
+    assert.equal(runNode(script, [left, right], root).status, 0);
+
+    fs.writeFileSync(right, '{"a":[2,1],"b":2}\n');
+    assert.equal(jsonFilesEqual(left, right), false);
+    assert.equal(runNode(script, [left, right], root).status, 1);
+
+    fs.writeFileSync(right, '{not-json}\n');
+    assert.throws(() => jsonFilesEqual(left, right), /invalid UTF-8 JSON/);
+    const invalid = runNode(script, [left, right], root);
+    assert.equal(invalid.status, 2);
+    assert.match(invalid.stderr, /invalid UTF-8 JSON/);
+
+    const usage = runNode(script, [], root);
+    assert.equal(usage.status, 2);
+    assert.match(usage.stderr, /Usage: node scripts\/compare_json\.cjs/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('optional Git path staging tolerates absent files and stages tracked deletions', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-optional-staging-'));
+  const assets = path.join(root, 'assets');
+  const currentSeason = path.join(assets, 'CurrentSeason.json');
+  const draft = path.join(assets, 'SeasonSummary.draft.json');
+  const script = path.join(__dirname, '..', 'scripts', 'stage_optional_git_paths.sh');
+  const git = args => {
+    const result = runGit(args, root);
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout;
+  };
+  const commit = message => git([
+    '-c', 'user.name=Darling Tests',
+    '-c', 'user.email=darling-tests@example.invalid',
+    'commit', '-m', message,
+  ]);
+
+  try {
+    fs.mkdirSync(assets);
+    git(['init']);
+    fs.writeFileSync(currentSeason, '{"season":2025}\n');
+    git(['add', 'assets/CurrentSeason.json']);
+    commit('initial fixture');
+
+    fs.writeFileSync(currentSeason, '{"season":2026}\n');
+    const absent = spawnSync('bash', [
+      script,
+      'assets/CurrentSeason.json',
+      'assets/SeasonSummary.draft.json',
+    ], {
+      cwd: root,
+      encoding: 'utf8',
+    });
+    assert.equal(absent.status, 0, absent.stderr);
+    assert.equal(git(['diff', '--cached', '--name-status']), 'M\tassets/CurrentSeason.json\n');
+    commit('stage without optional draft');
+
+    fs.writeFileSync(draft, '{"season":2026}\n');
+    git(['add', 'assets/SeasonSummary.draft.json']);
+    commit('track optional draft');
+
+    fs.writeFileSync(currentSeason, '{"season":2026,"status":"preseason"}\n');
+    fs.rmSync(draft);
+    const deletion = spawnSync('bash', [
+      script,
+      'assets/CurrentSeason.json',
+      'assets/SeasonSummary.draft.json',
+    ], {
+      cwd: root,
+      encoding: 'utf8',
+    });
+    assert.equal(deletion.status, 0, deletion.stderr);
+    assert.equal(
+      git(['diff', '--cached', '--name-status']),
+      'M\tassets/CurrentSeason.json\nD\tassets/SeasonSummary.draft.json\n',
+    );
+
+    const usage = spawnSync('bash', [script], { cwd: root, encoding: 'utf8' });
+    assert.equal(usage.status, 2);
+    assert.match(usage.stderr, /Usage: scripts\/stage_optional_git_paths\.sh/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test('repo hygiene accepts the expected ESM app shape', async () => {
   await withTempRepo((root) => {
@@ -237,6 +339,12 @@ test('asset sync copies source assets into Vite public assets', async () => {
     fs.mkdirSync(path.join(root, 'assets', 'hero'));
     fs.writeFileSync(path.join(root, 'assets', 'hero', 'league-1280.jpg'), 'image\n');
     fs.writeFileSync(path.join(root, 'assets', 'hero', 'source.txt'), 'skip\n');
+    fs.mkdirSync(path.join(root, 'assets', 'share'));
+    fs.writeFileSync(path.join(root, 'assets', 'share', 'darling-default-card.png'), 'card\n');
+    fs.writeFileSync(path.join(root, 'assets', 'share', 'other.png'), 'skip\n');
+    fs.mkdirSync(path.join(root, 'assets', 'trophy'));
+    fs.writeFileSync(path.join(root, 'assets', 'trophy', 'trophy.svg'), '<svg/>\n');
+    fs.writeFileSync(path.join(root, 'assets', 'trophy', 'other.svg'), '<svg/>\n');
     fs.writeFileSync(path.join(root, 'assets', '.DS_Store'), 'local\n');
     fs.mkdirSync(path.join(root, 'public', 'assets'), { recursive: true });
     fs.writeFileSync(path.join(root, 'public', 'assets', 'stale.json'), '{}\n');
@@ -250,6 +358,10 @@ test('asset sync copies source assets into Vite public assets', async () => {
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'LeaguePic.jpeg')), false);
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'hero', 'league-1280.jpg')), true);
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'hero', 'source.txt')), false);
+    assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'share', 'darling-default-card.png')), true);
+    assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'share', 'other.png')), false);
+    assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'trophy', 'trophy.svg')), true);
+    assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'trophy', 'other.svg')), false);
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', '.DS_Store')), false);
     assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'stale.json')), false);
   });
@@ -259,6 +371,16 @@ test('built asset audit requires every manifested deployable asset', async () =>
   await withTempRepo((root) => {
     const assetDir = path.join(root, 'dist', 'assets');
     fs.mkdirSync(path.join(assetDir, 'hero'), { recursive: true });
+    fs.mkdirSync(path.join(assetDir, 'share'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'assets', 'share'), { recursive: true });
+    fs.copyFileSync(
+      path.join(__dirname, '..', 'assets', 'share', 'darling-default-card.png'),
+      path.join(root, 'assets', 'share', 'darling-default-card.png'),
+    );
+    fs.copyFileSync(
+      path.join(__dirname, '..', 'assets', 'share', 'darling-default-card.png'),
+      path.join(assetDir, 'share', 'darling-default-card.png'),
+    );
     const empty = [];
     const descriptor = (assetPath, required) => ({
       path: assetPath,
@@ -631,8 +753,12 @@ test('update workflow validation-only mode runs with a stub updater and leaves a
   const stubPath = path.join(stubDir, 'python-stub.sh');
   const updatedPath = path.join(repoRoot, 'assets', 'H2H.updated.json');
   const currentUpdatedPath = path.join(repoRoot, 'assets', 'CurrentSeason.updated.json');
+  const transactionUpdatedPath = path.join(repoRoot, 'assets', 'TransactionHistory.updated.json');
   const before = fs.existsSync(updatedPath) ? fs.readFileSync(updatedPath, 'utf8') : null;
   const currentBefore = fs.existsSync(currentUpdatedPath) ? fs.readFileSync(currentUpdatedPath, 'utf8') : null;
+  const transactionBefore = fs.existsSync(transactionUpdatedPath)
+    ? fs.readFileSync(transactionUpdatedPath, 'utf8')
+    : null;
 
 fs.writeFileSync(stubPath, `#!/usr/bin/env bash
 set -euo pipefail
@@ -664,6 +790,11 @@ done
 mkdir -p "$(dirname "$out")"
 if [[ "$script" == *"generate_current_season.py" ]]; then
 cp assets/CurrentSeason.json "$out"
+exit 0
+fi
+
+if [[ "$script" == *"generate_transaction_history.py" ]]; then
+cp assets/TransactionHistory.json "$out"
 exit 0
 fi
 
@@ -704,6 +835,11 @@ fi
       assert.equal(fs.existsSync(currentUpdatedPath), false);
     } else {
       assert.equal(fs.readFileSync(currentUpdatedPath, 'utf8'), currentBefore);
+    }
+    if (transactionBefore === null) {
+      assert.equal(fs.existsSync(transactionUpdatedPath), false);
+    } else {
+      assert.equal(fs.readFileSync(transactionUpdatedPath, 'utf8'), transactionBefore);
     }
   } finally {
     fs.rmSync(stubDir, { recursive: true, force: true });

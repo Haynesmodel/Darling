@@ -1,18 +1,20 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const esbuild = require('esbuild');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const sharp = require('sharp');
 
 const { canonicalJson, readJson, sha256Json } = require('../scripts/data/canonical-json.cjs');
-const { HERO_REQUIREMENTS } = require('../scripts/data/constants.cjs');
+const { HERO_REQUIREMENTS, fromRoot } = require('../scripts/data/constants.cjs');
 const { buildDerivedStats } = require('../scripts/data/derived-stats.cjs');
-const { buildManifest, verifyManifest } = require('../scripts/data/manifest.cjs');
+const { isLowestScoreEligible } = require('../js/lowest-score-policy.js');
+const { buildManifest, seasonCoverage, verifyManifest } = require('../scripts/data/manifest.cjs');
 const { inspectHeroAssets } = require('../scripts/data/media-validation.cjs');
-const { createAjv, validateWithSchema } = require('../scripts/data/schema-validation.cjs');
+const { createAjv, validateStructuralAssets, validateWithSchema } = require('../scripts/data/schema-validation.cjs');
 const { validateSemanticBundle } = require('../scripts/data/semantic-validation.cjs');
-const { checkGeneratedAssets } = require('../scripts/check_generated_assets.cjs');
+const { checkGeneratedAssets, compareGeneratedFiles } = require('../scripts/check_generated_assets.cjs');
 const { validateDraftSpotDependencies, validateDerivedDependencies } = require('../scripts/validate_assets.cjs');
 
 const root = path.join(__dirname, '..');
@@ -21,10 +23,24 @@ const bundle = {
   SeasonSummary: readJson(path.join(root, 'assets', 'SeasonSummary.json')),
   Rivalries: readJson(path.join(root, 'assets', 'Rivalries.json')),
   CurrentSeason: readJson(path.join(root, 'assets', 'CurrentSeason.json')),
+  TransactionHistory: readJson(path.join(root, 'assets', 'TransactionHistory.json')),
+  LeagueLore: readJson(path.join(root, 'assets', 'LeagueLore.json')),
 };
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+function loadBrowserValidators() {
+  const source = fs.readFileSync(path.join(root, 'src/data/generated/asset-validators.ts'), 'utf8');
+  const loreSource = fs.readFileSync(path.join(root, 'src/data/generated/league-lore-validator.ts'), 'utf8');
+  const load = value => {
+    const { code } = esbuild.transformSync(value, { loader: 'ts', format: 'cjs', target: 'node24' });
+    const module = { exports: {} };
+    new Function('module', 'exports', code)(module, module.exports);
+    return module.exports;
+  };
+  return { ...load(source), ...load(loreSource) };
 }
 
 function sortBy(rows, key) {
@@ -75,11 +91,135 @@ test('Draft 2020-12 schemas accept representative data and locate invalid fields
     assert.ok(errors.some(error => error.includes(`field "${fixture.field}"`)), `${fixture.file}\n${errors.join('\n')}`);
     assert.ok(errors.some(error => error.includes(fixture.message)), `${fixture.file}\n${errors.join('\n')}`);
   }
+
+  const transactionHistory = readJson(path.join(root, 'assets', 'TransactionHistory.json'));
+  assert.deepEqual(
+    validateWithSchema(ajv, 'transaction-history.schema.json', transactionHistory, 'TransactionHistory.json'),
+    [],
+  );
+  transactionHistory.seasons[0].transactions[0].unexpected = true;
+  assert.ok(
+    validateWithSchema(
+      ajv,
+      'transaction-history.schema.json',
+      transactionHistory,
+      'TransactionHistory.json',
+    ).some(error => error.includes('must NOT have additional properties')),
+  );
+  const emptyHistory = {
+    ...readJson(path.join(root, 'assets', 'TransactionHistory.json')),
+    players: [],
+    seasons: [],
+  };
+  assert.ok(
+    validateWithSchema(
+      ajv,
+      'transaction-history.schema.json',
+      emptyHistory,
+      'TransactionHistory.json',
+    ).some(error => error.includes('must NOT have fewer than 1 items')),
+  );
+});
+
+test('generated browser guards agree with AJV across canonical assets and mutation matrix', () => {
+  const browser = loadBrowserValidators();
+  const ajv = createAjv(root);
+  const cases = [
+    { name: 'H2H', schema: 'h2h.schema.json', value: bundle.H2H, validate: browser.isH2H,
+      mutations: [v => { delete v[0].season; }, v => { v[0].scoreA = '68.1'; }, v => { v[0].date = '2014-02-31'; }, v => { v[0].unexpected = true; }],
+      validMutations: [v => { v[0].round = null; }, v => { v[0].scoreA = 0; }] },
+    { name: 'SeasonSummary', schema: 'season-summary.schema.json', value: bundle.SeasonSummary, validate: browser.isSeasonSummary,
+      mutations: [v => { v[0].wins = -1; }, v => { v[0].owner = 42; }, v => { v[0].unexpected = true; }, v => { v[0].season = 2013; }],
+      validMutations: [v => { v[0].wins = 0; }] },
+    { name: 'Rivalries', schema: 'rivalries.schema.json', value: bundle.Rivalries, validate: browser.isRivalries,
+      mutations: [v => { v[0].slug = 'Not A Slug'; }, v => { v[0].members = [v[0].members[0], v[0].members[0]]; }, v => { v[0].unexpected = true; }, v => { v[0].type = 'unknown'; }],
+      validMutations: [v => { v[0].members = [...v[0].members]; }] },
+    { name: 'CurrentSeason', schema: 'current-season.schema.json', value: bundle.CurrentSeason, validate: browser.isCurrentSeason,
+      mutations: [v => { v.season = 2013; }, v => { v.generated_at = 'not-a-date'; }, v => { v.playoff_rules.playoff_slots = 0; }, v => { v.unexpected = true; }],
+      validMutations: [] },
+    { name: 'DraftSpot', schema: 'draft-spot.schema.json', value: readJson(path.join(root, 'assets/DraftSpot.json')), validate: browser.isDraftSpot,
+      mutations: [v => { v.schema_version = 0; }, v => { v.generated_at = 'not-a-date'; }, v => { v.rows[0].draft_pick = 25; }, v => { v.unexpected = true; }],
+      validMutations: [] },
+    { name: 'DerivedStats', schema: 'derived-stats.schema.json', value: readJson(path.join(root, 'assets/DerivedStats.json')), validate: browser.isDerivedStats,
+      mutations: [v => { v.schema_version = 2; }, v => { v.owner_careers[0].owner = ''; }, v => { v.team_seasons[0].season = 2013; }, v => { v.unexpected = true; }],
+      validMutations: [v => { v.owners = [...v.owners]; }] },
+    { name: 'AssetManifest', schema: 'asset-manifest.schema.json', value: readJson(path.join(root, 'assets/asset-manifest.json')), validate: browser.isAssetManifest,
+      mutations: [v => { v.manifest_version = 0; }, v => { v.assets.H2H.bytes = -1; }, v => { v.assets.H2H.path = '../escape.json'; }, v => { v.unexpected = true; }],
+      validMutations: [] },
+    { name: 'TransactionHistory', schema: 'transaction-history.schema.json', value: bundle.TransactionHistory, validate: browser.isTransactionHistory,
+      mutations: [v => { v.schema_version = 0; }, v => { v.players[0].id = ''; }, v => { v.seasons[0].coverage.completed_week = -1; }, v => { v.unexpected = true; }],
+      validMutations: [v => { v.seasons[0].coverage.completed_week = 0; }] },
+    { name: 'LeagueLore', schema: 'league-lore.schema.json', value: bundle.LeagueLore, validate: browser.isLeagueLore,
+      mutations: [
+        v => { v.draft_locations[1].coordinates = null; },
+        v => { v.draft_locations[1].coordinate_precision = 'none'; },
+        v => { v.draft_locations[0].season_start = '2014'; },
+        v => { v.draft_locations = []; },
+      ],
+      validMutations: [v => { delete v.draft_locations; }] },
+  ];
+  for (const entry of cases) {
+    const schemaValidate = ajv.getSchema(`https://darling.example/schemas/${entry.schema}`);
+    assert.equal(entry.validate(entry.value), Boolean(schemaValidate(entry.value)), `${entry.name} canonical parity`);
+    for (const mutator of entry.mutations) {
+      const mutation = clone(entry.value);
+      mutator(mutation);
+      assert.equal(entry.validate(mutation), Boolean(schemaValidate(mutation)), `${entry.name} mutation parity`);
+      assert.equal(entry.validate(mutation), false, `${entry.name} mutation must fail closed`);
+    }
+    for (const mutator of entry.validMutations) {
+      const candidate = clone(entry.value);
+      mutator(candidate);
+      assert.equal(entry.validate(candidate), Boolean(schemaValidate(candidate)), `${entry.name} accepted edge parity`);
+      assert.equal(entry.validate(candidate), true, `${entry.name} accepted edge must pass`);
+    }
+  }
 });
 
 test('semantic validation accepts the canonical bundle and reports stable rule IDs', () => {
   const valid = validateSemanticBundle(bundle, { root });
   assert.deepEqual(valid.errors, []);
+
+  const draftLocationRuleCases = [
+    {
+      ruleId: 'LORE_DRAFT_LOCATION_YEAR_ORDER',
+      mutate: lore => { lore.draft_locations[0].season_end = lore.draft_locations[0].season_start - 1; },
+    },
+    {
+      ruleId: 'LORE_DRAFT_LOCATION_COORDINATE_CONTRACT',
+      mutate: lore => { lore.draft_locations[1].coordinates = null; },
+    },
+    {
+      ruleId: 'LORE_DRAFT_LOCATION_UNKNOWN_ENTRY',
+      mutate: lore => { lore.draft_locations[0].entry_id = 'missing-draft-location-entry'; },
+    },
+    {
+      ruleId: 'LORE_DRAFT_LOCATION_DISABLED_ENTRY',
+      mutate: lore => { lore.entries.find(entry => entry.id === lore.draft_locations[0].entry_id).enabled = false; },
+    },
+    {
+      ruleId: 'LORE_DRAFT_LOCATION_ENTRY_CATEGORY',
+      mutate: lore => { lore.entries.find(entry => entry.id === lore.draft_locations[0].entry_id).category = 'record'; },
+    },
+    {
+      ruleId: 'LORE_DRAFT_LOCATION_OVERLAP',
+      mutate: lore => { lore.draft_locations[1].season_start = lore.draft_locations[0].season_end; },
+    },
+    {
+      ruleId: 'LORE_DRAFT_LOCATION_ORDER',
+      mutate: lore => { [lore.draft_locations[0], lore.draft_locations[1]] = [lore.draft_locations[1], lore.draft_locations[0]]; },
+    },
+    {
+      ruleId: 'LORE_DUPLICATE_ID',
+      mutate: lore => { lore.draft_locations[0].id = lore.entries[0].id; },
+    },
+  ];
+  for (const { ruleId, mutate } of draftLocationRuleCases) {
+    const candidate = clone(bundle);
+    mutate(candidate.LeagueLore);
+    const errors = validateSemanticBundle(candidate, { root }).errors;
+    assert.ok(errors.some(error => error.includes(`[${ruleId}]`)), `${ruleId}\n${errors.join('\n')}`);
+  }
 
   const duplicate = clone(bundle);
   duplicate.H2H.push(clone(duplicate.H2H[0]));
@@ -92,6 +232,133 @@ test('semantic validation accepts the canonical bundle and reports stable rule I
   const current = clone(bundle);
   current.CurrentSeason.games[0].season -= 1;
   assert.ok(validateSemanticBundle(current, { root }).errors.some(error => error.includes('[CURRENT_SEASON_MISMATCH]')));
+
+  const invalidTransactionReference = clone(bundle);
+  invalidTransactionReference.TransactionHistory.seasons[0].draft.picks[0].player_id = 'missing-player';
+  assert.ok(
+    validateSemanticBundle(invalidTransactionReference, { root }).errors
+      .some(error => error.includes('[TRANSACTION_MISSING_PLAYER]')),
+  );
+
+  const invalidTransactionCoverage = clone(bundle);
+  invalidTransactionCoverage.TransactionHistory.seasons[0].coverage.transaction_rounds.pop();
+  assert.ok(
+    validateSemanticBundle(invalidTransactionCoverage, { root }).errors
+      .some(error => error.includes('[TRANSACTION_COVERAGE_ROUNDS]')),
+  );
+
+  const invalidTransactionSemantics = clone(bundle);
+  const invalidSeason = invalidTransactionSemantics.TransactionHistory.seasons[0];
+  const unknownOwner = 'Unknown Owner';
+  const unknownPlayer = 'missing-player';
+  invalidSeason.coverage.completed_week = invalidSeason.max_week + 1;
+  invalidSeason.coverage.matchup_weeks.pop();
+  invalidSeason.coverage.missing_player_metadata += 1;
+  invalidSeason.draft.pick_count -= 1;
+  invalidSeason.draft.draft_id = null;
+  Object.assign(invalidSeason.draft.picks[0], {
+    owner: unknownOwner,
+    player_id: unknownPlayer,
+    roster_id: invalidSeason.teams[0].roster_id,
+  });
+  const transaction = invalidSeason.transactions[0];
+  transaction.week = invalidSeason.max_week + 1;
+  transaction.participants.push(unknownOwner);
+  transaction.adds.push({ owner: unknownOwner, player_id: unknownPlayer });
+  transaction.draft_picks.push({
+    season: invalidSeason.season,
+    round: 1,
+    roster_id: invalidSeason.teams[0].roster_id,
+    original_owner: unknownOwner,
+    owner: unknownOwner,
+    previous_owner: unknownOwner,
+  });
+  transaction.waiver_budget.push({ sender: unknownOwner, receiver: unknownOwner, amount: 1 });
+  Object.assign(invalidSeason.player_journeys[0].stints[0], {
+    owner: unknownOwner,
+    starter_points: 1.234,
+  });
+  invalidSeason.player_journeys[0].stints[0].acquisition.transaction_id = 'missing-transaction';
+  Object.assign(invalidSeason.insights.trades[0], {
+    edge_owner: unknownOwner,
+    even: true,
+    transaction_id: transaction.id,
+  });
+  invalidSeason.insights.trades[0].sides[0].owner = unknownOwner;
+  invalidSeason.insights.trades[0].sides[0].players.push(unknownPlayer);
+  Object.assign(invalidSeason.insights.wire_finds[0], {
+    transaction_id: transaction.id,
+    owner: unknownOwner,
+    player_id: unknownPlayer,
+  });
+  invalidSeason.insights.movement_counts[0].player_id = unknownPlayer;
+  invalidSeason.insights.owner_activity[0].owner = unknownOwner;
+  invalidSeason.insights.draft_retention[0].owner = unknownOwner;
+  invalidSeason.insights.keeper_return.push({
+    owner: unknownOwner,
+    player_id: unknownPlayer,
+    round: 1,
+    starts: 0,
+    starter_points: 0,
+  });
+  const semanticErrors = validateSemanticBundle(invalidTransactionSemantics, { root }).errors;
+  for (const ruleId of [
+    'TRANSACTION_COMPLETED_WEEK',
+    'TRANSACTION_DRAFT_RECONCILIATION',
+    'TRANSACTION_INVALID_WEEK',
+    'TRANSACTION_INVALID_STATUS_MUTATION',
+    'TRANSACTION_MISSING_PLAYER',
+    'TRANSACTION_OUTCOME_RECONCILIATION',
+    'TRANSACTION_POINTS_PRECISION',
+    'TRANSACTION_ROSTER_OWNER_MISMATCH',
+    'TRANSACTION_UNKNOWN_OWNER',
+  ]) {
+    assert.ok(semanticErrors.some(error => error.includes(`[${ruleId}]`)), ruleId);
+  }
+
+  const staleInsights = clone(bundle);
+  staleInsights.TransactionHistory.seasons[0].insights.wire_finds[0].starter_points += 1;
+  assert.ok(
+    validateSemanticBundle(staleInsights, { root }).errors
+      .some(error => error.includes('[TRANSACTION_INSIGHT_RECONCILIATION]')),
+  );
+
+  const duplicateAlias = clone(bundle);
+  duplicateAlias.LeagueLore.owners.find(owner => owner.owner === 'Shap').aliases.push('joey');
+  assert.ok(validateSemanticBundle(duplicateAlias, { root }).errors.some(error => error.includes('[LORE_DUPLICATE_ALIAS]')));
+  const badYears = clone(bundle);
+  badYears.LeagueLore.entries.find(entry => entry.id === 'record-42').completed_year = 2018;
+  assert.ok(validateSemanticBundle(badYears, { root }).errors.some(error => error.includes('[LORE_YEAR_ORDER]')));
+  const unsafe = clone(bundle);
+  unsafe.LeagueLore.triggers.find(trigger => trigger.id === 'championship-context').effect_id = 'blue-bloods';
+  assert.ok(validateSemanticBundle(unsafe, { root }).errors.some(error => error.includes('[LORE_UNSAFE_PRESENTATION]')));
+  const disabled = clone(bundle);
+  disabled.LeagueLore.entries.find(entry => entry.id === 'record-42').enabled = false;
+  assert.ok(validateSemanticBundle(disabled, { root }).errors.some(error => error.includes('[LORE_DISABLED_REFERENCE]')));
+  const missingRivalry = clone(bundle);
+  missingRivalry.LeagueLore.entries.find(entry => entry.id === 'record-42').anchors.push({ type: 'rivalry', owners: ['Joe', 'Connor'] });
+  assert.ok(validateSemanticBundle(missingRivalry, { root }).errors.some(error => error.includes('[LORE_RIVALRY_MISSING]')));
+});
+
+test('structural validation accepts injected values and reports required source files', () => {
+  assert.deepEqual(validateStructuralAssets(root, {
+    values: { TransactionHistory: bundle.TransactionHistory },
+  }), []);
+
+  const invalid = clone(bundle.TransactionHistory);
+  invalid.seasons = [];
+  assert.ok(validateStructuralAssets(root, {
+    values: { TransactionHistory: invalid },
+  }).some(error => error.includes('TransactionHistory.json')));
+
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-structural-'));
+  try {
+    fs.cpSync(path.join(root, 'schemas'), path.join(temp, 'schemas'), { recursive: true });
+    assert.ok(validateStructuralAssets(temp, { includeGenerated: true })
+      .some(error => error.includes('[ASSET_MISSING]')));
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true });
+  }
 });
 
 test('canonical JSON hashing is independent of object key insertion order', () => {
@@ -99,6 +366,18 @@ test('canonical JSON hashing is independent of object key insertion order', () =
   const b = { nested: { a: 1, b: 2 }, z: 1 };
   assert.equal(canonicalJson(a), canonicalJson(b));
   assert.equal(sha256Json(a), sha256Json(b));
+});
+
+test('lowest-score policy excludes only both sides of the immutable Saunders outlier', () => {
+  const target = bundle.H2H.find(game => game.season === 2022 && game.date === '2022-12-24' && game.teamA === 'Joel' && game.teamB === 'Plot');
+  assert.deepEqual({ scoreA: target.scoreA, scoreB: target.scoreB, type: target.type }, { scoreA: 6.5, scoreB: 4.6, type: 'Saunders' });
+  assert.equal(isLowestScoreEligible(target, 'Joel'), false);
+  assert.equal(isLowestScoreEligible(target, 'Plot'), false);
+  assert.equal(isLowestScoreEligible(target, 'Joe'), true);
+  assert.equal(isLowestScoreEligible({ ...target, season: 2023 }, 'Joel'), true);
+  assert.equal(isLowestScoreEligible({ ...target, type: 'Regular' }, 'Joel'), true);
+  assert.equal(isLowestScoreEligible({ ...target, teamB: 'Nuss' }, 'Joel'), true);
+  assert.equal(isLowestScoreEligible({ ...target, scoreA: 6.5, scoreB: 4.6 }, 'Joel'), false);
 });
 
 test('derived statistics match the current client calculations', async () => {
@@ -119,6 +398,11 @@ test('derived statistics match the current client calculations', async () => {
   for (const field of ['top', 'low', 'high150']) {
     assert.deepEqual(sortBy(derived.weekly_awards[field], row => row.team), sortBy(clientAwards[field], row => row.team));
   }
+
+  const clientBottom = stats.computeBottomNWeeklyScoresAllTeams(bundle.H2H, 25)
+    .map(({ g: _game, ...row }) => row);
+  assert.deepEqual(derived.records.bottom_scores, clientBottom);
+  assert.equal(derived.records.bottom_scores.some(row => row.date === '2022-12-24' && ['Joel', 'Plot'].includes(row.team)), false);
 
   const clientPairs = sortBy(stats.computeHeadToHeadPairs(bundle.H2H, 0), row => `${row.team}|${row.opp}`);
   assert.deepEqual(derived.head_to_head_pairs, clientPairs);
@@ -160,6 +444,50 @@ test('manifest is deterministic, content-addressed, and excludes its own bytes',
     assert.equal(canonicalJson(withPlaceholder), canonicalJson(withoutPlaceholder));
   } finally {
     fs.rmSync(temp, { recursive: true, force: true });
+  }
+});
+
+test('manifest transaction coverage handles populated, empty, and generic assets', () => {
+  assert.deepEqual(seasonCoverage('TransactionHistory', {
+    seasons: [
+      { season: 2025, transactions: [{}, {}] },
+      { season: 2026, transactions: [{}] },
+    ],
+  }), { rows: 3, season_min: 2025, season_max: 2026 });
+  assert.deepEqual(seasonCoverage('TransactionHistory', {}), {
+    rows: 0,
+    season_min: null,
+    season_max: null,
+  });
+  assert.deepEqual(seasonCoverage('Rivalries', [{ slug: 'fixture' }]), {
+    rows: 1,
+    season_min: null,
+    season_max: null,
+  });
+});
+
+test('generated-file comparison reports equal, missing, and stale artifacts', () => {
+  const committed = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-committed-'));
+  const generated = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-generated-'));
+  try {
+    for (const directory of [committed, generated]) fs.mkdirSync(path.join(directory, 'nested'));
+    fs.writeFileSync(path.join(committed, 'nested/equal.txt'), 'equal');
+    fs.writeFileSync(path.join(generated, 'nested/equal.txt'), 'equal');
+    fs.writeFileSync(path.join(committed, 'nested/stale.txt'), 'old');
+    fs.writeFileSync(path.join(generated, 'nested/stale.txt'), 'new');
+    fs.writeFileSync(path.join(generated, 'nested/missing.txt'), 'generated');
+    assert.deepEqual(compareGeneratedFiles(committed, generated, ['nested/equal.txt']), []);
+    assert.deepEqual(compareGeneratedFiles(committed, generated, [
+      'nested/missing.txt',
+      'nested/stale.txt',
+    ]), [
+      'nested/missing.txt: committed generated file is missing',
+      'nested/stale.txt: stale; run npm run generate:data',
+    ]);
+    assert.equal(fromRoot(committed, 'nested/equal.txt'), path.join(committed, 'nested/equal.txt'));
+  } finally {
+    fs.rmSync(committed, { recursive: true, force: true });
+    fs.rmSync(generated, { recursive: true, force: true });
   }
 });
 

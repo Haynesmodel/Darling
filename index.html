@@ -4,6 +4,23 @@
   <meta charset="UTF-8" />
   <title>The Darling</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="The Darling league history, current season, rivalries, trophies, Dynasty, Draft Spot, and weekly recaps." />
+  <meta property="og:title" content="The Darling" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://haynesmodel.github.io/Darling/" />
+  <meta property="og:description" content="League history, current season, rivalries, trophies, Dynasty, Draft Spot, and weekly recaps." />
+  <meta property="og:site_name" content="The Darling" />
+  <meta property="og:image" content="https://haynesmodel.github.io/Darling/assets/share/darling-default-card.png" />
+  <meta property="og:image:secure_url" content="https://haynesmodel.github.io/Darling/assets/share/darling-default-card.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="The Darling league site: history, current season, rivalries, trophies, Dynasty, Draft Spot, and weekly recaps." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="The Darling" />
+  <meta name="twitter:description" content="League history, current season, rivalries, trophies, Dynasty, Draft Spot, and weekly recaps." />
+  <meta name="twitter:image" content="https://haynesmodel.github.io/Darling/assets/share/darling-default-card.png" />
+  <meta name="twitter:image:alt" content="The Darling league site: history, current season, rivalries, trophies, Dynasty, Draft Spot, and weekly recaps." />
 </head>
 <body>
   <div id="appShell">
@@ -51,32 +68,183 @@
   </header>
 
   <nav class="primary-nav" aria-label="Primary">
-    <div class="tab-strip-shell">
-      <div id="primaryTabStrip" class="tab-strip" role="tablist" aria-label="League sections">
-        <button class="tab active" id="tabPulseBtn" type="button" role="tab" aria-selected="true" aria-controls="page-pulse" tabindex="0">League Pulse</button>
-        <button class="tab" id="tabHistoryBtn" type="button" role="tab" aria-selected="false" aria-controls="page-history" tabindex="-1">League History</button>
-        <button class="tab" id="tabCurrentBtn" type="button" role="tab" aria-selected="false" aria-controls="page-current" tabindex="-1">Current Season</button>
-        <button class="tab" id="tabRivalryBtn" type="button" role="tab" aria-selected="false" aria-controls="page-rivalry" tabindex="-1">Head to Head</button>
-        <button class="tab" id="tabTrophyBtn" type="button" role="tab" aria-selected="false" aria-controls="page-trophy" tabindex="-1">Trophy Case</button>
-        <button class="tab" id="tabDynastyBtn" type="button" role="tab" aria-selected="false" aria-controls="page-dynasty" tabindex="-1">Dynasty Rankings</button>
-        <button class="tab" id="tabDraftBtn" type="button" role="tab" aria-selected="false" aria-controls="page-draft" tabindex="-1">Draft Spot</button>
-        <button class="tab" id="tabGauntletBtn" type="button" role="tab" aria-selected="false" aria-controls="page-gauntlet" tabindex="-1">Historical Matchup</button>
-      </div>
-      <button id="tabScrollPrev" class="tab-scroll-button" type="button" aria-label="Scroll tabs left" hidden>‹</button>
-      <button id="tabScrollNext" class="tab-scroll-button" type="button" aria-label="Scroll tabs right" hidden>›</button>
+    <div id="primaryNavigation" class="primary-navigation">
+      <a class="primary-nav-control active" id="tabPulseBtn" data-feature-id="pulse" href="./" aria-label="Home — League Pulse" aria-current="page">Home</a>
+      <a class="primary-nav-control" id="tabCurrentBtn" data-feature-id="current" href="?tab=current" aria-label="Season — Current Season">Season</a>
+      <details class="primary-nav-group" data-navigation-group="owners">
+        <summary class="primary-nav-control">
+          Owners<span class="visually-hidden" data-current-group-label></span>
+        </summary>
+        <div class="primary-nav-menu">
+          <a id="tabOwnerBtn" data-feature-id="owner" href="?tab=owner">
+            My Team<span class="visually-hidden" data-owner-preference-status>, not chosen</span>
+          </a>
+          <a id="tabTransactionsBtn" data-feature-id="transactions" href="?tab=transactions">Transactions</a>
+          <a id="tabHistoryBtn" data-feature-id="history" href="?tab=history">League History</a>
+          <a id="tabTrophyBtn" data-feature-id="trophy" href="?tab=trophy">Trophy Case</a>
+          <a id="tabDynastyBtn" data-feature-id="dynasty" href="?tab=dynasty">Dynasty Rankings</a>
+        </div>
+      </details>
+      <a
+        class="primary-nav-control primary-nav-rivalry"
+        id="tabRivalryBtn"
+        data-feature-id="rivalry"
+        href="?tab=rivalry"
+      >
+        <span class="primary-nav-wide-label" aria-hidden="true">Rivalries</span>
+        <span class="primary-nav-compact-label" aria-hidden="true">H2H</span>
+        <span class="visually-hidden">Rivalries — Head to Head</span>
+      </a>
+      <details class="primary-nav-group" data-navigation-group="tools">
+        <summary class="primary-nav-control">
+          Tools<span class="visually-hidden" data-current-group-label></span>
+        </summary>
+        <div class="primary-nav-menu primary-nav-menu-end">
+          <a id="tabDraftBtn" data-feature-id="draft" href="?tab=draft">Draft Spot</a>
+          <a id="tabGauntletBtn" data-feature-id="gauntlet" href="?tab=gauntlet">Historical Matchup</a>
+        </div>
+      </details>
     </div>
     <div id="globalSearchRoot" class="global-search-mount"></div>
   </nav>
 
   <main id="mainContent" tabindex="-1">
     <div id="appStatus" class="status-banner status-loading" role="status" aria-live="polite">Loading league data...</div>
-    <section id="page-pulse" class="page visible" role="tabpanel" aria-labelledby="tabPulseBtn">
-      <h2 class="visually-hidden">League Pulse</h2>
+    <div id="draftWeekendWelcomeRoot">
+      <section class="draft-weekend-welcome" data-draft-weekend-welcome hidden aria-labelledby="draftWeekendWelcomeTitle">
+        <div class="draft-weekend-stadium-lights" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div class="draft-weekend-confetti" aria-hidden="true">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+        <div class="draft-weekend-glow draft-weekend-glow-one" aria-hidden="true"></div>
+        <div class="draft-weekend-glow draft-weekend-glow-two" aria-hidden="true"></div>
+        <div class="draft-weekend-ball draft-weekend-ball-one" aria-hidden="true">🏈</div>
+        <div class="draft-weekend-ball draft-weekend-ball-two" aria-hidden="true">🏈</div>
+        <div class="draft-weekend-content">
+          <div class="draft-weekend-scoreboard" aria-label="Draft Weekend live broadcast">
+            <span class="draft-weekend-scoreboard-live"><span class="draft-weekend-live-dot" aria-hidden="true"></span> Live</span>
+            <span>2026 Draft Night</span>
+            <span>12 Teams • One Board</span>
+          </div>
+          <div class="draft-weekend-kicker"><span class="draft-weekend-live-dot" aria-hidden="true"></span> Draft agent is online</div>
+          <div class="draft-weekend-heading-row">
+            <div>
+              <p class="draft-weekend-eyebrow">The league is on the clock <span aria-hidden="true">◆</span></p>
+              <h2 id="draftWeekendWelcomeTitle">Welcome to Draft Weekend, 2026</h2>
+              <p class="draft-weekend-announcement">THE MAIN EVENT IS HERE <span aria-hidden="true">✦</span></p>
+              <p class="draft-weekend-intro">The rosters are fresh, the takes are spicy, and one Sunday stands between you and glory. Lights up, board live, let the draft-night drama begin.</p>
+            </div>
+            <div class="draft-weekend-whistle" aria-hidden="true">🏈</div>
+          </div>
+          <div class="draft-weekend-honors" aria-label="Draft Weekend league honors">
+            <article class="draft-weekend-honor draft-weekend-honor-gold" aria-label="Reigning Champ: Zook">
+              <span class="draft-weekend-honor-icon" aria-hidden="true">🏆</span><span class="draft-weekend-honor-label">Reigning Champ:</span><strong>Zook</strong>
+            </article>
+            <article class="draft-weekend-honor draft-weekend-honor-violet" aria-label="Reigning Saunders: Connor">
+              <span class="draft-weekend-honor-icon" aria-hidden="true">🐔</span><span class="draft-weekend-honor-label">Reigning Saunders:</span><strong>Connor</strong>
+            </article>
+            <article class="draft-weekend-honor draft-weekend-honor-green" aria-label="VPC: Shap">
+              <span class="draft-weekend-honor-icon" aria-hidden="true">🎯</span><span class="draft-weekend-honor-label">VPC:</span><strong>Shap</strong>
+            </article>
+            <article class="draft-weekend-honor draft-weekend-honor-blue" aria-label="Commish: Plotnick">
+              <span class="draft-weekend-honor-icon" aria-hidden="true">🍔</span><span class="draft-weekend-honor-label">Commish:</span><strong>Plotnick</strong>
+            </article>
+          </div>
+          <section class="draft-order-carousel" data-draft-order-carousel aria-labelledby="draftOrderTitle" aria-roledescription="carousel">
+            <div class="draft-order-header">
+              <div>
+                <p class="draft-order-eyebrow">How the board was earned</p>
+                <h3 id="draftOrderTitle">Draft Order Competition</h3>
+              </div>
+              <span class="draft-order-status" data-draft-order-status>Group 1 of 3</span>
+            </div>
+            <div class="draft-order-stage">
+              <div class="draft-order-slide is-active" data-draft-order-slide aria-hidden="false" aria-label="Group 1 of 3: The water delivered">
+                <p class="draft-order-group-title">The water delivered</p>
+                <div class="draft-order-grid">
+                  <article class="draft-order-card" aria-label="Nuss finished 1st in the competition and drafts 1st. First legit asterisk fish.">
+                    <span class="draft-order-finish">Competition 1st</span><h4>Nuss</h4><p>First legit* fish</p><strong>Drafting #1</strong>
+                  </article>
+                  <article class="draft-order-card" aria-label="Snare finished 2nd in the competition and drafts 2nd. Chesapeake Chicken; crab got his nipple.">
+                    <span class="draft-order-finish">Competition 2nd</span><h4>Snare</h4><p>Chesapeake Chicken; crab got his nipple</p><strong>Drafting #2</strong>
+                  </article>
+                  <article class="draft-order-card" aria-label="Haynes finished 3rd in the competition and drafts 5th. Chesapeake Chicken, ate a fish eye, and caught a crab.">
+                    <span class="draft-order-finish">Competition 3rd</span><h4>Haynes</h4><p>Chesapeake Chicken, ate a fish eye, caught a crab</p><strong>Drafting #5</strong>
+                  </article>
+                  <article class="draft-order-card" aria-label="Shap finished 4th in the competition and drafts 7th. Chesapeake Chicken.">
+                    <span class="draft-order-finish">Competition 4th</span><h4>Shap</h4><p>Chesapeake Chicken</p><strong>Drafting #7</strong>
+                  </article>
+                </div>
+              </div>
+              <div class="draft-order-slide" data-draft-order-slide aria-hidden="true" aria-label="Group 2 of 3: Chicken, choices, and eyeballs">
+                <p class="draft-order-group-title">Chicken, choices &amp; eyeballs</p>
+                <div class="draft-order-grid">
+                  <article class="draft-order-card" aria-label="Connor finished 5th in the competition and drafts 12th. Chesapeake Chicken; at one point caught a fish but had it overturned.">
+                    <span class="draft-order-finish">Competition 5th</span><h4>Connor</h4><p>Chesapeake Chicken; at one point caught a fish but had it overturned</p><strong>Drafting #12</strong>
+                  </article>
+                  <article class="draft-order-card" aria-label="Singer finished 6th in the competition and drafts 11th. Picked Connor.">
+                    <span class="draft-order-finish">Competition 6th</span><h4>Singer</h4><p>Picked Connor</p><strong>Drafting #11</strong>
+                  </article>
+                  <article class="draft-order-card" aria-label="Plot finished 7th in the competition and drafts 3rd. Chesapeake Chicken.">
+                    <span class="draft-order-finish">Competition 7th</span><h4>Plot</h4><p>Chesapeake Chicken</p><strong>Drafting #3</strong>
+                  </article>
+                  <article class="draft-order-card" aria-label="Zubs finished 8th in the competition and drafts 4th. Ate the first fish eyeball.">
+                    <span class="draft-order-finish">Competition 8th</span><h4>Zubs</h4><p>Ate the first fish eyeball</p><strong>Drafting #4</strong>
+                  </article>
+                </div>
+              </div>
+              <div class="draft-order-slide" data-draft-order-slide aria-hidden="true" aria-label="Group 3 of 3: The eye and the random number generator">
+                <p class="draft-order-group-title">The eye &amp; the RNG</p>
+                <div class="draft-order-grid">
+                  <article class="draft-order-card" aria-label="Joel finished 9th in the competition and drafts 10th. Ate a fish eye.">
+                    <span class="draft-order-finish">Competition 9th</span><h4>Joel</h4><p>Ate a fish eye</p><strong>Drafting #10</strong>
+                  </article>
+                  <article class="draft-order-card" aria-label="Zook finished 10th in the competition and drafts 8th. Random number generator; knew fishing would be too complicated.">
+                    <span class="draft-order-finish">Competition 10th</span><h4>Zook</h4><p>Random number generator; knew fishing would be too complicated</p><strong>Drafting #8</strong>
+                  </article>
+                  <article class="draft-order-card" aria-label="Shemer finished 11th in the competition and drafts 6th. Random number generator.">
+                    <span class="draft-order-finish">Competition 11th</span><h4>Shemer</h4><p>Random number generator</p><strong>Drafting #6</strong>
+                  </article>
+                  <article class="draft-order-card" aria-label="Rishi finished 12th in the competition and drafts 9th. Random number generator; originally had the tiebreaker for hitting Nussbaum's fish head-on, but Captain Mike overruled it.">
+                    <span class="draft-order-finish">Competition 12th</span><h4>Rishi</h4><p>Random number generator. Originally had the tiebreaker for hitting Nussbaum's fish head-on, but got overruled by Captain Mike</p><strong>Drafting #9</strong>
+                  </article>
+                </div>
+              </div>
+            </div>
+            <p class="draft-order-footnote">*“Legit” according to league sources; the Israel angle remains sealed in the commissioner’s conspiracy file.</p>
+            <div class="draft-order-controls">
+              <button type="button" data-draft-order-previous aria-label="Show previous draft order group">← Previous</button>
+              <div class="draft-order-dots" aria-hidden="true"><span class="is-active"></span><span></span><span></span></div>
+              <button type="button" data-draft-order-toggle>Pause slideshow</button>
+              <button type="button" data-draft-order-next aria-label="Show next draft order group">Next →</button>
+            </div>
+          </section>
+          <div class="draft-weekend-footer">
+            <p><span aria-hidden="true">🏟️</span> Good luck, managers. May your sleepers sleep and your rivals panic.</p>
+            <button type="button" class="draft-weekend-dismiss" data-draft-weekend-dismiss>Enter the league <span aria-hidden="true">→</span></button>
+          </div>
+        </div>
+      </section>
+    </div>
+    <section id="page-pulse" class="page visible" aria-labelledby="page-pulse-title">
+      <h2 id="page-pulse-title" class="visually-hidden">League Pulse</h2>
       <div id="leaguePulseRoot"></div>
     </section>
 
-    <section id="page-history" class="page" role="tabpanel" aria-labelledby="tabHistoryBtn" hidden>
-      <h2 class="visually-hidden">League History</h2>
+    <section id="page-owner" class="page" aria-labelledby="page-owner-title" hidden>
+      <h2 id="page-owner-title">My Team</h2>
+      <div id="ownerHubRoot"></div>
+    </section>
+
+    <section id="page-transactions" class="page" aria-labelledby="page-transactions-title" hidden>
+      <h2 id="page-transactions-title" class="visually-hidden">Transactions</h2>
+      <div id="transactionHistoryRoot">
+        <div class="status-banner status-loading" role="status">Open Transactions to load player movement history.</div>
+      </div>
+    </section>
+
+    <section id="page-history" class="page" aria-labelledby="page-history-title" hidden>
+      <h2 id="page-history-title" class="visually-hidden">League History</h2>
       <div class="card">
         <div class="controls filters">
           <label>Team:
@@ -124,51 +292,61 @@
         </div>
       </div>
 
-      <div class="card" id="teamOverview">
-        <div id="teamOverviewGrid" class="overview-grid"></div>
-      </div>
-      <div id="seasonCallout"></div>
-
-      <div class="card">
-        <h3>Fun Facts</h3>
-        <div id="funFacts" class="stats-grid fun-grid"></div>
-        <div id="funLists" class="fun-lists"></div>
-      </div>
-
-      <div class="card" id="curseTracker">
-        <div class="section-heading">
-          <h3>Curse Tracker</h3>
-          <div id="curseSummary" class="muted"></div>
-        </div>
-        <div id="curseControls" class="controls filters"></div>
-        <div id="curseGrid" class="curse-grid"></div>
-      </div>
-
-      <div class="card">
-        <h3 id="oppTableTitle">Opponent Breakdown</h3>
-        <div id="rivalGroupCallouts" class="callouts"></div>
-        <div id="oppTableRoot"></div>
-      </div>
-
-      <div class="card">
-        <h3>Season Recap</h3>
-        <div id="seasonRecapTableRoot"></div>
-      </div>
-
-      <div class="card">
-        <h3>Week-by-Week</h3>
-        <div id="weekTableRoot"></div>
-      </div>
-
-      <div class="card" id="historyGamesCard">
-        <h3>All Games</h3>
-        <p id="historyGamesQuerySummary" class="muted history-games-query-summary" aria-live="polite"></p>
-        <div id="historyGamesTableRoot"></div>
-      </div>
+      <div id="historySectionNav"></div>
+      <details id="historyOverviewDisclosure" class="card feature-disclosure">
+        <summary>Owner Overview</summary>
+        <section id="teamOverview" class="feature-section-content">
+          <div id="teamOverviewGrid" class="overview-grid"></div>
+          <div id="seasonCallout"></div>
+        </section>
+      </details>
+      <details id="historyFunFactsDisclosure" class="card feature-disclosure">
+        <summary>Fun Facts</summary>
+        <section class="feature-section-content">
+          <div id="funFacts" class="stats-grid fun-grid"></div>
+          <div id="funLists" class="fun-lists"></div>
+        </section>
+      </details>
+      <details id="historyCurseDisclosure" class="card feature-disclosure">
+        <summary>Curse Tracker</summary>
+        <section id="curseTracker" class="feature-section-content">
+          <div class="section-heading">
+            <div id="curseSummary" class="muted"></div>
+          </div>
+          <div id="curseControls" class="controls filters"></div>
+          <div id="curseGrid" class="curse-grid"></div>
+        </section>
+      </details>
+      <details id="historyOpponentsDisclosure" class="card feature-disclosure">
+        <summary id="oppTableTitle">Opponent Breakdown</summary>
+        <section class="feature-section-content">
+          <div id="rivalGroupCallouts" class="callouts"></div>
+          <div id="oppTableRoot"></div>
+        </section>
+      </details>
+      <details id="historySeasonsDisclosure" class="card feature-disclosure">
+        <summary>Season Recap</summary>
+        <section class="feature-section-content">
+          <div id="seasonRecapTableRoot"></div>
+        </section>
+      </details>
+      <details id="historyWeeksDisclosure" class="card feature-disclosure">
+        <summary>Week-by-Week</summary>
+        <section class="feature-section-content">
+          <div id="weekTableRoot"></div>
+        </section>
+      </details>
+      <details id="historyGamesDisclosure" class="card feature-disclosure">
+        <summary>All Games</summary>
+        <section id="historyGamesCard" class="feature-section-content">
+          <p id="historyGamesQuerySummary" class="muted history-games-query-summary" aria-live="polite"></p>
+          <div id="historyGamesTableRoot"></div>
+        </section>
+      </details>
     </section>
 
-    <section id="page-current" class="page" role="tabpanel" aria-labelledby="tabCurrentBtn" hidden>
-      <h2 class="visually-hidden">Current Season</h2>
+    <section id="page-current" class="page" aria-labelledby="page-current-title" hidden>
+      <h2 id="page-current-title" class="visually-hidden">Current Season</h2>
       <div class="card">
         <div class="controls filters current-controls">
           <label>Season:
@@ -190,226 +368,193 @@
       </div>
 
       <section id="currentHero" class="card current-hero"></section>
-      <section id="currentPlayoffPicture" class="card current-playoff-picture"></section>
-      <section id="currentWeekNeeds" class="current-week-needs"></section>
-      <section id="currentLiveMovement" class="card current-live-movement"></section>
-      <section id="currentProjectedStandings" class="card current-projected-standings"></section>
-      <section id="currentMatchups" class="current-matchups"></section>
-      <section id="currentStandings" class="card"></section>
-      <section id="currentTeamSnapshots" class="current-team-snapshots"></section>
+      <div id="currentSectionNav"></div>
+      <details id="currentRecapDisclosure" class="card feature-disclosure">
+        <summary>Season Recap</summary>
+        <section id="currentRecap" class="feature-section-content current-recap"></section>
+      </details>
+      <details id="currentPlayoffPictureDisclosure" class="card feature-disclosure">
+        <summary>Playoff Picture</summary>
+        <section id="currentPlayoffPicture" class="feature-section-content current-playoff-picture"></section>
+      </details>
+      <details id="currentWeekNeedsDisclosure" class="card feature-disclosure">
+        <summary>Owner Needs</summary>
+        <section id="currentWeekNeeds" class="feature-section-content current-week-needs"></section>
+      </details>
+      <details id="currentLiveMovementDisclosure" class="card feature-disclosure">
+        <summary>Live Movement</summary>
+        <section id="currentLiveMovement" class="feature-section-content current-live-movement"></section>
+      </details>
+      <details id="currentProjectedStandingsDisclosure" class="card feature-disclosure">
+        <summary>Projected Standings</summary>
+        <section id="currentProjectedStandings" class="feature-section-content current-projected-standings"></section>
+      </details>
+      <details id="currentMatchupsDisclosure" class="card feature-disclosure">
+        <summary>Matchups</summary>
+        <section id="currentMatchups" class="feature-section-content current-matchups"></section>
+      </details>
+      <details id="currentStandingsDisclosure" class="card feature-disclosure">
+        <summary>Standings</summary>
+        <section id="currentStandings" class="feature-section-content"></section>
+      </details>
+      <details id="currentTeamSnapshotsDisclosure" class="card feature-disclosure">
+        <summary>Owner Snapshots</summary>
+        <section id="currentTeamSnapshots" class="feature-section-content current-team-snapshots"></section>
+      </details>
     </section>
 
-    <section id="page-rivalry" class="page" role="tabpanel" aria-labelledby="tabRivalryBtn" hidden>
-      <h2 class="visually-hidden">Head to Head</h2>
-      <div class="card">
-        <div class="controls filters rivalry-controls">
-          <select id="rivalryTeamA" aria-label="First team"></select>
-          <span class="rivalry-vs">vs</span>
-          <select id="rivalryTeamB" aria-label="Second team"></select>
-          <label>Scope:
-            <select id="rivalryScopeSelect">
-              <option value="allTime">All-Time</option>
-              <option value="currentSeason">Current Season</option>
-              <option value="historic">Historical Before Current Season</option>
-            </select>
-          </label>
-        </div>
-      </div>
+    <section id="page-rivalry" class="page" aria-labelledby="page-rivalry-title" hidden>
+      <h2 id="page-rivalry-title" class="visually-hidden">Head to Head</h2>
+      <div id="rivalryRoot"></div>
+    </section>
 
-      <div class="card" id="rivalryHeadline"></div>
-
-      <div class="card">
-        <h3>Series Lead</h3>
-        <div id="rivalryLeadMeter"></div>
-      </div>
-
-      <div class="card">
-        <h3>Highlights</h3>
-        <div id="rivalryHighlightBoard" class="rivalry-highlight-board"></div>
-      </div>
-
-      <div class="card">
-        <h3>Head to Head</h3>
-        <div id="rivalryTapeGrid" class="stats-grid rivalry-tape"></div>
-      </div>
-
-      <div class="card">
-        <h3>Lead Trend</h3>
-        <div id="rivalryLeadTrend"></div>
-      </div>
-
-      <div class="card">
-        <h3>Timeline</h3>
-        <div id="rivalryTimeline" class="rivalry-timeline"></div>
-      </div>
-
-      <div class="card">
-        <h3>Season Breakdown</h3>
-        <div id="rivalrySeasonTableRoot"></div>
-      </div>
-
-      <div class="card">
-        <h3>Game Log</h3>
-        <div id="rivalryGameTableRoot"></div>
+    <section id="page-trophy" class="page" aria-labelledby="page-trophy-title" hidden>
+      <h2 id="page-trophy-title" class="visually-hidden">Trophy Case</h2>
+      <div id="trophyRoot">
+        <div id="trophySectionNav"></div>
+        <details id="trophyHardwareDisclosure" class="card feature-disclosure"><summary>Hardware Shelf</summary><section class="feature-section-content"></section></details>
+        <details id="trophyRankDisclosure" class="card feature-disclosure"><summary>League Rank</summary><section class="feature-section-content"></section></details>
+        <details id="trophyCareerDisclosure" class="card feature-disclosure"><summary>Career Shape</summary><section class="feature-section-content"></section></details>
+        <details id="trophyMomentsDisclosure" class="card feature-disclosure"><summary>Highlights and Low Points</summary><section class="feature-section-content"></section></details>
+        <details id="trophyLedgerDisclosure" class="card feature-disclosure"><summary>Season Ledger</summary><section class="feature-section-content"></section></details>
       </div>
     </section>
 
-    <section id="page-trophy" class="page" role="tabpanel" aria-labelledby="tabTrophyBtn" hidden>
-      <h2 class="visually-hidden">Trophy Case</h2>
-      <div class="trophy-toolbar">
-        <select id="trophyOwnerSelect" aria-label="Trophy case owner"></select>
-      </div>
-
-      <section id="trophyHero" class="trophy-hero"></section>
-
-      <section class="card">
-        <h3>Hardware Shelf</h3>
-        <div id="trophyHardwareShelf" class="trophy-shelf"></div>
-      </section>
-
-      <section class="card">
-        <h3>League Rank</h3>
-        <div id="trophyRankStrip" class="trophy-rank-strip"></div>
-      </section>
-
-      <section class="card">
-        <h3>Career Shape</h3>
-        <div id="trophyCareerShape" class="trophy-career-shape"></div>
-      </section>
-
-      <section class="trophy-split">
-        <div class="card">
-          <h3>Highlights</h3>
-          <div id="trophyAchievementList"></div>
-        </div>
-        <div class="card">
-          <h3>Low Points</h3>
-          <div id="trophyScarList"></div>
-        </div>
-      </section>
-
-      <section class="card">
-        <h3>Season Ledger</h3>
-        <div id="trophySeasonTableRoot" class="trophy-ledger"></div>
-      </section>
+    <section id="page-dynasty" class="page" aria-labelledby="page-dynasty-title" hidden>
+      <h2 id="page-dynasty-title" class="visually-hidden">Dynasty Rankings</h2>
+      <div id="dynastyRoot"></div>
     </section>
 
-    <section id="page-dynasty" class="page" role="tabpanel" aria-labelledby="tabDynastyBtn" hidden>
-      <h2 class="visually-hidden">Dynasty Rankings</h2>
-      <div class="card">
-        <div class="controls filters dynasty-controls">
-          <label>Mode:
-            <select id="dynastyModeSelect"></select>
-          </label>
-          <label>Owner:
-            <select id="dynastyOwnerSelect"></select>
-          </label>
-          <label>Start:
-            <select id="dynastyStartSeason"></select>
-          </label>
-          <label>End:
-            <select id="dynastyEndSeason"></select>
-          </label>
-          <label>Minimum Seasons to Qualify:
-            <select id="dynastyMinSeasons"></select>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" id="dynastySaundersToggle" checked />
-            Include Saunders penalties
-          </label>
-        </div>
-        <p class="dynasty-control-hint" id="dynastyControlHint">
-          Individual scores one owner across the chosen range. Minimum Seasons to Qualify is the cutoff for being scored, and Saunders penalties stay optional.
-        </p>
-      </div>
-
-      <div class="card" id="dynastyCalculatorHero"></div>
-
-      <div class="card">
-        <h3>Score Breakdown</h3>
-        <div id="dynastyScoreBreakdown"></div>
-      </div>
-
-      <div class="card">
-        <h3>Period Comparison</h3>
-        <div id="dynastyPeriodLeaderboard"></div>
-      </div>
-
-      <div class="card">
-        <h3>Best Dynasty Windows</h3>
-        <div id="dynastyBestWindows"></div>
-      </div>
-
-      <div class="card">
-        <div id="dynastyTrendChart"></div>
-      </div>
-
-      <div class="card">
-        <h3>Era Heatmap</h3>
-        <div id="dynastyHeatmap" role="region" aria-label="Dynasty rankings by season" tabindex="0"></div>
-      </div>
-
-      <div class="card">
-        <h3>Slumps</h3>
-        <div id="dynastySlumps"></div>
-      </div>
-
-      <dialog id="dynastyWindowModal" class="dynasty-modal" aria-labelledby="dynastyWindowModalTitle"></dialog>
-    </section>
-
-    <section id="page-draft" class="page" role="tabpanel" aria-labelledby="tabDraftBtn" hidden>
-      <h2 class="visually-hidden">Draft Spot</h2>
+    <section id="page-draft" class="page" aria-labelledby="page-draft-title" hidden>
+      <h2 id="page-draft-title" class="visually-hidden">Draft Spot</h2>
       <div id="draftSpotRoot">
         <div class="status-banner status-loading" role="status">Open Draft Spot to load its historical draft data.</div>
       </div>
     </section>
 
-    <section id="page-gauntlet" class="page" role="tabpanel" aria-labelledby="tabGauntletBtn" hidden>
-      <h2 class="visually-hidden">Historical Matchup</h2>
+    <section id="page-gauntlet" class="page" aria-labelledby="page-gauntlet-title" hidden>
+      <h2 id="page-gauntlet-title" class="visually-hidden">Historical Matchup</h2>
       <div class="card gauntlet-card">
         <h3>Historical Matchup</h3>
         <div class="card-kicker">Compare two owner-seasons using the league's scoring history.</div>
         <div id="gauntletControls"></div>
       </div>
 
-      <div class="card gauntlet-card">
-        <h3>Matchup</h3>
-        <div id="gauntletMatchup"></div>
-        <div id="gauntletProbability"></div>
-      </div>
-
-      <div class="card gauntlet-card">
-        <h3>Score Distribution</h3>
-        <div id="gauntletHistogram"></div>
-      </div>
-
-      <div class="card gauntlet-card">
-        <h3>Key Stats</h3>
-        <div id="gauntletStats"></div>
-      </div>
-
-      <div class="card gauntlet-card">
-        <h3>Head to Head Context</h3>
-        <div id="gauntletContext"></div>
-      </div>
-
-      <div class="card gauntlet-card">
-        <h3>Narrative and Copy</h3>
-        <p id="gauntletNarrative" class="gauntlet-narrative"></p>
-        <div class="gauntlet-copy-row">
-          <button type="button" id="gauntletCopyBtn" class="btn primary">Copy Result</button>
-        </div>
-        <textarea id="gauntletCopyText" class="gauntlet-copy-text" rows="8" readonly aria-label="Copyable gauntlet result"></textarea>
-      </div>
+      <div id="gauntletSectionNav"></div>
+      <details id="gauntletMatchupDisclosure" class="card gauntlet-card feature-disclosure">
+        <summary>Matchup</summary>
+        <section class="feature-section-content">
+          <div id="gauntletMatchup"></div>
+          <div id="gauntletProbability"></div>
+        </section>
+      </details>
+      <details id="gauntletHistogramDisclosure" class="card gauntlet-card feature-disclosure">
+        <summary>Score Distribution</summary>
+        <section class="feature-section-content"><div id="gauntletHistogram"></div></section>
+      </details>
+      <details id="gauntletStatsDisclosure" class="card gauntlet-card feature-disclosure">
+        <summary>Key Stats</summary>
+        <section class="feature-section-content"><div id="gauntletStats"></div></section>
+      </details>
+      <details id="gauntletContextDisclosure" class="card gauntlet-card feature-disclosure">
+        <summary>Head to Head Context</summary>
+        <section class="feature-section-content"><div id="gauntletContext"></div></section>
+      </details>
+      <details id="gauntletCopyDisclosure" class="card gauntlet-card feature-disclosure">
+        <summary>Narrative and Copy</summary>
+        <section class="feature-section-content">
+          <p id="gauntletNarrative" class="gauntlet-narrative"></p>
+          <div class="gauntlet-copy-row">
+            <button type="button" id="gauntletCopyBtn" class="btn primary">Copy Result</button>
+          </div>
+          <textarea id="gauntletCopyText" class="gauntlet-copy-text" rows="8" readonly aria-label="Copyable gauntlet result"></textarea>
+        </section>
+      </details>
     </section>
   </main>
 
-  <div id="fxCrown" class="fx-layer"></div>
-  <div id="fxSaunders" class="fx-layer"></div>
-  <div id="fxGroup" class="fx-layer"></div>
   </div>
   <div id="globalSearchPortal"></div>
 
+  <!-- Keep the temporary date gate in the shell so this weekend-only feature does not inflate the app bundle. -->
+  <script>
+    (() => {
+      const welcome = document.querySelector('[data-draft-weekend-welcome]');
+      if (!welcome) return;
+      const featureQueryKeys = new Set(['owner', 'team', 'seasons', 'weeks', 'opps', 'types', 'rounds', 'focus', 'rivalryTeamA', 'rivalryTeamB', 'currentOwner', 'trophyOwner', 'dynastyOwner', 'ga']);
+      const dismiss = document.querySelector('[data-draft-weekend-dismiss]');
+      const carousel = welcome.querySelector?.('[data-draft-order-carousel]');
+      const slides = carousel ? [...carousel.querySelectorAll('[data-draft-order-slide]')] : [];
+      const slideStatus = carousel?.querySelector('[data-draft-order-status]');
+      const slideToggle = carousel?.querySelector('[data-draft-order-toggle]');
+      const reducedMotion = carousel && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let slideIndex = 0;
+      let slideTimer = 0;
+      let slidePaused = Boolean(reducedMotion);
+      let slideHovered = false;
+      let slideFocused = false;
+      const showSlide = index => {
+        slideIndex = (index + slides.length) % slides.length;
+        slides.forEach((slide, current) => {
+          const active = current === slideIndex;
+          slide.classList.toggle('is-active', active);
+          slide.setAttribute('aria-hidden', String(!active));
+        });
+        carousel?.querySelectorAll('.draft-order-dots span').forEach((dot, current) => dot.classList.toggle('is-active', current === slideIndex));
+        if (slideStatus) slideStatus.textContent = `Group ${slideIndex + 1} of ${slides.length}`;
+      };
+      const stopSlides = () => { if (slideTimer) window.clearInterval(slideTimer); slideTimer = 0; };
+      const startSlides = () => {
+        stopSlides();
+        if (!slidePaused && !slideHovered && !slideFocused && !welcome.hidden && slides.length > 1) slideTimer = window.setInterval(() => showSlide(slideIndex + 1), 5000);
+      };
+      const moveSlide = amount => { showSlide(slideIndex + amount); startSlides(); };
+      carousel?.querySelector('[data-draft-order-previous]')?.addEventListener('click', () => moveSlide(-1));
+      carousel?.querySelector('[data-draft-order-next]')?.addEventListener('click', () => moveSlide(1));
+      slideToggle?.addEventListener('click', () => {
+        slidePaused = !slidePaused;
+        slideToggle.textContent = slidePaused ? 'Play slideshow' : 'Pause slideshow';
+        startSlides();
+      });
+      if (reducedMotion && slideToggle) slideToggle.hidden = true;
+      carousel?.addEventListener('mouseenter', () => { slideHovered = true; stopSlides(); });
+      carousel?.addEventListener('mouseleave', () => { slideHovered = false; startSlides(); });
+      carousel?.addEventListener('focusin', () => { slideFocused = true; stopSlides(); });
+      carousel?.addEventListener('focusout', event => {
+        if (!carousel.contains(event.relatedTarget)) { slideFocused = false; startSlides(); }
+      });
+      const storageKey = 'darling.draft-weekend-welcome.dismissed.2026';
+      const dateFormatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
+      });
+      let dismissed = false;
+      try { dismissed = window.localStorage.getItem(storageKey) === 'true'; } catch { /* Storage is optional. */ }
+      const sync = () => {
+        const params = [...new URLSearchParams(window.location.search)];
+        const tab = new URLSearchParams(window.location.search).get('tab');
+        const homeRoute = tab === 'pulse' || (!tab && !params.some(([key]) => featureQueryKeys.has(key) || key.startsWith('tx') || key.startsWith('current') || key.startsWith('dynasty') || key.startsWith('draft') || key.startsWith('ga') || key.startsWith('game')));
+        const parts = Object.fromEntries(dateFormatter.formatToParts(new Date()).map(({ type, value }) => [type, value]));
+        const dateKey = Number(parts.year) * 10000 + Number(parts.month) * 100 + Number(parts.day);
+        welcome.hidden = !homeRoute || dismissed || dateKey < 20260904 || dateKey >= 20260908;
+        if (welcome.hidden) stopSlides(); else startSlides();
+      };
+      window.addEventListener('darling:route-update', sync);
+      window.addEventListener('popstate', sync);
+      document.addEventListener('click', event => {
+        const link = event.target instanceof Element ? event.target.closest('a[data-feature-id]') : null;
+        if (link) window.setTimeout(sync, 0);
+      });
+      dismiss?.addEventListener('click', () => {
+        dismissed = true;
+        sync();
+        document.querySelector('#mainContent')?.focus();
+        try { window.localStorage.setItem(storageKey, 'true'); } catch { /* Storage is optional. */ }
+      });
+      window.setInterval(sync, 60000);
+      showSlide(0);
+      sync();
+    })();
+  </script>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>

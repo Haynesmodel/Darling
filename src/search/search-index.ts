@@ -13,22 +13,28 @@ export function buildSearchIndex(data: SearchHydrationData): BuiltSearchIndex {
   const owners = [...new Set([
     ...data.seasonSummaries.map(row => row.owner),
     ...data.leagueGames.flatMap(game => [game.teamA, game.teamB]),
+    ...(data.currentSeason?.teams?.map(team => team.owner) || []),
   ])].filter(Boolean).sort((a, b) => a.localeCompare(b));
   const seasons = [...new Set(data.seasonSummaries.map(row => Number(row.season)))].sort((a, b) => b - a);
   const ownerAliases = new Map<string, string[]>();
   owners.forEach(owner => {
     const sleeperTeam = data.currentSeason?.teams?.find(team => team.owner === owner);
+    const authored = data.loreOwnerAliases?.find(item => item.owner === owner)?.aliases || [];
     ownerAliases.set(owner, [
       owner,
       sleeperTeam?.display_name,
       sleeperTeam?.sleeper_team_name,
+      ...authored,
     ].filter(Boolean).map(value => normalizeSearchText(value)));
   });
 
   const documents: SearchDocument[] = [];
   const add = (document: SearchDocument | null) => { if (document) documents.push(document); };
-  ['pulse', 'history', 'current', 'playoff-picture', 'trophy', 'dynasty', 'draft', 'gauntlet'].forEach(feature => {
+  ['pulse', 'owner', 'transactions', 'history', 'current', 'playoff-picture', 'trophy', 'dynasty', 'draft', 'gauntlet'].forEach(feature => {
     add(buildIntentDocument({ kind: 'feature', feature: feature as never }, data));
+  });
+  (['trades', 'waivers', 'players', 'owners', 'draft'] as const).forEach(view => {
+    add(buildIntentDocument({ kind: 'transaction-view', view }, data));
   });
   ['theme-system', 'theme-light', 'theme-dark', 'export-history'].forEach(command => {
     add(buildIntentDocument({ kind: 'command', command: command as never }, data));
@@ -38,15 +44,18 @@ export function buildSearchIndex(data: SearchHydrationData): BuiltSearchIndex {
     add(buildIntentDocument({ kind: 'game-extreme', metric: metric as never }, data));
   });
   owners.forEach(owner => {
+    add(buildIntentDocument({ kind: 'feature', feature: 'owner', owner }, data));
     add(buildIntentDocument({ kind: 'owner-season', owner }, data));
     add(buildIntentDocument({ kind: 'feature', feature: 'trophy', owner }, data));
     add(buildIntentDocument({ kind: 'feature', feature: 'dynasty', owner }, data));
     add(buildIntentDocument({ kind: 'draft-owner', owner }, data));
+    add(buildIntentDocument({ kind: 'transaction-view', view: 'owners', owner }, data));
   });
   Array.from({ length: 12 }, (_, index) => index + 1)
     .forEach(pick => add(buildIntentDocument({ kind: 'draft-pick', pick }, data)));
   (['early', 'middle', 'late'] as const)
     .forEach(zone => add(buildIntentDocument({ kind: 'draft-zone', zone }, data)));
+  (data.loreDocuments || []).forEach(document => documents.push(document));
   data.seasonSummaries.forEach(row => add(buildIntentDocument({ kind: 'owner-season', owner: row.owner, season: Number(row.season) }, data)));
   seasons.forEach(season => {
     add(buildIntentDocument({ kind: 'season-type', season, gameType: 'Playoff' }, data));

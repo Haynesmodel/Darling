@@ -58,6 +58,51 @@ test('url helpers parse and rebuild rivalry state', () => {
   assert.equal(next, '/index.html?tab=rivalry&rivalryTeamA=Joe&rivalryTeamB=Joel&rivalryScope=currentSeason');
 });
 
+test('url helpers parse and rebuild an encoded Owner Hub state', () => {
+  const canonical = 'A&B + C/Δ';
+  const built = buildUrlFromState({
+    pathname: '/Darling/',
+    tab: 'owner',
+    selectedOwner: canonical,
+  });
+  assert.equal(built, '/Darling/?tab=owner&owner=A%26B+%2B+C%2F%CE%94');
+  const parsed = parseUrlState(built.slice(built.indexOf('?')));
+  assert.equal(parsed.owner, canonical);
+  assert.equal(parsed.hasOwner, true);
+  assert.equal(parsed.hasAny, true);
+  assert.equal(buildUrlFromState({ pathname: '/Darling/', tab: 'owner' }), '/Darling/?tab=owner');
+  assert.equal(buildUrlFromState({ pathname: '/Darling/', tab: 'trophy', selectedOwner: canonical }), '/Darling/?tab=trophy');
+});
+
+test('url helpers parse, validate, and rebuild Transactions state without History facets', () => {
+  const parsed = parseUrlState('?tab=transactions&txSeason=2025&txView=players&txOwner=A%26B+%2B+C%2F%CE%94&txPlayer=p%2F1&txId=t%3A1&seasons=2024');
+  assert.equal(parsed.transactionSeason, 2025);
+  assert.equal(parsed.transactionView, 'players');
+  assert.equal(parsed.transactionOwner, 'A&B + C/Δ');
+  assert.equal(parsed.transactionPlayer, 'p/1');
+  assert.equal(parsed.transactionId, 't:1');
+  assert.equal(parsed.hasTransactions, true);
+  const built = buildUrlFromState({
+    pathname: '/Darling/',
+    tab: 'transactions',
+    selectedTransactionSeason: 2025,
+    selectedTransactionView: 'players',
+    selectedTransactionOwner: 'A&B + C/Δ',
+    selectedTransactionPlayer: 'p/1',
+    selectedTransactionId: 't:1',
+    selectedSeasons: new Set([2024]),
+    universe: { seasons: [2024, 2025], weeks: [], opponents: [], types: [], rounds: [] },
+  });
+  assert.equal(built, '/Darling/?tab=transactions&txSeason=2025&txView=players&txOwner=A%26B+%2B+C%2F%CE%94&txPlayer=p%2F1&txId=t%3A1');
+  assert.equal(buildUrlFromState({
+    pathname: '/Darling/',
+    tab: 'transactions',
+    selectedTransactionView: 'overview',
+  }), '/Darling/?tab=transactions');
+  assert.equal(parseUrlState('?txSeason=not-a-year&txView=unknown').transactionSeason, null);
+  assert.equal(parseUrlState('?txSeason=not-a-year&txView=unknown').transactionView, null);
+});
+
 test('url helpers parse and rebuild current season state', () => {
   const parsed = parseUrlState('?tab=current&currentSeason=2025&currentWeek=6&currentOwner=Joe&currentView=owners&currentProjection=current');
   assert.equal(parsed.tab, 'current');
@@ -80,6 +125,28 @@ test('url helpers parse and rebuild current season state', () => {
     allTeams: '__ALL__',
   });
   assert.equal(next, '/index.html?tab=current&currentSeason=2025&currentWeek=6&currentOwner=Joe&currentView=owners&currentProjection=current');
+});
+
+test('current recap and lifecycle-derived defaults round-trip without losing explicit command', () => {
+  assert.equal(parseUrlState('?tab=current&currentView=recap').currentView, 'recap');
+  assert.equal(buildUrlFromState({
+    tab: 'current',
+    selectedCurrentView: 'recap',
+    defaultCurrentView: 'command',
+    pathname: '/index.html',
+  }), '/index.html?tab=current&currentView=recap');
+  assert.equal(buildUrlFromState({
+    tab: 'current',
+    selectedCurrentView: 'command',
+    defaultCurrentView: 'recap',
+    pathname: '/index.html',
+  }), '/index.html?tab=current&currentView=command');
+  assert.equal(buildUrlFromState({
+    tab: 'current',
+    selectedCurrentView: 'recap',
+    defaultCurrentView: 'recap',
+    pathname: '/index.html',
+  }), '/index.html?tab=current');
 });
 
 test('url helpers parse and rebuild trophy state', () => {
@@ -171,10 +238,11 @@ test('url helpers parse and rebuild gauntlet state', () => {
 });
 
 test('url helpers parse and rebuild Draft Spot state', () => {
-  const parsed = parseUrlState('?tab=draft&draftMode=pick&draftOwner=Joe&draftStart=2021&draftEnd=2025&draftMetric=playoffRate&draftMinSample=3&draftNormalize=percentile&draftPick=10');
+  const parsed = parseUrlState('?tab=draft&draftMode=pick&draftOwner=Joe&draftStart=2021&draftEnd=2025&draftMetric=playoffRate&draftMinSample=3&draftNormalize=percentile&draftPick=10&draftLocation=college-park');
   assert.equal(parsed.hasDraft, true);
   assert.equal(parsed.draftOwner, 'Joe');
   assert.equal(parsed.draftPick, 10);
+  assert.equal(parsed.draftLocation, 'college-park');
   const url = buildUrlFromState({
     pathname: '/Darling/',
     tab: 'draft',
@@ -186,8 +254,9 @@ test('url helpers parse and rebuild Draft Spot state', () => {
     selectedDraftMinSample: parsed.draftMinSample,
     selectedDraftNormalize: parsed.draftNormalize,
     selectedDraftPick: parsed.draftPick,
+    selectedDraftLocation: parsed.draftLocation,
   });
-  assert.equal(url, '/Darling/?tab=draft&draftMode=pick&draftOwner=Joe&draftStart=2021&draftEnd=2025&draftMetric=playoffRate&draftMinSample=3&draftNormalize=percentile&draftPick=10');
+  assert.equal(url, '/Darling/?tab=draft&draftMode=pick&draftOwner=Joe&draftStart=2021&draftEnd=2025&draftMetric=playoffRate&draftMinSample=3&draftNormalize=percentile&draftPick=10&draftLocation=college-park');
 });
 
 test('url helpers preserve opponent selections with spaces and punctuation', () => {

@@ -6,12 +6,22 @@ function isDeployableAsset(sourceDir, filePath) {
   const relPath = path.relative(sourceDir, filePath);
   if (!relPath) return true;
 
+  if (relPath === 'draft-journey-basemap.svg') return true;
+
   const name = path.basename(filePath);
   const ext = path.extname(filePath);
   const normalizedRel = relPath.split(path.sep).join('/');
 
   if (normalizedRel.startsWith('hero/')) {
     return ['.avif', '.webp', '.jpg', '.jpeg'].includes(ext.toLowerCase());
+  }
+  if (normalizedRel.startsWith('share/')) {
+    return normalizedRel === 'share/darling-default-card.png';
+  }
+  if (normalizedRel.startsWith('trophy/')) {
+    return /^(?:trophy|medal|bagel|warning|football|beach-chair|joker|turd)\.svg$/.test(
+      normalizedRel.slice('trophy/'.length),
+    );
   }
 
   if (ext && ext !== '.json') return false;
@@ -44,13 +54,13 @@ function syncPublicAssets(root = process.cwd()) {
   return targetDir;
 }
 
-function runCli(root = process.cwd()) {
+function runCli(root = process.cwd(), logger = console) {
   try {
     const targetDir = syncPublicAssets(root);
-    console.log(`Synced assets to ${path.relative(root, targetDir)}`);
+    logger.log(`Synced assets to ${path.relative(root, targetDir)}`);
     return 0;
   } catch (err) {
-    console.error(err.message);
+    logger.error(err.message);
     return 1;
   }
 }

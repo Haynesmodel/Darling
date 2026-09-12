@@ -1,0 +1,7 @@
+{
+  "season": 2025,
+  "games": [
+    { "week": 1, "status": "final" },
+    { "week": 2, "status": "final" }
+  ]
+}

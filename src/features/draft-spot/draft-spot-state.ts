@@ -11,6 +11,7 @@ import {
   type DraftZoneKey,
 } from './draft-spot-types';
 import type { DraftSpot } from '../../data/generated/asset-types';
+import type { DraftLocation } from '../../data/generated/asset-types';
 
 export const DEFAULT_DRAFT_STATE: DraftSpotState = {
   owner: DRAFT_ALL_OWNERS,
@@ -22,6 +23,7 @@ export const DEFAULT_DRAFT_STATE: DraftSpotState = {
   normalize: 'raw',
   selectedPick: null,
   selectedZone: null,
+  selectedLocation: null,
 };
 
 function finiteNumber(value: unknown): number | null {
@@ -53,11 +55,15 @@ export function resolveDraftSpotState(
   asset: DraftSpot,
   requested: (Partial<DraftSpotState> & DraftSpotUrlState) = {},
   current: Partial<DraftSpotState> = {},
+  locations: DraftLocation[] = [],
 ): DraftSpotState {
   const seasons = draftSeasons(asset);
   const owners = draftOwners(asset);
   const picks = draftPicks(asset);
   const merged = { ...DEFAULT_DRAFT_STATE, ...current, ...requested };
+  const allowedLocations = new Set(locations.filter(location => location.enabled).map(location => location.id));
+  const locationValue = requested.draftLocation ?? merged.selectedLocation;
+  const selectedLocation = typeof locationValue === 'string' && allowedLocations.has(locationValue) ? locationValue : null;
   const requestedExplicitMode = requested.draftMode ?? requested.mode ?? null;
   const explicitMode = DRAFT_MODES.includes(requestedExplicitMode as DraftMode)
     ? requestedExplicitMode as DraftMode
@@ -102,6 +108,7 @@ export function resolveDraftSpotState(
       : 'raw',
     selectedPick,
     selectedZone,
+    selectedLocation,
   };
 }
 
@@ -116,5 +123,6 @@ export function draftStateForUrl(state: DraftSpotState): DraftSpotUrlState {
     draftNormalize: state.normalize,
     draftPick: state.selectedPick,
     draftZone: state.selectedZone,
+    draftLocation: state.selectedLocation,
   };
 }

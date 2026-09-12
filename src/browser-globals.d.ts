@@ -6,6 +6,7 @@ declare class PopStateEvent {
 }
 
 interface Window {
+  darlingDataLoader?: typeof import('./data/load-league-assets').loadLeagueAssets;
   darlingTables?: import('./tables/table-types').DarlingTableRuntime;
   darlingAccessibility?: any;
   darlingDataDiagnostics?: import('./data/load-league-assets').DataDiagnostics;

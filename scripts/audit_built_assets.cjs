@@ -3,6 +3,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { TextDecoder } = require('node:util');
 const { sha256Json } = require('./data/canonical-json.cjs');
+const SHARE_CARD_PATH = path.join('assets', 'share', 'darling-default-card.png');
+const SHARE_CARD_MAX_BYTES = 250000;
 
 function readUtf8Json(filePath) {
   const bytes = fs.readFileSync(filePath);
@@ -75,6 +77,21 @@ function auditBuiltAssets(root = process.cwd(), outputDir = 'dist') {
     else if (!fs.existsSync(builtPath)) errors.push(`${outputDir}/${variant.path} is missing`);
     else if (!isWithinOutput(realOutputRoot, fs.realpathSync(builtPath))) errors.push(`${outputDir}/${variant.path} resolves outside the build output`);
   }
+  const sourceShareCard = path.join(root, SHARE_CARD_PATH);
+  const builtShareCard = path.join(root, outputDir, SHARE_CARD_PATH);
+  if (!fs.existsSync(sourceShareCard)) errors.push(`${SHARE_CARD_PATH} is missing`);
+  if (!fs.existsSync(builtShareCard)) errors.push(`${outputDir}/${SHARE_CARD_PATH} is missing`);
+  if (fs.existsSync(sourceShareCard) && fs.existsSync(builtShareCard)) {
+    const source = fs.readFileSync(sourceShareCard);
+    const built = fs.readFileSync(builtShareCard);
+    if (!source.equals(built)) errors.push(`${outputDir}/${SHARE_CARD_PATH} differs from the committed source image`);
+    if (source.length > SHARE_CARD_MAX_BYTES) errors.push(`${SHARE_CARD_PATH} exceeds ${SHARE_CARD_MAX_BYTES} bytes`);
+    const png = source.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+    if (!png) errors.push(`${SHARE_CARD_PATH} has an invalid PNG signature`);
+    else if (source.length < 24 || source.readUInt32BE(16) !== 1200 || source.readUInt32BE(20) !== 630) {
+      errors.push(`${SHARE_CARD_PATH} must be exactly 1200x630`);
+    }
+  }
   const assetRoot = path.join(root, outputDir, 'assets');
   if (fs.existsSync(assetRoot)) {
     for (const entry of fs.readdirSync(assetRoot)) {
@@ -94,4 +111,4 @@ if (require.main === module) {
   console.log(`Built asset audit passed for ${outputDir}.`);
 }
 
-module.exports = { auditBuiltAssets };
+module.exports = { auditBuiltAssets, SHARE_CARD_MAX_BYTES, SHARE_CARD_PATH };

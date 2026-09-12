@@ -1,0 +1,4 @@
+[
+  { "pick_no": 1, "round": 1, "roster_id": 1, "player_id": "p1", "is_keeper": true },
+  { "pick_no": 2, "round": 1, "roster_id": 2, "player_id": "p2" }
+]

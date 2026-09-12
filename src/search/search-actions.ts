@@ -1,5 +1,6 @@
 import { buildUrlFromState } from '../../js/state-helpers.js';
 import { buildHistoryGameRows } from '../../js/history-game-query.js';
+import { isLowestScoreEligible } from '../../js/lowest-score-policy.js';
 import type { SearchDocument, SearchHydrationData, SearchIntent } from './search-types';
 
 const ALL_TEAMS = '__ALL__';
@@ -46,6 +47,7 @@ function recordDetails(intent: Extract<SearchIntent, { kind: 'game-extreme' }>, 
     'lowest-score': { result: null, sort: (a, b) => a.score - b.score, gameSort: 'scoreAsc', title: 'Lowest score' },
   }[intent.metric];
   if (config.result) rows = rows.filter(row => row.result === config.result);
+  if (intent.metric === 'lowest-score') rows = rows.filter(row => isLowestScoreEligible(row.sourceGame, row.team));
   rows.sort(config.sort);
   return { row: rows[0], ...config };
 }
@@ -56,6 +58,31 @@ function gameSubtitle(count: number, owner?: string, season?: number): string {
 }
 
 export function buildIntentDocument(intent: SearchIntent, data: SearchHydrationData): SearchDocument | null {
+  if (intent.kind === 'transaction-view') {
+    const labels = {
+      trades: ['Trade Desk', 'Trades, received assets, and on-field edge'],
+      waivers: ['Waiver Wire', 'Wire Finds and most-added or dropped players'],
+      players: ['Player Journeys', 'Draft, add, drop, and trade ownership timelines'],
+      owners: [intent.owner ? `${intent.owner} moves` : 'Owner Activity', intent.owner ? `Transactions / ${intent.owner} activity` : 'Completed moves, FAAB, retention, and turnover'],
+      draft: ['Draft & Keepers', 'Draft retention, roster turnover, and keeper return'],
+    } as const;
+    const [title, subtitle] = labels[intent.view];
+    const url = buildUrlFromState({
+      tab: 'transactions',
+      selectedTransactionView: intent.view,
+      selectedTransactionOwner: intent.owner,
+      pathname: window.location.pathname,
+    });
+    return {
+      id: `transactions:${intent.view}:${intent.owner || 'all'}`,
+      category: intent.owner ? 'owner' : 'navigate',
+      title,
+      subtitle,
+      keywords: [title, subtitle, intent.owner || '', 'transactions', 'moves'],
+      priority: intent.owner ? 105 : 82,
+      action: { kind: 'navigate', url },
+    };
+  }
   if (intent.kind === 'draft-pick') {
     const url = buildUrlFromState({
       tab: 'draft',
@@ -225,6 +252,7 @@ export function buildIntentDocument(intent: SearchIntent, data: SearchHydrationD
           selectedGameResult: details.result,
           selectedGameSort: details.gameSort,
           selectedGameLimit: 1,
+          selectedGameMinScore: intent.metric === 'lowest-score' ? details.row.score : undefined,
           selectedFocus: 'games',
         }),
         focus: 'games',
@@ -232,8 +260,11 @@ export function buildIntentDocument(intent: SearchIntent, data: SearchHydrationD
     };
   }
   if (intent.kind === 'feature') {
+    const ownerTeam = intent.owner ? data.currentSeason?.teams?.find(team => team.owner === intent.owner) : null;
     const definitions = {
       pulse: ['League Pulse', 'What matters in the league right now', 'pulse'],
+      owner: [intent.owner ? `${intent.owner} Owner Hub` : 'My Team', intent.owner ? 'Owner summary and personalized league launchpad' : 'Choose your owner for personalized league defaults', 'owner'],
+      transactions: ['Transactions', 'Trades, waivers, player journeys, owner activity, draft retention, and keepers', 'transactions'],
       history: ['League History', 'Browse every season and matchup', 'history'],
       current: ['Current Season', 'Open the current-season command center', 'current'],
       'playoff-picture': ['Playoff picture', 'Current Season / Playoff picture', 'current'],
@@ -245,6 +276,8 @@ export function buildIntentDocument(intent: SearchIntent, data: SearchHydrationD
     const [title, subtitle, tab] = definitions[intent.feature];
     const url = buildUrlFromState({
       tab,
+      selectedOwner: intent.feature === 'owner' ? intent.owner : null,
+      selectedTransactionOwner: intent.feature === 'transactions' ? intent.owner : null,
       selectedTrophyOwner: intent.feature === 'trophy' ? intent.owner : null,
       selectedDynastyOwner: intent.feature === 'dynasty' ? intent.owner : null,
       selectedFocus: intent.feature === 'playoff-picture' ? 'playoff-picture' : null,
@@ -252,11 +285,18 @@ export function buildIntentDocument(intent: SearchIntent, data: SearchHydrationD
     });
     return {
       id: `feature:${intent.feature}:${intent.owner || 'all'}`,
-      category: 'navigate',
+      category: intent.feature === 'owner' && intent.owner ? 'owner' : 'navigate',
       title,
       subtitle,
-      keywords: [title, subtitle, intent.owner || ''],
-      priority: 70,
+      keywords: [
+        title,
+        subtitle,
+        intent.owner || '',
+        ...(intent.feature === 'owner' && intent.owner
+          ? [ownerTeam?.display_name || '', ownerTeam?.sleeper_team_name || '']
+          : []),
+      ],
+      priority: intent.feature === 'owner' ? 150 : 70,
       action: { kind: 'navigate', url, focus: intent.feature === 'playoff-picture' ? 'playoff-picture' : undefined },
     };
   }
@@ -344,6 +384,13 @@ export function rebuildSearchDocument(id: string, data: SearchHydrationData): Se
   }
   if (kind === 'draft-owner' && parts[0]) {
     return buildIntentDocument({ kind: 'draft-owner', owner: parts[0] }, data);
+  }
+  if (kind === 'transactions' && ['trades', 'waivers', 'players', 'owners', 'draft'].includes(parts[0])) {
+    return buildIntentDocument({
+      kind: 'transaction-view',
+      view: parts[0] as 'trades' | 'waivers' | 'players' | 'owners' | 'draft',
+      owner: optionalToken(parts[1]),
+    }, data);
   }
   return null;
 }

@@ -165,7 +165,7 @@ export function assessDataFreshness(input: DataFreshnessInput): DataFreshnessAss
     }, partialAssets);
   }
 
-  if (ageMs === null) {
+  if (!generatedAt || ageMs === null) {
     return applyPartial({
       status: 'unknown', severity: 'warning', label: 'Freshness unknown',
       detail: 'The current-season snapshot has no reliable update time.', generatedAt, ageMs: null,

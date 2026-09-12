@@ -23,6 +23,7 @@ const modules = Promise.all([
   importTypeScript('src/tables/table-quick-filters.ts'),
   importTypeScript('src/tables/rows/history-game-rows.ts'),
   importTypeScript('src/tables/table-registry.ts'),
+  importTypeScript('src/tables/rows/trophy-season-rows.ts'),
 ]);
 
 class FakeStorage {
@@ -182,6 +183,46 @@ test('record columns filter their displayed record and sort by numeric performan
     assert.equal(column.accessor(row), '1-0-0');
     assert.equal(typeof column.sortAccessor(row), 'number');
   }
+});
+
+test('trophy season adapter maps structured game logs without changing generic detail values', async () => {
+  const [, , , , , trophyRows] = await modules;
+  const adapted = trophyRows.adaptTrophySeasonRows([{
+    season: 2025,
+    record: '1-0-0',
+    finish: '1',
+    pf: '100.0',
+    pa: '90.0',
+    diff: '+10.0',
+    notes: ['Champion'],
+    games: [{ date: '2025-09-07', week: '1', opponent: 'Shap', scoreline: '100.0 - 90.0', result: 'W', type: 'Regular', round: '—' }],
+  }, {
+    season: 2024,
+    record: '0-0-0',
+    finish: '—',
+    pf: '—',
+    pa: '—',
+    diff: '—',
+    notes: [],
+    games: [],
+  }, {
+    season: 2023,
+    notes: null,
+    games: [{}],
+  }], { owner: 'Joe' });
+  assert.deepEqual(adapted[0].details, [
+    { label: 'Season result', value: 'Champion' },
+    { label: 'Point differential', value: '+10.0' },
+    { label: 'Game log', value: '1 game' },
+    { label: '2025-09-07 · Week 1', value: 'Opponent: Shap · Score: 100.0 - 90.0 · Result: W · Type: Regular · Round: —' },
+  ]);
+  assert.deepEqual(adapted[1].details, [
+    { label: 'Season result', value: 'No special notes' },
+    { label: 'Point differential', value: '—' },
+    { label: 'Game log', value: 'No games recorded' },
+  ]);
+  assert.equal(adapted[2].details[3].label, '— · Week —');
+  assert.match(adapted[2].details[3].value, /Opponent: —.*Round: —/);
 });
 
 test('quick filters compose and replace incompatible filters within a group', async () => {

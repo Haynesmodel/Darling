@@ -2,6 +2,7 @@
 """Report-only comparison of canonical H2H rows with an explicit source file."""
 from __future__ import annotations
 import argparse, json
+from datetime import datetime, timezone
 from pathlib import Path
 
 def key(row):
@@ -32,5 +33,6 @@ def main():
         raise SystemExit("refusing canonical reconciliation output path")
     result = reconcile({k:v for k,v in load(canonical).items() if k[0] == a.season}, {k:v for k,v in load(a.source).items() if k[0] == a.season})
     result["season"] = a.season; result["source"] = str(Path(a.source).resolve())
+    result["source_retrieved_at"] = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     out.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 if __name__ == "__main__": main()

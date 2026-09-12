@@ -12,7 +12,6 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 import sleeper_to_h2h as sleeper
-from scoring_completion import resolve_completion
 
 
 def load_json(path):

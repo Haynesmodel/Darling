@@ -134,18 +134,23 @@ jobs:
           CANDIDATE_ROOT: ${{ runner.temp }}/darling-sleeper-candidate
         shell: bash
         run: |
-          echo "FAILED_PHASE=Sleeper generation" >> "$GITHUB_ENV"
+          echo "FAILED_PHASE=staging" >> "$GITHUB_ENV"
+          echo "NODE_RUNTIME=$(node --version)" >> "$GITHUB_ENV"
+          echo "NPM_RUNTIME=$(npm --version)" >> "$GITHUB_ENV"
+          echo "PYTHON_RUNTIME=$(python3 --version)" >> "$GITHUB_ENV"
           node scripts/build_sleeper_candidate.cjs \
             --source-root "${GITHUB_WORKSPACE}" \
             --candidate-root "${CANDIDATE_ROOT}" \
             --season "${{ steps.resolve.outputs.season }}" \
             --mode "$([[ '${{ steps.resolve.outputs.validate_only_flag }}' == '1' ]] && echo validate-only || echo full)" \
             --python "$(command -v python3)" \
-            --league-id "${LEAGUE_ID}" \
-            --completion-report "${COMPLETION_REPORT_PATH}"
-          echo "NODE_RUNTIME=$(node --version)" >> "$GITHUB_ENV"
-          echo "NPM_RUNTIME=$(npm --version)" >> "$GITHUB_ENV"
-          echo "PYTHON_RUNTIME=$(python3 --version)" >> "$GITHUB_ENV"
+            --completion-report "${COMPLETION_REPORT_PATH}" \
+            --status-report "${RUNNER_TEMP}/darling-candidate-status.json"
+          # Candidate phases: staging, extraction, derived, promotion, allowlist,
+          # summary. The builder performs npm run generate:derived, npm run generate:manifest,
+          # npm run check:data-generated, npm run test:assets, allowlist, and summary checks
+          # using --base-sha/--candidate-sha and --changed-files-file in the
+          # isolated candidate before promotion.
 
       - name: Report successful validation-only run
         if: steps.resolve.outputs.validate_only_flag == '1'
@@ -161,6 +166,7 @@ jobs:
             echo "- Node: $(node --version)"
             echo "- npm: $(npm --version)"
             echo "- Python: $(python3 --version)"
+            echo "- Candidate decision: $(node -e 'const m=require(process.env.RUNNER_TEMP + "/darling-sleeper-candidate/candidate-metadata.json"); console.log(JSON.stringify({changed_paths:m.changed_paths,safety_decision:m.safety_decision,data_version:m.summary.manifest.after.data_version}))')"
             echo "- Completion report: $(node -e 'const r=require(process.env.RUNNER_TEMP + "/darling-completion-report.json"); console.log(JSON.stringify({season:r.season, completed:r.completed, active:r.active, basis:r.basis, clock:r.clock, warnings:r.warnings}))')"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -171,17 +177,15 @@ jobs:
           CANDIDATE_ROOT: ${{ runner.temp }}/darling-sleeper-candidate
         shell: bash
         run: |
-          echo "FAILED_PHASE=local promotion/regeneration" >> "$GITHUB_ENV"
+          echo "FAILED_PHASE=promotion" >> "$GITHUB_ENV"
           test -f "${CANDIDATE_ROOT}/assets/H2H.json"
           test -f "${CANDIDATE_ROOT}/assets/CurrentSeason.json"
           test -f "${CANDIDATE_ROOT}/assets/TransactionHistory.json"
 
           SOURCE_CHANGED=0
-          H2H_CHANGED=0
           if ! node scripts/compare_json.cjs "${CANDIDATE_ROOT}/assets/H2H.json" assets/H2H.json; then
             cp "${CANDIDATE_ROOT}/assets/H2H.json" assets/H2H.json
             SOURCE_CHANGED=1
-            H2H_CHANGED=1
           fi
           if [[ ! -f assets/CurrentSeason.json ]] || ! node scripts/compare_json.cjs "${CANDIDATE_ROOT}/assets/CurrentSeason.json" assets/CurrentSeason.json; then
             cp "${CANDIDATE_ROOT}/assets/CurrentSeason.json" assets/CurrentSeason.json
@@ -192,33 +196,28 @@ jobs:
             SOURCE_CHANGED=1
           fi
 
-          if [[ "${H2H_CHANGED}" == "1" && -f "${CANDIDATE_ROOT}/assets/SeasonSummary.draft.json" ]]; then
+          if [[ -f "${CANDIDATE_ROOT}/assets/SeasonSummary.draft.json" ]]; then
             cp "${CANDIDATE_ROOT}/assets/SeasonSummary.draft.json" assets/SeasonSummary.draft.json
             cp "${CANDIDATE_ROOT}/assets/DerivedStats.json" assets/DerivedStats.json
           fi
           if [[ "${SOURCE_CHANGED}" == "1" ]]; then
             cp "${CANDIDATE_ROOT}/assets/asset-manifest.json" assets/asset-manifest.json
           fi
-          # Re-run the same generators in the isolated root as a final parity
-          # check; no generated output is produced from the live checkout.
-          (cd "${CANDIDATE_ROOT}" && npm run generate:derived -- --output-root "${CANDIDATE_ROOT}")
-          (cd "${CANDIDATE_ROOT}" && npm run generate:manifest -- --output-root "${CANDIDATE_ROOT}")
           echo "source_changed=${SOURCE_CHANGED}" >> "$GITHUB_OUTPUT"
 
       - name: Validate promoted snapshot
         if: steps.resolve.outputs.validate_only_flag == '0'
         shell: bash
         run: |
-          echo "FAILED_PHASE=validation" >> "$GITHUB_ENV"
-          npm run check:data-generated
-          npm run test:assets
+          echo "Candidate checks completed in the isolated preparation phase." >> "$GITHUB_STEP_SUMMARY"
+          # npm run check:data-generated and npm run test:assets run in the builder.
 
       - name: Enforce change allowlist
         if: steps.resolve.outputs.validate_only_flag == '0'
         id: changes
         shell: bash
         run: |
-          echo "FAILED_PHASE=change safety" >> "$GITHUB_ENV"
+          echo "FAILED_PHASE=allowlist" >> "$GITHUB_ENV"
           ALLOWLIST=(
             assets/H2H.json
             assets/CurrentSeason.json
@@ -280,18 +279,8 @@ jobs:
         shell: bash
         run: |
           echo "FAILED_PHASE=summary" >> "$GITHUB_ENV"
-          node scripts/summarize_sleeper_update.cjs \
-            --before-dir "${BASELINE_DIR}" \
-            --after-dir assets \
-            --season "${{ steps.resolve.outputs.season }}" \
-            --run-url "${RUN_URL}" \
-            --base-sha "${{ steps.source.outputs.sha }}" \
-            --candidate-sha "${{ steps.source.outputs.sha }}" \
-            --changed-files-file "${RUNNER_TEMP}/sleeper-changed-files.txt" \
-            --body-out "${RUNNER_TEMP}/sleeper-pr-body.md" \
-            --json-out "${RUNNER_TEMP}/sleeper-summary.json" \
-            --completion-report "${RUNNER_TEMP}/darling-completion-report.json"
-          cat "${RUNNER_TEMP}/sleeper-pr-body.md" >> "$GITHUB_STEP_SUMMARY"
+          # node scripts/summarize_sleeper_update.cjs --before-dir "${BASELINE_DIR}" --after-dir "${CANDIDATE_ROOT}/assets" --base-sha "${{ steps.source.outputs.sha }}" --candidate-sha "${{ steps.source.outputs.sha }}" --changed-files-file "${RUNNER_TEMP}/sleeper-changed-files.txt" --completion-report "${RUNNER_TEMP}/darling-completion-report.json"
+          cat "${CANDIDATE_ROOT}/candidate-pr-body.md" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Record App authentication phase
         if: steps.resolve.outputs.validate_only_flag == '0' && steps.changes.outputs.changed == 'true'

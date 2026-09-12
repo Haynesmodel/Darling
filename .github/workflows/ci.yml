@@ -105,10 +105,6 @@ jobs:
           cache: npm
       - name: Select npm 11.18.0
         run: npm install --global npm@11.18.0
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.13'
       - name: Install dependencies
         run: npm ci
       - name: Download production artifact
@@ -177,6 +173,9 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.13'
+      - name: Record Python runtime
+        id: python_runtime
+        run: echo "version=$(python3 --version)" >> "$GITHUB_OUTPUT"
       - name: Install dependencies
         run: npm ci
       - name: Install Chromium
@@ -211,6 +210,7 @@ jobs:
         env:
           JOB_STATUS: ${{ job.status }}
           DIAGNOSTICS_ARTIFACT_NAME: coverage-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          PYTHON_RUNTIME: ${{ steps.python_runtime.outputs.version }}
         run: node scripts/summarize_ci.cjs coverage
 
   webkit_smoke:
@@ -231,10 +231,6 @@ jobs:
           cache: npm
       - name: Select npm 11.18.0
         run: npm install --global npm@11.18.0
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.13'
       - name: Install dependencies
         run: npm ci
       - name: Download production artifact

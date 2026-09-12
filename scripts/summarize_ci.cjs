@@ -96,6 +96,7 @@ function coverageSummary(root, environment = process.env) {
     `- Changed files checked: ${changedFilesStatus}`,
     `- Raw output: ${metadata?.rawBytes ?? directoryBytes(path.join(root, 'coverage', 'raw'))} / ${metadata?.rawByteLimit ?? 'unavailable'} bytes`,
     `- Report conversion: ${formatDuration(metadata?.reportMilliseconds)}`,
+    `- Python: ${environment.PYTHON_RUNTIME || 'not reported'}`,
   ];
   if (environment.JOB_STATUS && environment.JOB_STATUS !== 'success') {
     lines.push(`- Failure diagnostics: ${environment.DIAGNOSTICS_ARTIFACT_NAME || 'unavailable'}`);

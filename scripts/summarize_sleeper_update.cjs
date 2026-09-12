@@ -26,6 +26,7 @@ function parseArgs(argv) {
     'body-out',
     'json-out',
     'completion-report',
+    'allow-no-change',
   ]);
   for (let index = 0; index < argv.length; index += 1) {
     const key = argv[index];
@@ -486,7 +487,9 @@ function summarize(options, environment = process.env) {
   if (summary.season_summary_draft.canonical_summary_modified) {
     throw new Error('Safety failed: assets/SeasonSummary.json must never be modified by Sleeper automation.');
   }
-  if (summary.changed_files.length === 0) throw new Error('Summary requires at least one changed file.');
+  if (summary.changed_files.length === 0 && options['allow-no-change'] !== '1') {
+    throw new Error('Summary requires at least one changed file.');
+  }
 
   return {
     summary,

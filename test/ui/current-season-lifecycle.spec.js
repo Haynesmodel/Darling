@@ -84,6 +84,14 @@ test('preseason defaults to preview and does not request probability work', asyn
   expect(requests.some(url => url.includes('current-season-odds'))).toBe(false);
 });
 
+test('provisional current scores do not create final recap claims', async ({ page }) => {
+  const fixture = createSnapshotFixture({ mutations: { CurrentSeason: current => regularSeason2026(current, true) } });
+  await fixture.install(page);
+  await page.goto('/?tab=current&currentView=recap');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('#currentRecap')).not.toContainText(/final|champion|winner/i);
+});
+
 test('live regular season retains command movement, owner paths, and odds', async ({ page }) => {
   const fixture = createSnapshotFixture({
     mutations: { CurrentSeason: current => regularSeason2026(current, true) },

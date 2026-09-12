@@ -1,4 +1,4 @@
-import json, tempfile, unittest, sys
+import json, tempfile, unittest, sys, subprocess
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).parents[1]/'scripts'))
 from reconcile_sleeper_history import load_fixture, reconcile
@@ -72,5 +72,29 @@ class ReconciliationFixtureTests(unittest.TestCase):
         try:
             with self.assertRaises(ValueError): load_fixture(path, 2025, {"1": "A", "2": "B"})
         finally: directory.cleanup()
+
+    def test_cli_fixture_writes_candidate(self):
+        directory = tempfile.TemporaryDirectory(); root = Path(directory.name)
+        source = root/'source.json'; source.write_text(json.dumps({'retrieved_at':'2025-09-20T12:00:00Z','weeks':{'1':[{'roster_id':1,'matchup_id':1,'points':1},{'roster_id':2,'matchup_id':1,'points':2}]}}))
+        mapping = root/'mapping.json'; mapping.write_text('{"1":"A","2":"B"}'); (root/'assets').mkdir(); canonical = root/'assets'/'canonical.json'; canonical.write_text('[]'); report = root/'report.json'; candidate = root/'candidate.json'
+        command=[sys.executable,str(Path(__file__).parents[1]/'scripts/reconcile_sleeper_history.py'),'--season','2025','--mapping',str(mapping),'--canonical',str(canonical),'--source-fixture',str(source),'--out',str(report),'--out-candidate',str(candidate)]
+        completed = subprocess.run(command, capture_output=True, text=True)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(json.loads(candidate.read_text())[0]['teamA'],'A')
+        self.assertEqual(json.loads(report.read_text())['retrieved_at'], '2025-09-20T12:00:00Z')
+        directory.cleanup()
+
+    def test_cli_live_requires_explicit_opt_in(self):
+        directory = tempfile.TemporaryDirectory(); root = Path(directory.name)
+        mapping = root/'mapping.json'; mapping.write_text('{"1":"A","2":"B"}')
+        canonical = root/'assets'/'H2H.json'; canonical.parent.mkdir(); canonical.write_text('[]')
+        command = [sys.executable, str(Path(__file__).parents[1]/'scripts/reconcile_sleeper_history.py'),
+                   '--season', '2025', '--mapping', str(mapping), '--canonical', str(canonical),
+                   '--live-league', 'league', '--out', str(root/'report.json')]
+        completed = subprocess.run(command, capture_output=True, text=True)
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn('--allow-live', completed.stderr)
+        self.assertFalse((root/'report.json').exists())
+        directory.cleanup()
 
 if __name__=='__main__': unittest.main()

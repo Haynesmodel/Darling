@@ -167,6 +167,33 @@ Local validation-only example:
 UPDATE_LIVE=1 VALIDATE_ONLY=1 SEASON=2025 CURRENT_WEEK=1 scripts/update_sleeper_h2h.sh
 ```
 
+### Report-only Sleeper history reconciliation
+
+Reconciliation is read-only and produces a report for human review. An offline
+fixture must contain `retrieved_at` and raw weekly Sleeper matchup rows; an
+optional candidate file is normalized H2H data, never an asset replacement:
+
+```sh
+python3 scripts/reconcile_sleeper_history.py \
+  --season 2025 --mapping scripts/2025_team_mapping.json \
+  --canonical assets/H2H.json --source-fixture /path/source.json \
+  --out /tmp/darling-history-report.json \
+  --out-candidate /tmp/darling-history-candidate.json
+```
+
+Live retrieval is an explicit, bounded opt-in and never uses credentials:
+
+```sh
+python3 scripts/reconcile_sleeper_history.py \
+  --season 2025 --mapping scripts/2025_team_mapping.json \
+  --canonical assets/H2H.json --live-league LEAGUE_ID --allow-live \
+  --out /tmp/darling-history-report.json
+```
+
+The command never writes canonical assets. Review the report first; any
+correction must be a separately human-authored pull request with its own data
+diff and approval.
+
 ### Activating a new Sleeper season
 
 The repository configuration for 2026 includes the reviewed roster mapping and

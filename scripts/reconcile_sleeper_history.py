@@ -5,11 +5,57 @@ from __future__ import annotations
 
 import json
 import math
+import argparse
+import os
+import tempfile
+import sys
+from urllib.request import Request, urlopen
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import sleeper_to_h2h as sleeper
+
+MAX_RESPONSE_BYTES = 4 * 1024 * 1024
+
+def _write_atomic(path: Path, value: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=path.parent, delete=False) as handle:
+            json.dump(value, handle, ensure_ascii=False, indent=2, sort_keys=True); handle.write("\n"); temporary = Path(handle.name)
+        os.replace(temporary, path)
+    finally:
+        if temporary is not None and temporary.exists(): temporary.unlink()
+
+def _safe_outputs(canonical: Path, mapping: Path, source: Path | None, out: Path, candidate: Path | None) -> None:
+    paths = [canonical, mapping] + ([source] if source else [])
+    if candidate and candidate == out: raise ValueError("report and candidate outputs must differ")
+    for target in [out] + ([candidate] if candidate else []):
+        if (target.name in {"H2H.json", "CurrentSeason.json", "TransactionHistory.json", canonical.name}
+                or target.parent == canonical.parent or any(target == item for item in paths)):
+            raise ValueError("output path is canonical or unsafe")
+
+def _live_fixture(league: str, season: int, weeks: list[int], mapping: dict[str, Any]) -> tuple[list[dict[str, Any]], str]:
+    def get(url: str):
+        request = Request(url, headers={"User-Agent": "Darling-Reconciliation/1.0"})
+        with urlopen(request, timeout=30) as response:
+            length = response.headers.get("Content-Length")
+            if length and int(length) > MAX_RESPONSE_BYTES: raise ValueError("Sleeper response exceeds size limit")
+            body = response.read(MAX_RESPONSE_BYTES + 1)
+            if len(body) > MAX_RESPONSE_BYTES: raise ValueError("Sleeper response exceeds size limit")
+            value = json.loads(body.decode("utf-8"))
+            if not isinstance(value, list): raise ValueError("Sleeper matchup response must be an array")
+            return value
+    rows=[]
+    for week in weeks:
+        rows.extend({"week": week, **row} for row in get(f"https://api.sleeper.app/v1/league/{league}/matchups/{week}"))
+    fixture = {"retrieved_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"), "weeks": {str(week): [row for row in rows if row["week"] == week] for week in weeks}}
+    descriptor, temporary_name = tempfile.mkstemp(prefix="darling-live-")
+    os.close(descriptor)
+    temporary = Path(temporary_name); temporary.write_text(json.dumps(fixture), encoding="utf-8")
+    try: return load_fixture(temporary, season, mapping)
+    finally: temporary.unlink(missing_ok=True)
 
 
 def _utc_timestamp(value: Any) -> str:
@@ -50,7 +96,8 @@ def load_fixture(path: str | Path, season: int, mapping: dict[str, Any]) -> tupl
     metadata = value.get("metadata", {})
     if not isinstance(metadata, dict):
         raise ValueError("metadata must be an object")
-    if not mapping or any(not str(k).strip() or not str(v).strip() for k, v in mapping.items()) or len(set(str(v) for v in mapping.values())) != len(mapping):
+    if (not mapping or any(isinstance(k, bool) or not str(k).isdigit() or not str(v).strip() for k, v in mapping.items())
+            or len(set(str(v) for v in mapping.values())) != len(mapping)):
         raise ValueError("mapping must contain unique nonempty canonical owners")
     for week_text, raw_rows in value["weeks"].items():
         try:
@@ -147,3 +194,33 @@ def reconcile(canonical: list[dict[str, Any]], candidate: list[dict[str, Any]], 
             "matched": matched, "missing": missing, "new": new, "different": different,
             "summary": {"matched": len(matched), "missing": len(missing), "new": len(new), "different": len(different)},
             "downstream_consequences": "Differences may affect records, trophies, odds, recaps, and derived statistics."}
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--season", type=int, required=True); parser.add_argument("--mapping", required=True)
+    parser.add_argument("--canonical", required=True); parser.add_argument("--out", required=True)
+    parser.add_argument("--source-fixture"); parser.add_argument("--live-league"); parser.add_argument("--weeks", default="1-17"); parser.add_argument("--out-candidate"); parser.add_argument("--allow-live", action="store_true")
+    args = parser.parse_args()
+    try:
+        if bool(args.source_fixture) == bool(args.live_league): raise ValueError("exactly one source input is required")
+        if args.live_league and not args.allow_live: raise ValueError("--allow-live is required for live mode")
+        canonical = Path(args.canonical).resolve(); mapping_path = Path(args.mapping).resolve(); out = Path(args.out).resolve(); candidate = Path(args.out_candidate).resolve() if args.out_candidate else None
+        source = Path(args.source_fixture).resolve() if args.source_fixture else None
+        _safe_outputs(canonical, mapping_path, source, out, candidate)
+        mapping = json.loads(mapping_path.read_text(encoding="utf-8"))
+        if not isinstance(mapping, dict): raise ValueError("mapping must be an object")
+        if source:
+            rows, retrieved = load_fixture(source, args.season, mapping); source_name = str(source)
+        else:
+            rows, retrieved = _live_fixture(args.live_league, args.season, [int(w) for w in sleeper.parse_weeks(args.weeks)], mapping); source_name = f"sleeper://league/{args.live_league}"
+        canonical_rows = json.loads(canonical.read_text(encoding="utf-8"))
+        if not isinstance(canonical_rows, list): raise ValueError("canonical H2H must be an array")
+        result = reconcile(canonical_rows, rows, args.season, source_name, str(mapping_path), str(canonical), retrieved)
+        _write_atomic(out, result)
+        if candidate: _write_atomic(candidate, rows)
+        return 0
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        print(f"reconciliation failed: {error}", file=sys.stderr); return 2
+
+if __name__ == "__main__":
+    raise SystemExit(main())

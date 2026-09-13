@@ -7,13 +7,15 @@ This repository is maintained as a static site backed by JSON assets. The annual
 1. Add the Week 1 anchor date for the new season in `scripts/sleeper_week1_anchors.json`.
 2. Generate the Sleeper team mapping for the new season and save it as `scripts/<SEASON>_team_mapping.json`.
 3. Confirm the update workflow defaults to the new season only after both files exist.
-4. Run a manual dry run before updating tracked assets:
+4. Confirm the supported local runtime (`node --version`, `npm --version`, `python3.13 --version`) matches Node 24, npm 11.18.0, and Python 3.13.
+5. Run a manual dry run before updating tracked assets:
    - `UPDATE_LIVE=1 VALIDATE_ONLY=1 SEASON=<SEASON> scripts/update_sleeper_h2h.sh`
-5. Run the live update and review `assets/H2H.updated.json` before copying it into `assets/H2H.json`.
-6. Verify the regular season and postseason rows look correct in the updated H2H output.
-7. After playoffs, generate or review `assets/SeasonSummary.draft.json` and fill in the manual fields before replacing the canonical summary.
-8. Run `npm run generate:data`, review the regenerated `assets/DraftSpot.json` pick/zone sample changes, and confirm its `source_sha256` matches the canonical Season Summary.
-9. Run the local checks before pushing:
+6. Run the full candidate preparation and review the six-file allowlist; do not approve DraftSpot or generated TypeScript drift in a bot data PR.
+7. Run the live update and review the candidate H2H before human review/copying into canonical assets.
+8. Verify the regular season and postseason rows look correct in the updated H2H output.
+9. After playoffs, generate or review `assets/SeasonSummary.draft.json` and fill in the manual fields before replacing the canonical summary.
+10. Run `npm run generate:data`, review the regenerated `assets/DraftSpot.json` pick/zone sample changes, and confirm its `source_sha256` matches the canonical Season Summary.
+11. Run the local checks before pushing:
    - `npm run build:charts`
    - `npm run typecheck`
    - `npm run test:hygiene`

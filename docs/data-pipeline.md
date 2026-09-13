@@ -167,6 +167,16 @@ Local validation-only example:
 UPDATE_LIVE=1 VALIDATE_ONLY=1 SEASON=2025 scripts/update_sleeper_h2h.sh
 ```
 
+The GitHub workflow uses `scripts/build_sleeper_candidate.cjs` for both
+validation-only and full runs. It stages tracked source into a disposable
+candidate root, runs the same generators and drift checks, and promotes only
+the six allowlisted files in full mode. DraftSpot and generated TypeScript are
+checked for drift but are never added to the bot data allowlist.
+For offline parity tests, pass `--mode validate-only` or `--mode full` with the
+same `--source-root`, `--candidate-root`, selected `--python`, completion-report
+path, and optional `--frozen-clock YYYY-MM-DD`; both modes then use identical
+candidate inputs and an injected metadata clock.
+
 ### Report-only Sleeper history reconciliation
 
 Reconciliation is read-only and produces a report for human review. An offline
@@ -247,7 +257,7 @@ python3 scripts/generate_transaction_history.py --help
 
 ## Current measurements
 
-On the implementation machine (Node 23; CI targets Node 20):
+On the implementation machine (Node 24/npm 11.18.0; CI targets Node 24/npm 11.18.0; Python generators use Python 3.13):
 
 - Derived generation: under 100 ms for 898 games.
 - Full generated drift check: under 2 seconds.

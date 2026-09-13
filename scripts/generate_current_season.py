@@ -208,7 +208,7 @@ def build_current_season_asset(args):
         "source": "sleeper",
         "league_id": str(args.league),
         "season": args.season,
-        "generated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "generated_at": getattr(args, "generated_at", None) or datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         "current_week": current_week,
         "regular_season_max_week": args.regular_season_max_week,
         "playoff_rules": {
@@ -239,6 +239,7 @@ def main():
     parser.add_argument("--map", required=True, help="Path to roster_id -> canonical team name mapping json")
     parser.add_argument("--weeks", default="1-17", help="Weeks to fetch, e.g. '1-14' or '1-17'")
     parser.add_argument("--cutoff-date", default=None, help="Optional reproducible metadata clock; never determines final/scheduled status")
+    parser.add_argument("--generated-at", default=None, help="Optional frozen UTC generation timestamp for candidate parity")
     parser.add_argument("--current-week", type=int, default=None, help="Override current week")
     parser.add_argument("--regular-season-max-week", type=int, default=14)
     parser.add_argument("--playoff-slots", type=int, default=6)
@@ -254,6 +255,11 @@ def main():
     args = parser.parse_args()
     if args.completed_through_week is None:
         parser.error("--completed-through-week is required; cutoff dates do not independently finalize scores")
+    if args.generated_at:
+        try:
+            datetime.fromisoformat(args.generated_at.replace("Z", "+00:00"))
+        except ValueError:
+            parser.error("--generated-at must be an ISO-8601 timestamp")
 
     try:
         save_json(args.out, build_current_season_asset(args))

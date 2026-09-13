@@ -30,7 +30,7 @@ MAX_WEEK="17"
 
 # Paths (relative to this script's directory)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ASSETS_DIR="${SCRIPT_DIR}/../assets"
+ASSETS_DIR="${ASSETS_DIR_OVERRIDE:-${SCRIPT_DIR}/../assets}"
 
 IN_H2H="${ASSETS_DIR}/H2H.json"
 OUT_H2H="${ASSETS_DIR}/H2H.updated.json"
@@ -148,10 +148,14 @@ if [[ "${VALIDATE_ONLY}" == "1" ]]; then
 fi
 
 # 1) Regular season (safe to re-run; script de-dupes)
-${PY} "${UPDATER}"   --league "${LEAGUE_ID}"   --season "${SEASON}"   --h2h "${IN_H2H}"   --out "${OUT_H2H}"   --map "${MAP_FILE}"   --weeks "${REG_SEASON_WEEKS}"   --regular-season-max-week "${REG_SEASON_MAX_WEEK}"   --max-week "${MAX_WEEK}"   --only-played   --completed-through-week "${COMPLETED_THROUGH_WEEK}" --completion-basis "${COMPLETION_BASIS}" --sort-mode season
+REGULAR_CMD=("${PY}" "${UPDATER}" --league "${LEAGUE_ID}" --season "${SEASON}" --h2h "${IN_H2H}" --out "${OUT_H2H}" --map "${MAP_FILE}" --weeks "${REG_SEASON_WEEKS}" --regular-season-max-week "${REG_SEASON_MAX_WEEK}" --max-week "${MAX_WEEK}" --only-played --completed-through-week "${COMPLETED_THROUGH_WEEK}" --completion-basis "${COMPLETION_BASIS}" --sort-mode season)
+if [[ -n "${CUTOFF_DATE}" ]]; then REGULAR_CMD+=(--cutoff-date "${CUTOFF_DATE}"); fi
+"${REGULAR_CMD[@]}"
 
 # 2) Postseason (winners + Saunders brackets), appended onto the file we just wrote
-${PY} "${UPDATER}"   --league "${LEAGUE_ID}"   --season "${SEASON}"   --h2h "${OUT_H2H}"   --out "${OUT_H2H}"   --map "${MAP_FILE}"   --weeks "${POSTSEASON_WEEKS}"   --regular-season-max-week "${REG_SEASON_MAX_WEEK}"   --max-week "${MAX_WEEK}"   --only-played   --completed-through-week "${COMPLETED_THROUGH_WEEK}" --completion-basis "${COMPLETION_BASIS}" --allow-postseason   --sort-mode season
+POSTSEASON_CMD=("${PY}" "${UPDATER}" --league "${LEAGUE_ID}" --season "${SEASON}" --h2h "${OUT_H2H}" --out "${OUT_H2H}" --map "${MAP_FILE}" --weeks "${POSTSEASON_WEEKS}" --regular-season-max-week "${REG_SEASON_MAX_WEEK}" --max-week "${MAX_WEEK}" --only-played --completed-through-week "${COMPLETED_THROUGH_WEEK}" --completion-basis "${COMPLETION_BASIS}" --allow-postseason --sort-mode season)
+if [[ -n "${CUTOFF_DATE}" ]]; then POSTSEASON_CMD+=(--cutoff-date "${CUTOFF_DATE}"); fi
+"${POSTSEASON_CMD[@]}"
 
 # 3) Generate CurrentSeason.json from Sleeper, using the generated H2H as a postseason fallback
 CURRENT_CMD=(
@@ -171,6 +175,9 @@ if [[ -n "${COMPLETED_ACTIVE_WEEK}" ]]; then
 CURRENT_CMD+=(--current-week "${COMPLETED_ACTIVE_WEEK}")
 fi
 CURRENT_CMD+=(--allow-postseason)
+if [[ -n "${CUTOFF_DATE}" ]]; then
+  CURRENT_CMD+=(--cutoff-date "${CUTOFF_DATE}" --generated-at "${CUTOFF_DATE}T13:00:00Z")
+fi
 
 "${CURRENT_CMD[@]}"
 

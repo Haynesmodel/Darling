@@ -147,15 +147,6 @@
               <span class="nfl-kickoff-headline-icon" aria-hidden="true">🩹</span><span class="nfl-kickoff-headline-label">And the hits keep coming</span><strong>Jordan out, more TBD</strong><p>Cameron Jordan is out, Rome Odunze is questionable, and the injury tab is already appointment viewing.</p>
             </article>
           </div>
-          <section class="nfl-kickoff-carousel" data-nfl-kickoff-carousel aria-labelledby="nflKickoffBriefTitle" aria-roledescription="carousel">
-            <div class="nfl-kickoff-carousel-header"><div><p class="nfl-kickoff-carousel-eyebrow">The Sunday briefing</p><h3 id="nflKickoffBriefTitle">Breaking news from the group chat</h3></div><span class="nfl-kickoff-carousel-status" data-nfl-kickoff-status>Story 1 of 3</span></div>
-            <div class="nfl-kickoff-carousel-stage">
-              <div class="nfl-kickoff-slide is-active" data-nfl-kickoff-slide aria-hidden="false" aria-label="Story 1 of 3: The injury report chose violence"><p class="nfl-kickoff-slide-title">🚨 The injury report chose violence</p><p>Bowers is out. A.J. Brown is down. Your “safe” Week 1 lineup is now a prayer circle.</p></div>
-              <div class="nfl-kickoff-slide" data-nfl-kickoff-slide aria-hidden="true" aria-label="Story 2 of 3: A sweet new year"><p class="nfl-kickoff-slide-title">🍎 A sweet new year</p><p>Shana Tova to everyone celebrating Rosh Hashana. May this year bring peace, health, and fewer questionable tags.</p></div>
-              <div class="nfl-kickoff-slide" data-nfl-kickoff-slide aria-hidden="true" aria-label="Story 3 of 3: Nussbaum watch"><p class="nfl-kickoff-slide-title">😢 Nussbaum watch</p><p>Nussbaum is sad. The league has been notified. A tasteful moment of silence will be observed after the coin toss.</p></div>
-            </div>
-            <div class="nfl-kickoff-carousel-controls"><button type="button" data-nfl-kickoff-previous aria-label="Show previous kickoff story">← Previous</button><div class="nfl-kickoff-dots" aria-hidden="true"><span class="is-active"></span><span></span><span></span></div><button type="button" data-nfl-kickoff-toggle>Pause slideshow</button><button type="button" data-nfl-kickoff-next aria-label="Show next kickoff story">Next →</button></div>
-          </section>
           <div class="nfl-kickoff-footer"><p><span aria-hidden="true">🏟️</span> Good luck, managers. May your Sunday be loud, your roster healthy, and your rivals nervous.</p><button type="button" class="nfl-kickoff-dismiss" data-nfl-kickoff-dismiss>Enter the league <span aria-hidden="true">→</span></button></div>
         </div>
       </section>
@@ -417,46 +408,6 @@
       if (!welcome) return;
       const featureQueryKeys = new Set(['owner', 'team', 'seasons', 'weeks', 'opps', 'types', 'rounds', 'focus', 'rivalryTeamA', 'rivalryTeamB', 'currentOwner', 'trophyOwner', 'dynastyOwner', 'ga']);
       const dismiss = document.querySelector('[data-nfl-kickoff-dismiss]');
-      const carousel = welcome.querySelector?.('[data-nfl-kickoff-carousel]');
-      const slides = carousel ? [...carousel.querySelectorAll('[data-nfl-kickoff-slide]')] : [];
-      const slideStatus = carousel?.querySelector('[data-nfl-kickoff-status]');
-      const slideToggle = carousel?.querySelector('[data-nfl-kickoff-toggle]');
-      const reducedMotion = carousel && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      let slideIndex = 0;
-      let slideTimer = 0;
-      let slidePaused = Boolean(reducedMotion);
-      let slideHovered = false;
-      let slideFocused = false;
-      const showSlide = index => {
-        slideIndex = (index + slides.length) % slides.length;
-        slides.forEach((slide, current) => {
-          const active = current === slideIndex;
-          slide.classList.toggle('is-active', active);
-          slide.setAttribute('aria-hidden', String(!active));
-        });
-        carousel?.querySelectorAll('.nfl-kickoff-dots span').forEach((dot, current) => dot.classList.toggle('is-active', current === slideIndex));
-        if (slideStatus) slideStatus.textContent = `Story ${slideIndex + 1} of ${slides.length}`;
-      };
-      const stopSlides = () => { if (slideTimer) window.clearInterval(slideTimer); slideTimer = 0; };
-      const startSlides = () => {
-        stopSlides();
-        if (!slidePaused && !slideHovered && !slideFocused && !welcome.hidden && slides.length > 1) slideTimer = window.setInterval(() => showSlide(slideIndex + 1), 5000);
-      };
-      const moveSlide = amount => { showSlide(slideIndex + amount); startSlides(); };
-      carousel?.querySelector('[data-nfl-kickoff-previous]')?.addEventListener('click', () => moveSlide(-1));
-      carousel?.querySelector('[data-nfl-kickoff-next]')?.addEventListener('click', () => moveSlide(1));
-      slideToggle?.addEventListener('click', () => {
-        slidePaused = !slidePaused;
-        slideToggle.textContent = slidePaused ? 'Play slideshow' : 'Pause slideshow';
-        startSlides();
-      });
-      if (reducedMotion && slideToggle) slideToggle.hidden = true;
-      carousel?.addEventListener('mouseenter', () => { slideHovered = true; stopSlides(); });
-      carousel?.addEventListener('mouseleave', () => { slideHovered = false; startSlides(); });
-      carousel?.addEventListener('focusin', () => { slideFocused = true; stopSlides(); });
-      carousel?.addEventListener('focusout', event => {
-        if (!carousel.contains(event.relatedTarget)) { slideFocused = false; startSlides(); }
-      });
       const storageKey = 'darling.nfl-kickoff-welcome.dismissed.2026';
       const dateFormatter = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
@@ -470,7 +421,6 @@
         const parts = Object.fromEntries(dateFormatter.formatToParts(new Date()).map(({ type, value }) => [type, value]));
         const dateKey = Number(parts.year) * 10000 + Number(parts.month) * 100 + Number(parts.day);
         welcome.hidden = !homeRoute || dismissed || dateKey < 20260909 || dateKey >= 20260915;
-        if (welcome.hidden) stopSlides(); else startSlides();
       };
       window.addEventListener('darling:route-update', sync);
       window.addEventListener('popstate', sync);
@@ -485,7 +435,6 @@
         try { window.localStorage.setItem(storageKey, 'true'); } catch { /* Storage is optional. */ }
       });
       window.setInterval(sync, 60000);
-      showSlide(0);
       sync();
     })();
   </script>

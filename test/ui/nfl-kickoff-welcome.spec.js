@@ -13,6 +13,7 @@ test.describe('NFL kickoff welcome', () => {
     await expect(page.getByText('Bowers + A.J. Brown')).toBeVisible();
     await expect(page.getByText('Rosh Hashana', { exact: true })).toBeVisible();
     await expect(page.getByText('Nussbaum is sad', { exact: true })).toBeVisible();
+    await expect(page.locator('[data-nfl-kickoff-carousel]')).toHaveCount(0);
     await expect(page.locator('.nfl-kickoff-confetti i')).toHaveCount(12);
     await expect(page.locator('.nfl-kickoff-stadium-lights span')).toHaveCount(3);
     const motionNames = await page.locator('.nfl-kickoff-confetti i, .nfl-kickoff-stadium-lights span').evaluateAll(elements => elements.map(element => getComputedStyle(element).animationName));
@@ -21,19 +22,6 @@ test.describe('NFL kickoff welcome', () => {
     await page.getByRole('button', { name: /Enter the league/ }).click();
     await expect(page.locator('[data-nfl-kickoff-welcome]')).toBeHidden();
     await expect(page.locator('#mainContent')).toBeFocused();
-  });
-
-  test('rotates the three briefing stories and supports pausing', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.locator('[data-nfl-kickoff-status]')).toHaveText('Story 1 of 3');
-    await page.clock.fastForward(5000);
-    await expect(page.locator('[data-nfl-kickoff-status]')).toHaveText('Story 2 of 3');
-    await page.locator('[data-nfl-kickoff-toggle]').click();
-    await expect(page.locator('[data-nfl-kickoff-toggle]')).toHaveText('Play slideshow');
-    await page.clock.fastForward(6000);
-    await expect(page.locator('[data-nfl-kickoff-status]')).toHaveText('Story 2 of 3');
-    await page.locator('[data-nfl-kickoff-next]').click();
-    await expect(page.getByText('Nussbaum watch')).toBeVisible();
   });
 
   test('uses the kickoff window, hides on feature routes, and respects reduced motion', async ({ page }) => {
@@ -45,7 +33,6 @@ test.describe('NFL kickoff welcome', () => {
     await page.reload();
     const animations = await page.locator('.nfl-kickoff-ball, .nfl-kickoff-whistle, .nfl-kickoff-live-dot, .nfl-kickoff-stadium-lights span, .nfl-kickoff-confetti i, .nfl-kickoff-announcement span, .nfl-kickoff-headline').evaluateAll(elements => elements.map(element => getComputedStyle(element).animationName));
     expect(animations.every(name => name === 'none')).toBe(true);
-    await expect(page.locator('[data-nfl-kickoff-toggle]')).toBeHidden();
     await page.goto('/?tab=draft');
     await expect(page.locator('[data-nfl-kickoff-welcome]')).toBeHidden();
   });

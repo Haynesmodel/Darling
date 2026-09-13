@@ -1,5 +1,20 @@
 # Data pipeline
 
+## Weekly scoring completion and corrections
+
+Automated snapshots run Tuesday at 14:00 UTC. A week is provisional until the
+shared completion resolver confirms the NFL/league state and that the week’s
+Tuesday 13:00 UTC safety boundary has elapsed. Provisional scores may appear in
+`CurrentSeason.json`, but never enter append-only `H2H.json`; missing points are
+not equivalent to an explicit zero, and a verified 0–0 result is final.
+
+The updater records completion provenance in its candidate report. Manual runs
+may pass `--completed-through-week N --reason "..."` for a postponed contest,
+but scheduled runs reject overrides. A discrepancy is investigated with
+`scripts/reconcile_sleeper_history.py` into a non-canonical report path; it
+never rewrites tracked assets. Any correction is a separately reviewed,
+human-authored PR preserving the original source evidence.
+
 The Darling deploys one coherent, content-addressed data snapshot. The five source JSON files remain human-reviewable inputs; schemas, generated contracts, Draft Spot observations, derived statistics, and the manifest make the snapshot safe to consume and reproduce.
 
 ## Source and generated files
@@ -149,8 +164,45 @@ Failures identify the workflow phase, retain safe allowlisted candidate/review e
 Local validation-only example:
 
 ```sh
-UPDATE_LIVE=1 VALIDATE_ONLY=1 SEASON=2025 CURRENT_WEEK=1 scripts/update_sleeper_h2h.sh
+UPDATE_LIVE=1 VALIDATE_ONLY=1 SEASON=2025 scripts/update_sleeper_h2h.sh
 ```
+
+The GitHub workflow uses `scripts/build_sleeper_candidate.cjs` for both
+validation-only and full runs. It stages tracked source into a disposable
+candidate root, runs the same generators and drift checks, and promotes only
+the six allowlisted files in full mode. DraftSpot and generated TypeScript are
+checked for drift but are never added to the bot data allowlist.
+For offline parity tests, pass `--mode validate-only` or `--mode full` with the
+same `--source-root`, `--candidate-root`, selected `--python`, completion-report
+path, and optional `--frozen-clock YYYY-MM-DD`; both modes then use identical
+candidate inputs and an injected metadata clock.
+
+### Report-only Sleeper history reconciliation
+
+Reconciliation is read-only and produces a report for human review. An offline
+fixture must contain `retrieved_at` and raw weekly Sleeper matchup rows; an
+optional candidate file is normalized H2H data, never an asset replacement:
+
+```sh
+python3 scripts/reconcile_sleeper_history.py \
+  --season 2025 --mapping scripts/2025_team_mapping.json \
+  --canonical assets/H2H.json --source-fixture /path/source.json \
+  --out /tmp/darling-history-report.json \
+  --out-candidate /tmp/darling-history-candidate.json
+```
+
+Live retrieval is an explicit, bounded opt-in and never uses credentials:
+
+```sh
+python3 scripts/reconcile_sleeper_history.py \
+  --season 2025 --mapping scripts/2025_team_mapping.json \
+  --canonical assets/H2H.json --live-league LEAGUE_ID --allow-live \
+  --out /tmp/darling-history-report.json
+```
+
+The command never writes canonical assets. Review the report first; any
+correction must be a separately human-authored pull request with its own data
+diff and approval.
 
 ### Activating a new Sleeper season
 
@@ -205,7 +257,7 @@ python3 scripts/generate_transaction_history.py --help
 
 ## Current measurements
 
-On the implementation machine (Node 23; CI targets Node 20):
+On the implementation machine (Node 24/npm 11.18.0; CI targets Node 24/npm 11.18.0; Python generators use Python 3.13):
 
 - Derived generation: under 100 ms for 898 games.
 - Full generated drift check: under 2 seconds.

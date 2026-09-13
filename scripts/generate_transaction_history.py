@@ -84,6 +84,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--draft-id")
     result.add_argument("--players-cache")
     result.add_argument("--fixture-dir")
+    result.add_argument("--completed-through-week", type=int, required=True)
     return result
 
 
@@ -164,6 +165,7 @@ def generate(args):
         current=load_json(args.current_season),
         player_directory=players,
         max_week=args.max_week,
+        completed_week_override=getattr(args, "completed_through_week", None),
     )
     existing = load_json(args.existing) if args.existing else None
     result = merge_asset(season, catalog, existing)

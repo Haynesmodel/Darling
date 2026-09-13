@@ -36,6 +36,7 @@ class GenerateCurrentSeasonTests(unittest.TestCase):
                 max_week=17,
                 allow_postseason=False,
                 h2h_fallback=None,
+                completed_through_week=0,
             )
 
             teams = [
@@ -69,9 +70,9 @@ class GenerateCurrentSeasonTests(unittest.TestCase):
             self.assertEqual(asset['playoff_rules']['regular_season_max_week'], 14)
             self.assertEqual(asset['update_context']['mode'], 'manual')
             self.assertEqual(asset['update_context']['cutoff_date'], '2025-09-07')
-            self.assertFalse(asset['update_context']['contains_live_scores'])
+            self.assertTrue(asset['update_context']['contains_live_scores'])
             self.assertFalse(asset['update_context']['contains_projected_scores'])
-            self.assertEqual(asset['games'][0]['status'], 'final')
+            self.assertEqual(asset['games'][0]['status'], 'live')
             self.assertEqual(asset['games'][0]['scoreA'], 100.0)
             self.assertEqual(asset['games'][1]['status'], 'scheduled')
             self.assertIsNone(asset['games'][1]['scoreA'])
@@ -93,6 +94,7 @@ class GenerateCurrentSeasonTests(unittest.TestCase):
                 max_week=17,
                 allow_postseason=False,
                 h2h_fallback=None,
+                completed_through_week=0,
             )
 
             teams = [
@@ -126,7 +128,7 @@ class GenerateCurrentSeasonTests(unittest.TestCase):
 
             self.assertEqual(asset['current_week'], 2)
             self.assertTrue(asset['update_context']['contains_live_scores'])
-            self.assertEqual(asset['games'][0]['status'], 'final')
+            self.assertEqual(asset['games'][0]['status'], 'live')
             self.assertEqual(asset['games'][1]['status'], 'live')
             self.assertEqual(asset['games'][1]['scoreA'], 101.5)
             self.assertEqual(asset['games'][2]['status'], 'scheduled')
@@ -148,6 +150,7 @@ class GenerateCurrentSeasonTests(unittest.TestCase):
                 max_week=17,
                 allow_postseason=True,
                 h2h_fallback=None,
+                completed_through_week=16,
             )
 
             teams = [
@@ -164,8 +167,8 @@ class GenerateCurrentSeasonTests(unittest.TestCase):
                  patch.object(module.sleeper, 'build_bracket_roster_pairs', return_value=({(1, 2)}, set())):
                 asset = module.build_current_season_asset(args)
 
-            self.assertEqual(asset['games'][0]['status'], 'final')
-            self.assertEqual(asset['games'][0]['scoreA'], 120.0)
+            self.assertEqual(asset['games'][0]['status'], 'scheduled')
+            self.assertIsNone(asset['games'][0]['scoreA'])
 
     def test_build_current_season_asset_uses_h2h_fallback_for_missing_postseason_classification(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -195,6 +198,7 @@ class GenerateCurrentSeasonTests(unittest.TestCase):
                 max_week=17,
                 allow_postseason=True,
                 h2h_fallback=str(h2h_path),
+                completed_through_week=16,
             )
 
             teams = [
@@ -214,7 +218,7 @@ class GenerateCurrentSeasonTests(unittest.TestCase):
             self.assertEqual(asset['current_week'], 16)
             self.assertEqual(asset['games'][0]['type'], 'Playoff')
             self.assertEqual(asset['games'][0]['round'], 'Championship')
-            self.assertEqual(asset['games'][0]['status'], 'final')
+            self.assertEqual(asset['games'][0]['status'], 'scheduled')
 
     def test_build_current_season_asset_fails_when_postseason_week_has_no_classified_games(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -232,6 +236,7 @@ class GenerateCurrentSeasonTests(unittest.TestCase):
                 max_week=17,
                 allow_postseason=True,
                 h2h_fallback=None,
+                completed_through_week=16,
             )
 
             teams = [

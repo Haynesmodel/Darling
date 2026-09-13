@@ -41,7 +41,7 @@ async function checkGeneratedAssets(root = process.cwd()) {
       draftOutput,
     ], { cwd: root, encoding: 'utf8' });
     if (draftResult.status !== 0) {
-      throw new Error(draftResult.stderr || draftResult.stdout || 'Draft Spot generation failed');
+      throw new Error(draftResult.stderr || draftResult.stdout || draftResult.error?.message || `Draft Spot generation failed (status ${draftResult.status})`);
     }
     await generateAssetTypes({ sourceRoot: root, outputRoot: temp });
     generateAssetValidators({ sourceRoot: root, outputRoot: temp });

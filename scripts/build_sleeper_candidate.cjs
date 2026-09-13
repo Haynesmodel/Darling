@@ -43,8 +43,8 @@ function assertSafePaths(sourceRoot, candidateRoot, reportPath, statusPath = nul
   if (fs.existsSync(candidate) && fs.lstatSync(candidate).isSymbolicLink()) throw new Error('Candidate root must not be a symlink.');
   const report = path.resolve(reportPath); const reportParent = realParent(report);
   if (isWithin(reportParent, source) || isWithin(reportParent, candidateReal)) throw new Error('Completion report must be outside source and candidate roots.');
-  try { if (fs.lstatSync(report).isSymbolicLink()) throw new Error('Completion report must not be a symlink.'); } catch (error) { if (error.message.includes('must not')) throw error; }
-  if (statusPath) { const status = path.resolve(statusPath); const statusParent = realParent(status); if (isWithin(statusParent, source) || isWithin(statusParent, candidateReal)) throw new Error('Status report must be outside source and candidate roots.'); try { if (fs.lstatSync(status).isSymbolicLink()) throw new Error('Status report must not be a symlink.'); } catch (error) { if (error.message.includes('must not')) throw error; } }
+  if (fs.lstatSync(report, { throwIfNoEntry: false })?.isSymbolicLink()) throw new Error('Completion report must not be a symlink.');
+  if (statusPath) { const status = path.resolve(statusPath); const statusParent = realParent(status); if (isWithin(statusParent, source) || isWithin(statusParent, candidateReal)) throw new Error('Status report must be outside source and candidate roots.'); if (fs.lstatSync(status, { throwIfNoEntry: false })?.isSymbolicLink()) throw new Error('Status report must not be a symlink.'); }
 }
 
 function copyTrackedSource(sourceRoot, candidateRoot, files) {
@@ -90,7 +90,7 @@ function main(argv = process.argv.slice(2)) {
     const baseline = path.join(candidateRoot, '.baseline'); fs.mkdirSync(baseline, { recursive: true }); for (const name of ['H2H', 'CurrentSeason', 'TransactionHistory', 'asset-manifest']) fs.copyFileSync(path.join(sourceRoot, `assets/${name}.json`), path.join(baseline, `${name}.json`));
     phase = 'extraction'; writeStatus(args['status-report'], { phase, season: Number(args.season), runtime });
     if (args['fixture-root']) copyFixtureOutputs(path.resolve(args['fixture-root']), candidateRoot, reportPath); else run(path.join(sourceRoot, 'scripts/update_sleeper_h2h.sh'), [], { cwd: sourceRoot, env: { ...process.env, PYTHON: path.resolve(args.python), SEASON: args.season, UPDATE_LIVE: '1', VALIDATE_ONLY: '0', ASSETS_DIR_OVERRIDE: path.join(candidateRoot, 'assets'), COMPLETION_REPORT_PATH: reportPath, ...(args['frozen-clock'] ? { CUTOFF_DATE: args['frozen-clock'] } : {}) } });
-    promoteGeneratedOutputs(candidateRoot);
+    phase = 'promotion'; writeStatus(args['status-report'], { phase, season: Number(args.season), runtime }); promoteGeneratedOutputs(candidateRoot);
     phase = 'derived'; writeStatus(args['status-report'], { phase, season: Number(args.season), runtime }); if (process.env.DARLING_CANDIDATE_FAIL_PHASE === phase) throw new Error(`Injected failure at ${phase} phase`); const h2hChanged = prepareDerived(candidateRoot, sourceRoot, path.resolve(args.python), Number(args.season));
     phase = 'summary'; writeStatus(args['status-report'], { phase, season: Number(args.season), runtime }); if (process.env.DARLING_CANDIDATE_FAIL_PHASE === phase) throw new Error(`Injected failure at ${phase} phase`);
     const changed = ALLOWLIST.filter(file => { const before = path.join(sourceRoot, file); const after = path.join(candidateRoot, file); if (!fs.existsSync(before) || !fs.existsSync(after)) return fs.existsSync(before) !== fs.existsSync(after); return !fs.readFileSync(before).equals(fs.readFileSync(after)); }); const changedFile = path.join(candidateRoot, 'candidate-changed-files.txt'); fs.writeFileSync(changedFile, `${changed.join('\n')}${changed.length ? '\n' : ''}`); const baseSha = run('git', ['-C', sourceRoot, 'rev-parse', 'HEAD'], { cwd: sourceRoot }).trim();

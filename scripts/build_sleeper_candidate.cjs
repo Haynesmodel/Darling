@@ -43,7 +43,8 @@ function assertSafePaths(sourceRoot, candidateRoot, reportPath, statusPath = nul
   if (fs.existsSync(candidate) && fs.lstatSync(candidate).isSymbolicLink()) throw new Error('Candidate root must not be a symlink.');
   const report = path.resolve(reportPath); const reportParent = realParent(report);
   if (isWithin(reportParent, source) || isWithin(reportParent, candidateReal)) throw new Error('Completion report must be outside source and candidate roots.');
-  if (statusPath) { const statusParent = realParent(statusPath); if (isWithin(statusParent, source) || isWithin(statusParent, candidateReal)) throw new Error('Status report must be outside source and candidate roots.'); }
+  try { if (fs.lstatSync(report).isSymbolicLink()) throw new Error('Completion report must not be a symlink.'); } catch (error) { if (error.message.includes('must not')) throw error; }
+  if (statusPath) { const status = path.resolve(statusPath); const statusParent = realParent(status); if (isWithin(statusParent, source) || isWithin(statusParent, candidateReal)) throw new Error('Status report must be outside source and candidate roots.'); try { if (fs.lstatSync(status).isSymbolicLink()) throw new Error('Status report must not be a symlink.'); } catch (error) { if (error.message.includes('must not')) throw error; } }
 }
 
 function copyTrackedSource(sourceRoot, candidateRoot, files) {
@@ -66,7 +67,11 @@ function prepareDerived(candidateRoot, sourceRoot, python, season) {
   preserveOperationalTimestamp(candidateRoot, sourceRoot, 'CurrentSeason.json', 'generated_at');
   const changed = ALLOWLIST.slice(0, 3).some(file => !fs.readFileSync(path.join(sourceRoot, file)).equals(fs.readFileSync(path.join(candidateRoot, file))));
   if (changed || h2hChanged || !fs.existsSync(path.join(candidateRoot, 'assets/asset-manifest.json'))) run('node', ['scripts/generate_asset_manifest.cjs', '--output-root', candidateRoot], { cwd: candidateRoot });
-  run('node', ['scripts/check_generated_assets.cjs'], { cwd: sourceRoot, env: { ...process.env, PYTHON: python } });
+  run('npm', ['run', 'generate:data'], { cwd: candidateRoot, env: { ...process.env, PYTHON: python } });
+  run('node', ['scripts/check_generated_assets.cjs'], { cwd: candidateRoot, env: { ...process.env, PYTHON: python } });
+  for (const file of ['assets/DraftSpot.json', 'src/data/generated/asset-types.ts', 'src/data/generated/asset-validators.ts', 'src/data/generated/transaction-history-validator.ts']) {
+    const source = path.join(sourceRoot, file); if (fs.existsSync(source)) fs.copyFileSync(source, path.join(candidateRoot, file));
+  }
   run('node', ['scripts/validate_assets.cjs', path.join(candidateRoot, 'assets/H2H.json'), path.join(candidateRoot, 'assets/SeasonSummary.json'), path.join(candidateRoot, 'assets/Rivalries.json'), path.join(candidateRoot, 'assets/CurrentSeason.json'), path.join(candidateRoot, 'assets/TransactionHistory.json')], { cwd: candidateRoot });
   return h2hChanged;
 }

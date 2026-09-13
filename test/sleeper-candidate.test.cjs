@@ -3,7 +3,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const { parseArgs, preserveOperationalTimestamp, promoteGeneratedOutputs, sourceDigest, ALLOWLIST, main, assertSafePaths } = require('../scripts/build_sleeper_candidate.cjs');
+const testPython = process.env.PYTHON
+  || (fs.existsSync('/opt/homebrew/bin/python3.13') ? '/opt/homebrew/bin/python3.13' : 'python3');
 
 test('candidate CLI requires an explicit isolated root and mode', () => {
   const valid = parseArgs([
@@ -86,6 +89,8 @@ test('builder runs the same isolated fixture preparation for validate-only and f
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-candidate-e2e-'));
   const fixture = path.join(root, 'fixture');
   const report = path.join(root, 'completion.json');
+  const sourceFiles = execFileSync('git', ['-C', source, 'ls-files', '-z'], { encoding: 'utf8' }).split('\0').filter(Boolean);
+  const sourceBefore = sourceDigest(source, sourceFiles);
   const previousLeague = process.env.LEAGUE_ID;
   process.env.LEAGUE_ID = '1257071385973362690';
   try {
@@ -103,7 +108,7 @@ test('builder runs the same isolated fixture preparation for validate-only and f
       const candidate = path.join(root, mode);
       const status = path.join(root, `${mode}-status.json`);
       main(['--source-root', source, '--candidate-root', candidate, '--season', '2025', '--mode', mode,
-        '--python', process.env.PYTHON || '/opt/homebrew/bin/python3.13', '--fixture-root', fixture,
+        '--python', testPython, '--fixture-root', fixture,
         '--completion-report', path.join(root, `${mode}-completion.json`), '--status-report', status]);
       outputs[mode] = {
         assets: ALLOWLIST.filter(file => fs.existsSync(path.join(candidate, file))).map(file => fs.readFileSync(path.join(candidate, file))),
@@ -114,6 +119,12 @@ test('builder runs the same isolated fixture preparation for validate-only and f
     for (const file of ALLOWLIST) assert.deepEqual(outputs['validate-only'].assets[ALLOWLIST.indexOf(file)], outputs.full.assets[ALLOWLIST.indexOf(file)]);
     assert.deepEqual(outputs['validate-only'].metadata.summary, outputs.full.metadata.summary);
     assert.deepEqual(JSON.parse(outputs['validate-only'].summary), JSON.parse(outputs.full.summary));
+    const generatedValidator = path.join(root, 'full/src/data/generated/asset-validators.ts');
+    fs.appendFileSync(generatedValidator, '\n// injected drift\n');
+    assert.throws(() => execFileSync('node', ['scripts/check_generated_assets.cjs'], {
+      cwd: path.join(root, 'full'), env: { ...process.env, PYTHON: testPython }, encoding: 'utf8',
+    }), /GENERATED_DRIFT/);
+    assert.equal(sourceDigest(source, sourceFiles), sourceBefore);
   } finally {
     if (previousLeague === undefined) delete process.env.LEAGUE_ID; else process.env.LEAGUE_ID = previousLeague;
     fs.rmSync(root, { recursive: true, force: true });
@@ -134,7 +145,7 @@ test('post-extraction failures leave every tracked source byte unchanged', () =>
     fs.writeFileSync(path.join(fixture, 'completion-report.json'), JSON.stringify({ season: 2025, max_week: 17, completed: 17, active: null, basis: 'nfl_state_and_calendar_guard', warnings: [], clock: '2025-09-16T13:00:00Z', override_reason: null }));
     for (const phase of ['derived', 'summary', 'allowlist']) {
       process.env.DARLING_CANDIDATE_FAIL_PHASE = phase;
-      assert.throws(() => main(['--source-root', source, '--candidate-root', path.join(root, phase), '--season', '2025', '--mode', 'validate-only', '--python', '/opt/homebrew/bin/python3.13', '--fixture-root', fixture, '--completion-report', path.join(root, `${phase}.json`)]), new RegExp(`Injected failure at ${phase}`));
+      assert.throws(() => main(['--source-root', source, '--candidate-root', path.join(root, phase), '--season', '2025', '--mode', 'validate-only', '--python', testPython, '--fixture-root', fixture, '--completion-report', path.join(root, `${phase}.json`)]), new RegExp(`Injected failure at ${phase}`));
       const after = sourceDigest(source, require('node:child_process').execFileSync('git', ['-C', source, 'ls-files', '-z'], { encoding: 'utf8' }).split('\0').filter(Boolean));
       assert.equal(after, before);
     }
@@ -152,6 +163,9 @@ test('candidate, report, and status paths cannot contain or replace the source r
     assert.throws(() => assertSafePaths(source, path.dirname(source), path.join(outside, 'report.json')), /disjoint/);
     assert.throws(() => assertSafePaths(source, path.join(source, 'candidate'), path.join(outside, 'report.json')), /disjoint/);
     assert.throws(() => assertSafePaths(source, path.join(outside, 'candidate'), path.join(source, 'report.json')), /Completion report/);
+    const reportLink = path.join(outside, 'report-link.json');
+    fs.symlinkSync(path.join(source, 'tracked.json'), reportLink);
+    assert.throws(() => assertSafePaths(source, path.join(outside, 'candidate'), reportLink), /Completion report must not be a symlink/);
   } finally {
     fs.rmSync(source, { recursive: true, force: true }); fs.rmSync(outside, { recursive: true, force: true });
   }

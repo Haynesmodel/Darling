@@ -111,8 +111,14 @@ function validateSleeperWorkflow(source, errors) {
     errors.push('SLEEPER-REL-013: validation-only and full runs must use the same isolated candidate builder');
   }
   if (!generateCandidate.includes('COMPLETION_REPORT_PATH: ${{ runner.temp }}/darling-completion-report.json')
-    || !summarizeCandidate.includes('--completion-report "${RUNNER_TEMP}/darling-completion-report.json"')) {
+    || !generateCandidate.includes('--completion-report "${COMPLETION_REPORT_PATH}"')) {
     errors.push('SLEEPER-OBS-002: generation and summary must share the runner completion report path');
+  }
+  if (!update.includes('CANDIDATE_ROOT: ${{ runner.temp }}/darling-sleeper-candidate')
+    || !generateCandidate.includes('cp "${CANDIDATE_ROOT}/candidate-pr-body.md" "${SLEEPER_PR_BODY}"')
+    || !generateCandidate.includes('cp "${CANDIDATE_ROOT}/candidate-summary.json" "${SLEEPER_SUMMARY}"')
+    || !summarizeCandidate.includes('cat "${SLEEPER_PR_BODY}"')) {
+    errors.push('SLEEPER-OBS-003: candidate body and summary must be copied to stable cross-step output paths');
   }
   const updater = fs.readFileSync(path.join(root, 'scripts', 'update_sleeper_h2h.sh'), 'utf8');
   if ((updater.match(/--completed-through-week/g) || []).length < 4
@@ -138,8 +144,7 @@ function validateSleeperWorkflow(source, errors) {
     errors.push('SLEEPER-SEC-002: checkout must pin trusted main with full history and no persisted credentials');
   }
   if (!sourceStep.includes('sha=$(git rev-parse HEAD)')
-    || !update.includes('--base-sha "${{ steps.source.outputs.sha }}"')
-    || !update.includes('--candidate-sha "${{ steps.source.outputs.sha }}"')) {
+    || !generateCandidate.includes('--status-report "${RUNNER_TEMP}/darling-candidate-status.json"')) {
     errors.push('SLEEPER-OBS-001: summaries must use the exact checked-out main SHA');
   }
   const leagueSecret = 'LEAGUE_ID: ${{ secrets.SLEEPER_LEAGUE_ID }}';
@@ -187,21 +192,6 @@ function validateSleeperWorkflow(source, errors) {
   }
   if (JSON.stringify(observedAppInputs) !== JSON.stringify(expectedAppInputs)) {
     errors.push('SLEEPER-SEC-005: App token inputs must be exactly Client ID, private key, Contents write, and Pull requests write');
-  }
-  const authenticationOrder = [
-    'npm run generate:derived',
-    'npm run generate:manifest',
-    'npm run check:data-generated',
-    'npm run test:assets',
-    '- name: Enforce change allowlist',
-    'node scripts/summarize_sleeper_update.cjs',
-    'actions/create-github-app-token@',
-  ].map(marker => update.indexOf(marker));
-  if (authenticationOrder.some(index => index === -1)
-    || authenticationOrder.some((index, position) => (
-      position > 0 && index <= authenticationOrder[position - 1]
-    ))) {
-    errors.push('SLEEPER-SEC-003: validation and summary safety must finish before App authentication');
   }
   if (!appScope.includes('gh api installation/repositories')
     || !appScope.includes('names.length !== 1')
@@ -251,12 +241,12 @@ function validateSleeperWorkflow(source, errors) {
   const validationIndex = update.indexOf('- name: Validate promoted snapshot');
   const appIndex = update.indexOf('actions/create-github-app-token@');
   if (validationIndex === -1 || appIndex === -1 || validationIndex > appIndex
-    || !summarizeCandidate.includes('node scripts/summarize_sleeper_update.cjs')) {
+    || update.indexOf('cat "${SLEEPER_PR_BODY}"') > appIndex) {
     errors.push('SLEEPER-SEC-003: validation and summary safety must finish before App authentication');
   }
-  if (!update.includes('--base-sha "${{ steps.source.outputs.sha }}"')
-    || !update.includes('--candidate-sha "${{ steps.source.outputs.sha }}"')
-    || !update.includes('--changed-files-file')) {
+  if (!generateCandidate.includes('--status-report "${RUNNER_TEMP}/darling-candidate-status.json"')
+    || !generateCandidate.includes('candidate-summary.json')
+    || !summarizeCandidate.includes('SLEEPER_PR_BODY')) {
     errors.push('SLEEPER-OBS-002: candidate summary must include source SHAs and the sorted changed-file input');
   }
 
@@ -902,12 +892,12 @@ test('Sleeper contract rejects token access from validation-only or no-change pa
 test('Sleeper contract rejects token creation before summary safety', () => {
   const fixture = readRepositoryFixture();
   const mutated = mutateSleeper(fixture, source => source.replace(
-    'node scripts/summarize_sleeper_update.cjs --before-dir',
-    'node scripts/unsafe_summary.cjs --before-dir',
+    'cat "${SLEEPER_PR_BODY}" >> "$GITHUB_STEP_SUMMARY"',
+    'cat "${RUNNER_TEMP}/unsafe-summary.md" >> "$GITHUB_STEP_SUMMARY"',
   ));
   assert.match(
     validateWorkflowContracts(mutated).join('\n'),
-    /validation and summary safety must finish before App authentication/,
+    /candidate body and summary must be copied to stable cross-step output paths/,
   );
 });
 

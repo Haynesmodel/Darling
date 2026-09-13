@@ -42,9 +42,9 @@ function assertSafePaths(sourceRoot, candidateRoot, reportPath, statusPath = nul
   if (isWithin(source, candidateReal) || isWithin(candidateReal, source)) throw new Error('Source and candidate roots must be disjoint.');
   if (fs.existsSync(candidate) && fs.lstatSync(candidate).isSymbolicLink()) throw new Error('Candidate root must not be a symlink.');
   const report = path.resolve(reportPath); const reportParent = realParent(report);
-  if (isWithin(reportParent, source) || isWithin(reportParent, candidateReal)) throw new Error('Completion report must be outside source and candidate roots.');
+  if (isWithin(report, source) || isWithin(report, candidate) || isWithin(reportParent, source) || isWithin(reportParent, candidateReal)) throw new Error('Completion report must be outside source and candidate roots.');
   if (fs.lstatSync(report, { throwIfNoEntry: false })?.isSymbolicLink()) throw new Error('Completion report must not be a symlink.');
-  if (statusPath) { const status = path.resolve(statusPath); const statusParent = realParent(status); if (isWithin(statusParent, source) || isWithin(statusParent, candidateReal)) throw new Error('Status report must be outside source and candidate roots.'); if (fs.lstatSync(status, { throwIfNoEntry: false })?.isSymbolicLink()) throw new Error('Status report must not be a symlink.'); }
+  if (statusPath) { const status = path.resolve(statusPath); const statusParent = realParent(status); if (isWithin(status, source) || isWithin(status, candidate) || isWithin(statusParent, source) || isWithin(statusParent, candidateReal)) throw new Error('Status report must be outside source and candidate roots.'); if (fs.lstatSync(status, { throwIfNoEntry: false })?.isSymbolicLink()) throw new Error('Status report must not be a symlink.'); }
 }
 
 function copyTrackedSource(sourceRoot, candidateRoot, files) {
@@ -63,13 +63,16 @@ function copyFixtureOutputs(fixtureRoot, candidateRoot, reportPath) {
 function preserveOperationalTimestamp(candidateRoot, sourceRoot, filename, field) { const beforePath = path.join(sourceRoot, 'assets', filename); const afterPath = path.join(candidateRoot, 'assets', filename); if (!fs.existsSync(beforePath) || !fs.existsSync(afterPath)) return; const before = JSON.parse(fs.readFileSync(beforePath)); const after = JSON.parse(fs.readFileSync(afterPath)); const stable = value => { const copy = { ...value }; delete copy[field]; return JSON.stringify(copy); }; if (stable(before) === stable(after)) { after[field] = before[field]; fs.writeFileSync(afterPath, `${JSON.stringify(after, null, 2)}\n`); } }
 function prepareDerived(candidateRoot, sourceRoot, python, season) {
   const h2hChanged = !fs.readFileSync(path.join(sourceRoot, 'assets/H2H.json')).equals(fs.readFileSync(path.join(candidateRoot, 'assets/H2H.json')));
+  // Validate the checked-out generated baseline before candidate regeneration;
+  // restoring stale source artifacts must never turn a drift into approval.
+  run('node', ['scripts/check_generated_assets.cjs'], { cwd: sourceRoot, env: { ...process.env, PYTHON: python } });
   if (h2hChanged) { run(python, [path.join(candidateRoot, 'scripts/generate_season_summary_draft.py'), '--h2h', path.join(candidateRoot, 'assets/H2H.json'), '--existing', path.join(candidateRoot, 'assets/SeasonSummary.json'), '--out', path.join(candidateRoot, 'assets/SeasonSummary.draft.json'), '--season', season], { cwd: candidateRoot }); run('node', ['scripts/generate_derived_stats.cjs', '--output-root', candidateRoot], { cwd: candidateRoot }); } else if (fs.existsSync(path.join(sourceRoot, 'assets/SeasonSummary.draft.json'))) fs.copyFileSync(path.join(sourceRoot, 'assets/SeasonSummary.draft.json'), path.join(candidateRoot, 'assets/SeasonSummary.draft.json'));
   preserveOperationalTimestamp(candidateRoot, sourceRoot, 'CurrentSeason.json', 'generated_at');
   const changed = ALLOWLIST.slice(0, 3).some(file => !fs.readFileSync(path.join(sourceRoot, file)).equals(fs.readFileSync(path.join(candidateRoot, file))));
   if (changed || h2hChanged || !fs.existsSync(path.join(candidateRoot, 'assets/asset-manifest.json'))) run('node', ['scripts/generate_asset_manifest.cjs', '--output-root', candidateRoot], { cwd: candidateRoot });
   run('npm', ['run', 'generate:data'], { cwd: candidateRoot, env: { ...process.env, PYTHON: python } });
   run('node', ['scripts/check_generated_assets.cjs'], { cwd: candidateRoot, env: { ...process.env, PYTHON: python } });
-  for (const file of ['assets/DraftSpot.json', 'src/data/generated/asset-types.ts', 'src/data/generated/asset-validators.ts', 'src/data/generated/transaction-history-validator.ts']) {
+  for (const file of ['assets/DraftSpot.json', 'src/data/generated/asset-types.ts', 'src/data/generated/asset-validators.ts', 'src/data/generated/league-lore-validator.ts', 'src/data/generated/transaction-history-validator.ts']) {
     const source = path.join(sourceRoot, file); if (fs.existsSync(source)) fs.copyFileSync(source, path.join(candidateRoot, file));
   }
   run('node', ['scripts/validate_assets.cjs', path.join(candidateRoot, 'assets/H2H.json'), path.join(candidateRoot, 'assets/SeasonSummary.json'), path.join(candidateRoot, 'assets/Rivalries.json'), path.join(candidateRoot, 'assets/CurrentSeason.json'), path.join(candidateRoot, 'assets/TransactionHistory.json')], { cwd: candidateRoot });

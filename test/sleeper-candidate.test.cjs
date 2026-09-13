@@ -163,10 +163,34 @@ test('candidate, report, and status paths cannot contain or replace the source r
     assert.throws(() => assertSafePaths(source, path.dirname(source), path.join(outside, 'report.json')), /disjoint/);
     assert.throws(() => assertSafePaths(source, path.join(source, 'candidate'), path.join(outside, 'report.json')), /disjoint/);
     assert.throws(() => assertSafePaths(source, path.join(outside, 'candidate'), path.join(source, 'report.json')), /Completion report/);
+    const prospectiveCandidate = path.join(outside, 'not-yet-created-candidate');
+    assert.throws(() => assertSafePaths(source, prospectiveCandidate, path.join(prospectiveCandidate, 'report.json')), /Completion report/);
+    assert.throws(() => assertSafePaths(source, prospectiveCandidate, path.join(outside, 'report.json'), path.join(prospectiveCandidate, 'status.json')), /Status report/);
     const reportLink = path.join(outside, 'report-link.json');
     fs.symlinkSync(path.join(source, 'tracked.json'), reportLink);
     assert.throws(() => assertSafePaths(source, path.join(outside, 'candidate'), reportLink), /Completion report must not be a symlink/);
   } finally {
     fs.rmSync(source, { recursive: true, force: true }); fs.rmSync(outside, { recursive: true, force: true });
+  }
+});
+
+test('builder rejects stale tracked generated source before approving a candidate', () => {
+  const source = path.resolve(__dirname, '..');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-candidate-source-drift-'));
+  const fixture = path.join(root, 'fixture');
+  const generated = path.join(source, 'src/data/generated/asset-validators.ts');
+  const original = fs.readFileSync(generated);
+  const previousLeague = process.env.LEAGUE_ID;
+  process.env.LEAGUE_ID = '1257071385973362690';
+  try {
+    fs.mkdirSync(path.join(fixture, 'assets'), { recursive: true });
+    for (const name of ['H2H', 'CurrentSeason', 'TransactionHistory']) fs.copyFileSync(path.join(source, 'assets', `${name}.json`), path.join(fixture, 'assets', `${name}.json`));
+    fs.writeFileSync(path.join(fixture, 'completion-report.json'), JSON.stringify({ season: 2025, max_week: 17, completed: 17, active: null, basis: 'nfl_state_and_calendar_guard', warnings: [], clock: '2025-09-16T13:00:00Z', override_reason: null }));
+    fs.appendFileSync(generated, '\n// stale source drift\n');
+    assert.throws(() => main(['--source-root', source, '--candidate-root', path.join(root, 'candidate'), '--season', '2025', '--mode', 'validate-only', '--python', testPython, '--fixture-root', fixture, '--completion-report', path.join(root, 'completion.json')]), /GENERATED_DRIFT/);
+  } finally {
+    fs.writeFileSync(generated, original);
+    if (previousLeague === undefined) delete process.env.LEAGUE_ID; else process.env.LEAGUE_ID = previousLeague;
+    fs.rmSync(root, { recursive: true, force: true });
   }
 });

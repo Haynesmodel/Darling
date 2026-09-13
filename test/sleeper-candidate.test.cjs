@@ -175,21 +175,24 @@ test('candidate, report, and status paths cannot contain or replace the source r
 });
 
 test('builder rejects stale tracked generated source before approving a candidate', () => {
-  const source = path.resolve(__dirname, '..');
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-candidate-source-drift-'));
+  const source = path.resolve(__dirname, '..');
+  const isolatedSource = path.join(root, 'source');
   const fixture = path.join(root, 'fixture');
-  const generated = path.join(source, 'src/data/generated/asset-validators.ts');
-  const original = fs.readFileSync(generated);
+  const sharedFiles = execFileSync('git', ['-C', source, 'ls-files', '-z'], { encoding: 'utf8' }).split('\0').filter(Boolean);
+  const sharedBefore = sourceDigest(source, sharedFiles);
   const previousLeague = process.env.LEAGUE_ID;
   process.env.LEAGUE_ID = '1257071385973362690';
   try {
+    execFileSync('git', ['clone', '--local', '--no-hardlinks', source, isolatedSource], { stdio: 'ignore' });
+    fs.symlinkSync(path.join(source, 'node_modules'), path.join(isolatedSource, 'node_modules'), 'dir');
     fs.mkdirSync(path.join(fixture, 'assets'), { recursive: true });
-    for (const name of ['H2H', 'CurrentSeason', 'TransactionHistory']) fs.copyFileSync(path.join(source, 'assets', `${name}.json`), path.join(fixture, 'assets', `${name}.json`));
+    for (const name of ['H2H', 'CurrentSeason', 'TransactionHistory']) fs.copyFileSync(path.join(isolatedSource, 'assets', `${name}.json`), path.join(fixture, 'assets', `${name}.json`));
     fs.writeFileSync(path.join(fixture, 'completion-report.json'), JSON.stringify({ season: 2025, max_week: 17, completed: 17, active: null, basis: 'nfl_state_and_calendar_guard', warnings: [], clock: '2025-09-16T13:00:00Z', override_reason: null }));
-    fs.appendFileSync(generated, '\n// stale source drift\n');
-    assert.throws(() => main(['--source-root', source, '--candidate-root', path.join(root, 'candidate'), '--season', '2025', '--mode', 'validate-only', '--python', testPython, '--fixture-root', fixture, '--completion-report', path.join(root, 'completion.json')]), /GENERATED_DRIFT/);
+    fs.appendFileSync(path.join(isolatedSource, 'src/data/generated/asset-validators.ts'), '\n// stale source drift\n');
+    assert.throws(() => main(['--source-root', isolatedSource, '--candidate-root', path.join(root, 'candidate'), '--season', '2025', '--mode', 'validate-only', '--python', testPython, '--fixture-root', fixture, '--completion-report', path.join(root, 'completion.json')]), /GENERATED_DRIFT/);
+    assert.equal(sourceDigest(source, sharedFiles), sharedBefore);
   } finally {
-    fs.writeFileSync(generated, original);
     if (previousLeague === undefined) delete process.env.LEAGUE_ID; else process.env.LEAGUE_ID = previousLeague;
     fs.rmSync(root, { recursive: true, force: true });
   }

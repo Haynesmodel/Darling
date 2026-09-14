@@ -13,6 +13,7 @@ test.describe('IU weekend welcome', () => {
     await expect(page.getByText('55–0. No notes.')).toBeVisible();
     await expect(page.getByText('Defending champs', { exact: true })).toBeVisible();
     await expect(page.getByText('WKU at 4 p.m.')).toBeVisible();
+    await expect(page.getByText('Extra points are optional')).toBeVisible();
     await expect(page.locator('[data-nfl-kickoff-carousel]')).toHaveCount(0);
     await expect(page.locator('.nfl-kickoff-confetti i')).toHaveCount(12);
     await expect(page.locator('.nfl-kickoff-stadium-lights span')).toHaveCount(3);

@@ -21,7 +21,7 @@ const chartRuntime = Object.values(manifest).find(entry => entry.name === 'chart
 const chartRuntimePattern = preview ? `**/${chartRuntime}` : '**/js/charting/vendor/charting-vendor.js*';
 
 test.beforeEach(async ({ page }) => {
-  if (preview) await createSnapshotFixture({ mutations: { CurrentSeason: finalized2025 } }).install(page);
+  await createSnapshotFixture({ mutations: { CurrentSeason: finalized2025 } }).install(page);
 });
 
 for (const theme of ['light', 'dark']) {

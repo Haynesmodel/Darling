@@ -12,7 +12,7 @@ const runtimeEntry = manifest['src/share/share-card-runtime.ts'];
 const runtimePattern = preview ? `**/${runtimeEntry.file}` : '**/src/share/share-card-runtime.ts*';
 
 test.beforeEach(async ({ page }) => {
-  if (preview) await createSnapshotFixture({ mutations: { CurrentSeason: finalized2025 } }).install(page);
+  await createSnapshotFixture({ mutations: { CurrentSeason: finalized2025 } }).install(page);
 });
 
 async function waitForFeature(page, id) {

@@ -8,9 +8,7 @@ import {
 } from './season-phase-fixtures.js';
 
 test.beforeEach(async ({ page }) => {
-  if (process.env.PLAYWRIGHT_SERVER === 'preview') {
-    await createSnapshotFixture({ mutations: { CurrentSeason: finalized2025 } }).install(page);
-  }
+  await createSnapshotFixture({ mutations: { CurrentSeason: finalized2025 } }).install(page);
 });
 
 test('canonical finalized Current opens a compact authoritative recap without odds work', async ({ page }) => {

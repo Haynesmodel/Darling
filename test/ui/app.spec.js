@@ -9,9 +9,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'assets/ass
 test.beforeEach(async ({ page }) => {
   // Keep the canonical 2025 snapshot assertions stable as the calendar advances.
   await page.clock.setFixedTime(new Date('2026-08-14T23:59:00Z'));
-  if (process.env.PLAYWRIGHT_SERVER === 'preview') {
-    await createSnapshotFixture({ mutations: { CurrentSeason: finalized2025 } }).install(page);
-  }
+  await createSnapshotFixture({ mutations: { CurrentSeason: finalized2025 } }).install(page);
   // The legacy end-to-end suite is the open-everything parity pass: disclosure
   // behavior itself is covered in navigation-progressive-disclosure.spec.js.
   await page.addInitScript(() => {

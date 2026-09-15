@@ -10,9 +10,7 @@ import {
 
 test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-08-14T23:59:00Z'));
-  if (process.env.PLAYWRIGHT_SERVER === 'preview') {
-    await createSnapshotFixture({ mutations: { CurrentSeason: finalized2025 } }).install(page);
-  }
+  await createSnapshotFixture({ mutations: { CurrentSeason: finalized2025 } }).install(page);
 });
 
 test('bare route renders the canonical 2025 year in review', async ({ page }) => {

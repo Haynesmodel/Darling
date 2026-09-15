@@ -108,8 +108,12 @@ def derive_rows(h2h_rows: list[dict[str, Any]], existing_rows: list[dict[str, An
         'saunders_wins': 0,
         'saunders_losses': 0,
     })
+    bagels = defaultdict(int)
 
     for game in season_games:
+        for owner, score in ((game.get('teamA'), game.get('scoreA')), (game.get('teamB'), game.get('scoreB'))):
+            if score == 0.0:
+                bagels[str(owner)] += 1
         if is_third_place(game):
             continue
 
@@ -178,7 +182,10 @@ def derive_rows(h2h_rows: list[dict[str, Any]], existing_rows: list[dict[str, An
         }
         manual = existing_by_owner.get(owner, {})
         for field in MANUAL_FIELDS:
-            base[field] = manual.get(field) if field in manual else None
+            if field == 'bagels_earned':
+                base[field] = manual.get(field) if manual.get(field) is not None else bagels[owner]
+            else:
+                base[field] = manual.get(field) if field in manual else None
         rows.append(base)
 
     return rows

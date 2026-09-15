@@ -16,7 +16,7 @@
     "saunders": null,
     "bye": null,
     "saunders_bye": null,
-    "bagels_earned": null,
+    "bagels_earned": 0,
     "draft_pick": null,
     "wild_card": null
   },
@@ -37,7 +37,7 @@
     "saunders": null,
     "bye": null,
     "saunders_bye": null,
-    "bagels_earned": null,
+    "bagels_earned": 0,
     "draft_pick": null,
     "wild_card": null
   },
@@ -58,7 +58,7 @@
     "saunders": null,
     "bye": null,
     "saunders_bye": null,
-    "bagels_earned": null,
+    "bagels_earned": 0,
     "draft_pick": null,
     "wild_card": null
   },
@@ -79,7 +79,7 @@
     "saunders": null,
     "bye": null,
     "saunders_bye": null,
-    "bagels_earned": null,
+    "bagels_earned": 0,
     "draft_pick": null,
     "wild_card": null
   },
@@ -100,7 +100,7 @@
     "saunders": null,
     "bye": null,
     "saunders_bye": null,
-    "bagels_earned": null,
+    "bagels_earned": 0,
     "draft_pick": null,
     "wild_card": null
   },
@@ -121,7 +121,7 @@
     "saunders": null,
     "bye": null,
     "saunders_bye": null,
-    "bagels_earned": null,
+    "bagels_earned": 0,
     "draft_pick": null,
     "wild_card": null
   },
@@ -142,7 +142,7 @@
     "saunders": null,
     "bye": null,
     "saunders_bye": null,
-    "bagels_earned": null,
+    "bagels_earned": 0,
     "draft_pick": null,
     "wild_card": null
   },
@@ -163,7 +163,7 @@
     "saunders": null,
     "bye": null,
     "saunders_bye": null,
-    "bagels_earned": null,
+    "bagels_earned": 0,
     "draft_pick": null,
     "wild_card": null
   },
@@ -184,7 +184,7 @@
     "saunders": null,
     "bye": null,
     "saunders_bye": null,
-    "bagels_earned": null,
+    "bagels_earned": 0,
     "draft_pick": null,
     "wild_card": null
   },
@@ -205,7 +205,7 @@
     "saunders": null,
     "bye": null,
     "saunders_bye": null,
-    "bagels_earned": null,
+    "bagels_earned": 0,
     "draft_pick": null,
     "wild_card": null
   },
@@ -226,7 +226,7 @@
     "saunders": null,
     "bye": null,
     "saunders_bye": null,
-    "bagels_earned": null,
+    "bagels_earned": 0,
     "draft_pick": null,
     "wild_card": null
   },
@@ -247,7 +247,7 @@
     "saunders": null,
     "bye": null,
     "saunders_bye": null,
-    "bagels_earned": null,
+    "bagels_earned": 0,
     "draft_pick": null,
     "wild_card": null
   }

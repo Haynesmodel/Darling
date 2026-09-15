@@ -1,13 +1,13 @@
 {
   "assets": {
     "CurrentSeason": {
-      "bytes": 31343,
+      "bytes": 28551,
       "path": "assets/CurrentSeason.json",
       "required": false,
-      "rows": 94,
-      "season_max": 2025,
-      "season_min": 2025,
-      "sha256": "sha256:b18d1dc798a1f36976bbcd2d9c9e26f110dfe4a0345c53356ea9ca8f3c513600"
+      "rows": 85,
+      "season_max": 2026,
+      "season_min": 2026,
+      "sha256": "sha256:3ea449bf01744b71924db74846e5b574c26b53e0b319eae47dac3335cab223d7"
     },
     "DraftSpot": {
       "bytes": 95227,
@@ -19,13 +19,13 @@
       "sha256": "sha256:eae28ae3a44e785325145c0294237adefce0a32c832864974a5a23b4d38703fb"
     },
     "H2H": {
-      "bytes": 178643,
+      "bytes": 179824,
       "path": "assets/H2H.json",
       "required": true,
-      "rows": 898,
-      "season_max": 2025,
+      "rows": 904,
+      "season_max": 2026,
       "season_min": 2014,
-      "sha256": "sha256:ca8155035573c00dc8922d3f6de90772869a2baec9a16909c5d6562bae371d18"
+      "sha256": "sha256:ff5644a72b34d6622df7e909a6a91806ef69da4d07cacb4732fc98024f4fd46a"
     },
     "LeagueLore": {
       "bytes": 84796,
@@ -55,23 +55,23 @@
       "sha256": "sha256:2fac336af3e8324a1213fd34f39de5d574bcc0e5b99212ebba05ab007de8a11f"
     },
     "TransactionHistory": {
-      "bytes": 407684,
+      "bytes": 489720,
       "path": "assets/TransactionHistory.json",
       "required": false,
-      "rows": 489,
-      "season_max": 2025,
+      "rows": 504,
+      "season_max": 2026,
       "season_min": 2025,
-      "sha256": "sha256:1dc2ad97f69bfd444c55ceb4d29243dc8dc96ca96f6b86142dfaad96cca61618"
+      "sha256": "sha256:2ca6d6967ff5c0de067ca67f9c6a704829549488e09d5524c063394f4a78f4e8"
     }
   },
-  "data_version": "sha256:0608fe784f844526aa6ac89cbe7000aa4b2960c062dc283719a0dfb34a3879d8",
+  "data_version": "sha256:ce79c5fbd2bda1161c448bb813343a0b9e06a89ac6f4f4277e55a8ea216deb36",
   "derived": {
-    "bytes": 180308,
+    "bytes": 190403,
     "path": "assets/DerivedStats.json",
     "required": false,
-    "sha256": "sha256:2285988744b7a1f4cc53fb93a927d6099f3a70ade7a6a4876e3647f7fb93534e",
+    "sha256": "sha256:a640404483ce027c4b921d307c28e7600374cf1902dcfa44c68067c0c8829a33",
     "source_hashes": {
-      "H2H": "sha256:ca8155035573c00dc8922d3f6de90772869a2baec9a16909c5d6562bae371d18",
+      "H2H": "sha256:ff5644a72b34d6622df7e909a6a91806ef69da4d07cacb4732fc98024f4fd46a",
       "Rivalries": "sha256:476e07f1f8d1af669854b1c4343770ca9c2539f99c6ebf3d8d5a8ae1a8cb51fa",
       "SeasonSummary": "sha256:2fac336af3e8324a1213fd34f39de5d574bcc0e5b99212ebba05ab007de8a11f"
     }

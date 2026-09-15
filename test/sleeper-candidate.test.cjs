@@ -7,6 +7,15 @@ const { execFileSync } = require('node:child_process');
 const { parseArgs, preserveOperationalTimestamp, promoteGeneratedOutputs, sourceDigest, ALLOWLIST, main, assertSafePaths } = require('../scripts/build_sleeper_candidate.cjs');
 const testPython = process.env.PYTHON
   || (fs.existsSync('/opt/homebrew/bin/python3.13') ? '/opt/homebrew/bin/python3.13' : 'python3');
+const currentSeason = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'assets/CurrentSeason.json'), 'utf8'));
+const candidateSeason = currentSeason.season;
+const candidateLeague = currentSeason.league_id;
+const candidateCompleted = Math.max(...currentSeason.games.filter(game => game.status === 'final').map(game => game.week));
+const candidateCompletion = {
+  season: candidateSeason, max_week: currentSeason.max_week, completed: candidateCompleted,
+  active: candidateCompleted === currentSeason.max_week ? null : candidateCompleted + 1,
+  basis: 'nfl_state_and_calendar_guard', warnings: [], clock: currentSeason.generated_at, override_reason: null,
+};
 
 test('candidate CLI requires an explicit isolated root and mode', () => {
   const valid = parseArgs([
@@ -92,22 +101,18 @@ test('builder runs the same isolated fixture preparation for validate-only and f
   const sourceFiles = execFileSync('git', ['-C', source, 'ls-files', '-z'], { encoding: 'utf8' }).split('\0').filter(Boolean);
   const sourceBefore = sourceDigest(source, sourceFiles);
   const previousLeague = process.env.LEAGUE_ID;
-  process.env.LEAGUE_ID = '1257071385973362690';
+  process.env.LEAGUE_ID = candidateLeague;
   try {
     fs.mkdirSync(path.join(fixture, 'assets'), { recursive: true });
     for (const name of ['H2H', 'CurrentSeason', 'TransactionHistory']) {
       fs.copyFileSync(path.join(source, 'assets', `${name}.json`), path.join(fixture, 'assets', `${name}.json`));
     }
-    fs.writeFileSync(path.join(fixture, 'completion-report.json'), JSON.stringify({
-      season: 2025, max_week: 17, completed: 17, active: null,
-      basis: 'nfl_state_and_calendar_guard', warnings: [],
-      clock: '2025-09-16T13:00:00Z', override_reason: null,
-    }));
+    fs.writeFileSync(path.join(fixture, 'completion-report.json'), JSON.stringify(candidateCompletion));
     const outputs = {};
     for (const mode of ['validate-only', 'full']) {
       const candidate = path.join(root, mode);
       const status = path.join(root, `${mode}-status.json`);
-      main(['--source-root', source, '--candidate-root', candidate, '--season', '2025', '--mode', mode,
+      main(['--source-root', source, '--candidate-root', candidate, '--season', String(candidateSeason), '--mode', mode,
         '--python', testPython, '--fixture-root', fixture,
         '--completion-report', path.join(root, `${mode}-completion.json`), '--status-report', status]);
       outputs[mode] = {
@@ -138,14 +143,14 @@ test('post-extraction failures leave every tracked source byte unchanged', () =>
   const report = path.join(root, 'completion.json');
   const before = sourceDigest(source, require('node:child_process').execFileSync('git', ['-C', source, 'ls-files', '-z'], { encoding: 'utf8' }).split('\0').filter(Boolean));
   const previousLeague = process.env.LEAGUE_ID;
-  process.env.LEAGUE_ID = '1257071385973362690';
+  process.env.LEAGUE_ID = candidateLeague;
   try {
     fs.mkdirSync(path.join(fixture, 'assets'), { recursive: true });
     for (const name of ['H2H', 'CurrentSeason', 'TransactionHistory']) fs.copyFileSync(path.join(source, 'assets', `${name}.json`), path.join(fixture, 'assets', `${name}.json`));
-    fs.writeFileSync(path.join(fixture, 'completion-report.json'), JSON.stringify({ season: 2025, max_week: 17, completed: 17, active: null, basis: 'nfl_state_and_calendar_guard', warnings: [], clock: '2025-09-16T13:00:00Z', override_reason: null }));
+    fs.writeFileSync(path.join(fixture, 'completion-report.json'), JSON.stringify(candidateCompletion));
     for (const phase of ['derived', 'summary', 'allowlist']) {
       process.env.DARLING_CANDIDATE_FAIL_PHASE = phase;
-      assert.throws(() => main(['--source-root', source, '--candidate-root', path.join(root, phase), '--season', '2025', '--mode', 'validate-only', '--python', testPython, '--fixture-root', fixture, '--completion-report', path.join(root, `${phase}.json`)]), new RegExp(`Injected failure at ${phase}`));
+      assert.throws(() => main(['--source-root', source, '--candidate-root', path.join(root, phase), '--season', String(candidateSeason), '--mode', 'validate-only', '--python', testPython, '--fixture-root', fixture, '--completion-report', path.join(root, `${phase}.json`)]), new RegExp(`Injected failure at ${phase}`));
       const after = sourceDigest(source, require('node:child_process').execFileSync('git', ['-C', source, 'ls-files', '-z'], { encoding: 'utf8' }).split('\0').filter(Boolean));
       assert.equal(after, before);
     }
@@ -182,15 +187,15 @@ test('builder rejects stale tracked generated source before approving a candidat
   const sharedFiles = execFileSync('git', ['-C', source, 'ls-files', '-z'], { encoding: 'utf8' }).split('\0').filter(Boolean);
   const sharedBefore = sourceDigest(source, sharedFiles);
   const previousLeague = process.env.LEAGUE_ID;
-  process.env.LEAGUE_ID = '1257071385973362690';
+  process.env.LEAGUE_ID = candidateLeague;
   try {
     execFileSync('git', ['clone', '--local', '--no-hardlinks', source, isolatedSource], { stdio: 'ignore' });
     fs.symlinkSync(path.join(source, 'node_modules'), path.join(isolatedSource, 'node_modules'), 'dir');
     fs.mkdirSync(path.join(fixture, 'assets'), { recursive: true });
     for (const name of ['H2H', 'CurrentSeason', 'TransactionHistory']) fs.copyFileSync(path.join(isolatedSource, 'assets', `${name}.json`), path.join(fixture, 'assets', `${name}.json`));
-    fs.writeFileSync(path.join(fixture, 'completion-report.json'), JSON.stringify({ season: 2025, max_week: 17, completed: 17, active: null, basis: 'nfl_state_and_calendar_guard', warnings: [], clock: '2025-09-16T13:00:00Z', override_reason: null }));
+    fs.writeFileSync(path.join(fixture, 'completion-report.json'), JSON.stringify(candidateCompletion));
     fs.appendFileSync(path.join(isolatedSource, 'src/data/generated/asset-validators.ts'), '\n// stale source drift\n');
-    assert.throws(() => main(['--source-root', isolatedSource, '--candidate-root', path.join(root, 'candidate'), '--season', '2025', '--mode', 'validate-only', '--python', testPython, '--fixture-root', fixture, '--completion-report', path.join(root, 'completion.json')]), /GENERATED_DRIFT/);
+    assert.throws(() => main(['--source-root', isolatedSource, '--candidate-root', path.join(root, 'candidate'), '--season', String(candidateSeason), '--mode', 'validate-only', '--python', testPython, '--fixture-root', fixture, '--completion-report', path.join(root, 'completion.json')]), /GENERATED_DRIFT/);
     assert.equal(sourceDigest(source, sharedFiles), sharedBefore);
   } finally {
     if (previousLeague === undefined) delete process.env.LEAGUE_ID; else process.env.LEAGUE_ID = previousLeague;

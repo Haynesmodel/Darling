@@ -34,6 +34,7 @@ jobs:
       REQUESTED_SEASON: ${{ github.event.inputs.season }}
       VALIDATE_ONLY_REQUESTED: ${{ github.event.inputs.validate_only }}
       SLEEPER_PR_BODY: ${{ github.workspace }}/../sleeper-pr-body.md
+      SLEEPER_SUMMARY: ${{ github.workspace }}/../sleeper-summary.json
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       FAILED_PHASE: setup
 

@@ -432,16 +432,18 @@ jobs:
             --json number,author,baseRefName,headRefName,isCrossRepository,isDraft,url \
             > "${RUNNER_TEMP}/sleeper-prs-after-push.json"
 
-          EXPECTED_AUTHOR="${BOT_LOGIN}" EXPECTED_BRANCH="${BRANCH}" node <<'NODE'
+          node <<'NODE'
           const fs = require('node:fs');
           const prs = JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/sleeper-prs-after-push.json`, 'utf8'));
+          const expectedAuthor = `${process.env.APP_SLUG}[bot]`;
+          const expectedBranch = process.env.BRANCH;
           if (prs.length > 1) throw new Error(`Refusing ambiguous automation state: found ${prs.length} open pull requests.`);
           if (prs.length === 1) {
             const pr = prs[0];
-            if (pr.isCrossRepository || pr.headRefName !== process.env.EXPECTED_BRANCH || pr.baseRefName !== 'main') {
+            if (pr.isCrossRepository || pr.headRefName !== expectedBranch || pr.baseRefName !== 'main') {
               throw new Error(`Existing pull request #${pr.number} has an unexpected head or base.`);
             }
-            if (pr.author?.login !== process.env.EXPECTED_AUTHOR) {
+            if (pr.author?.login !== expectedAuthor) {
               throw new Error(`Existing pull request #${pr.number} is not App-owned.`);
             }
           }

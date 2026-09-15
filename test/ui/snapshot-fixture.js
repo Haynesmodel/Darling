@@ -49,6 +49,28 @@ function applyMutation(value, mutation, assets) {
   return result === undefined ? value : result;
 }
 
+function finalized2025(current, assets) {
+  const rosterByOwner = new Map(current.teams.map(team => [team.owner, team.roster_id]));
+  const matchupIds = new Map();
+  current.season = 2025;
+  current.generated_at = '2026-07-01T00:00:00Z';
+  current.current_week = 17;
+  current.weeks_fetched = [...new Set(assets.H2H
+    .filter(game => game.season === 2025)
+    .map(game => game.week))].sort((a, b) => a - b);
+  current.games = assets.H2H.filter(game => game.season === 2025).map(game => {
+    const matchup_id = (matchupIds.get(game.week) || 0) + 1;
+    matchupIds.set(game.week, matchup_id);
+    return {
+      ...game,
+      status: 'final',
+      matchup_id,
+      rosterA: rosterByOwner.get(game.teamA),
+      rosterB: rosterByOwner.get(game.teamB),
+    };
+  });
+}
+
 function buildFixture({
   mutations = {},
   basePath = process.env.PLAYWRIGHT_SERVER === 'preview' ? '/Darling/' : '/',
@@ -182,4 +204,4 @@ function buildFixture({
   };
 }
 
-export { buildFixture as createSnapshotFixture };
+export { buildFixture as createSnapshotFixture, finalized2025 };

@@ -19,7 +19,7 @@ const productionGauntletAdapterAsset = (() => {
 
 async function installLiveCurrent(page) {
   const fixture = createSnapshotFixture({
-    mutations: { CurrentSeason: current => regularSeason2026(current, true) },
+    mutations: { CurrentSeason: (current, assets) => regularSeason2026(current, true, assets) },
   });
   await fixture.install(page);
 }

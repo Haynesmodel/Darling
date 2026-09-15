@@ -33,9 +33,7 @@ jobs:
       SCHEDULED_RUN: ${{ github.event_name == 'schedule' && '1' || '0' }}
       REQUESTED_SEASON: ${{ github.event.inputs.season }}
       VALIDATE_ONLY_REQUESTED: ${{ github.event.inputs.validate_only }}
-      CANDIDATE_ROOT: ${{ runner.temp }}/darling-sleeper-candidate
-      SLEEPER_PR_BODY: ${{ runner.temp }}/sleeper-pr-body.md
-      SLEEPER_SUMMARY: ${{ runner.temp }}/sleeper-summary.json
+      SLEEPER_PR_BODY: ${{ github.workspace }}/../sleeper-pr-body.md
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       FAILED_PHASE: setup
 

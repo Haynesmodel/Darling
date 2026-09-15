@@ -25,7 +25,7 @@ concurrency:
 
 jobs:
   update:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/codex/week-one-updates'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -39,10 +39,10 @@ jobs:
       FAILED_PHASE: setup
 
     steps:
-      - name: Check out week-one fix branch
+      - name: Check out trusted main branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.ref_name }}
+          ref: main
           fetch-depth: 0
           persist-credentials: false
 
@@ -140,14 +140,6 @@ jobs:
           echo "NODE_RUNTIME=$(node --version)" >> "$GITHUB_ENV"
           echo "NPM_RUNTIME=$(npm --version)" >> "$GITHUB_ENV"
           echo "PYTHON_RUNTIME=$(python3 --version)" >> "$GITHUB_ENV"
-          python3 - <<'PY'
-          import json, os
-          from urllib.request import Request, urlopen
-          with urlopen(Request(f"https://api.sleeper.app/v1/league/{os.environ['LEAGUE_ID']}", headers={'User-Agent': 'Darling-week-one-check/1.0'}), timeout=30) as response:
-              league = json.load(response)
-          print(json.dumps({key: league.get(key) for key in ('name', 'season', 'status', 'previous_league_id')}))
-          print(json.dumps({'last_scored_leg': league.get('settings', {}).get('last_scored_leg'), 'num_teams': league.get('settings', {}).get('num_teams')}))
-          PY
           node scripts/build_sleeper_candidate.cjs \
             --source-root "${GITHUB_WORKSPACE}" \
             --candidate-root "${CANDIDATE_ROOT}" \
@@ -511,8 +503,8 @@ jobs:
             ${{ runner.temp }}/darling-sleeper-candidate/assets/DerivedStats.json
             ${{ runner.temp }}/darling-sleeper-candidate/assets/asset-manifest.json
             ${{ runner.temp }}/darling-sleeper-candidate/assets/TransactionHistory.json
-            ${{ runner.temp }}/sleeper-pr-body.md
-            ${{ runner.temp }}/sleeper-summary.json
+            ${{ github.workspace }}/../sleeper-pr-body.md
+            ${{ github.workspace }}/../sleeper-summary.json
           if-no-files-found: ignore
           retention-days: 7
 

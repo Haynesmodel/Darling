@@ -37,13 +37,15 @@ test('curse tracker builds normalized cards from the league data', () => {
   const seasonSummaries = readJson(seasonPath);
   const model = buildCurseTrackerModel(leagueGames, seasonSummaries);
 
-  assert.equal(model.cards.length, 3);
+  assert.equal(model.cards.length, 5);
 
   const ids = model.cards.map(card => card.id).sort();
   assert.deepEqual(ids, [
     'bye-curse:league',
     'chronically-unlucky:Plot',
     'regular-season-champion-curse:league',
+    'season-high-loss:Nuss',
+    'season-high-loss:Shap',
   ]);
 
   for (const card of model.cards) {
@@ -60,7 +62,7 @@ test('curse tracker builds normalized cards from the league data', () => {
   }
 
   const bye = model.cards.find(card => card.id === 'bye-curse:league');
-  assert.equal(bye.severity, 3);
+  assert.equal(bye.severity, 2);
   assert.equal(bye.status, 'Active');
   assert.match(bye.summary, /Semi Final/);
   assert.match(bye.detail, /Each semifinal game's win chance comes from the two teams' regular-season record and scoring margin/);
@@ -70,10 +72,14 @@ test('curse tracker builds normalized cards from the league data', () => {
   assert.ok(bye.qValue < 0.05);
   assert.ok(bye.evidence.every(ev => !String(ev.note || '').includes('Bye team semifinal')));
 
+  const seasonHigh = model.cards.find(card => card.id === 'season-high-loss:Nuss');
+  assert.equal(seasonHigh.evidence[0].note, 'Highest regular-season score');
+  assert.ok(!String(seasonHigh.evidence[0].note || '').includes('138.6'));
+
   const unlucky = model.cards.find(card => card.id === 'chronically-unlucky:Plot');
   assert.equal(unlucky.ratingMethod, 'effect-size');
   assert.equal(unlucky.severity, null);
-  assert.equal(unlucky.status, 'Cold');
+  assert.equal(unlucky.status, 'Active');
   assert.match(unlucky.summary, /most Expected Wins/);
 
   const titleHolder = model.cards.find(card => card.id === 'regular-season-champion-curse:league');
@@ -86,7 +92,7 @@ test('curse tracker builds normalized cards from the league data', () => {
     allOwners: model.owners,
     owner: '__ALL__',
   });
-  assert.match(summary, /3 curses shown, 2 active, across 12 completed seasons/);
+  assert.match(summary, /5 curses shown, 3 active, across 12 completed seasons/);
   assert.match(summary, /Most cursed:/);
   assert.match(summary, /Most blessed:/);
 });

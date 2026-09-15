@@ -164,9 +164,10 @@ def build_current_season_asset(args):
                         game_type = fallback.get("type") or ""
                         round_name = fallback.get("round") or ""
                     else:
-                        unclassified_postseason.setdefault(week, []).append(
-                            f"{rid_to_name[str(rid_a)]} vs {rid_to_name[str(rid_b)]}"
-                        )
+                        unclassified_postseason.setdefault(week, []).append((
+                            f"{rid_to_name[str(rid_a)]} vs {rid_to_name[str(rid_b)]}",
+                            score_evidence,
+                        ))
                         continue
 
             games.append({
@@ -188,8 +189,10 @@ def build_current_season_asset(args):
     if args.allow_postseason:
         for week in [w for w in fetched_weeks if w > args.regular_season_max_week]:
             classified_count = sum(1 for game in games if game["week"] == week)
-            if classified_count == 0:
-                missed = ", ".join(unclassified_postseason.get(week, [])) or "no classified pairs"
+            unclassified = unclassified_postseason.get(week, [])
+            has_score_evidence = any(evidence for _, evidence in unclassified)
+            if classified_count == 0 and (week <= completed_through_week or has_score_evidence):
+                missed = ", ".join(name for name, _ in unclassified) or "no classified pairs"
                 raise ValueError(f"Fetched postseason week {week} yielded zero classified games: {missed}")
 
     current_week = args.current_week

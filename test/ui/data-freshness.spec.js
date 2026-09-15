@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test } from './coverage-fixture.js';
-import { createSnapshotFixture } from './snapshot-fixture.js';
+import { createSnapshotFixture, finalized2025 } from './snapshot-fixture.js';
 import { activateFeature } from './navigation-helpers.js';
 
 test.beforeEach(async ({ page }) => {
@@ -35,13 +35,20 @@ function activeSnapshot(generatedAt, status = 'scheduled') {
   };
 }
 
+async function installFinalized2025(page) {
+  const fixture = createSnapshotFixture({ mutations: { CurrentSeason: finalized2025 } });
+  await fixture.install(page);
+  return fixture;
+}
+
 test('global freshness badge and Pulse share the finalized snapshot status', async ({ page }) => {
+  const fixture = await installFinalized2025(page);
   await page.goto('/');
   await expect(page.locator('.data-freshness summary')).toContainText('2025 season final');
   await expect(page.locator('.pulse-data-note')).toContainText('2025 season final');
   await page.locator('.data-freshness summary').click();
   await expect(page.locator('.data-freshness-panel')).toContainText('Core data verified with SHA-256');
-  await expect(page.locator('.data-freshness-panel')).toContainText(manifest.data_version.replace('sha256:', '').slice(0, 12));
+  await expect(page.locator('.data-freshness-panel')).toContainText(fixture.manifest.data_version.replace('sha256:', '').slice(0, 12));
   await activateFeature(page, 'history');
   await expect(page.locator('.data-freshness summary')).toContainText('2025 season final');
 });
@@ -160,6 +167,7 @@ test('a long-open Pulse and global badge reassess together without network polli
   page.on('request', request => {
     if (request.url().includes('/assets/') && request.url().includes('.json')) dataRequests += 1;
   });
+  await installFinalized2025(page);
   await page.goto('/');
   await expect(page.locator('.data-freshness summary')).toContainText('2025 season final');
   const bootRequests = dataRequests;
@@ -171,6 +179,7 @@ test('a long-open Pulse and global badge reassess together without network polli
 });
 
 test('freshness disclosure remains available after visiting all ten destinations', async ({ page }) => {
+  await installFinalized2025(page);
   await page.goto('/');
   const destinations = [
     ['pulse', 'League Pulse'],
@@ -216,7 +225,7 @@ const renderedStates = [
   {
     name: 'season-gap',
     now: '2026-08-15T00:00:00Z',
-    mutations: {},
+    mutations: { CurrentSeason: finalized2025 },
     label: '2026 data not available',
     detail: 'expected but has not been published',
   },
@@ -224,7 +233,8 @@ const renderedStates = [
     name: 'unknown',
     now: '2026-07-23T00:00:00Z',
     mutations: {
-      CurrentSeason(current) {
+      CurrentSeason(current, assets) {
+        finalized2025(current, assets);
         current.generated_at = 'invalid';
       },
       SeasonSummary(rows) {
@@ -241,7 +251,8 @@ const renderedStates = [
     name: 'partial',
     now: '2026-07-23T00:00:00Z',
     mutations: {
-      CurrentSeason(current) {
+      CurrentSeason(current, assets) {
+        finalized2025(current, assets);
         current.generated_at = 'invalid';
       },
     },

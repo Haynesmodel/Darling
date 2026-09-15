@@ -1,15 +1,34 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test } from './coverage-fixture.js';
-import { createSnapshotFixture } from './snapshot-fixture.js';
+import { createSnapshotFixture, finalized2025 } from './snapshot-fixture.js';
 
 const asset = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'assets/TransactionHistory.json'), 'utf8'));
-const manifest = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'assets/asset-manifest.json'), 'utf8'));
 const season = asset.seasons[0];
 const trade = season.insights.trades[0];
 const journey = season.player_journeys.find(row => row.stints.length > 1) || season.player_journeys[0];
 const waiver = season.transactions.find(row => row.type === 'waiver');
 const commissioner = season.transactions.find(row => row.type === 'commissioner');
+let finalizedFixture;
+
+function createFinalized2025Fixture({ mutations = {} } = {}) {
+  const transactionMutation = mutations.TransactionHistory;
+  return createSnapshotFixture({
+    mutations: {
+      ...mutations,
+      CurrentSeason: finalized2025,
+      TransactionHistory(value, assets) {
+        value.seasons = value.seasons.filter(candidate => candidate.season === 2025);
+        return transactionMutation?.(value, assets);
+      },
+    },
+  });
+}
+
+test.beforeEach(async ({ page }) => {
+  finalizedFixture = createFinalized2025Fixture();
+  await finalizedFixture.install(page);
+});
 
 test('Transactions lazily loads one verified asset and renders all six views', async ({ page }) => {
   const requests = [];
@@ -27,7 +46,7 @@ test('Transactions lazily loads one verified asset and renders all six views', a
   const assetRequests = requests.filter(url => url.includes('TransactionHistory.json'));
   expect(assetRequests).toHaveLength(1);
   expect(new URL(assetRequests[0]).searchParams.get('v')).toBe(
-    manifest.assets.TransactionHistory.sha256.replace(/^sha256:/, ''),
+    finalizedFixture.manifest.assets.TransactionHistory.sha256.replace(/^sha256:/, ''),
   );
   expect(requests.some(url => /chart-runtime|charting-vendor/.test(url))).toBe(false);
 });
@@ -86,7 +105,7 @@ test('trade, player, owner, and keeper links are canonical and focus their conte
 });
 
 test('preseason history renders honest empty states across all six views', async ({ page }) => {
-  const fixture = createSnapshotFixture({
+  const fixture = createFinalized2025Fixture({
     mutations: {
       TransactionHistory(value) {
         value.source_updated_ms = 0;
@@ -133,7 +152,7 @@ test('preseason history renders honest empty states across all six views', async
 
 test('outcome variants, metadata fallbacks, and unavailable turnover remain explicit', async ({ page }) => {
   const fallbackPlayerId = journey.player_id;
-  const fixture = createSnapshotFixture({
+  const fixture = createFinalized2025Fixture({
     mutations: {
       TransactionHistory(value) {
         const current = value.seasons[0];
@@ -214,7 +233,7 @@ test('league-wide player rankings clear an incompatible owner before opening a j
   expect(outsideMovement).toBeTruthy();
   const playerId = outsideMovement.player_id;
   const playerName = asset.players.find(row => row.id === playerId)?.name || `Player ${playerId}`;
-  const fixture = createSnapshotFixture({
+  const fixture = createFinalized2025Fixture({
     mutations: {
       TransactionHistory(value) {
         const current = value.seasons[0];
@@ -254,7 +273,7 @@ test('league-wide player rankings clear an incompatible owner before opening a j
 
 test('transaction controls update seasons, owners, players, searches, and owner sorts', async ({ page }) => {
   const favorite = season.teams[0].owner;
-  const fixture = createSnapshotFixture({
+  const fixture = createFinalized2025Fixture({
     mutations: {
       TransactionHistory(value) {
         const current = value.seasons[0];

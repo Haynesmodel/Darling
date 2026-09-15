@@ -56,8 +56,8 @@
       "w": 7
     },
     {
-      "g": 2,
-      "l": 2,
+      "g": 3,
+      "l": 3,
       "opp": "Shemer",
       "pct": 0,
       "t": 0,
@@ -173,8 +173,8 @@
       "w": 12
     },
     {
-      "g": 1,
-      "l": 1,
+      "g": 2,
+      "l": 2,
       "opp": "Snare",
       "pct": 0,
       "t": 0,
@@ -227,10 +227,10 @@
       "w": 10
     },
     {
-      "g": 25,
-      "l": 10,
+      "g": 26,
+      "l": 11,
       "opp": "Plot",
-      "pct": 0.6,
+      "pct": 0.5769230769230769,
       "t": 0,
       "team": "Joel",
       "w": 15
@@ -389,13 +389,13 @@
       "w": 9
     },
     {
-      "g": 26,
+      "g": 27,
       "l": 18,
       "opp": "Zubs",
-      "pct": 0.3076923076923077,
+      "pct": 0.3333333333333333,
       "t": 0,
       "team": "Nuss",
-      "w": 8
+      "w": 9
     },
     {
       "g": 18,
@@ -416,13 +416,13 @@
       "w": 7
     },
     {
-      "g": 25,
+      "g": 26,
       "l": 15,
       "opp": "Joel",
-      "pct": 0.4,
+      "pct": 0.4230769230769231,
       "t": 0,
       "team": "Plot",
-      "w": 10
+      "w": 11
     },
     {
       "g": 17,
@@ -542,10 +542,10 @@
       "w": 10
     },
     {
-      "g": 21,
-      "l": 9,
+      "g": 22,
+      "l": 10,
       "opp": "Shap",
-      "pct": 0.5714285714285714,
+      "pct": 0.5454545454545454,
       "t": 0,
       "team": "Rishi",
       "w": 12
@@ -641,13 +641,13 @@
       "w": 10
     },
     {
-      "g": 21,
+      "g": 22,
       "l": 12,
       "opp": "Rishi",
-      "pct": 0.42857142857142855,
+      "pct": 0.45454545454545453,
       "t": 0,
       "team": "Shap",
-      "w": 9
+      "w": 10
     },
     {
       "g": 1,
@@ -695,13 +695,13 @@
       "w": 8
     },
     {
-      "g": 2,
+      "g": 3,
       "l": 0,
       "opp": "Connor",
       "pct": 1,
       "t": 0,
       "team": "Shemer",
-      "w": 2
+      "w": 3
     },
     {
       "g": 2,
@@ -875,10 +875,10 @@
       "w": 1
     },
     {
-      "g": 19,
-      "l": 9,
+      "g": 20,
+      "l": 10,
       "opp": "Zook",
-      "pct": 0.5263157894736842,
+      "pct": 0.5,
       "t": 0,
       "team": "Singer",
       "w": 10
@@ -902,13 +902,13 @@
       "w": 0
     },
     {
-      "g": 1,
+      "g": 2,
       "l": 0,
       "opp": "Joe",
       "pct": 1,
       "t": 0,
       "team": "Snare",
-      "w": 1
+      "w": 2
     },
     {
       "g": 1,
@@ -1064,13 +1064,13 @@
       "w": 1
     },
     {
-      "g": 19,
+      "g": 20,
       "l": 10,
       "opp": "Singer",
-      "pct": 0.47368421052631576,
+      "pct": 0.5,
       "t": 0,
       "team": "Zook",
-      "w": 9
+      "w": 10
     },
     {
       "g": 1,
@@ -1118,10 +1118,10 @@
       "w": 10
     },
     {
-      "g": 26,
-      "l": 8,
+      "g": 27,
+      "l": 9,
       "opp": "Nuss",
-      "pct": 0.6923076923076923,
+      "pct": 0.6666666666666666,
       "t": 0,
       "team": "Zubs",
       "w": 18
@@ -1193,7 +1193,7 @@
   "owner_careers": [
     {
       "championships": 0,
-      "games": 148,
+      "games": 149,
       "losses": 85,
       "owner": "Connor",
       "points_against": 16320.1,
@@ -1206,7 +1206,7 @@
     },
     {
       "championships": 2,
-      "games": 160,
+      "games": 161,
       "losses": 68,
       "owner": "Joe",
       "points_against": 17057.92,
@@ -1219,7 +1219,7 @@
     },
     {
       "championships": 3,
-      "games": 160,
+      "games": 161,
       "losses": 72,
       "owner": "Joel",
       "points_against": 17432.7,
@@ -1232,7 +1232,7 @@
     },
     {
       "championships": 1,
-      "games": 160,
+      "games": 161,
       "losses": 87,
       "owner": "Nuss",
       "points_against": 17373.960000000003,
@@ -1245,7 +1245,7 @@
     },
     {
       "championships": 0,
-      "games": 160,
+      "games": 161,
       "losses": 89,
       "owner": "Plot",
       "points_against": 17725.16,
@@ -1258,7 +1258,7 @@
     },
     {
       "championships": 0,
-      "games": 160,
+      "games": 161,
       "losses": 81,
       "owner": "Rishi",
       "points_against": 17110.12,
@@ -1271,7 +1271,7 @@
     },
     {
       "championships": 0,
-      "games": 160,
+      "games": 161,
       "losses": 79,
       "owner": "Shap",
       "points_against": 17515.79,
@@ -1284,7 +1284,7 @@
     },
     {
       "championships": 0,
-      "games": 14,
+      "games": 15,
       "losses": 8,
       "owner": "Shemer",
       "points_against": 1362.64,
@@ -1297,7 +1297,7 @@
     },
     {
       "championships": 1,
-      "games": 148,
+      "games": 149,
       "losses": 72,
       "owner": "Singer",
       "points_against": 15854.779999999999,
@@ -1310,7 +1310,7 @@
     },
     {
       "championships": 0,
-      "games": 14,
+      "games": 15,
       "losses": 8,
       "owner": "Snare",
       "points_against": 1378.54,
@@ -1323,7 +1323,7 @@
     },
     {
       "championships": 3,
-      "games": 160,
+      "games": 161,
       "losses": 81,
       "owner": "Zook",
       "points_against": 17352.039999999997,
@@ -1331,12 +1331,12 @@
       "saunders_titles": 1,
       "seasons": 12,
       "ties": 1,
-      "weekly_crowns": 13,
+      "weekly_crowns": 14,
       "wins": 78
     },
     {
       "championships": 2,
-      "games": 160,
+      "games": 161,
       "losses": 71,
       "owner": "Zubs",
       "points_against": 17250.98,
@@ -1697,6 +1697,14 @@
         "team": "Zubs"
       },
       {
+        "date": "2026-09-13",
+        "opp": "Singer",
+        "pa": 111.94,
+        "pf": 172,
+        "season": 2026,
+        "team": "Zook"
+      },
+      {
         "date": "2018-10-14",
         "opp": "Nuss",
         "pa": 75.3,
@@ -1769,6 +1777,14 @@
         "team": "Nuss"
       },
       {
+        "date": "2026-09-13",
+        "opp": "Joe",
+        "pa": 118.92,
+        "pf": 164.36,
+        "season": 2026,
+        "team": "Snare"
+      },
+      {
         "date": "2021-12-12",
         "opp": "Singer",
         "pa": 126.24,
@@ -1799,22 +1815,6 @@
         "pf": 162.92,
         "season": 2023,
         "team": "Singer"
-      },
-      {
-        "date": "2021-12-26",
-        "opp": "Singer",
-        "pa": 105.38,
-        "pf": 162.46,
-        "season": 2021,
-        "team": "Joe"
-      },
-      {
-        "date": "2019-09-15",
-        "opp": "Connor",
-        "pa": 147.9,
-        "pf": 162.4,
-        "season": 2019,
-        "team": "Shap"
       }
     ]
   },
@@ -3859,6 +3859,210 @@
       "t": 0,
       "team": "Zubs",
       "w": 8
+    },
+    {
+      "actWins": 0,
+      "diff": -0.7000000000000028,
+      "expWins": 0,
+      "l": 1,
+      "luck": 0,
+      "n": 1,
+      "oppg": 92.26,
+      "pa": 92.26,
+      "pct": 0,
+      "pf": 91.56,
+      "ppg": 91.56,
+      "season": 2026,
+      "t": 0,
+      "team": "Connor",
+      "w": 0
+    },
+    {
+      "actWins": 0,
+      "diff": -45.44000000000001,
+      "expWins": 0.7272727272727273,
+      "l": 1,
+      "luck": -0.7272727272727273,
+      "n": 1,
+      "oppg": 164.36,
+      "pa": 164.36,
+      "pct": 0,
+      "pf": 118.92,
+      "ppg": 118.92,
+      "season": 2026,
+      "t": 0,
+      "team": "Joe",
+      "w": 0
+    },
+    {
+      "actWins": 0,
+      "diff": -19.519999999999996,
+      "expWins": 0.36363636363636365,
+      "l": 1,
+      "luck": -0.36363636363636365,
+      "n": 1,
+      "oppg": 119.06,
+      "pa": 119.06,
+      "pct": 0,
+      "pf": 99.54,
+      "ppg": 99.54,
+      "season": 2026,
+      "t": 0,
+      "team": "Joel",
+      "w": 0
+    },
+    {
+      "actWins": 1,
+      "diff": 10.86,
+      "expWins": 0.6363636363636364,
+      "l": 0,
+      "luck": 0.36363636363636365,
+      "n": 1,
+      "oppg": 106.4,
+      "pa": 106.4,
+      "pct": 1,
+      "pf": 117.26,
+      "ppg": 117.26,
+      "season": 2026,
+      "t": 0,
+      "team": "Nuss",
+      "w": 1
+    },
+    {
+      "actWins": 1,
+      "diff": 19.519999999999996,
+      "expWins": 0.8181818181818182,
+      "l": 0,
+      "luck": 0.18181818181818177,
+      "n": 1,
+      "oppg": 99.54,
+      "pa": 99.54,
+      "pct": 1,
+      "pf": 119.06,
+      "ppg": 119.06,
+      "season": 2026,
+      "t": 0,
+      "team": "Plot",
+      "w": 1
+    },
+    {
+      "actWins": 0,
+      "diff": -3.739999999999995,
+      "expWins": 0.18181818181818182,
+      "l": 1,
+      "luck": -0.18181818181818182,
+      "n": 1,
+      "oppg": 98.86,
+      "pa": 98.86,
+      "pct": 0,
+      "pf": 95.12,
+      "ppg": 95.12,
+      "season": 2026,
+      "t": 0,
+      "team": "Rishi",
+      "w": 0
+    },
+    {
+      "actWins": 1,
+      "diff": 3.739999999999995,
+      "expWins": 0.2727272727272727,
+      "l": 0,
+      "luck": 0.7272727272727273,
+      "n": 1,
+      "oppg": 95.12,
+      "pa": 95.12,
+      "pct": 1,
+      "pf": 98.86,
+      "ppg": 98.86,
+      "season": 2026,
+      "t": 0,
+      "team": "Shap",
+      "w": 1
+    },
+    {
+      "actWins": 1,
+      "diff": 0.7000000000000028,
+      "expWins": 0.09090909090909091,
+      "l": 0,
+      "luck": 0.9090909090909091,
+      "n": 1,
+      "oppg": 91.56,
+      "pa": 91.56,
+      "pct": 1,
+      "pf": 92.26,
+      "ppg": 92.26,
+      "season": 2026,
+      "t": 0,
+      "team": "Shemer",
+      "w": 1
+    },
+    {
+      "actWins": 0,
+      "diff": -60.06,
+      "expWins": 0.5454545454545454,
+      "l": 1,
+      "luck": -0.5454545454545454,
+      "n": 1,
+      "oppg": 172,
+      "pa": 172,
+      "pct": 0,
+      "pf": 111.94,
+      "ppg": 111.94,
+      "season": 2026,
+      "t": 0,
+      "team": "Singer",
+      "w": 0
+    },
+    {
+      "actWins": 1,
+      "diff": 45.44000000000001,
+      "expWins": 0.9090909090909091,
+      "l": 0,
+      "luck": 0.09090909090909094,
+      "n": 1,
+      "oppg": 118.92,
+      "pa": 118.92,
+      "pct": 1,
+      "pf": 164.36,
+      "ppg": 164.36,
+      "season": 2026,
+      "t": 0,
+      "team": "Snare",
+      "w": 1
+    },
+    {
+      "actWins": 1,
+      "diff": 60.06,
+      "expWins": 1,
+      "l": 0,
+      "luck": 0,
+      "n": 1,
+      "oppg": 111.94,
+      "pa": 111.94,
+      "pct": 1,
+      "pf": 172,
+      "ppg": 172,
+      "season": 2026,
+      "t": 0,
+      "team": "Zook",
+      "w": 1
+    },
+    {
+      "actWins": 0,
+      "diff": -10.86,
+      "expWins": 0.45454545454545453,
+      "l": 1,
+      "luck": -0.45454545454545453,
+      "n": 1,
+      "oppg": 117.26,
+      "pa": 117.26,
+      "pct": 0,
+      "pf": 106.4,
+      "ppg": 106.4,
+      "season": 2026,
+      "t": 0,
+      "team": "Zubs",
+      "w": 0
     }
   ],
   "seasons": [
@@ -3873,10 +4077,11 @@
     2022,
     2023,
     2024,
-    2025
+    2025,
+    2026
   ],
   "source_hashes": {
-    "H2H": "sha256:ca8155035573c00dc8922d3f6de90772869a2baec9a16909c5d6562bae371d18",
+    "H2H": "sha256:ff5644a72b34d6622df7e909a6a91806ef69da4d07cacb4732fc98024f4fd46a",
     "Rivalries": "sha256:476e07f1f8d1af669854b1c4343770ca9c2539f99c6ebf3d8d5a8ae1a8cb51fa",
     "SeasonSummary": "sha256:2fac336af3e8324a1213fd34f39de5d574bcc0e5b99212ebba05ab007de8a11f"
   },
@@ -4010,6 +4215,20 @@
       },
       {
         "end": {
+          "date": "2026-09-13",
+          "season": 2026,
+          "week": 1
+        },
+        "len": 6,
+        "start": {
+          "date": "2025-11-30",
+          "season": 2025,
+          "week": 13
+        },
+        "team": "Connor"
+      },
+      {
+        "end": {
           "date": "2025-11-09",
           "season": 2025,
           "week": 10
@@ -4063,20 +4282,6 @@
           "week": 11
         },
         "team": "Zubs"
-      },
-      {
-        "end": {
-          "date": "2025-12-28",
-          "season": 2025,
-          "week": 17
-        },
-        "len": 5,
-        "start": {
-          "date": "2025-11-30",
-          "season": 2025,
-          "week": 13
-        },
-        "team": "Connor"
       },
       {
         "end": {
@@ -4264,6 +4469,20 @@
       },
       {
         "end": {
+          "date": "2026-09-13",
+          "season": 2026,
+          "week": 1
+        },
+        "len": 8,
+        "start": {
+          "date": "2025-11-16",
+          "season": 2025,
+          "week": 11
+        },
+        "team": "Zook"
+      },
+      {
+        "end": {
           "date": "2025-09-07",
           "season": 2025,
           "week": 1
@@ -4289,20 +4508,6 @@
           "week": 14
         },
         "team": "Zubs"
-      },
-      {
-        "end": {
-          "date": "2025-12-28",
-          "season": 2025,
-          "week": 17
-        },
-        "len": 7,
-        "start": {
-          "date": "2025-11-16",
-          "season": 2025,
-          "week": 11
-        },
-        "team": "Zook"
       },
       {
         "end": {
@@ -4587,6 +4792,318 @@
     ]
   },
   "team_seasons": [
+    {
+      "bye": false,
+      "champion": false,
+      "finish": null,
+      "games": 1,
+      "id": "Connor:2026",
+      "losses": 1,
+      "max": 91.56,
+      "mean": 91.56,
+      "median": 91.56,
+      "min": 91.56,
+      "owner": "Connor",
+      "p25": 91.56,
+      "p75": 91.56,
+      "pointsAgainst": 92.26,
+      "pointsFor": 91.56,
+      "record": "0-1",
+      "saunders": false,
+      "scores": [
+        91.56
+      ],
+      "season": 2026,
+      "stdev": 0,
+      "ties": 0,
+      "wins": 0
+    },
+    {
+      "bye": false,
+      "champion": false,
+      "finish": null,
+      "games": 1,
+      "id": "Joe:2026",
+      "losses": 1,
+      "max": 118.92,
+      "mean": 118.92,
+      "median": 118.92,
+      "min": 118.92,
+      "owner": "Joe",
+      "p25": 118.92,
+      "p75": 118.92,
+      "pointsAgainst": 164.36,
+      "pointsFor": 118.92,
+      "record": "0-1",
+      "saunders": false,
+      "scores": [
+        118.92
+      ],
+      "season": 2026,
+      "stdev": 0,
+      "ties": 0,
+      "wins": 0
+    },
+    {
+      "bye": false,
+      "champion": false,
+      "finish": null,
+      "games": 1,
+      "id": "Joel:2026",
+      "losses": 1,
+      "max": 99.54,
+      "mean": 99.54,
+      "median": 99.54,
+      "min": 99.54,
+      "owner": "Joel",
+      "p25": 99.54,
+      "p75": 99.54,
+      "pointsAgainst": 119.06,
+      "pointsFor": 99.54,
+      "record": "0-1",
+      "saunders": false,
+      "scores": [
+        99.54
+      ],
+      "season": 2026,
+      "stdev": 0,
+      "ties": 0,
+      "wins": 0
+    },
+    {
+      "bye": false,
+      "champion": false,
+      "finish": null,
+      "games": 1,
+      "id": "Nuss:2026",
+      "losses": 0,
+      "max": 117.26,
+      "mean": 117.26,
+      "median": 117.26,
+      "min": 117.26,
+      "owner": "Nuss",
+      "p25": 117.26,
+      "p75": 117.26,
+      "pointsAgainst": 106.4,
+      "pointsFor": 117.26,
+      "record": "1-0",
+      "saunders": false,
+      "scores": [
+        117.26
+      ],
+      "season": 2026,
+      "stdev": 0,
+      "ties": 0,
+      "wins": 1
+    },
+    {
+      "bye": false,
+      "champion": false,
+      "finish": null,
+      "games": 1,
+      "id": "Plot:2026",
+      "losses": 0,
+      "max": 119.06,
+      "mean": 119.06,
+      "median": 119.06,
+      "min": 119.06,
+      "owner": "Plot",
+      "p25": 119.06,
+      "p75": 119.06,
+      "pointsAgainst": 99.54,
+      "pointsFor": 119.06,
+      "record": "1-0",
+      "saunders": false,
+      "scores": [
+        119.06
+      ],
+      "season": 2026,
+      "stdev": 0,
+      "ties": 0,
+      "wins": 1
+    },
+    {
+      "bye": false,
+      "champion": false,
+      "finish": null,
+      "games": 1,
+      "id": "Rishi:2026",
+      "losses": 1,
+      "max": 95.12,
+      "mean": 95.12,
+      "median": 95.12,
+      "min": 95.12,
+      "owner": "Rishi",
+      "p25": 95.12,
+      "p75": 95.12,
+      "pointsAgainst": 98.86,
+      "pointsFor": 95.12,
+      "record": "0-1",
+      "saunders": false,
+      "scores": [
+        95.12
+      ],
+      "season": 2026,
+      "stdev": 0,
+      "ties": 0,
+      "wins": 0
+    },
+    {
+      "bye": false,
+      "champion": false,
+      "finish": null,
+      "games": 1,
+      "id": "Shap:2026",
+      "losses": 0,
+      "max": 98.86,
+      "mean": 98.86,
+      "median": 98.86,
+      "min": 98.86,
+      "owner": "Shap",
+      "p25": 98.86,
+      "p75": 98.86,
+      "pointsAgainst": 95.12,
+      "pointsFor": 98.86,
+      "record": "1-0",
+      "saunders": false,
+      "scores": [
+        98.86
+      ],
+      "season": 2026,
+      "stdev": 0,
+      "ties": 0,
+      "wins": 1
+    },
+    {
+      "bye": false,
+      "champion": false,
+      "finish": null,
+      "games": 1,
+      "id": "Shemer:2026",
+      "losses": 0,
+      "max": 92.26,
+      "mean": 92.26,
+      "median": 92.26,
+      "min": 92.26,
+      "owner": "Shemer",
+      "p25": 92.26,
+      "p75": 92.26,
+      "pointsAgainst": 91.56,
+      "pointsFor": 92.26,
+      "record": "1-0",
+      "saunders": false,
+      "scores": [
+        92.26
+      ],
+      "season": 2026,
+      "stdev": 0,
+      "ties": 0,
+      "wins": 1
+    },
+    {
+      "bye": false,
+      "champion": false,
+      "finish": null,
+      "games": 1,
+      "id": "Singer:2026",
+      "losses": 1,
+      "max": 111.94,
+      "mean": 111.94,
+      "median": 111.94,
+      "min": 111.94,
+      "owner": "Singer",
+      "p25": 111.94,
+      "p75": 111.94,
+      "pointsAgainst": 172,
+      "pointsFor": 111.94,
+      "record": "0-1",
+      "saunders": false,
+      "scores": [
+        111.94
+      ],
+      "season": 2026,
+      "stdev": 0,
+      "ties": 0,
+      "wins": 0
+    },
+    {
+      "bye": false,
+      "champion": false,
+      "finish": null,
+      "games": 1,
+      "id": "Snare:2026",
+      "losses": 0,
+      "max": 164.36,
+      "mean": 164.36,
+      "median": 164.36,
+      "min": 164.36,
+      "owner": "Snare",
+      "p25": 164.36,
+      "p75": 164.36,
+      "pointsAgainst": 118.92,
+      "pointsFor": 164.36,
+      "record": "1-0",
+      "saunders": false,
+      "scores": [
+        164.36
+      ],
+      "season": 2026,
+      "stdev": 0,
+      "ties": 0,
+      "wins": 1
+    },
+    {
+      "bye": false,
+      "champion": false,
+      "finish": null,
+      "games": 1,
+      "id": "Zook:2026",
+      "losses": 0,
+      "max": 172,
+      "mean": 172,
+      "median": 172,
+      "min": 172,
+      "owner": "Zook",
+      "p25": 172,
+      "p75": 172,
+      "pointsAgainst": 111.94,
+      "pointsFor": 172,
+      "record": "1-0",
+      "saunders": false,
+      "scores": [
+        172
+      ],
+      "season": 2026,
+      "stdev": 0,
+      "ties": 0,
+      "wins": 1
+    },
+    {
+      "bye": false,
+      "champion": false,
+      "finish": null,
+      "games": 1,
+      "id": "Zubs:2026",
+      "losses": 1,
+      "max": 106.4,
+      "mean": 106.4,
+      "median": 106.4,
+      "min": 106.4,
+      "owner": "Zubs",
+      "p25": 106.4,
+      "p75": 106.4,
+      "pointsAgainst": 117.26,
+      "pointsFor": 106.4,
+      "record": "0-1",
+      "saunders": false,
+      "scores": [
+        106.4
+      ],
+      "season": 2026,
+      "stdev": 0,
+      "ties": 0,
+      "wins": 0
+    },
     {
       "bye": false,
       "champion": false,
@@ -9227,7 +9744,11 @@
         "team": "Singer"
       },
       {
-        "count": 3,
+        "count": 1,
+        "team": "Snare"
+      },
+      {
+        "count": 4,
         "team": "Zook"
       },
       {
@@ -9237,7 +9758,7 @@
     ],
     "low": [
       {
-        "count": 18,
+        "count": 19,
         "team": "Connor"
       },
       {
@@ -9323,7 +9844,7 @@
         "team": "Snare"
       },
       {
-        "count": 13,
+        "count": 14,
         "team": "Zook"
       },
       {

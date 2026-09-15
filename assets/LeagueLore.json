@@ -4,8 +4,8 @@
   "updated_at": "2026-09-01",
   "source_policy": { "numeric_authority": ["H2H", "SeasonSummary", "DraftSpot", "CurrentSeason", "TransactionHistory"], "almanac_narrative_through": 2024 },
   "owners": [
-    { "owner": "Joe", "aliases": ["joey"] }, { "owner": "Zook", "aliases": ["zook"] }, { "owner": "Shap", "aliases": ["shap"] }, { "owner": "Plot", "aliases": ["plotnick", "plot"] },
-    { "owner": "Zubs", "aliases": ["zubs"] }, { "owner": "Nuss", "aliases": ["nuss"] }, { "owner": "Rishi", "aliases": ["rishi"] }, { "owner": "Joel", "aliases": ["joel"] },
+    { "owner": "Joe", "aliases": ["joey", "When it Haynes, it Pours"] }, { "owner": "Zook", "aliases": ["zook"] }, { "owner": "Shap", "aliases": ["shap"] }, { "owner": "Plot", "aliases": ["plotnick", "plot"] },
+    { "owner": "Zubs", "aliases": ["zubs", "The Browns"] }, { "owner": "Nuss", "aliases": ["nuss"] }, { "owner": "Rishi", "aliases": ["rishi"] }, { "owner": "Joel", "aliases": ["joel"] },
     { "owner": "Singer", "aliases": ["singer"] }, { "owner": "Connor", "aliases": ["connor"] }, { "owner": "Snare", "aliases": ["snare"] }, { "owner": "Shemer", "aliases": ["shemer"] }
   ],
   "commissioner_terms": [

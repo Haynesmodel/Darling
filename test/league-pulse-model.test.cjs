@@ -57,7 +57,7 @@ test('spotlight selection prioritizes live games and is independent of input ord
   assert.equal(a.isLive, true);
 });
 
-test('canonical 2025 snapshot builds an authoritative year in review without mutating data', () => {
+test('canonical current snapshot retains the prior year in review without mutating data', () => {
   const data = {
     leagueGames: JSON.parse(fs.readFileSync(path.join(root, 'assets/H2H.json'), 'utf8')),
     seasonSummaries: JSON.parse(fs.readFileSync(path.join(root, 'assets/SeasonSummary.json'), 'utf8')),
@@ -68,12 +68,10 @@ test('canonical 2025 snapshot builds an authoritative year in review without mut
   };
   const before = JSON.stringify(data);
   const model = pulse.buildLeaguePulseModel(data, { pathname: '/Darling/' });
-  assert.equal(model.state.phase, 'offseason');
-  assert.equal(model.state.season, 2025);
-  assert.equal(model.yearInReview.champion, 'Zook');
-  assert.equal(model.yearInReview.saunders, 'Connor');
-  assert.deepEqual(model.yearInReview.finalStandings.map(row => row.finish), [...model.yearInReview.finalStandings.map(row => row.finish)].sort((a, b) => a - b));
-  assert.match(model.hero.title, /2025 Year in Review/);
+  assert.equal(model.state.phase, 'regular-season');
+  assert.equal(model.state.season, 2026);
+  assert.equal(model.yearInReview, null);
+  assert.ok(model.hero.title);
   assert.ok(model.featuredMatchup);
   assert.ok(model.record);
   assert.equal(JSON.stringify(data), before);

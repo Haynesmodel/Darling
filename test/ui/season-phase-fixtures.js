@@ -1,4 +1,7 @@
-function scheduled2026(current) {
+import { finalized2025 } from './snapshot-fixture.js';
+
+function scheduled2026(current, assets) {
+  finalized2025(current, assets);
   current.season = 2026;
   current.generated_at = '2026-08-20T12:00:00Z';
   current.current_week = 1;
@@ -13,7 +16,8 @@ function scheduled2026(current) {
   }));
 }
 
-function regularSeason2026(current, live) {
+function regularSeason2026(current, live, assets) {
+  finalized2025(current, assets);
   current.season = 2026;
   current.generated_at = '2026-09-15T12:00:00Z';
   current.current_week = live ? 2 : 1;
@@ -28,7 +32,8 @@ function regularSeason2026(current, live) {
   }));
 }
 
-function postseason2026(current) {
+function postseason2026(current, assets) {
+  finalized2025(current, assets);
   current.season = 2026;
   current.generated_at = '2026-12-20T12:00:00Z';
   current.current_week = 16;
@@ -41,7 +46,8 @@ function postseason2026(current) {
   }));
 }
 
-function finalizing2026(current) {
+function finalizing2026(current, assets) {
+  finalized2025(current, assets);
   current.season = 2026;
   current.generated_at = '2026-12-30T12:00:00Z';
   current.games = current.games.map(game => ({

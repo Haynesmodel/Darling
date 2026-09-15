@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test } from './coverage-fixture.js';
 import { expectNoViolations } from './accessibility-helpers.js';
-import { createSnapshotFixture } from './snapshot-fixture.js';
+import { createSnapshotFixture, finalized2025 } from './snapshot-fixture.js';
 const pages = [
   ['pulse', 'League Pulse'],
   ['owner', 'My Team'],
@@ -19,6 +19,10 @@ const preview = process.env.PLAYWRIGHT_SERVER === 'preview';
 const manifest = preview ? JSON.parse(fs.readFileSync(path.join(process.cwd(), 'dist/.vite/manifest.json'), 'utf8')) : {};
 const chartRuntime = Object.values(manifest).find(entry => entry.name === 'chart-runtime')?.file;
 const chartRuntimePattern = preview ? `**/${chartRuntime}` : '**/js/charting/vendor/charting-vendor.js*';
+
+test.beforeEach(async ({ page }) => {
+  await createSnapshotFixture({ mutations: { CurrentSeason: finalized2025 } }).install(page);
+});
 
 for (const theme of ['light', 'dark']) {
   test.describe(`${theme} theme`, () => {

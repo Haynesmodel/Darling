@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test } from './coverage-fixture.js';
 import { expectNoViolations } from './accessibility-helpers.js';
+import { createSnapshotFixture, finalized2025 } from './snapshot-fixture.js';
 
 const preview = process.env.PLAYWRIGHT_SERVER === 'preview';
 const manifest = preview
@@ -9,6 +10,10 @@ const manifest = preview
   : {};
 const runtimeEntry = manifest['src/share/share-card-runtime.ts'];
 const runtimePattern = preview ? `**/${runtimeEntry.file}` : '**/src/share/share-card-runtime.ts*';
+
+test.beforeEach(async ({ page }) => {
+  await createSnapshotFixture({ mutations: { CurrentSeason: finalized2025 } }).install(page);
+});
 
 async function waitForFeature(page, id) {
   const panel = page.locator(`#page-${id}`);
@@ -346,7 +351,7 @@ test('each story family opens the shared renderer with its selected facts', asyn
       id: 'current',
       route: '/?tab=current&currentSeason=2025&currentWeek=17&currentView=matchups',
       host: '[data-share-team-a][data-share-team-b]',
-      title: 'Connor vs Shemer',
+      title: 'Shemer vs Connor',
     },
     {
       id: 'rivalry',

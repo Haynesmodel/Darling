@@ -1,5 +1,4 @@
 import sys, unittest
-import json
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 from transaction_history import validate_current_snapshot
@@ -7,6 +6,16 @@ from transaction_history import _validate_raw_matchups
 
 def snap(**changes):
     value={"season":2025,"weeks_fetched":[1],"teams":[{"roster_id":1},{"roster_id":2}],"games":[{"week":1,"rosterA":1,"rosterB":2,"matchup_id":1,"status":"final","scoreA":0.0,"scoreB":0.0}]}; value.update(changes); return value
+
+def postseason_snapshot():
+    pairs = list(zip(range(1, 11, 2), range(2, 11, 2)))
+    games = [{"week": week, "status": "final", "rosterA": a, "rosterB": b, "matchup_id": f"{week}-{index}", "scoreA": 1.0, "scoreB": 0.0} for week in range(1, 15) for index, (a, b) in enumerate(pairs, 1)]
+    for week, rounds in ((15, (("Playoff", "Wild Card", 2), ("Saunders", "Saunders Wild Card", 2))), (16, (("Playoff", "Semi Final", 2), ("Saunders", "Saunders Semi Final", 2))), (17, (("Playoff", "Championship", 1), ("Saunders", "Saunders Final", 1)))):
+        offset = 0
+        for kind, round_name, count in rounds:
+            games.extend({"week": week, "type": kind, "round": round_name, "status": "final", "rosterA": a, "rosterB": b, "matchup_id": f"{week}-{kind}-{index}", "scoreA": 1.0, "scoreB": 0.0} for index, (a, b) in enumerate(pairs[offset:offset + count], 1))
+            offset += count
+    return {"season": 2025, "regular_season_max_week": 14, "playoff_rules": {"playoff_slots": 6, "bye_slots": 2, "saunders_slots": 6}, "weeks_fetched": list(range(1, 18)), "teams": [{"roster_id": roster_id} for roster_id in range(1, 11)], "games": games}
 class StrictBoundaryTests(unittest.TestCase):
     def test_boundary_zero_accepts_empty_coverage(self): validate_current_snapshot(snap(weeks_fetched=[], games=[]),2025,2,0,{1,2})
     def test_wrong_season_fails(self):
@@ -32,7 +41,7 @@ class StrictBoundaryTests(unittest.TestCase):
             with self.assertRaises(ValueError): _validate_raw_matchups(bad, owners, 1)
 
     def test_classified_postseason_snapshot_and_raw_week_pass(self):
-        snapshot = json.loads((Path(__file__).parents[1] / "assets" / "CurrentSeason.json").read_text())
+        snapshot = postseason_snapshot()
         owners = {int(team["roster_id"]): team.get("owner", str(team["roster_id"])) for team in snapshot["teams"]}
         validate_current_snapshot(snapshot, 2025, 17, 15, set(owners))
         raw = {}

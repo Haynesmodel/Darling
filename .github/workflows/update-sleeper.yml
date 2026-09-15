@@ -25,7 +25,7 @@ concurrency:
 
 jobs:
   update:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/codex/week-one-updates'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:

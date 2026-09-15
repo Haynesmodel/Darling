@@ -139,6 +139,14 @@ jobs:
           echo "NODE_RUNTIME=$(node --version)" >> "$GITHUB_ENV"
           echo "NPM_RUNTIME=$(npm --version)" >> "$GITHUB_ENV"
           echo "PYTHON_RUNTIME=$(python3 --version)" >> "$GITHUB_ENV"
+          python3 - <<'PY'
+          import json, os
+          from urllib.request import Request, urlopen
+          with urlopen(Request(f"https://api.sleeper.app/v1/league/{os.environ['LEAGUE_ID']}", headers={'User-Agent': 'Darling-week-one-check/1.0'}), timeout=30) as response:
+              league = json.load(response)
+          print(json.dumps({key: league.get(key) for key in ('name', 'season', 'status', 'previous_league_id')}))
+          print(json.dumps({'last_scored_leg': league.get('settings', {}).get('last_scored_leg'), 'num_teams': league.get('settings', {}).get('num_teams')}))
+          PY
           node scripts/build_sleeper_candidate.cjs \
             --source-root "${GITHUB_WORKSPACE}" \
             --candidate-root "${CANDIDATE_ROOT}" \

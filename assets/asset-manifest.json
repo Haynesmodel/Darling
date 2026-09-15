@@ -19,7 +19,7 @@
       "sha256": "sha256:eae28ae3a44e785325145c0294237adefce0a32c832864974a5a23b4d38703fb"
     },
     "H2H": {
-      "bytes": 179824,
+      "bytes": 179825,
       "path": "assets/H2H.json",
       "required": true,
       "rows": 904,

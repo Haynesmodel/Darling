@@ -8,6 +8,7 @@ import json
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
+from urllib.request import Request, urlopen
 
 
 MANUAL_FIELDS = [
@@ -83,7 +84,35 @@ def row_order(existing_rows: list[dict[str, Any]], season: int) -> dict[str, int
     return order
 
 
-def derive_rows(h2h_rows: list[dict[str, Any]], existing_rows: list[dict[str, Any]], season: int) -> list[dict[str, Any]]:
+def starter_bagels(matchup: dict[str, Any]) -> int:
+    points = matchup.get('players_points') or {}
+    return sum(1 for player in matchup.get('starters') or []
+               if isinstance(points.get(player), (int, float))
+               and not isinstance(points.get(player), bool)
+               and points.get(player) == 0.0)
+
+
+def current_bagels(current_season: dict[str, Any] | None, season: int, league_id: str | None) -> dict[str, int]:
+    counts: dict[str, int] = defaultdict(int)
+    if not current_season or season_value(current_season) != season or not league_id:
+        return counts
+    owners = {int(team['roster_id']): team['owner'] for team in current_season.get('teams', [])}
+    weeks = {int(game['week']) for game in current_season.get('games', [])
+             if season_value(game) == season and game.get('status') == 'final'}
+    for week in weeks:
+        request = Request(f'https://api.sleeper.app/v1/league/{league_id}/matchups/{week}',
+                          headers={'User-Agent': 'Darling-Season-Summary/1.0'})
+        with urlopen(request, timeout=30) as response:
+            matchups = json.load(response)
+        for matchup in matchups:
+            owner = owners.get(matchup.get('roster_id'))
+            if owner:
+                counts[owner] += starter_bagels(matchup)
+    return counts
+
+
+def derive_rows(h2h_rows: list[dict[str, Any]], existing_rows: list[dict[str, Any]], season: int,
+                current_season: dict[str, Any] | None = None, league_id: str | None = None) -> list[dict[str, Any]]:
     season_games = [row for row in h2h_rows if season_value(row) == season]
     if not season_games:
         raise ValueError(f'No H2H rows found for season {season}.')
@@ -108,12 +137,7 @@ def derive_rows(h2h_rows: list[dict[str, Any]], existing_rows: list[dict[str, An
         'saunders_wins': 0,
         'saunders_losses': 0,
     })
-    bagels = defaultdict(int)
-
     for game in season_games:
-        for owner, score in ((game.get('teamA'), game.get('scoreA')), (game.get('teamB'), game.get('scoreB'))):
-            if score == 0.0:
-                bagels[str(owner)] += 1
         if is_third_place(game):
             continue
 
@@ -164,6 +188,7 @@ def derive_rows(h2h_rows: list[dict[str, Any]], existing_rows: list[dict[str, An
         teams,
         key=lambda owner: (existing_order.get(owner, 10_000), owner),
     )
+    bagels = current_bagels(current_season, season, league_id)
 
     rows = []
     for owner in ordered_owners:
@@ -197,6 +222,8 @@ def main() -> int:
     parser.add_argument('--existing', required=True, type=Path, help='Path to assets/SeasonSummary.json')
     parser.add_argument('--out', required=True, type=Path, help='Path to write the draft JSON file')
     parser.add_argument('--season', required=True, type=int, help='Season to generate')
+    parser.add_argument('--current-season', type=Path, help='CurrentSeason asset for exact-zero starter bagels')
+    parser.add_argument('--league', help='Sleeper league ID used to read starter points')
     args = parser.parse_args()
 
     h2h_rows = read_json(args.h2h)
@@ -206,7 +233,8 @@ def main() -> int:
     if not isinstance(existing_rows, list):
         raise TypeError(f'{args.existing} must contain a JSON array.')
 
-    rows = derive_rows(h2h_rows, existing_rows, args.season)
+    current_season = read_json(args.current_season) if args.current_season else None
+    rows = derive_rows(h2h_rows, existing_rows, args.season, current_season, args.league)
     write_json(args.out, rows)
     return 0
 

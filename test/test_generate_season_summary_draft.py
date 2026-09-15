@@ -1,10 +1,12 @@
 import importlib.util
+import io
 import json
 import pathlib
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / 'scripts' / 'generate_season_summary_draft.py'
@@ -16,19 +18,43 @@ spec.loader.exec_module(module)
 
 
 class GenerateSeasonSummaryDraftTests(unittest.TestCase):
-    def test_bagels_count_only_exact_zero_scores(self):
-        rows = module.derive_rows([
-            {'season': 2025, 'teamA': 'Joe', 'teamB': 'Shap', 'scoreA': 0.0, 'scoreB': 90, 'type': 'Regular'},
-            {'season': 2025, 'teamA': 'Joe', 'teamB': 'Shap', 'scoreA': 0.01, 'scoreB': 80, 'type': 'Regular'},
-        ], [], 2025)
+    def test_starter_bagels_require_exact_zero(self):
+        self.assertEqual(module.starter_bagels({
+            'starters': ['p1', 'p2', 'p3'],
+            'players_points': {'p1': 0.0, 'p2': 0, 'p3': 0.01},
+        }), 2)
 
-        self.assertEqual({row['owner']: row['bagels_earned'] for row in rows}, {'Joe': 1, 'Shap': 0})
+    def test_current_bagels_count_final_sleeper_starters(self):
+        current = {'season': 2025, 'teams': [{'roster_id': 1, 'owner': 'Joe'}], 'games': [
+            {'season': 2025, 'week': 1, 'status': 'final'},
+        ]}
+        with patch.object(module, 'urlopen') as open_url:
+            open_url.return_value.__enter__.return_value = io.BytesIO(json.dumps([
+                {'roster_id': 1, 'starters': ['p1'], 'players_points': {'p1': 0.0}},
+            ]).encode())
+            self.assertEqual(module.current_bagels(current, 2025, 'league'), {'Joe': 1})
+
+    def test_bagels_count_only_exact_zero_starter_scores(self):
+        current = {'season': 2025, 'teams': [{'roster_id': 1, 'owner': 'Joe'}, {'roster_id': 2, 'owner': 'Shap'}], 'games': [
+            {'season': 2025, 'week': 1, 'status': 'final'},
+        ]}
+        with patch.object(module, 'urlopen') as open_url:
+            open_url.return_value.__enter__.return_value = io.BytesIO(json.dumps([
+                {'roster_id': 1, 'starters': ['p1', 'p2'], 'players_points': {'p1': 0.0, 'p2': 0.01}},
+                {'roster_id': 2, 'starters': ['p3'], 'players_points': {'p3': 0.0}},
+            ]).encode())
+            rows = module.derive_rows([
+                {'season': 2025, 'teamA': 'Joe', 'teamB': 'Shap', 'scoreA': 100.0, 'scoreB': 90, 'type': 'Regular'},
+            ], [], 2025, current, 'league')
+
+        self.assertEqual({row['owner']: row['bagels_earned'] for row in rows}, {'Joe': 1, 'Shap': 1})
 
     def test_cli_generates_deterministic_draft_and_preserves_manual_fields(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp = pathlib.Path(tmpdir)
             h2h_path = tmp / 'H2H.json'
             existing_path = tmp / 'SeasonSummary.json'
+            current_path = tmp / 'CurrentSeason.json'
             out_path = tmp / 'SeasonSummary.draft.json'
 
             h2h_rows = [
@@ -85,9 +111,13 @@ class GenerateSeasonSummaryDraftTests(unittest.TestCase):
 
             h2h_path.write_text(json.dumps(h2h_rows), encoding='utf-8')
             existing_path.write_text(json.dumps(existing_rows), encoding='utf-8')
+            current_path.write_text(json.dumps({'season': 2025, 'games': [
+                {'season': 2025, 'teamA': 'Joe', 'teamB': 'Shap', 'status': 'final'},
+                {'season': 2025, 'teamA': 'Shap', 'teamB': 'Joe', 'status': 'final'},
+            ]}), encoding='utf-8')
 
             result = subprocess.run(
-                [sys.executable, str(SCRIPT), '--h2h', str(h2h_path), '--existing', str(existing_path), '--out', str(out_path), '--season', '2025'],
+                [sys.executable, str(SCRIPT), '--h2h', str(h2h_path), '--existing', str(existing_path), '--current-season', str(current_path), '--out', str(out_path), '--season', '2025'],
                 capture_output=True,
                 text=True,
                 check=False,
@@ -134,7 +164,7 @@ class GenerateSeasonSummaryDraftTests(unittest.TestCase):
             self.assertIsNone(shap['saunders'])
             self.assertIsNone(shap['bye'])
             self.assertIsNone(shap['saunders_bye'])
-            self.assertEqual(shap['bagels_earned'], 1)
+            self.assertEqual(shap['bagels_earned'], 0)
             self.assertIsNone(shap['draft_pick'])
             self.assertIsNone(shap['wild_card'])
 

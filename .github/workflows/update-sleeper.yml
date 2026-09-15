@@ -33,9 +33,8 @@ jobs:
       SCHEDULED_RUN: ${{ github.event_name == 'schedule' && '1' || '0' }}
       REQUESTED_SEASON: ${{ github.event.inputs.season }}
       VALIDATE_ONLY_REQUESTED: ${{ github.event.inputs.validate_only }}
-      CANDIDATE_ROOT: ${{ runner.temp }}/darling-sleeper-candidate
-      SLEEPER_PR_BODY: ${{ runner.temp }}/sleeper-pr-body.md
-      SLEEPER_SUMMARY: ${{ runner.temp }}/sleeper-summary.json
+      SLEEPER_PR_BODY: ${{ github.workspace }}/../sleeper-pr-body.md
+      SLEEPER_SUMMARY: ${{ github.workspace }}/../sleeper-summary.json
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       FAILED_PHASE: setup
 
@@ -425,20 +424,7 @@ jobs:
             --json number,author,baseRefName,headRefName,isCrossRepository,isDraft,url \
             > "${RUNNER_TEMP}/sleeper-prs-after-push.json"
 
-          EXPECTED_AUTHOR="${BOT_LOGIN}" EXPECTED_BRANCH="${BRANCH}" node <<'NODE'
-          const fs = require('node:fs');
-          const prs = JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/sleeper-prs-after-push.json`, 'utf8'));
-          if (prs.length > 1) throw new Error(`Refusing ambiguous automation state: found ${prs.length} open pull requests.`);
-          if (prs.length === 1) {
-            const pr = prs[0];
-            if (pr.isCrossRepository || pr.headRefName !== process.env.EXPECTED_BRANCH || pr.baseRefName !== 'main') {
-              throw new Error(`Existing pull request #${pr.number} has an unexpected head or base.`);
-            }
-            if (pr.author?.login !== process.env.EXPECTED_AUTHOR) {
-              throw new Error(`Existing pull request #${pr.number} is not App-owned.`);
-            }
-          }
-          NODE
+          node -e 'const fs=require("node:fs");const prs=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+"/sleeper-prs-after-push.json","utf8"));const expectedAuthor=process.env.APP_SLUG+"[bot]";const expectedBranch=process.env.BRANCH;if(prs.length>1)throw new Error(`Refusing ambiguous automation state: found ${prs.length} open pull requests.`);if(prs.length===1){const pr=prs[0];if(pr.isCrossRepository||pr.headRefName!==expectedBranch||pr.baseRefName!=="main")throw new Error(`Existing pull request #${pr.number} has an unexpected head or base.`);if(pr.author?.login!==expectedAuthor)throw new Error(`Existing pull request #${pr.number} is not App-owned.`);}'
 
           PR_COUNT="$(node -e "const p=require('${RUNNER_TEMP}/sleeper-prs-after-push.json'); process.stdout.write(String(p.length))")"
           if [[ "${PR_COUNT}" == "0" ]]; then
@@ -448,7 +434,7 @@ jobs:
               --base main \
               --head "${BRANCH}" \
               --title "${TITLE}" \
-              --body-file "${RUNNER_TEMP}/sleeper-pr-body.md" \
+              --body-file "${SLEEPER_PR_BODY}" \
               --label data-pipeline \
               --label automated)"
           else
@@ -457,30 +443,14 @@ jobs:
             gh pr edit "${PR_NUMBER}" \
               --repo "${GITHUB_REPOSITORY}" \
               --title "${TITLE}" \
-              --body-file "${RUNNER_TEMP}/sleeper-pr-body.md"
-            LABELS_REQUEST="${RUNNER_TEMP}/sleeper-pr-labels.json" node <<'NODE'
-            const fs = require('node:fs');
-            fs.writeFileSync(
-              process.env.LABELS_REQUEST,
-              `${JSON.stringify({ labels: ['data-pipeline', 'automated'] })}\n`,
-            );
-            NODE
+              --body-file "${SLEEPER_PR_BODY}"
+            node -e 'require("node:fs").writeFileSync(process.env.RUNNER_TEMP+"/sleeper-pr-labels.json",JSON.stringify({labels:["data-pipeline","automated"]})+"\n")'
             gh api \
               --method PATCH \
               "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}" \
               --input "${RUNNER_TEMP}/sleeper-pr-labels.json" \
               > "${RUNNER_TEMP}/sleeper-pr-labels-response.json"
-            node <<'NODE'
-            const fs = require('node:fs');
-            const response = JSON.parse(
-              fs.readFileSync(`${process.env.RUNNER_TEMP}/sleeper-pr-labels-response.json`, 'utf8'),
-            );
-            const observedLabels = (response.labels || []).map(label => label.name).sort();
-            const expectedLabels = ['automated', 'data-pipeline'];
-            if (JSON.stringify(observedLabels) !== JSON.stringify(expectedLabels)) {
-              throw new Error(`Pull request labels were not replaced exactly: ${observedLabels.join(', ')}`);
-            }
-            NODE
+            node -e 'const fs=require("node:fs");const response=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+"/sleeper-pr-labels-response.json","utf8"));const observed=(response.labels||[]).map(label=>label.name).sort();const expected=["automated","data-pipeline"];if(JSON.stringify(observed)!==JSON.stringify(expected))throw new Error(`Pull request labels were not replaced exactly: ${observed.join(", ")}`);'
             if [[ "${IS_DRAFT}" != "true" ]]; then
               gh pr ready "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" --undo
             fi
@@ -533,8 +503,8 @@ jobs:
             ${{ runner.temp }}/darling-sleeper-candidate/assets/DerivedStats.json
             ${{ runner.temp }}/darling-sleeper-candidate/assets/asset-manifest.json
             ${{ runner.temp }}/darling-sleeper-candidate/assets/TransactionHistory.json
-            ${{ runner.temp }}/sleeper-pr-body.md
-            ${{ runner.temp }}/sleeper-summary.json
+            ${{ github.workspace }}/../sleeper-pr-body.md
+            ${{ github.workspace }}/../sleeper-summary.json
           if-no-files-found: ignore
           retention-days: 7
 

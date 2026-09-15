@@ -254,6 +254,30 @@ class GenerateCurrentSeasonTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'postseason week 17 yielded zero classified games'):
                     module.build_current_season_asset(args)
 
+    def test_build_current_season_asset_ignores_future_postseason_placeholders(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            mapping_path = pathlib.Path(tmp) / 'mapping.json'
+            mapping_path.write_text('{"1":"Joe","2":"Shap"}', encoding='utf-8')
+            args = SimpleNamespace(
+                league='league', season=2025, map=str(mapping_path), weeks='17',
+                cutoff_date='2025-09-07', current_week=2,
+                regular_season_max_week=14, max_week=17, allow_postseason=True,
+                h2h_fallback=None, completed_through_week=1,
+            )
+            teams = [
+                {'roster_id': 1, 'display_name': 'Joe', 'sleeper_team_name': ''},
+                {'roster_id': 2, 'display_name': 'Shap', 'sleeper_team_name': ''},
+            ]
+            with patch.object(module.sleeper, 'list_teams', return_value=teams), \
+                 patch.object(module.sleeper, 'get_matchups', return_value=[
+                     {'matchup_id': 1, 'roster_id': 1, 'points': 0},
+                     {'matchup_id': 1, 'roster_id': 2, 'points': 0},
+                 ]), \
+                 patch.object(module.sleeper, 'sunday_for_week', return_value=date(2025, 12, 28)), \
+                 patch.object(module.sleeper, 'build_bracket_roster_pairs', return_value=(set(), set())):
+                asset = module.build_current_season_asset(args)
+            self.assertEqual(asset['games'], [])
+
 
 if __name__ == '__main__':
     unittest.main()

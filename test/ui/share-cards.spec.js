@@ -11,7 +11,8 @@ const manifest = preview
 const runtimeEntry = manifest['src/share/share-card-runtime.ts'];
 const runtimePattern = preview ? `**/${runtimeEntry.file}` : '**/src/share/share-card-runtime.ts*';
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page }, testInfo) => {
+  if (testInfo.title.includes('coverage build exercises internal')) return;
   await createSnapshotFixture({ mutations: { CurrentSeason: finalized2025 } }).install(page);
 });
 

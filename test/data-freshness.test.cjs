@@ -98,11 +98,14 @@ test('live score freshness changes just after 30 minutes', () => {
   assert.equal(freshness.assessDataFreshness({ ...input, now: new Date('2026-07-01T00:30:00.001Z') }).status, 'live-stale');
 });
 
-test('the canonical finalized snapshot is final in July and a season gap on August 15', () => {
-  const july = freshness.assessDataFreshness({ currentSeason: canonicalCurrent, seasonSummaries: summaries, now: new Date('2026-07-22T12:00:00Z') });
+test('a finalized 2025 snapshot is final in July and a season gap on August 15', () => {
+  const finalized = finalizingAt('2026-07-01T00:00:00.000Z');
+  finalized.season = 2025;
+  finalized.games = finalized.games.map(game => ({ ...game, season: 2025 }));
+  const july = freshness.assessDataFreshness({ currentSeason: finalized, seasonSummaries: summaries, now: new Date('2026-07-22T12:00:00Z') });
   assert.equal(july.status, 'final');
   assert.equal(july.label, '2025 season final');
-  const august = freshness.assessDataFreshness({ currentSeason: canonicalCurrent, seasonSummaries: summaries, now: new Date('2026-08-15T00:00:00Z') });
+  const august = freshness.assessDataFreshness({ currentSeason: finalized, seasonSummaries: summaries, now: new Date('2026-08-15T00:00:00Z') });
   assert.equal(august.status, 'season-gap');
   assert.equal(august.label, '2026 data not available');
 });

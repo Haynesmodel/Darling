@@ -1,5 +1,5 @@
 import { expect, test } from './coverage-fixture.js';
-import { createSnapshotFixture } from './snapshot-fixture.js';
+import { createSnapshotFixture, finalized2025 } from './snapshot-fixture.js';
 import { featureDestination } from './navigation-helpers.js';
 import {
   finalizing2026,
@@ -10,6 +10,7 @@ import {
 
 test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-08-14T23:59:00Z'));
+  await createSnapshotFixture({ mutations: { CurrentSeason: finalized2025 } }).install(page);
 });
 
 test('bare route renders the canonical 2025 year in review', async ({ page }) => {
@@ -62,7 +63,7 @@ test('scheduled-only 2026 snapshot renders preseason without zeroed standings', 
 test('live regular season renders snapshot time and if-scores-hold movement', async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-09-15T12:10:00Z'));
   const fixture = createSnapshotFixture({
-    mutations: { CurrentSeason: current => regularSeason2026(current, true) },
+    mutations: { CurrentSeason: (current, assets) => regularSeason2026(current, true, assets) },
   });
   await fixture.install(page);
   await page.goto('/');
@@ -75,7 +76,7 @@ test('live regular season renders snapshot time and if-scores-hold movement', as
 test('completed regular week uses actual standings and excludes live movement', async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-09-15T12:10:00Z'));
   const fixture = createSnapshotFixture({
-    mutations: { CurrentSeason: current => regularSeason2026(current, false) },
+    mutations: { CurrentSeason: (current, assets) => regularSeason2026(current, false, assets) },
   });
   await fixture.install(page);
   await page.goto('/');

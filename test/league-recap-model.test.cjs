@@ -164,7 +164,7 @@ test('all ten audited historical anomalies remain partial and unshareable', () =
     assert.equal(edition?.facts, null, id);
   }
   assert.equal(model.editions.find(edition => edition.id === 'season:2025').state, 'complete');
-  assert.equal(model.defaultEditionId.startsWith('weekly:2025:'), true);
+  assert.equal(model.defaultEditionId.startsWith('weekly:2026:'), true);
 });
 
 test('incomplete honors produce pending seasons while canonical facts remain authoritative', () => {

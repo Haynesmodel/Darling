@@ -33,9 +33,6 @@ jobs:
       SCHEDULED_RUN: ${{ github.event_name == 'schedule' && '1' || '0' }}
       REQUESTED_SEASON: ${{ github.event.inputs.season }}
       VALIDATE_ONLY_REQUESTED: ${{ github.event.inputs.validate_only }}
-      CANDIDATE_ROOT: ${{ runner.temp }}/darling-sleeper-candidate
-      SLEEPER_PR_BODY: ${{ runner.temp }}/sleeper-pr-body.md
-      SLEEPER_SUMMARY: ${{ runner.temp }}/sleeper-summary.json
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       FAILED_PHASE: setup
 
@@ -46,6 +43,13 @@ jobs:
           ref: main
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Configure runner paths
+        shell: bash
+        run: |
+          echo "CANDIDATE_ROOT=${RUNNER_TEMP}/darling-sleeper-candidate" >> "$GITHUB_ENV"
+          echo "SLEEPER_PR_BODY=${RUNNER_TEMP}/sleeper-pr-body.md" >> "$GITHUB_ENV"
+          echo "SLEEPER_SUMMARY=${RUNNER_TEMP}/sleeper-summary.json" >> "$GITHUB_ENV"
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0

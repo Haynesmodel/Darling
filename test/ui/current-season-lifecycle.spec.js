@@ -1,11 +1,15 @@
 import { expect, test } from './coverage-fixture.js';
-import { createSnapshotFixture } from './snapshot-fixture.js';
+import { createSnapshotFixture, finalized2025 } from './snapshot-fixture.js';
 import {
   finalizing2026,
   postseason2026,
   regularSeason2026,
   scheduled2026,
 } from './season-phase-fixtures.js';
+
+test.beforeEach(async ({ page }) => {
+  await createSnapshotFixture({ mutations: { CurrentSeason: finalized2025 } }).install(page);
+});
 
 test('canonical finalized Current opens a compact authoritative recap without odds work', async ({ page }) => {
   const requests = [];
@@ -85,7 +89,7 @@ test('preseason defaults to preview and does not request probability work', asyn
 });
 
 test('provisional current scores do not create final recap claims', async ({ page }) => {
-  const fixture = createSnapshotFixture({ mutations: { CurrentSeason: current => regularSeason2026(current, true) } });
+  const fixture = createSnapshotFixture({ mutations: { CurrentSeason: (current, assets) => regularSeason2026(current, true, assets) } });
   await fixture.install(page);
   await page.goto('/?tab=current&currentView=recap');
   await page.waitForLoadState('networkidle');
@@ -98,7 +102,7 @@ test('provisional current scores do not create final recap claims', async ({ pag
 
 test('live regular season retains command movement, owner paths, and odds', async ({ page }) => {
   const fixture = createSnapshotFixture({
-    mutations: { CurrentSeason: current => regularSeason2026(current, true) },
+    mutations: { CurrentSeason: (current, assets) => regularSeason2026(current, true, assets) },
   });
   const requests = [];
   page.on('request', request => requests.push(request.url()));
@@ -127,7 +131,7 @@ test('live regular season retains command movement, owner paths, and odds', asyn
 
 test('completed regular week removes live wording while retaining actual command context', async ({ page }) => {
   const fixture = createSnapshotFixture({
-    mutations: { CurrentSeason: current => regularSeason2026(current, false) },
+    mutations: { CurrentSeason: (current, assets) => regularSeason2026(current, false, assets) },
   });
   await fixture.install(page);
   await page.goto('/?tab=current');

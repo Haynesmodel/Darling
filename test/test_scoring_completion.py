@@ -5,6 +5,16 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 from scoring_completion import resolve_completion, retained_boundary_from_snapshot
 
+def postseason_snapshot():
+    pairs = list(zip(range(1, 11, 2), range(2, 11, 2)))
+    games = [{"week": week, "status": "final", "rosterA": a, "rosterB": b, "matchup_id": f"{week}-{index}", "scoreA": 1.0, "scoreB": 0.0} for week in range(1, 15) for index, (a, b) in enumerate(pairs, 1)]
+    for week, rounds in ((15, (("Playoff", "Wild Card", 2), ("Saunders", "Saunders Wild Card", 2))), (16, (("Playoff", "Semi Final", 2), ("Saunders", "Saunders Semi Final", 2))), (17, (("Playoff", "Championship", 1), ("Saunders", "Saunders Final", 1)))):
+        offset = 0
+        for kind, round_name, count in rounds:
+            games.extend({"week": week, "type": kind, "round": round_name, "status": "final", "rosterA": a, "rosterB": b, "matchup_id": f"{week}-{kind}-{index}", "scoreA": 1.0, "scoreB": 0.0} for index, (a, b) in enumerate(pairs[offset:offset + count], 1))
+            offset += count
+    return {"season": 2025, "regular_season_max_week": 14, "playoff_rules": {"playoff_slots": 6, "bye_slots": 2, "saunders_slots": 6}, "weeks_fetched": list(range(1, 18)), "teams": [{"roster_id": roster_id} for roster_id in range(1, 11)], "games": games}
+
 class CompletionTests(unittest.TestCase):
     def setUp(self): self.anchor = date(2026, 9, 13)
     def test_exact_tuesday_guard(self):
@@ -29,17 +39,15 @@ class CompletionTests(unittest.TestCase):
         self.assertEqual(resolve_completion(season=2026, max_week=17, week1_sunday=self.anchor, league_status="pre_draft", league_season=2026, last_verified_completed=0, nfl_state={"season": 2026, "season_type": "regular", "week": 3}, now=now).completed_through_week, 0)
         self.assertEqual(resolve_completion(season=2026, max_week=17, week1_sunday=self.anchor, league_season=2026, nfl_state={"season": 2026, "week": 3}, now=now).completed_through_week, 0)
 
-    def test_published_postseason_snapshot_retains_boundary_seventeen(self):
-        import json
-        snapshot = json.loads((Path(__file__).parents[1] / "assets" / "CurrentSeason.json").read_text())
+    def test_postseason_snapshot_retains_boundary_seventeen(self):
+        snapshot = postseason_snapshot()
         self.assertEqual(retained_boundary_from_snapshot(snapshot, 2025, 17), 17)
         delayed = resolve_completion(season=2025, max_week=17, week1_sunday=date(2025, 9, 7), league_season=2025,
                                      last_verified_completed=15, nfl_state={"season": 2024}, now=datetime(2025, 12, 1, tzinfo=timezone.utc))
         self.assertEqual(delayed.completed_through_week, 15)
 
     def test_postseason_snapshot_missing_game_stops_before_that_week(self):
-        import json
-        snapshot = json.loads((Path(__file__).parents[1] / "assets" / "CurrentSeason.json").read_text())
+        snapshot = postseason_snapshot()
         snapshot["games"] = [game for game in snapshot["games"] if not (game["week"] == 16 and game["type"] == "Playoff")]
         self.assertEqual(retained_boundary_from_snapshot(snapshot, 2025, 17), 15)
 

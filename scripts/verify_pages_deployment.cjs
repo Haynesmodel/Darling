@@ -502,8 +502,16 @@ async function runBrowserCheck({ pages, browserFactory, screenshotPath, browserT
           }
         }
         if (pending.size) {
-          for (const request of pending.keys()) clearPending(request);
-          throw new Error(`${name} left app-owned requests pending`);
+          for (const request of pending.keys()) {
+            diagnostics.pendingRequests.push(redactUrl(request.url()));
+            recordFailure('timeout', request);
+            const cancel = typeof request.abort === 'function'
+              ? () => request.abort()
+              : (typeof page?.close === 'function' ? () => page.close() : () => context.close());
+            Promise.resolve().then(cancel).catch(() => {});
+            clearPending(request);
+          }
+          throw requestTimeoutError || new Error(`${name} request settlement timed out`);
         }
         if (typeof page.evaluate === 'function') {
           const responseState = await withDeadline(

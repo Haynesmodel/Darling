@@ -1,5 +1,10 @@
 import { expect, test } from './coverage-fixture.js';
 import { activateFeature, featureDestination } from './navigation-helpers.js';
+import { createSnapshotFixture, finalized2025 } from './snapshot-fixture.js';
+
+test.beforeEach(async ({ page }) => {
+  await createSnapshotFixture({ mutations: { CurrentSeason: finalized2025 } }).install(page);
+});
 
 test('data freshness disclosure uses native keyboard activation', async ({ page }) => {
   await page.goto('/');

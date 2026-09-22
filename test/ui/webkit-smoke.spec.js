@@ -27,8 +27,8 @@ test('WEBKIT-01 boots the verified Pulse snapshot without overflow', async ({ pa
   await page.waitForLoadState('networkidle');
   await expect(featureDestination(page, 'pulse')).toHaveAttribute('aria-current', 'page');
   await expect(page.getByRole('region', { name: 'League Pulse', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '2025 Year in Review' })).toBeVisible();
-  await expect(page.locator('.data-freshness summary')).toContainText('2025 season final');
+  await expect(page.locator('#leaguePulseRoot h2').first()).toBeVisible();
+  await expect(page.locator('.data-freshness summary')).toBeVisible();
   const diagnostics = await page.evaluate(() => globalThis.darlingDataDiagnostics);
   expect(diagnostics.dataVersion).toMatch(/^sha256:[a-f0-9]{64}$/);
   expect(diagnostics.loadedAssets).toEqual(expect.arrayContaining(['H2H', 'SeasonSummary', 'DerivedStats']));

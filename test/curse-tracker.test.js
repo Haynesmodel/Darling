@@ -37,13 +37,15 @@ test('curse tracker builds normalized cards from the league data', () => {
   const seasonSummaries = readJson(seasonPath);
   const model = buildCurseTrackerModel(leagueGames, seasonSummaries);
 
-  assert.equal(model.cards.length, 3);
+  assert.equal(model.cards.length, 5);
 
   const ids = model.cards.map(card => card.id).sort();
   assert.deepEqual(ids, [
     'bye-curse:league',
     'chronically-unlucky:Plot',
     'regular-season-champion-curse:league',
+    'season-high-loss:Nuss',
+    'season-high-loss:Shap',
   ]);
 
   for (const card of model.cards) {
@@ -60,7 +62,7 @@ test('curse tracker builds normalized cards from the league data', () => {
   }
 
   const bye = model.cards.find(card => card.id === 'bye-curse:league');
-  assert.equal(bye.severity, 3);
+  assert.equal(bye.severity, 2);
   assert.equal(bye.status, 'Active');
   assert.match(bye.summary, /Semi Final/);
   assert.match(bye.detail, /Each semifinal game's win chance comes from the two teams' regular-season record and scoring margin/);
@@ -86,7 +88,7 @@ test('curse tracker builds normalized cards from the league data', () => {
     allOwners: model.owners,
     owner: '__ALL__',
   });
-  assert.match(summary, /3 curses shown, 2 active, across 12 completed seasons/);
+  assert.match(summary, /5 curses shown, 2 active, across 12 completed seasons/);
   assert.match(summary, /Most cursed:/);
   assert.match(summary, /Most blessed:/);
 });

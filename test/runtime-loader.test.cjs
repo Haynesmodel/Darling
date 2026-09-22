@@ -52,11 +52,16 @@ function createFetch(overrides = {}, requests = []) {
     const configured = overrides[relativePath];
     const attempt = attempts.get(relativePath) || 0;
     attempts.set(relativePath, attempt + 1);
-    const override = configured?.sequence ? configured.sequence[Math.min(attempt, configured.sequence.length - 1)] : configured;
-    if (override?.status) return jsonResponse(override.body || {}, override.status, override.rawBody || null);
+    const attemptConfig = configured?.sequence
+      ? configured.sequence[Math.min(attempt, configured.sequence.length - 1)]
+      : configured;
+    const hasValue = attemptConfig && Object.prototype.hasOwnProperty.call(attemptConfig, 'value');
+    const override = hasValue ? attemptConfig.value : attemptConfig;
+    const rawBody = attemptConfig?.rawBody || configured?.rawBody || null;
+    if (override?.status) return jsonResponse(override.body || {}, override.status, override.rawBody || rawBody);
     return override === undefined
       ? jsonResponse(assetValues[relativePath], 200, assetBodies[relativePath])
-      : jsonResponse(override, 200, configured?.rawBody || null);
+      : jsonResponse(override, 200, rawBody);
   };
 }
 
@@ -324,7 +329,14 @@ test('runtime loader retries a mismatched cached asset once and records recovery
   const requests = [];
   const loaded = await loadLeagueAssets({
     basePath: '/',
-    fetchFn: createFetch({ 'assets/H2H.json': { sequence: [{ wrong: true }, assetValues['assets/H2H.json']] } }, requests),
+    fetchFn: createFetch({
+      'assets/H2H.json': {
+        sequence: [
+          { value: { wrong: true } },
+          { value: assetValues['assets/H2H.json'], rawBody: assetBodies['assets/H2H.json'] },
+        ],
+      },
+    }, requests),
     logger: { warn() {}, error() {} },
   });
   const h2hRequests = requests.filter(request => new URL(request.url, 'https://darling.test').pathname.endsWith('assets/H2H.json'));

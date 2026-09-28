@@ -747,7 +747,7 @@ test('update workflow refuses live Sleeper calls unless explicitly enabled', asy
   assert.match(result.stderr, /UPDATE_LIVE=1/);
 });
 
-test('update workflow validation-only mode runs with a stub updater and leaves assets untouched', async () => {
+test('update workflow skips future postseason extraction during the regular season', async () => {
   const repoRoot = path.join(__dirname, '..');
   const stubDir = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-python-stub-'));
   const stubPath = path.join(stubDir, 'python-stub.sh');
@@ -766,13 +766,22 @@ set -euo pipefail
 script="$1"
 shift
 if [[ "$script" == "-" ]]; then
-  echo '{"nfl_season":"2025","league_season":"2025","nfl_week":1}'
+  if [[ -f "${stubDir}/completion-resolved" ]]; then
+    echo '{"season":2026,"max_week":17,"completed":2,"active":3,"basis":"fixture"}'
+  else
+    touch "${stubDir}/completion-resolved"
+    echo '{"nfl_season":"2026","league_season":"2026","nfl_week":3}'
+  fi
   exit 0
 fi
 out=""
 h2h=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --weeks)
+      weeks="$2"
+      shift 2
+      ;;
     --out)
       out="$2"
       shift 2
@@ -786,6 +795,11 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ "$script" == *"sleeper_to_h2h.py" && "$weeks" == "15-17" ]]; then
+  echo "future postseason should not be fetched before the playoffs" >&2
+  exit 99
+fi
 
 mkdir -p "$(dirname "$out")"
 if [[ "$script" == *"generate_current_season.py" ]]; then
@@ -810,14 +824,15 @@ fi
       {
         UPDATE_LIVE: '1',
         VALIDATE_ONLY: '1',
-        SEASON: '2025',
-        CURRENT_WEEK: '1',
+        SEASON: '2026',
+        COMPLETED_THROUGH_WEEK_OVERRIDE: '2',
+        COMPLETED_THROUGH_WEEK_REASON: 'fixture regular-season check',
         PYTHON: stubPath,
       },
       repoRoot,
     );
 
-    assert.equal(result.status, 0);
+    assert.equal(result.status, 0, result.stderr || result.stdout);
     assert.match(result.stdout, /Validation-only mode enabled/);
     assert.match(result.stdout, /Validation complete\. No files were written into assets\//);
     assert.doesNotMatch(result.stdout, /1257071385973362690/);

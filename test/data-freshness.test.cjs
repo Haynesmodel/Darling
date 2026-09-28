@@ -17,7 +17,7 @@ function clone(value) { return JSON.parse(JSON.stringify(value)); }
 function currentAt(generatedAt, status = 'scheduled') {
   const current = clone(canonicalCurrent);
   current.generated_at = generatedAt;
-  current.games[0].status = status;
+  current.games = current.games.map(game => ({ ...game, status }));
   return current;
 }
 

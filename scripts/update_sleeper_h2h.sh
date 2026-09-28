@@ -152,10 +152,13 @@ REGULAR_CMD=("${PY}" "${UPDATER}" --league "${LEAGUE_ID}" --season "${SEASON}" -
 if [[ -n "${CUTOFF_DATE}" ]]; then REGULAR_CMD+=(--cutoff-date "${CUTOFF_DATE}"); fi
 "${REGULAR_CMD[@]}"
 
-# 2) Postseason (winners + Saunders brackets), appended onto the file we just wrote
-POSTSEASON_CMD=("${PY}" "${UPDATER}" --league "${LEAGUE_ID}" --season "${SEASON}" --h2h "${OUT_H2H}" --out "${OUT_H2H}" --map "${MAP_FILE}" --weeks "${POSTSEASON_WEEKS}" --regular-season-max-week "${REG_SEASON_MAX_WEEK}" --max-week "${MAX_WEEK}" --only-played --completed-through-week "${COMPLETED_THROUGH_WEEK}" --completion-basis "${COMPLETION_BASIS}" --allow-postseason --sort-mode season)
-if [[ -n "${CUTOFF_DATE}" ]]; then POSTSEASON_CMD+=(--cutoff-date "${CUTOFF_DATE}"); fi
-"${POSTSEASON_CMD[@]}"
+# 2) Postseason (winners + Saunders brackets), appended onto the file we just wrote.
+# Future playoff weeks are not classifiable during the regular season.
+if (( COMPLETED_THROUGH_WEEK > REG_SEASON_MAX_WEEK )); then
+  POSTSEASON_CMD=("${PY}" "${UPDATER}" --league "${LEAGUE_ID}" --season "${SEASON}" --h2h "${OUT_H2H}" --out "${OUT_H2H}" --map "${MAP_FILE}" --weeks "${POSTSEASON_WEEKS}" --regular-season-max-week "${REG_SEASON_MAX_WEEK}" --max-week "${MAX_WEEK}" --only-played --completed-through-week "${COMPLETED_THROUGH_WEEK}" --completion-basis "${COMPLETION_BASIS}" --allow-postseason --sort-mode season)
+  if [[ -n "${CUTOFF_DATE}" ]]; then POSTSEASON_CMD+=(--cutoff-date "${CUTOFF_DATE}"); fi
+  "${POSTSEASON_CMD[@]}"
+fi
 
 # 3) Generate CurrentSeason.json from Sleeper, using the generated H2H as a postseason fallback
 CURRENT_CMD=(
@@ -174,7 +177,9 @@ CURRENT_CMD=(
 if [[ -n "${COMPLETED_ACTIVE_WEEK}" ]]; then
 CURRENT_CMD+=(--current-week "${COMPLETED_ACTIVE_WEEK}")
 fi
-CURRENT_CMD+=(--allow-postseason)
+if (( COMPLETED_THROUGH_WEEK > REG_SEASON_MAX_WEEK )); then
+  CURRENT_CMD+=(--allow-postseason)
+fi
 if [[ -n "${CUTOFF_DATE}" ]]; then
   CURRENT_CMD+=(--cutoff-date "${CUTOFF_DATE}" --generated-at "${CUTOFF_DATE}T13:00:00Z")
 fi

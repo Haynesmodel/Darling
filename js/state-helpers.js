@@ -78,6 +78,7 @@ function parseUrlState(search) {
   const parsedCurrentWeek = isFiniteInput(currentWeek) ? +currentWeek : null;
   const currentOwner = params.get('currentOwner') || null;
   const currentView = params.get('currentView') || null;
+  const currentScheduleOwner = params.get('currentScheduleOwner') || null;
   const currentProjection = params.get('currentProjection') || null;
   const gauntletA = params.get('ga') || null;
   const gauntletB = params.get('gb') || null;
@@ -118,7 +119,7 @@ function parseUrlState(search) {
   const gameSort = enumParam(params, 'gameSort', GAME_SORTS);
   const gameLimit = numericParam(params, 'gameLimit', { integer: true, min: 1, max: 100, cap: true });
   const focus = enumParam(params, 'focus', FOCUS_TARGETS);
-  const hasCurrent = !!(tab === 'current' || parsedCurrentSeason !== null || parsedCurrentWeek !== null || currentOwner || currentView || currentProjection);
+  const hasCurrent = !!(tab === 'current' || parsedCurrentSeason !== null || parsedCurrentWeek !== null || currentOwner || currentView || currentProjection || currentScheduleOwner);
   const hasDynasty = !!(tab === 'dynasty' || dynastyMode || dynastyOwner || parsedDynastyStart !== null || parsedDynastyEnd !== null || parsedDynastyMinSeasons !== null || parsedDynastySaunders !== null);
   const hasGauntlet = !!(tab === 'gauntlet' || gauntletA || gauntletB || gauntletModel || parsedGauntletIncludePostseason !== null || parsedGauntletSimulations !== null || gauntletSeed);
   const hasDraft = !!(tab === 'draft' || draftOwner || draftMode || parsedDraftStart !== null || parsedDraftEnd !== null || draftMetric || parsedDraftPick !== null || draftZone || parsedDraftMinSample !== null || draftNormalize || draftLocation);
@@ -147,6 +148,7 @@ function parseUrlState(search) {
     currentWeek: parsedCurrentWeek,
     currentOwner,
     currentView,
+    currentScheduleOwner,
     currentProjection,
     gauntletA,
     gauntletB,
@@ -233,6 +235,7 @@ function buildUrlFromState(opts = {}) {
   const selectedCurrentWeek = Object.prototype.hasOwnProperty.call(opts, 'selectedCurrentWeek') ? opts.selectedCurrentWeek : null;
   const selectedCurrentOwner = Object.prototype.hasOwnProperty.call(opts, 'selectedCurrentOwner') ? opts.selectedCurrentOwner : null;
   const selectedCurrentView = Object.prototype.hasOwnProperty.call(opts, 'selectedCurrentView') ? opts.selectedCurrentView : null;
+  const selectedCurrentScheduleOwner = Object.prototype.hasOwnProperty.call(opts, 'selectedCurrentScheduleOwner') ? opts.selectedCurrentScheduleOwner : null;
   const defaultCurrentView = Object.prototype.hasOwnProperty.call(opts, 'defaultCurrentView') ? opts.defaultCurrentView : 'command';
   const selectedCurrentProjection = Object.prototype.hasOwnProperty.call(opts, 'selectedCurrentProjection') ? opts.selectedCurrentProjection : null;
   const selectedDynastyMode = Object.prototype.hasOwnProperty.call(opts, 'selectedDynastyMode') ? opts.selectedDynastyMode : null;
@@ -294,6 +297,7 @@ function buildUrlFromState(opts = {}) {
     if (isFiniteInput(selectedCurrentWeek)) params.set('currentWeek', `${selectedCurrentWeek}`);
     if (selectedCurrentOwner) params.set('currentOwner', selectedCurrentOwner);
     if (selectedCurrentView && selectedCurrentView !== defaultCurrentView) params.set('currentView', selectedCurrentView);
+    if (selectedCurrentView === 'schedule' && selectedCurrentScheduleOwner && selectedCurrentScheduleOwner !== selectedCurrentOwner) params.set('currentScheduleOwner', selectedCurrentScheduleOwner);
     if (selectedCurrentProjection && selectedCurrentProjection !== 'ifScoresHold') params.set('currentProjection', selectedCurrentProjection);
   }
   if (tab === 'trophy') {

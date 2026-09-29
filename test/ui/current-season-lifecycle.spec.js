@@ -29,6 +29,47 @@ test('canonical finalized Current opens a compact authoritative recap without od
   await expect(page.locator('#current-section-jump')).toHaveValue('current-recap');
 });
 
+test('schedule comparison deep link, keyboard drilldown, donor URL, history, and mobile scrolling', async ({ page }) => {
+  await createSnapshotFixture().install(page);
+  const requests = [];
+  page.on('request', request => requests.push(request.url()));
+  await page.setViewportSize({ width: 320, height: 720 });
+  await page.goto('/?tab=current&currentSeason=2026&currentWeek=3&currentView=schedule&currentOwner=Joe&currentScheduleOwner=Plot');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('#currentScheduleDisclosure')).toHaveAttribute('open', '');
+  await expect(page.locator('#currentScheduleRoot table')).toHaveCount(2);
+  await expect(page.locator('#currentScheduleRoot')).toContainText('through Week 3');
+  await expect(page.locator('#currentScheduleRoot')).toContainText('Week 3');
+  await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('Plot');
+  expect(requests.some(url => url.includes('current-season-odds') || url.includes('plot-charts'))).toBe(false);
+
+  const collision = page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Nuss"]');
+  await collision.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#currentScheduleRoot')).toContainText('T-D collision');
+  await expect(page).toHaveURL(/currentScheduleOwner=Nuss/);
+  await expect(page.locator('#currentOwnerSelect')).toHaveValue('Joe');
+  await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('Nuss');
+  await expect(page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Nuss"]')).toBeFocused();
+  await expect(page.locator('#currentScheduleDetailHeading')).toContainText("Joe-lene schedule detail · Dr. Nuss's schedule");
+
+  const weekCell = page.locator('button[data-schedule-team="Joe"][data-schedule-week="1"]');
+  await weekCell.click();
+  await expect(page.locator('#currentScheduleWeek1 h4')).toBeFocused();
+  await page.locator('#currentScheduleOwnerSelect').selectOption('Joel');
+  await expect(page).toHaveURL(/currentScheduleOwner=Joel/);
+  await page.reload();
+  await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('Joel');
+  await page.goBack();
+  await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('Nuss');
+  await page.goForward();
+  await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('Joel');
+  await page.goto('/?tab=current&currentSeason=2026&currentView=schedule&currentScheduleOwner=not-a-team');
+  await expect(page).not.toHaveURL(/currentScheduleOwner/);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  expect(await page.locator('.current-schedule-scroll').evaluateAll(rows => rows.every(row => row.scrollWidth >= row.clientWidth))).toBe(true);
+});
+
 test('empty upcoming Current data keeps the picker, recap, and title on one season', async ({ page }) => {
   const fixture = createSnapshotFixture({
     mutations: {

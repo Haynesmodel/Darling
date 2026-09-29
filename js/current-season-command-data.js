@@ -16,7 +16,7 @@ const DEFAULT_PLAYOFF_RULES = Object.freeze({
   saunders_slots: 6,
 });
 
-const CURRENT_VIEW_MODES = Object.freeze(['command', 'recap', 'matchups', 'standings', 'owners']);
+const CURRENT_VIEW_MODES = Object.freeze(['command', 'recap', 'matchups', 'standings', 'owners', 'schedule']);
 const CURRENT_PROJECTION_MODES = Object.freeze(['current', 'ifScoresHold']);
 
 function numeric(value) {

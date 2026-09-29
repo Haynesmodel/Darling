@@ -33,6 +33,7 @@ test('current-season controls populate and emit projection mode changes', () => 
     ['currentOwnerSelect', makeSelect()],
     ['currentViewSelect', makeSelect()],
     ['currentProjectionSelect', makeSelect()],
+    ['currentScheduleOwnerSelect', makeSelect()],
   ]);
   const doc = { getElementById(id) { return elements.get(id) || null; } };
   let emitted = null;
@@ -51,12 +52,20 @@ test('current-season controls populate and emit projection mode changes', () => 
   assert.equal(state.selectedProjectionMode, 'current');
   assert.match(elements.get('currentProjectionSelect').innerHTML, /Completed Only/);
   assert.equal(elements.get('currentProjectionSelect').value, 'current');
+  assert.equal(elements.get('currentScheduleOwnerSelect').value, 'Joe');
 
   elements.get('currentProjectionSelect').value = 'ifScoresHold';
   elements.get('currentProjectionSelect').listeners.change();
   assert.equal(emitted.selectedProjectionMode, 'ifScoresHold');
   assert.equal(emitted.selectedView, 'standings');
   assert.equal(emitted.selectedOwner, 'Joe');
+
+  elements.get('currentScheduleOwnerSelect').value = 'Shap';
+  elements.get('currentScheduleOwnerSelect').listeners.change({ target: elements.get('currentScheduleOwnerSelect') });
+  assert.equal(emitted.selectedScheduleOwner, 'Shap');
+  elements.get('currentOwnerSelect').value = 'Shap';
+  elements.get('currentOwnerSelect').listeners.change({ target: elements.get('currentOwnerSelect') });
+  assert.equal(emitted.selectedScheduleOwner, 'Shap');
 });
 
 test('current-season state normalizes invalid projection modes', () => {

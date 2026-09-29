@@ -286,6 +286,9 @@
           <label>Owner:
             <select id="currentOwnerSelect"></select>
           </label>
+          <label id="currentScheduleOwnerLabel" hidden>Schedule donor:
+            <select id="currentScheduleOwnerSelect"></select>
+          </label>
           <label>Projection:
             <select id="currentProjectionSelect"></select>
           </label>
@@ -325,6 +328,10 @@
       <details id="currentTeamSnapshotsDisclosure" class="card feature-disclosure">
         <summary>Owner Snapshots</summary>
         <section id="currentTeamSnapshots" class="feature-section-content current-team-snapshots"></section>
+      </details>
+      <details id="currentScheduleDisclosure" class="card feature-disclosure">
+        <summary>Schedule Comparison</summary>
+        <section id="currentScheduleRoot" class="feature-section-content current-schedule"></section>
       </details>
     </section>
 

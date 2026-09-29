@@ -113,6 +113,32 @@ test('schedule comparison deep link, keyboard drilldown, donor URL, history, and
   expect(await page.locator('.current-schedule-scroll').evaluateAll(rows => rows.every(row => row.scrollWidth >= row.clientWidth))).toBe(true);
 });
 
+test('schedule matrix and all-play selections update state and retain usable focus', async ({ page }) => {
+  await createSnapshotFixture().install(page);
+  await page.goto('/?tab=current&currentSeason=2026&currentWeek=3&currentView=schedule&currentOwner=Joe&currentScheduleOwner=Plot');
+  await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('Plot');
+
+  const matrixCell = page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Nuss"]');
+  await matrixCell.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/currentScheduleOwner=Nuss/);
+  await expect(page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Nuss"]')).toBeFocused();
+
+  const weekCell = page.locator('button[data-schedule-team="Nuss"][data-schedule-week="1"]');
+  await weekCell.click();
+  await expect(page.locator('#currentScheduleWeek1 h4')).toBeFocused();
+  await expect(page.locator('#currentOwnerSelect')).toHaveValue('Nuss');
+  await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('Nuss');
+
+  const totalCell = page.locator('button[data-schedule-team="Joe"][data-schedule-total]');
+  await totalCell.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('button[data-schedule-team="Joe"][data-schedule-total]')).toBeFocused();
+  await expect(page.locator('#currentOwnerSelect')).toHaveValue('Joe');
+  await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('Joe');
+  await expect(page).not.toHaveURL(/currentScheduleOwner=/);
+});
+
 test('empty upcoming Current data keeps the picker, recap, and title on one season', async ({ page }) => {
   const fixture = createSnapshotFixture({
     mutations: {

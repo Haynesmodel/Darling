@@ -44,11 +44,14 @@ export function createFeatureController(): DarlingFeatureController {
   const onScheduleClick = (event: Event) => {
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-schedule-team]');
     if (!button || !state) return;
+    const team = button.getAttribute('data-schedule-team');
+    const donor = button.getAttribute('data-schedule-donor');
+    const selectedWeek = Number(button.getAttribute('data-schedule-week')) || null;
     state = {
       ...state,
-      selectedOwner: button.dataset.scheduleTeam,
-      selectedScheduleOwner: button.dataset.scheduleDonor || button.dataset.scheduleTeam || state.selectedOwner,
-      scheduleDetailWeek: Number(button.dataset.scheduleWeek) || null,
+      selectedOwner: team,
+      selectedScheduleOwner: donor || team || state.selectedOwner,
+      scheduleDetailWeek: selectedWeek,
     };
     const ownerControl = context.document.getElementById('currentOwnerSelect') as HTMLSelectElement | null;
     const donorControl = context.document.getElementById('currentScheduleOwnerSelect') as HTMLSelectElement | null;
@@ -58,13 +61,13 @@ export function createFeatureController(): DarlingFeatureController {
     context.window.requestAnimationFrame(() => {
       if (state.scheduleDetailWeek) {
         context.document.getElementById(`currentScheduleWeek${state.scheduleDetailWeek}`)?.querySelector('h4')?.focus();
-      } else if (button.dataset.scheduleDonor) {
+      } else if (donor) {
         const match = [...context.document.querySelectorAll<HTMLButtonElement>('#currentScheduleRoot button[data-schedule-donor]')]
-          .find(cell => cell.dataset.scheduleTeam === state.selectedOwner && cell.dataset.scheduleDonor === state.selectedScheduleOwner);
+          .find(cell => cell.getAttribute('data-schedule-team') === state.selectedOwner && cell.getAttribute('data-schedule-donor') === state.selectedScheduleOwner);
         match?.focus();
-      } else if (button.dataset.scheduleTotal) {
+      } else if (button.hasAttribute('data-schedule-total')) {
         [...context.document.querySelectorAll<HTMLButtonElement>('#currentScheduleRoot button[data-schedule-total]')]
-          .find(cell => cell.dataset.scheduleTeam === state.selectedOwner)?.focus();
+          .find(cell => cell.getAttribute('data-schedule-team') === state.selectedOwner)?.focus();
       } else {
         context.document.getElementById('currentOwnerSelect')?.focus();
       }
@@ -245,15 +248,16 @@ export function createFeatureController(): DarlingFeatureController {
           ? view.commandCenter.selectedView !== 'schedule'
           : recapMode || (id === 'currentProjectionSelect' && (presentation.phase !== 'regular-season' || view.commandCenter.selectedView === 'schedule'));
     }
+    const routeOwner = view.commandCenter.selectedView === 'schedule' ? state.selectedOwner : view.commandCenter.selectedOwner;
     const routeOptions = {
       tab: 'current',
       selectedCurrentSeason: view.season,
       selectedCurrentWeek: view.week,
-      selectedCurrentOwner: view.commandCenter.selectedOwner,
+      selectedCurrentOwner: routeOwner,
       selectedCurrentView: view.commandCenter.selectedView,
       defaultCurrentView: defaultView,
       selectedCurrentProjection: state.selectedProjectionMode,
-      selectedCurrentScheduleOwner: state.selectedScheduleOwner !== state.selectedOwner ? state.selectedScheduleOwner : null,
+      selectedCurrentScheduleOwner: state.selectedScheduleOwner !== routeOwner ? state.selectedScheduleOwner : null,
     };
     const canonicalPath = context.router.update(routeOptions);
     if (`${context.window.location.pathname}${context.window.location.search}` !== canonicalPath) {

@@ -55,6 +55,7 @@ test('schedule comparison deep link, keyboard drilldown, donor URL, history, and
   await collision.focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('#currentScheduleRoot')).toContainText('T-D collision');
+  await expect(page).toHaveURL(/currentOwner=Joe/);
   await expect(page).toHaveURL(/currentScheduleOwner=Nuss/);
   await expect(page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Nuss"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#currentOwnerSelect')).toHaveValue('Joe');
@@ -72,7 +73,9 @@ test('schedule comparison deep link, keyboard drilldown, donor URL, history, and
   await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('Joel');
   await page.locator('#currentScheduleOwnerSelect').selectOption('Plot');
   await expect(page).toHaveURL(/currentScheduleOwner=Plot/);
-  await page.locator('button[data-schedule-team="Nuss"][data-schedule-week="1"]').click();
+  const nussWeekCell = page.locator('button[data-schedule-team="Nuss"][data-schedule-week="1"]');
+  await nussWeekCell.focus();
+  await page.keyboard.press('Enter');
   await expect(page.locator('#currentScheduleWeek1 h4')).toBeFocused();
   await expect(page.locator('#currentOwnerSelect')).toHaveValue('Nuss');
   await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('Nuss');

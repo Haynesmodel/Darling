@@ -62,6 +62,9 @@ export function createFeatureController(): DarlingFeatureController {
         const match = [...context.document.querySelectorAll<HTMLButtonElement>('#currentScheduleRoot button[data-schedule-donor]')]
           .find(cell => cell.dataset.scheduleTeam === state.selectedOwner && cell.dataset.scheduleDonor === state.selectedScheduleOwner);
         match?.focus();
+      } else if (button.dataset.scheduleTotal) {
+        [...context.document.querySelectorAll<HTMLButtonElement>('#currentScheduleRoot button[data-schedule-total]')]
+          .find(cell => cell.dataset.scheduleTeam === state.selectedOwner)?.focus();
       } else {
         context.document.getElementById('currentOwnerSelect')?.focus();
       }
@@ -106,7 +109,7 @@ export function createFeatureController(): DarlingFeatureController {
       season: view.season,
       week: view.week,
       owner: state.selectedOwner,
-      donor: state.selectedScheduleOwner || state.selectedOwner,
+      donor: state.selectedOwner ? state.selectedScheduleOwner : '',
     }) : null;
     const recap = resolveSeasonRecap({
       season: presentation.season,
@@ -180,9 +183,13 @@ export function createFeatureController(): DarlingFeatureController {
     renderCurrentStandings(view, { doc: context.document });
     renderCurrentTeamSnapshots(view, { doc: context.document });
     const scheduleOwner = scheduleModel?.teams.includes(state.selectedOwner) ? state.selectedOwner : scheduleModel?.teams[0] || '';
-    const scheduleDonor = scheduleModel?.teams.includes(state.selectedScheduleOwner) ? state.selectedScheduleOwner : scheduleOwner;
+    const scheduleDonor = state.selectedOwner && scheduleModel?.teams.includes(state.selectedScheduleOwner) ? state.selectedScheduleOwner : '';
     renderCurrentSchedule(scheduleModel, { doc: context.document, season: view.season, week: view.week, owner: scheduleOwner, donor: scheduleDonor });
-    state = { ...state, selectedOwner: scheduleOwner, selectedScheduleOwner: scheduleDonor };
+    if (scheduleModel) {
+      state = { ...state, selectedScheduleOwner: scheduleDonor };
+      const donorControl = context.document.getElementById('currentScheduleOwnerSelect') as HTMLSelectElement | null;
+      if (donorControl) donorControl.value = scheduleDonor;
+    }
     const tableContext = { season: view.season, selectedOwner: view.commandCenter.selectedOwner, playoffPicture: view.commandCenter.playoffPicture };
     const onContextChange = (next: Record<string, unknown>) => {
       if (activeSignal?.aborted) return;

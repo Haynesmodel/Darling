@@ -13,7 +13,6 @@ import {
   buildCommandCenterModel,
   matchupKey,
 } from './current-season-command-data.js';
-import { buildScheduleComparison } from './current-season-schedule.js';
 function docOrDefault(doc) {
   return doc || (typeof document !== 'undefined' ? document : null);
 }
@@ -106,19 +105,21 @@ function selectedViewAllows(view, section) {
 }
 
 function recordText(row) { return `${row?.W || 0}-${row?.L || 0}${row?.T ? `-${row.T}` : ''}`; }
+function recordAccessible(row) { return `${row?.W || 0} wins, ${row?.L || 0} losses, ${row?.T || 0} ties`; }
 
 function renderScheduleComparison(model, { season, week, owner, donor } = {}) {
   const label = team => model.names[team] || team;
   const weeks = model.weeks;
+  const selected = model.teams.includes(owner) ? owner : model.teams[0];
+  const selectedDonor = model.teams.includes(donor) ? donor : selected;
   const rowCells = model.teams.map(team => `<tr><th scope="row">${escapeHtml(label(team))}</th>${model.teams.map(schedule => {
     const record = model.matrix[team][schedule];
-    return `<td><button type="button" data-schedule-team="${escapeHtml(team)}" data-schedule-donor="${escapeHtml(schedule)}" aria-label="${escapeHtml(label(team))} under ${escapeHtml(label(schedule))}'s schedule: ${recordText(record)}">${recordText(record)}</button></td>`;
+    return `<td><button type="button" data-schedule-team="${escapeHtml(team)}" data-schedule-donor="${escapeHtml(schedule)}" aria-pressed="${team === selected && schedule === selectedDonor}" aria-label="${escapeHtml(label(team))} under ${escapeHtml(label(schedule))}'s schedule: ${recordAccessible(record)}">${recordText(record)}</button></td>`;
   }).join('')}</tr>`).join('');
   const allPlayRows = model.teams.map(team => `<tr><th scope="row">${escapeHtml(label(team))}</th>${weeks.map(n => {
     const tally = model.allPlay[team].weeks[n];
-    return `<td><button type="button" data-schedule-team="${escapeHtml(team)}" data-schedule-week="${n}" aria-label="${escapeHtml(label(team))}, Week ${n} all-play: ${recordText(tally)}">${recordText(tally)}</button></td>`;
-  }).join('')}<td><button type="button" data-schedule-team="${escapeHtml(team)}" aria-label="${escapeHtml(label(team))} all-play total: ${recordText(model.allPlay[team].total)}">${recordText(model.allPlay[team].total)}</button></td></tr>`).join('');
-  const selected = model.teams.includes(owner) ? owner : model.teams[0];
+    return `<td><button type="button" data-schedule-team="${escapeHtml(team)}" data-schedule-week="${n}" aria-label="${escapeHtml(label(team))}, Week ${n} all-play: ${recordAccessible(tally)}">${recordText(tally)}</button></td>`;
+  }).join('')}<td><button type="button" data-schedule-team="${escapeHtml(team)}" data-schedule-total="1" aria-label="${escapeHtml(label(team))} all-play total: ${recordAccessible(model.allPlay[team].total)}">${recordText(model.allPlay[team].total)}</button></td></tr>`).join('');
   const detail = model.details;
   const buckets = (rows, empty) => rows.length ? rows.map(row => `${escapeHtml(label(row.owner))} (${scoreFmt(row.score)})`).join(', ') : empty;
   return `<p class="muted">${escapeHtml(season)} Schedule Comparison through Week ${escapeHtml(week)}. Legend: W = win, T = tie, L = loss. The record text identifies every result.</p>

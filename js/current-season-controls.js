@@ -57,7 +57,7 @@ function renderOwnerOptions(values, selectedValue) {
 }
 
 function renderScheduleOwnerOptions(values, selectedValue) {
-  return values.map(value => `<option value="${escapeHtml(value)}"${value === selectedValue ? ' selected' : ''}>${escapeHtml(value)}</option>`).join('');
+  return [`<option value=""${selectedValue ? '' : ' selected'}>Selected team</option>`, ...values.map(value => `<option value="${escapeHtml(value)}"${value === selectedValue ? ' selected' : ''}>${escapeHtml(value)}</option>`)].join('');
 }
 
 function renderViewOptions(selectedValue, defaultView = 'command') {

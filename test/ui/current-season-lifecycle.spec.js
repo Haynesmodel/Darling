@@ -1,4 +1,5 @@
 import { expect, test } from './coverage-fixture.js';
+import { expectNoViolations } from './accessibility-helpers.js';
 import { createSnapshotFixture, finalized2025 } from './snapshot-fixture.js';
 import {
   finalizing2026,
@@ -41,6 +42,12 @@ test('schedule comparison deep link, keyboard drilldown, donor URL, history, and
   await expect(page.locator('#currentScheduleRoot')).toContainText('through Week 3');
   await expect(page.locator('#currentScheduleRoot')).toContainText('Week 3');
   await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('Plot');
+  await expect(page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Plot"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Plot"]')).toHaveAttribute('aria-label', /Joe-lene under Plot.*schedule: \d+ wins, \d+ losses, \d+ ties/);
+  await expectNoViolations(page, '#currentScheduleRoot');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expectNoViolations(page, '#currentScheduleRoot');
+  await page.emulateMedia({ colorScheme: 'light' });
   expect(requests.some(url => url.includes('current-season-odds') || url.includes('plot-charts'))).toBe(false);
 
   const collision = page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Nuss"]');
@@ -48,6 +55,7 @@ test('schedule comparison deep link, keyboard drilldown, donor URL, history, and
   await page.keyboard.press('Enter');
   await expect(page.locator('#currentScheduleRoot')).toContainText('T-D collision');
   await expect(page).toHaveURL(/currentScheduleOwner=Nuss/);
+  await expect(page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Nuss"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#currentOwnerSelect')).toHaveValue('Joe');
   await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('Nuss');
   await expect(page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Nuss"]')).toBeFocused();
@@ -56,6 +64,10 @@ test('schedule comparison deep link, keyboard drilldown, donor URL, history, and
   const weekCell = page.locator('button[data-schedule-team="Joe"][data-schedule-week="1"]');
   await weekCell.click();
   await expect(page.locator('#currentScheduleWeek1 h4')).toBeFocused();
+  const totalCell = page.locator('button[data-schedule-team="Joe"][data-schedule-total]');
+  await totalCell.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('button[data-schedule-team="Joe"][data-schedule-total]')).toBeFocused();
   await page.locator('#currentScheduleOwnerSelect').selectOption('Joel');
   await expect(page).toHaveURL(/currentScheduleOwner=Joel/);
   await page.reload();
@@ -64,8 +76,18 @@ test('schedule comparison deep link, keyboard drilldown, donor URL, history, and
   await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('Nuss');
   await page.goForward();
   await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('Joel');
-  await page.goto('/?tab=current&currentSeason=2026&currentView=schedule&currentScheduleOwner=not-a-team');
+  await page.goto('/?tab=current&currentSeason=2026&currentView=schedule&currentOwner=bad&currentScheduleOwner=Plot');
+  await expect(page.locator('#currentOwnerSelect')).toHaveValue('');
+  await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('');
   await expect(page).not.toHaveURL(/currentScheduleOwner/);
+  await page.goto('/?tab=current&currentSeason=2026&currentWeek=3&currentView=command&currentOwner=Joe');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('#currentOwnerSelect')).toHaveValue('Joe');
+  await expect(page).toHaveURL(/currentOwner=Joe/);
+  await expect(page.locator('#currentHero')).toContainText('Joe: Week');
+  await page.locator('#currentWeekSelect').selectOption('1');
+  await expect(page.locator('#currentHero')).toContainText('Joe: Week');
+  await expect(page).toHaveURL(/currentOwner=Joe/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   expect(await page.locator('.current-schedule-scroll').evaluateAll(rows => rows.every(row => row.scrollWidth >= row.clientWidth))).toBe(true);
 });

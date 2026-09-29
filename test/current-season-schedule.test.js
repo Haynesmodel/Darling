@@ -50,3 +50,32 @@ test('committed 2026 snapshot reconciles its final Week 3 slate', () => {
   assert.equal(model.allPlay.Joe.total.W + model.allPlay.Joe.total.L + model.allPlay.Joe.total.T, 33);
   assert.equal(model.matrix.Joe.Joe.W + model.matrix.Joe.Joe.L + model.matrix.Joe.Joe.T, 3);
 });
+
+
+test('cutoff ignores future and postseason slates and changed rosters fall back safely', () => {
+  const boundaryGames = [
+    ...fixture,
+    { season: 2025, week: 3, teamA: 'A', teamB: 'B', scoreA: 100, scoreB: 1, type: 'Regular' },
+    { season: 2025, week: 4, teamA: 'A', teamB: 'B', scoreA: 100, scoreB: 1, type: 'Saunders' },
+    { season: 2025, week: 5, teamA: 'C', teamB: 'D', scoreA: 100, scoreB: 1, type: 'Playoff' },
+  ];
+  const throughWeekOne = buildScheduleComparison({ leagueGames: boundaryGames, season: 2025, week: 1 });
+  assert.deepEqual(throughWeekOne.weeks, [1]);
+  assert.deepEqual(buildScheduleComparison({ leagueGames: [], season: 2030, week: 2 }).weeks, []);
+
+  const changedRoster = buildScheduleComparison({
+    season: 2025,
+    week: 1,
+    owner: 'A',
+    donor: 'B',
+    currentSeason: {
+      season: 2025,
+      current_week: 1,
+      teams: [{ owner: 'X' }, { owner: 'Y' }],
+      games: [{ season: 2025, week: 1, teamA: 'X', teamB: 'Y', scoreA: 12, scoreB: 8, status: 'complete', type: 'Regular' }],
+    },
+  });
+  assert.deepEqual(changedRoster.teams, ['X', 'Y']);
+  assert.equal(changedRoster.details[0].donor, 'X');
+  assert.equal(changedRoster.details[0].score, 12);
+});

@@ -453,11 +453,11 @@
 .current-schedule table{width:100%;min-width:max-content;border-collapse:separate;border-spacing:0}
 .current-schedule caption{padding:8px;color:var(--header);font-weight:800;text-align:left}
 .current-schedule th,.current-schedule td{padding:6px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--surface-panel);white-space:nowrap}
-.current-schedule thead th{position:sticky;top:0;z-index:2;background:var(--surface-panel-alt)}
-.current-schedule tbody th{position:sticky;left:0;z-index:1;background:var(--surface-panel-alt);text-align:left}
+.current-schedule thead th{position:sticky;top:0;z-index:2;background:var(--surface-panel-alt);color:var(--text-primary)}
+.current-schedule tbody th{position:sticky;left:0;z-index:1;background:var(--surface-panel-alt);color:var(--text-primary);text-align:left}
 .current-schedule thead th:first-child{left:0;z-index:3}
 .current-schedule td button{min-width:52px;border:1px solid var(--status-info-border);border-radius:5px;background:var(--status-info-bg);color:var(--status-info-text);font:inherit;font-weight:800;cursor:pointer}
-.current-schedule td button:focus-visible{outline:3px solid var(--accent-ring);outline-offset:2px}
+.current-schedule td button:focus-visible{outline:3px solid var(--accent-ring);outline-offset:2px}.current-schedule td button[aria-pressed="true"]{box-shadow:0 0 0 2px var(--accent-primary)}
 .current-schedule-legend{display:flex;flex-wrap:wrap;gap:12px;color:var(--muted)}
 .current-schedule-excluded{color:var(--status-warn-text)}
 .current-schedule-week{padding:6px 0;border-top:1px solid var(--border)}

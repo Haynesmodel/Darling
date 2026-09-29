@@ -42,6 +42,7 @@ test('schedule comparison deep link, keyboard drilldown, donor URL, history, and
   await expect(page.locator('#currentScheduleRoot')).toContainText('through Week 3');
   await expect(page.locator('#currentScheduleRoot')).toContainText('Week 3');
   await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('Plot');
+  await expect(page.locator('#currentScheduleOwnerSelect option[value="Plot"]')).toHaveText('Plot VanDam');
   await expect(page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Plot"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Plot"]')).toHaveAttribute('aria-label', /Joe-lene under Plot.*schedule: \d+ wins, \d+ losses, \d+ ties/);
   await expectNoViolations(page, '#currentScheduleRoot');
@@ -101,6 +102,7 @@ test('empty upcoming Current data keeps the picker, recap, and title on one seas
         current.weeks_fetched = [];
         current.games = [];
       },
+      SeasonSummary: rows => [...rows, { ...rows.find(row => Number(row.season) === 2025), season: 2026, owner: 'StaleOwner' }],
     },
   });
   await fixture.install(page);
@@ -117,6 +119,32 @@ test('empty upcoming Current data keeps the picker, recap, and title on one seas
   await expect(page.locator('#currentHero h3')).toHaveText('2026 Recap');
   await expect(page.locator('#currentRecap')).toContainText('Authoritative honors pending');
   await expect(page.locator('#currentRecap')).not.toContainText('Zook');
+
+  await page.goto('/?tab=current&currentSeason=2026&currentView=schedule');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('#currentWeekSelect')).toBeEnabled();
+  await expect(page.locator('#currentWeekSelect')).toHaveValue('1');
+  await expect(page.locator('#currentOwnerSelect')).toBeEnabled();
+  await expect(page.locator('#currentScheduleOwnerSelect')).toBeEnabled();
+  await expect(page.locator('#currentOwnerSelect option[value="Joe"]')).toHaveCount(1);
+  await expect(page.locator('#currentOwnerSelect option[value="StaleOwner"]')).toHaveCount(0);
+  await expect(page.locator('#currentScheduleOwnerSelect option[value="StaleOwner"]')).toHaveCount(0);
+  await page.locator('#currentOwnerSelect').selectOption('Joe');
+  await page.locator('#currentScheduleOwnerSelect').selectOption('Plot');
+  await expect(page.locator('#currentScheduleRoot')).toContainText('No complete final regular-season weeks');
+});
+
+test('schedule falls back to historical games when optional Current Season data fails', async ({ page }) => {
+  const fixture = createSnapshotFixture({ mutations: { CurrentSeason: finalized2025 } });
+  await fixture.install(page);
+  await page.route('**/assets/CurrentSeason.json*', route => route.fulfill({ status: 404, body: 'unavailable' }));
+  await page.goto('/?tab=current&currentSeason=2025&currentWeek=17&currentView=schedule&currentOwner=Joe');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('#currentScheduleRoot table')).toHaveCount(2);
+  await expect(page.locator('#currentScheduleRoot')).toContainText('through Week 17');
+  await expect(page.locator('#currentScheduleRoot')).toContainText('Actual record');
+  await expect(page.locator('#currentScheduleOwnerSelect option[value="Joe"]')).toHaveText('Joe');
+  await expect(page.locator('#currentScheduleRoot table:first-of-type tbody tr')).not.toHaveCount(0);
 });
 
 test('explicit finalized command and recap views survive reload', async ({ page }) => {

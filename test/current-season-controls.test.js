@@ -95,3 +95,15 @@ test('current-season view normalization accepts recap and uses the lifecycle fal
   assert.equal(resolveCurrentSeasonState({ ...base, selectedView: 'not-a-view' }).selectedView, 'recap');
   assert.equal(resolveCurrentSeasonState({ ...base, selectedView: 'command' }).selectedView, 'command');
 });
+
+test('empty current schedule keeps snapshot owners and current cutoff available', () => {
+  const state = resolveCurrentSeasonState({
+    currentSeason: { season: 2026, current_week: 1, teams: [{ owner: 'Joe' }, { owner: 'Plot' }], games: [] },
+    seasonSummaries: [{ season: 2026, owner: 'StaleOwner' }],
+    selectedSeason: 2026,
+    selectedView: 'schedule',
+  });
+  assert.deepEqual(state.owners, ['Joe', 'Plot']);
+  assert.deepEqual(state.weeks, [1]);
+  assert.equal(state.selectedWeek, 1);
+});

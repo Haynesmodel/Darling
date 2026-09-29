@@ -408,6 +408,7 @@ function detectSeasonHighCurse(model) {
   for (const [owner, rows] of byOwner.entries()) {
     const ownerRows = rows;
     for (const [season, seasonRows] of groupBy(ownerRows, row => row.season).entries()) {
+      if (!model.seasonSummariesBySeason.has(+season)) continue;
       const seasonGames = seasonRows.filter(row => row.type === 'Regular');
       if (!seasonGames.length) continue;
       const { highGames } = highestScoreGameForSeason(seasonGames);

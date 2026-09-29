@@ -47,7 +47,7 @@ export function createFeatureController(): DarlingFeatureController {
     state = {
       ...state,
       selectedOwner: button.dataset.scheduleTeam,
-      selectedScheduleOwner: button.dataset.scheduleDonor || state.selectedScheduleOwner || state.selectedOwner,
+      selectedScheduleOwner: button.dataset.scheduleDonor || button.dataset.scheduleTeam || state.selectedOwner,
       scheduleDetailWeek: Number(button.dataset.scheduleWeek) || null,
     };
     const ownerControl = context.document.getElementById('currentOwnerSelect') as HTMLSelectElement | null;

@@ -62,13 +62,6 @@ test('schedule comparison deep link, keyboard drilldown, donor URL, history, and
   await expect(page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Nuss"]')).toBeFocused();
   await expect(page.locator('#currentScheduleDetailHeading')).toContainText("Joe-lene schedule detail · Dr. Nuss's schedule");
 
-  const weekCell = page.locator('button[data-schedule-team="Joe"][data-schedule-week="1"]');
-  await weekCell.click();
-  await expect(page.locator('#currentScheduleWeek1 h4')).toBeFocused();
-  const totalCell = page.locator('button[data-schedule-team="Joe"][data-schedule-total]');
-  await totalCell.focus();
-  await page.keyboard.press('Enter');
-  await expect(page.locator('button[data-schedule-team="Joe"][data-schedule-total]')).toBeFocused();
   await page.locator('#currentScheduleOwnerSelect').selectOption('Joel');
   await expect(page).toHaveURL(/currentScheduleOwner=Joel/);
   await page.reload();
@@ -77,6 +70,18 @@ test('schedule comparison deep link, keyboard drilldown, donor URL, history, and
   await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('Nuss');
   await page.goForward();
   await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('Joel');
+  await page.locator('#currentScheduleOwnerSelect').selectOption('Plot');
+  await expect(page).toHaveURL(/currentScheduleOwner=Plot/);
+  await page.locator('button[data-schedule-team="Nuss"][data-schedule-week="1"]').click();
+  await expect(page.locator('#currentScheduleWeek1 h4')).toBeFocused();
+  await expect(page.locator('#currentOwnerSelect')).toHaveValue('Nuss');
+  await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('Nuss');
+  await expect(page).toHaveURL(/currentOwner=Nuss/);
+  await expect(page).not.toHaveURL(/currentScheduleOwner=/);
+  const totalCell = page.locator('button[data-schedule-team="Nuss"][data-schedule-total]');
+  await totalCell.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('button[data-schedule-team="Nuss"][data-schedule-total]')).toBeFocused();
   await page.goto('/?tab=current&currentSeason=2026&currentView=schedule&currentOwner=bad&currentScheduleOwner=Plot');
   await expect(page.locator('#currentOwnerSelect')).toHaveValue('');
   await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('');

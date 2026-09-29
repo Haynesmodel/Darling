@@ -101,6 +101,13 @@ test('schedule comparison deep link, keyboard drilldown, donor URL, history, and
   await expect(page.locator('#currentOwnerSelect')).toHaveValue('');
   await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('');
   await expect(page).not.toHaveURL(/currentScheduleOwner/);
+  await page.goto('/?tab=current&currentSeason=2026&currentWeek=3&currentView=schedule');
+  await expect(page.locator('#currentOwnerSelect')).toHaveValue('');
+  await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('');
+  await expect(page.locator('#currentScheduleRoot table')).toHaveCount(2);
+  await expect(page.locator('#currentScheduleDetailHeading')).toHaveCount(0);
+  await expect(page.locator('#currentScheduleRoot')).toContainText('Select a team or matrix cell to view its schedule detail.');
+  await expect(page.locator('#currentScheduleRoot button[aria-pressed="true"]')).toHaveCount(0);
   await page.goto('/?tab=current&currentSeason=2026&currentWeek=3&currentView=command&currentOwner=Joe');
   await page.waitForLoadState('networkidle');
   await expect(page.locator('#currentOwnerSelect')).toHaveValue('Joe');

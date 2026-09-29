@@ -185,7 +185,7 @@ export function createFeatureController(): DarlingFeatureController {
     renderCurrentMatchups(view, { doc: context.document });
     renderCurrentStandings(view, { doc: context.document });
     renderCurrentTeamSnapshots(view, { doc: context.document });
-    const scheduleOwner = scheduleModel?.teams.includes(state.selectedOwner) ? state.selectedOwner : scheduleModel?.teams[0] || '';
+    const scheduleOwner = state.selectedOwner && scheduleModel?.teams.includes(state.selectedOwner) ? state.selectedOwner : '';
     const scheduleDonor = state.selectedOwner && scheduleModel?.teams.includes(state.selectedScheduleOwner) ? state.selectedScheduleOwner : '';
     renderCurrentSchedule(scheduleModel, { doc: context.document, season: view.season, week: view.week, owner: scheduleOwner, donor: scheduleDonor });
     if (scheduleModel) {

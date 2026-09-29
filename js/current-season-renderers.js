@@ -110,7 +110,7 @@ function recordAccessible(row) { return `${row?.W || 0} wins, ${row?.L || 0} los
 function renderScheduleComparison(model, { season, week, owner, donor } = {}) {
   const label = team => model.names[team] || team;
   const weeks = model.weeks;
-  const selected = model.teams.includes(owner) ? owner : model.teams[0];
+  const selected = model.teams.includes(owner) ? owner : '';
   const selectedDonor = model.teams.includes(donor) ? donor : selected;
   const rowCells = model.teams.map(team => `<tr><th scope="row">${escapeHtml(label(team))}</th>${model.teams.map(schedule => {
     const record = model.matrix[team][schedule];
@@ -122,12 +122,17 @@ function renderScheduleComparison(model, { season, week, owner, donor } = {}) {
   }).join('')}<td><button type="button" data-schedule-team="${escapeHtml(team)}" data-schedule-total="1" aria-label="${escapeHtml(label(team))} all-play total: ${recordAccessible(model.allPlay[team].total)}">${recordText(model.allPlay[team].total)}</button></td></tr>`).join('');
   const detail = model.details;
   const buckets = (rows, empty) => rows.length ? rows.map(row => `${escapeHtml(label(row.owner))} (${scoreFmt(row.score)})`).join(', ') : empty;
+  const detailView = !selected
+    ? '<p>Select a team or matrix cell to view its schedule detail.</p>'
+    : weeks.length
+      ? `<h3 id="currentScheduleDetailHeading" tabindex="-1">${escapeHtml(label(selected))} schedule detail · ${escapeHtml(label(donor && model.teams.includes(donor) ? donor : selected))}'s schedule</h3><p>Actual record ${recordText(model.matrix[selected][selected])}; counterfactual record ${recordText(model.counterfactual)}.</p>${detail.map(row => `<article class="current-schedule-week" id="currentScheduleWeek${row.week}"><h4 tabindex="-1">Week ${row.week}</h4><p>Actual: ${escapeHtml(label(selected))} ${scoreFmt(row.score)} vs ${escapeHtml(label(row.opponent))} ${scoreFmt(row.opponentScore)} (${row.result}). All-play ${recordText(row.allPlay)}; beat ${buckets(row.beaten, 'none')}; tied ${buckets(row.tied, 'none')}; lost to ${buckets(row.lostTo, 'none')}.</p><p>Donor's original opponent: ${escapeHtml(label(row.donorOpponent))}. Alternative opponent: ${escapeHtml(label(row.alternativeOpponent))} (${scoreFmt(row.alternativeScore)}), ${row.alternativeResult}.${row.collision ? ' T-D collision: donor substituted as the alternative opponent.' : ''}</p></article>`).join('')}`
+      : `<p>No complete final regular-season weeks through Week ${escapeHtml(week)}.</p>`;
   return `<p class="muted">${escapeHtml(season)} Schedule Comparison through Week ${escapeHtml(week)}. Legend: W = win, T = tie, L = loss. The record text identifies every result.</p>
     <div class="current-schedule-scroll" role="region" aria-label="Team by schedule donor matrix" tabindex="0"><table><caption>Team records when each team receives each schedule through Week ${escapeHtml(week)}</caption><thead><tr><th scope="col">Scoring team</th>${model.teams.map(team => `<th scope="col">${escapeHtml(label(team))}</th>`).join('')}</tr></thead><tbody>${rowCells}</tbody></table></div>
     <div class="current-schedule-scroll" role="region" aria-label="All-play weekly records" tabindex="0"><table><caption>All-play record by team and week</caption><thead><tr><th scope="col">Team</th>${weeks.map(n => `<th scope="col">Week ${n}</th>`).join('')}<th scope="col">Total</th></tr></thead><tbody>${allPlayRows}</tbody></table></div>
     <p class="current-schedule-legend"><span>W = win</span><span>T = tie</span><span>L = loss</span></p>
     ${model.excluded.length ? `<p class="current-schedule-excluded">Excluded weeks: ${model.excluded.map(row => `Week ${escapeHtml(row.week)} — ${escapeHtml(row.reason)}`).join('; ')}</p>` : ''}
-    ${weeks.length ? `<h3 id="currentScheduleDetailHeading" tabindex="-1">${escapeHtml(label(selected))} schedule detail · ${escapeHtml(label(donor && model.teams.includes(donor) ? donor : selected))}'s schedule</h3><p>Actual record ${recordText(model.matrix[selected][selected])}; counterfactual record ${recordText(model.counterfactual)}.</p>${detail.map(row => `<article class="current-schedule-week" id="currentScheduleWeek${row.week}"><h4 tabindex="-1">Week ${row.week}</h4><p>Actual: ${escapeHtml(label(selected))} ${scoreFmt(row.score)} vs ${escapeHtml(label(row.opponent))} ${scoreFmt(row.opponentScore)} (${row.result}). All-play ${recordText(row.allPlay)}; beat ${buckets(row.beaten, 'none')}; tied ${buckets(row.tied, 'none')}; lost to ${buckets(row.lostTo, 'none')}.</p><p>Donor's original opponent: ${escapeHtml(label(row.donorOpponent))}. Alternative opponent: ${escapeHtml(label(row.alternativeOpponent))} (${scoreFmt(row.alternativeScore)}), ${row.alternativeResult}.${row.collision ? ' T-D collision: donor substituted as the alternative opponent.' : ''}</p></article>`).join('')}` : `<p>No complete final regular-season weeks through Week ${escapeHtml(week)}.</p>`}`;
+    ${detailView}`;
 }
 
 function renderCurrentSchedule(model, options = {}) {

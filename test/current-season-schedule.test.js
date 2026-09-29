@@ -4,7 +4,7 @@ import currentSeason from '../assets/CurrentSeason.json' with { type: 'json' };
 import { buildScheduleComparison } from '../js/current-season-schedule.js';
 
 const fixture = [
-  ['A', 'B', 10, 8, 1], ['C', 'D', 7, 7, 1],
+  ['A', 'B', 10, 8, 1], ['C', 'D', 7.05, 7.05, 1],
   ['A', 'C', 5, 9, 2], ['B', 'D', 11, 5, 2],
 ].map(([teamA, teamB, scoreA, scoreB, week]) => ({ season: 2025, week, teamA, teamB, scoreA, scoreB, type: 'Regular' }));
 
@@ -17,7 +17,7 @@ test('schedule matrix, all-play and collision detail reconcile over complete wee
   assert.equal(model.details[0].collision, true);
   assert.equal(model.details[0].alternativeOpponent, 'B');
   const tiedWeek = buildScheduleComparison({ leagueGames: fixture, season: 2025, week: 1, owner: 'C', donor: 'C' });
-  assert.deepEqual(tiedWeek.details[0].tied, [{ owner: 'D', score: 7 }]);
+  assert.deepEqual(tiedWeek.details[0].tied, [{ owner: 'D', score: 7.05 }]);
   for (const team of model.teams) for (const w of model.weeks) {
     const row = model.allPlay[team].weeks[w];
     assert.equal(row.W + row.L + row.T, model.teams.length - 1);
@@ -56,11 +56,16 @@ test('cutoff ignores future and postseason slates and changed rosters fall back 
   const boundaryGames = [
     ...fixture,
     { season: 2025, week: 3, teamA: 'A', teamB: 'B', scoreA: 100, scoreB: 1, type: 'Regular' },
+    { season: 2025, week: 3, teamA: 'C', teamB: 'D', scoreA: 100, scoreB: 1, type: 'Regular' },
     { season: 2025, week: 4, teamA: 'A', teamB: 'B', scoreA: 100, scoreB: 1, type: 'Saunders' },
+    { season: 2025, week: 4, teamA: 'C', teamB: 'D', scoreA: 100, scoreB: 1, type: 'Saunders' },
+    { season: 2025, week: 5, teamA: 'A', teamB: 'B', scoreA: 100, scoreB: 1, type: 'Playoff' },
     { season: 2025, week: 5, teamA: 'C', teamB: 'D', scoreA: 100, scoreB: 1, type: 'Playoff' },
   ];
   const throughWeekOne = buildScheduleComparison({ leagueGames: boundaryGames, season: 2025, week: 1 });
   assert.deepEqual(throughWeekOne.weeks, [1]);
+  assert.deepEqual(buildScheduleComparison({ leagueGames: boundaryGames, season: 2025, week: 2 }).weeks, [1, 2]);
+  assert.deepEqual(buildScheduleComparison({ leagueGames: boundaryGames, season: 2025, week: 5 }).weeks, [1, 2, 3]);
   assert.deepEqual(buildScheduleComparison({ leagueGames: [], season: 2030, week: 2 }).weeks, []);
 
   const changedRoster = buildScheduleComparison({
@@ -71,11 +76,13 @@ test('cutoff ignores future and postseason slates and changed rosters fall back 
     currentSeason: {
       season: 2025,
       current_week: 1,
-      teams: [{ owner: 'X' }, { owner: 'Y' }],
+      teams: [{ owner: 'X' }, { owner: 'Y' }, { owner: 'X' }],
       games: [{ season: 2025, week: 1, teamA: 'X', teamB: 'Y', scoreA: 12, scoreB: 8, status: 'complete', type: 'Regular' }],
     },
   });
   assert.deepEqual(changedRoster.teams, ['X', 'Y']);
+  assert.deepEqual(changedRoster.weeks, [1]);
+  assert.equal(Object.keys(changedRoster.matrix).length, 2);
   assert.equal(changedRoster.details[0].donor, 'X');
   assert.equal(changedRoster.details[0].score, 12);
 });

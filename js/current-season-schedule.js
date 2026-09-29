@@ -9,8 +9,8 @@ const add = (row, value) => { row[value] += 1; };
 function buildScheduleComparison({ leagueGames = [], currentSeason = null, season = currentSeason?.season, week = currentSeason?.current_week, owner = '', donor = '' } = {}) {
   const games = currentSeasonSourceGames(leagueGames, season, currentSeason).filter(game => Number(game.season) === Number(season));
   const activeSnapshot = Number(currentSeason?.season) === Number(season) ? currentSeason : null;
-  const teams = activeSnapshot?.teams?.map(team => team.owner).filter(Boolean)
-    || [...new Set(games.filter(isRegularGame).flatMap(game => [game.teamA, game.teamB]).filter(Boolean))].sort();
+  const teams = activeSnapshot?.teams ? [...new Set(activeSnapshot.teams.map(team => team.owner).filter(Boolean))]
+    : [...new Set(games.filter(isRegularGame).flatMap(game => [game.teamA, game.teamB]).filter(Boolean))].sort();
   const names = Object.fromEntries((activeSnapshot?.teams || []).map(team => [team.owner, team.sleeper_team_name || team.owner]));
   const cutoff = Number(week);
   const byWeek = new Map();

@@ -465,6 +465,7 @@
 @media (forced-colors: active){.current-schedule td button{border:1px solid ButtonText;background:Canvas;color:ButtonText}.current-schedule th{border:1px solid CanvasText}}
 
 @media (max-width:700px){
+  .current-schedule tbody th,.current-schedule thead th:first-child{width:96px;max-width:96px;overflow:hidden;text-overflow:ellipsis}
   .current-recap-honors{
     grid-template-columns:1fr;
   }

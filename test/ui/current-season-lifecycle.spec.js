@@ -45,17 +45,16 @@ test('schedule comparison deep link, keyboard drilldown, donor URL, history, and
   await expect(page.locator('#currentScheduleOwnerSelect option[value="Plot"]')).toHaveText('Plot VanDam');
   const matrixRegion = page.locator('[aria-label="Team by schedule donor matrix"]');
   await matrixRegion.scrollIntoViewIfNeeded();
-  await matrixRegion.evaluate(element => { element.scrollLeft = 200; });
-  const visibleResultButtons = await matrixRegion.evaluate(element => {
+  const visibleSelectedResult = await matrixRegion.evaluate(element => {
     const region = element.getBoundingClientRect();
-    const stickyEdge = element.querySelector('tbody th').getBoundingClientRect().right;
-    return [...element.querySelectorAll('tbody td button')].filter(button => {
-      const box = button.getBoundingClientRect();
-      const point = document.elementFromPoint((box.left + box.right) / 2, (box.top + box.bottom) / 2);
-      return box.width >= 52 && box.left >= stickyEdge && box.right <= region.right && box.top >= region.top && box.bottom <= region.bottom && (point === button || button.contains(point));
-    }).length;
+    const stickyRight = element.querySelector('tbody th').getBoundingClientRect().right;
+    const button = element.querySelector('button[data-schedule-team="Joe"][data-schedule-donor="Plot"]');
+    element.scrollLeft += button.getBoundingClientRect().left - stickyRight - 8;
+    const box = button.getBoundingClientRect();
+    const point = document.elementFromPoint((box.left + box.right) / 2, (box.top + box.bottom) / 2);
+    return box.width >= 52 && box.left >= stickyRight && box.right <= region.right && box.top >= region.top && box.bottom <= region.bottom && (point === button || button.contains(point));
   });
-  expect(visibleResultButtons).toBeGreaterThan(0);
+  expect(visibleSelectedResult).toBe(true);
   await expect(page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Plot"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Plot"]')).toHaveAttribute('aria-label', /Joe-lene under Plot.*schedule: \d+ wins, \d+ losses, \d+ ties/);
   await expectNoViolations(page, '#currentScheduleRoot');

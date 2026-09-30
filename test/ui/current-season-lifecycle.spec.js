@@ -46,6 +46,14 @@ test('schedule comparison deep link, keyboard drilldown, donor URL, history, and
   await expect(page.locator('#currentHero')).not.toContainText('Model:');
   await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('Plot');
   await expect(page.locator('#currentScheduleOwnerSelect option[value="Plot"]')).toHaveText('Plot VanDam');
+  const easiestHeader = page.locator('th[title="Borrowed schedule: Plot VanDam"]');
+  const hardestHeader = page.locator('th[title="Borrowed schedule: Joe-lene"]');
+  await expect(easiestHeader).toContainText('🧁');
+  await expect(easiestHeader.locator('.visually-hidden')).toHaveText('Easiest borrowed schedule by total wins across scoring owners');
+  await expect(hardestHeader).toContainText('💀');
+  await expect(hardestHeader.locator('.visually-hidden')).toHaveText('Hardest borrowed schedule by total wins across scoring owners');
+  await expect(page.locator('.current-schedule-matrix thead .visually-hidden')).toHaveCount(2);
+  await expect(page.locator('.current-schedule-legend')).toContainText('🧁 Easiest (most total wins); 💀 Hardest (fewest total wins)');
   const betterCell = page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Plot"]');
   await expect(betterCell).toHaveAttribute('data-schedule-impact', 'improved');
   await expect(betterCell).toHaveAttribute('aria-label', /Better than actual by 3 win-equivalents/);

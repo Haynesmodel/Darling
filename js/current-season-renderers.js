@@ -112,6 +112,14 @@ function renderScheduleComparison(model, { season, week, owner, donor } = {}) {
   const weeks = model.weeks;
   const selected = model.teams.includes(owner) ? owner : '';
   const selectedDonor = model.teams.includes(donor) ? donor : selected;
+  const columnWins = model.teams.map(schedule => model.teams.reduce((sum, team) => sum + model.matrix[team][schedule].W, 0));
+  const easiest = Math.max(...columnWins);
+  const hardest = Math.min(...columnWins);
+  const headerMark = (index) => easiest === hardest ? '' : columnWins[index] === easiest
+    ? '<span aria-hidden="true">🧁</span><span class="visually-hidden">Easiest borrowed schedule by total wins across scoring owners</span>'
+    : columnWins[index] === hardest
+      ? '<span aria-hidden="true">💀</span><span class="visually-hidden">Hardest borrowed schedule by total wins across scoring owners</span>'
+      : '';
   const rowCells = model.teams.map(team => `<tr><th scope="row">${escapeHtml(label(team))}</th>${model.teams.map(schedule => {
     const record = model.matrix[team][schedule];
     const actual = model.matrix[team][team];
@@ -134,8 +142,8 @@ function renderScheduleComparison(model, { season, week, owner, donor } = {}) {
     : weeks.length
       ? `<h3 id="currentScheduleDetailHeading" tabindex="-1">${escapeHtml(label(selected))} schedule detail · borrowing ${escapeHtml(label(donor && model.teams.includes(donor) ? donor : selected))}'s schedule</h3><p class="muted">Actual record ${recordText(model.matrix[selected][selected])} · borrowed schedule record ${recordText(model.counterfactual)}</p>${detail.map(row => `<article class="current-schedule-week" id="currentScheduleWeek${row.week}"><h4 tabindex="-1">Week ${row.week}</h4><div class="current-schedule-detail-grid"><p><strong>Actual matchup</strong><br>${escapeHtml(label(selected))} ${scoreFmt(row.score)} vs ${escapeHtml(label(row.opponent))} ${scoreFmt(row.opponentScore)} · ${row.result}</p><p><strong>Borrowed schedule</strong><br>Original opponent: ${escapeHtml(label(row.donorOpponent))}<br>Alternative: ${escapeHtml(label(row.alternativeOpponent))} ${scoreFmt(row.alternativeScore)} · ${row.alternativeResult}${row.collision ? '<br>T-D collision: donor substituted as opponent.' : ''}</p><p class="current-schedule-all-play-detail"><strong>All-play ${recordText(row.allPlay)}</strong><br>Beat: ${buckets(row.beaten, 'none')}<br>Tied: ${buckets(row.tied, 'none')}<br>Lost to: ${buckets(row.lostTo, 'none')}</p></div></article>`).join('')}`
       : `<p>No complete final regular-season weeks through Week ${escapeHtml(week)}.</p>`;
-  return `<p class="current-schedule-legend"><span><strong>Diagonal:</strong> actual schedule</span><span><strong>Green:</strong> better than actual</span><span><strong>Red:</strong> worse than actual</span><span>Gray: same record</span><span>Stronger tint: larger difference</span><span>W-L-T; ties count as half a win</span></p>
-    <div class="current-schedule-scroll" role="region" aria-label="Schedule matrix: rows are scoring owners; columns are teams whose schedules they borrow" tabindex="0"><table class="current-schedule-matrix"><caption>Scoring owner ↓ · borrowed schedule → (W-L-T)</caption><thead><tr><th scope="col">Scoring owner</th>${model.teams.map(team => `<th scope="col" title="Borrowed schedule: ${escapeHtml(label(team))}">${escapeHtml(label(team))}</th>`).join('')}</tr></thead><tbody>${rowCells}</tbody></table></div>
+  return `<p class="current-schedule-legend"><span><strong>Diagonal:</strong> actual schedule</span><span><strong>Green:</strong> better than actual</span><span><strong>Red:</strong> worse than actual</span><span>Gray: same record</span><span>Stronger tint: larger difference</span><span>W-L-T; ties count as half a win</span><span>🧁 Easiest (most total wins); 💀 Hardest (fewest total wins)</span></p>
+    <div class="current-schedule-scroll" role="region" aria-label="Schedule matrix: rows are scoring owners; columns are teams whose schedules they borrow" tabindex="0"><table class="current-schedule-matrix"><caption>Scoring owner ↓ · borrowed schedule → (W-L-T)</caption><thead><tr><th scope="col">Scoring owner</th>${model.teams.map((team, index) => `<th scope="col" title="Borrowed schedule: ${escapeHtml(label(team))}">${escapeHtml(label(team))} ${headerMark(index)}</th>`).join('')}</tr></thead><tbody>${rowCells}</tbody></table></div>
     <div class="current-schedule-scroll" role="region" aria-label="All-play weekly records" tabindex="0"><table class="current-schedule-all-play"><caption>All-play records by scoring owner and week (W-L-T)</caption><thead><tr><th scope="col">Scoring owner</th>${weeks.map(n => `<th scope="col">Week ${n}</th>`).join('')}<th scope="col">Total</th></tr></thead><tbody>${allPlayRows}</tbody></table></div>
     ${model.excluded.length ? `<p class="current-schedule-excluded">Excluded weeks: ${model.excluded.map(row => `Week ${escapeHtml(row.week)} — ${escapeHtml(row.reason)}`).join('; ')}</p>` : ''}
     ${detailView}`;

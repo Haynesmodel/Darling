@@ -202,6 +202,25 @@ test('schedule matrix explains its axes and compares ties as half a win', () => 
   assert.match(target.innerHTML, /<strong>All-play 1-1-1<\/strong>/);
 });
 
+test('schedule column markers cover tied extrema and disappear for uniform totals', () => {
+  const model = buildScheduleComparison({ leagueGames: games, season: 2025, week: 2 });
+  const teams = model.teams;
+  model.matrix = Object.fromEntries(teams.map(owner => [owner, Object.fromEntries(teams.map((schedule, index) => [schedule, { W: index === 0 || index === 3 ? 1 : 0, L: 0, T: 0 }]))]));
+  const render = () => {
+    const target = { innerHTML: '' };
+    renderCurrentSchedule(model, { doc: { getElementById: id => id === 'currentScheduleRoot' ? target : null }, week: 2 });
+    return target.innerHTML;
+  };
+  let html = render();
+  assert.equal((html.match(/Easiest borrowed schedule by total wins across scoring owners/g) || []).length, 2);
+  assert.equal((html.match(/Hardest borrowed schedule by total wins across scoring owners/g) || []).length, 2);
+  assert.match(html, /<tbody><tr><th scope="row">/);
+
+  model.matrix = Object.fromEntries(teams.map(owner => [owner, Object.fromEntries(teams.map(schedule => [schedule, { W: 1, L: 0, T: 0 }]))]));
+  html = render();
+  assert.doesNotMatch(html, /Easiest borrowed schedule|Hardest borrowed schedule/);
+});
+
 test('current-season renderers hide containers when view mode filters sections', () => {
   const elements = new Map([
     ['currentPlayoffPicture', { innerHTML: '', hidden: false }],

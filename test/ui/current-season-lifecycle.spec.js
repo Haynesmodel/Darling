@@ -222,7 +222,7 @@ test('schedule falls back to historical games when optional Current Season data 
   await page.goto('/?tab=current&currentSeason=2025&currentWeek=17&currentView=schedule&currentOwner=Joe');
   await page.waitForLoadState('networkidle');
   await expect(page.locator('#currentScheduleRoot table')).toHaveCount(2);
-  await expect(page.locator('#currentScheduleRoot')).toContainText('through Week 17');
+  await expect(page.locator('#currentHero')).toContainText('Through Postseason Week 17');
   await expect(page.locator('#currentScheduleRoot')).toContainText('Actual record');
   await expect(page.locator('#currentScheduleOwnerSelect option[value="Joe"]')).toHaveText('Joe');
   await expect(page.locator('#currentScheduleRoot table:first-of-type tbody tr')).not.toHaveCount(0);

@@ -45,6 +45,8 @@ test('schedule comparison deep link, keyboard drilldown, donor URL, history, and
   await expect(page.locator('#currentHero')).toContainText('Through Week 3 · 18 completed regular-season games');
   await expect(page.locator('#currentHero')).not.toContainText('Model:');
   await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('Plot');
+  await expect(page.locator('#currentScheduleOwnerLabel')).toContainText('Use schedule from:');
+  await expect(page.locator('#currentScheduleOwnerLabel')).not.toContainText('Schedule donor:');
   await expect(page.locator('#currentScheduleOwnerSelect option[value="Plot"]')).toHaveText('Plot VanDam');
   const easiestHeader = page.locator('th[title="Borrowed schedule: Plot VanDam"]');
   const hardestHeader = page.locator('th[title="Borrowed schedule: Joe-lene"]');
@@ -82,7 +84,10 @@ test('schedule comparison deep link, keyboard drilldown, donor URL, history, and
   await page.emulateMedia({ colorScheme: 'light' });
   await page.emulateMedia({ forcedColors: 'active' });
   await expect(betterCell).toBeVisible();
-  expect(await betterCell.evaluate(button => getComputedStyle(button, '::before').content)).toContain('+');
+  await betterCell.focus();
+  await expect(betterCell).toBeFocused();
+  expect(await betterCell.evaluate(button => getComputedStyle(button, '::before').content)).toBe('none');
+  await expect(betterCell).toHaveAttribute('aria-label', /Better than actual by 3 win-equivalents/);
   await expectNoViolations(page, '#currentScheduleRoot');
   await page.emulateMedia({ forcedColors: 'none' });
   await page.setViewportSize({ width: 1280, height: 900 });
@@ -102,7 +107,9 @@ test('schedule comparison deep link, keyboard drilldown, donor URL, history, and
   const collision = page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Nuss"]');
   await collision.focus();
   await page.keyboard.press('Enter');
-  await expect(page.locator('#currentScheduleRoot')).toContainText('T-D collision');
+  await expect(page.locator('#currentScheduleRoot')).toContainText("Joe-lene was on Dr. Nuss's schedule this week, so Dr. Nuss is the opponent instead");
+  await expect(page.locator('#currentScheduleRoot')).not.toContainText('T-D collision');
+  await expect(page.locator('#currentScheduleRoot')).not.toContainText('donor substituted');
   await expect(page).toHaveURL(/currentOwner=Joe/);
   await expect(page).toHaveURL(/currentScheduleOwner=Nuss/);
   await expect(page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Nuss"]')).toHaveAttribute('aria-pressed', 'true');

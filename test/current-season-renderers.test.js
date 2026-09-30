@@ -200,6 +200,17 @@ test('schedule matrix explains its axes and compares ties as half a win', () => 
   assert.match(target.innerHTML, /data-schedule-team="A" data-schedule-donor="D" data-schedule-impact="regressed"[^>]+Worse than actual by 1\.5 win-equivalents/);
   assert.match(target.innerHTML, /ties count as half a win/);
   assert.match(target.innerHTML, /<strong>All-play 1-1-1<\/strong>/);
+  assert.match(target.innerHTML, /Opponent: D 8\.00 · W/);
+  assert.doesNotMatch(target.innerHTML, /Original opponent:|Alternative:/);
+
+  const collisionModel = buildScheduleComparison({ leagueGames: [
+    { season: 2025, week: 1, teamA: 'A', teamB: 'C', scoreA: 10, scoreB: 8, type: 'Regular' },
+    { season: 2025, week: 1, teamA: 'B', teamB: 'D', scoreA: 20, scoreB: 6, type: 'Regular' },
+  ], season: 2025, week: 1, owner: 'A', donor: 'C' });
+  const collisionTarget = { innerHTML: '' };
+  renderCurrentSchedule(collisionModel, { doc: { getElementById: id => id === 'currentScheduleRoot' ? collisionTarget : null }, week: 1, owner: 'A', donor: 'C' });
+  assert.match(collisionTarget.innerHTML, /A was on C's schedule this week, so C is the opponent instead \(8\.00 · W\)\./);
+  assert.doesNotMatch(collisionTarget.innerHTML, /T-D collision|donor substituted/);
 });
 
 test('schedule column markers cover tied extrema and disappear for uniform totals', () => {

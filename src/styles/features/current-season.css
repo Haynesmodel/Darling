@@ -468,7 +468,7 @@
 .current-schedule-excluded{color:var(--status-warn-text)}.current-schedule-hero{grid-template-columns:minmax(0,1fr)}
 .current-schedule-week{padding:6px 0 10px;border-top:1px solid var(--border)}.current-schedule-week h4{margin:8px 0;font-size:16px}
 .current-schedule-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.current-schedule-detail-grid p{margin:0;padding:8px 10px;border-left:2px solid var(--border-strong);background:var(--surface-highlight);line-height:1.5}.current-schedule-all-play-detail{grid-column:1/-1}
-@media (forced-colors: active){.current-schedule td button{border:1px solid ButtonText;background:Canvas;color:ButtonText}.current-schedule-matrix td button[data-schedule-impact="improved"]::before{content:"+ "}.current-schedule-matrix td button[data-schedule-impact="regressed"]::before{content:"− "}.current-schedule-matrix td button[data-schedule-impact="same"]::before{content:"= "}.current-schedule-matrix td button[data-schedule-impact="actual"]::before{content:"• "}.current-schedule td button[aria-pressed="true"]{box-shadow:inset 0 -3px Highlight}.current-schedule th{border:1px solid CanvasText}}
+@media (forced-colors: active){.current-schedule td button{border:1px solid ButtonText;background:Canvas;color:ButtonText}.current-schedule td button[aria-pressed="true"]{box-shadow:inset 0 -3px Highlight}.current-schedule th{border:1px solid CanvasText}}
 
 @media (max-width:700px){
   .current-schedule tbody th,.current-schedule thead th:first-child{width:96px;max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.current-schedule-detail-grid{grid-template-columns:1fr}.current-schedule-all-play-detail{grid-column:auto}

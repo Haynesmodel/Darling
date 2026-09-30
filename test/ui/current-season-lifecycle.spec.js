@@ -57,6 +57,14 @@ test('schedule comparison deep link, keyboard drilldown, donor URL, history, and
   await expect(page.locator('.current-schedule-matrix thead .visually-hidden')).toHaveCount(2);
   await expect(page.locator('.current-schedule-legend')).toContainText('🧁 Easiest (most total wins); 💀 Hardest (fewest total wins)');
   const betterCell = page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Plot"]');
+  const actualCell = page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Joe"]');
+  await expect(actualCell).toHaveAttribute('data-schedule-impact', 'actual');
+  const normalActualStyle = await actualCell.evaluate(button => ({
+    shadow: getComputedStyle(button).boxShadow,
+    buttonBorder: getComputedStyle(button).borderWidth,
+  }));
+  expect(normalActualStyle.shadow).toContain('2px');
+  expect(normalActualStyle.buttonBorder).toBe('0px');
   await expect(betterCell).toHaveAttribute('data-schedule-impact', 'improved');
   await expect(betterCell).toHaveAttribute('aria-label', /Better than actual by 3 win-equivalents/);
   await expect(page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Joe"]')).toHaveAttribute('data-schedule-impact', 'actual');
@@ -84,13 +92,31 @@ test('schedule comparison deep link, keyboard drilldown, donor URL, history, and
   await page.emulateMedia({ colorScheme: 'light' });
   await page.emulateMedia({ forcedColors: 'active' });
   await expect(betterCell).toBeVisible();
+  const forcedActualStyle = await actualCell.evaluate(button => ({
+    outlineWidth: getComputedStyle(button).outlineWidth,
+    outlineStyle: getComputedStyle(button).outlineStyle,
+    buttonBorder: getComputedStyle(button).borderWidth,
+    cellRightBorder: getComputedStyle(button.closest('td')).borderRightWidth,
+    cellBottomBorder: getComputedStyle(button.closest('td')).borderBottomWidth,
+  }));
+  expect(forcedActualStyle.outlineWidth).toBe('2px');
+  expect(forcedActualStyle.outlineStyle).toBe('solid');
+  expect(forcedActualStyle.buttonBorder).toBe('0px');
+  expect(forcedActualStyle.cellRightBorder).toBe('1px');
+  expect(forcedActualStyle.cellBottomBorder).toBe('1px');
   await betterCell.focus();
   await expect(betterCell).toBeFocused();
+  await expect(betterCell).toHaveCSS('outline-style', 'solid');
+  await expect(betterCell).toHaveCSS('outline-width', '3px');
+  await expect(betterCell).toHaveCSS('text-decoration-line', 'underline');
+  expect(await betterCell.evaluate(button => getComputedStyle(button).borderBottomWidth)).toBe('0px');
   expect(await betterCell.evaluate(button => getComputedStyle(button, '::before').content)).toBe('none');
   await expect(betterCell).toHaveAttribute('aria-label', /Better than actual by 3 win-equivalents/);
   await expectNoViolations(page, '#currentScheduleRoot');
   await page.emulateMedia({ forcedColors: 'none' });
   await page.setViewportSize({ width: 1280, height: 900 });
+  await actualCell.hover();
+  expect(await actualCell.evaluate(button => getComputedStyle(button).boxShadow)).toContain('2px');
   const desktopColumns = await matrixRegion.evaluate(region => ({
     visible: [...region.querySelectorAll('thead th:not(:first-child)')].filter(cell => {
       const box = cell.getBoundingClientRect(), clip = region.getBoundingClientRect();

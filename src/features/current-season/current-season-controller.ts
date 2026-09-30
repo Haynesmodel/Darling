@@ -1,5 +1,6 @@
 import './current-season.entry.css';
 import { buildCurrentSeasonControls } from '../../../js/current-season-controls.js';
+import { buildScheduleComparison } from '../../../js/current-season-schedule.js';
 import {
   attachCurrentSeasonOdds,
   buildCurrentSeasonViewModel,
@@ -7,6 +8,7 @@ import {
   renderCurrentCommandCenter,
   renderCurrentMatchups,
   renderCurrentRecap,
+  renderCurrentSchedule,
   renderCurrentSeasonHero,
   renderCurrentStandings,
   renderCurrentTeamSnapshots,
@@ -38,6 +40,38 @@ export function createFeatureController(): DarlingFeatureController {
   const disposeShareActions = () => {
     shareActions.forEach(action => action.dispose());
     shareActions = [];
+  };
+  const onScheduleClick = (event: Event) => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-schedule-team]');
+    if (!button || !state) return;
+    const team = button.getAttribute('data-schedule-team');
+    const donor = button.getAttribute('data-schedule-donor');
+    const selectedWeek = Number(button.getAttribute('data-schedule-week')) || null;
+    state = {
+      ...state,
+      selectedOwner: team,
+      selectedScheduleOwner: donor || team || state.selectedOwner,
+      scheduleDetailWeek: selectedWeek,
+    };
+    const ownerControl = context.document.getElementById('currentOwnerSelect') as HTMLSelectElement | null;
+    const donorControl = context.document.getElementById('currentScheduleOwnerSelect') as HTMLSelectElement | null;
+    if (ownerControl) ownerControl.value = state.selectedOwner;
+    if (donorControl) donorControl.value = state.selectedScheduleOwner;
+    draw();
+    context.window.requestAnimationFrame(() => {
+      if (state.scheduleDetailWeek) {
+        context.document.getElementById(`currentScheduleWeek${state.scheduleDetailWeek}`)?.querySelector('h4')?.focus();
+      } else if (donor) {
+        const match = [...context.document.querySelectorAll<HTMLButtonElement>('#currentScheduleRoot button[data-schedule-donor]')]
+          .find(cell => cell.getAttribute('data-schedule-team') === state.selectedOwner && cell.getAttribute('data-schedule-donor') === state.selectedScheduleOwner);
+        match?.focus();
+      } else if (button.hasAttribute('data-schedule-total')) {
+        [...context.document.querySelectorAll<HTMLButtonElement>('#currentScheduleRoot button[data-schedule-total]')]
+          .find(cell => cell.getAttribute('data-schedule-team') === state.selectedOwner)?.focus();
+      } else {
+        context.document.getElementById('currentOwnerSelect')?.focus();
+      }
+    });
   };
 
   const seasonMode = (view: any) => {
@@ -72,6 +106,14 @@ export function createFeatureController(): DarlingFeatureController {
       selectedView: state.selectedView,
       projectionMode,
     });
+    const scheduleModel = view.commandCenter.selectedView === 'schedule' ? buildScheduleComparison({
+      leagueGames: context.data.leagueGames,
+      currentSeason: context.data.currentSeason,
+      season: view.season,
+      week: view.week,
+      owner: state.selectedOwner,
+      donor: state.selectedOwner ? state.selectedScheduleOwner : '',
+    }) : null;
     const recap = resolveSeasonRecap({
       season: presentation.season,
       seasonSummaries: context.data.seasonSummaries,
@@ -128,9 +170,11 @@ export function createFeatureController(): DarlingFeatureController {
     state = {
       selectedSeason: view.season,
       selectedWeek: view.week,
-      selectedOwner: view.commandCenter.selectedOwner,
+      selectedOwner: view.commandCenter.selectedView === 'schedule' ? state.selectedOwner : view.commandCenter.selectedOwner,
       selectedView: view.commandCenter.selectedView,
       selectedProjectionMode: state.selectedProjectionMode,
+      selectedScheduleOwner: state.selectedScheduleOwner,
+      scheduleDetailWeek: state.scheduleDetailWeek,
     };
     const title = view.season ? `${view.season} Current Season` : 'Current Season';
     context.header.feature(title, null, title);
@@ -141,6 +185,14 @@ export function createFeatureController(): DarlingFeatureController {
     renderCurrentMatchups(view, { doc: context.document });
     renderCurrentStandings(view, { doc: context.document });
     renderCurrentTeamSnapshots(view, { doc: context.document });
+    const scheduleOwner = state.selectedOwner && scheduleModel?.teams.includes(state.selectedOwner) ? state.selectedOwner : '';
+    const scheduleDonor = state.selectedOwner && scheduleModel?.teams.includes(state.selectedScheduleOwner) ? state.selectedScheduleOwner : '';
+    renderCurrentSchedule(scheduleModel, { doc: context.document, season: view.season, week: view.week, owner: scheduleOwner, donor: scheduleDonor });
+    if (scheduleModel) {
+      state = { ...state, selectedScheduleOwner: scheduleDonor };
+      const donorControl = context.document.getElementById('currentScheduleOwnerSelect') as HTMLSelectElement | null;
+      if (donorControl) donorControl.value = scheduleDonor;
+    }
     const tableContext = { season: view.season, selectedOwner: view.commandCenter.selectedOwner, playoffPicture: view.commandCenter.playoffPicture };
     const onContextChange = (next: Record<string, unknown>) => {
       if (activeSignal?.aborted) return;
@@ -158,6 +210,7 @@ export function createFeatureController(): DarlingFeatureController {
       ['current-matchups', 'Matchups', 'currentMatchupsDisclosure', 'currentMatchups'],
       ['current-standings', 'Standings', 'currentStandingsDisclosure', 'currentStandings'],
       ['current-owner-snapshots', 'Owner Snapshots', 'currentTeamSnapshotsDisclosure', 'currentTeamSnapshots'],
+      ['current-schedule', 'Schedule Comparison', 'currentScheduleDisclosure', 'currentScheduleRoot'],
     ] as const;
     disclosure?.update({
       signature: `${view.season}|${presentation.phase}|${view.commandCenter.selectedView}`,
@@ -173,6 +226,7 @@ export function createFeatureController(): DarlingFeatureController {
           || id === 'current-matchups'
           || id === 'current-playoff-picture'
           || (id === 'current-owner-needs' && Boolean(view.commandCenter.selectedOwner))
+          || (id === 'current-schedule' && view.commandCenter.selectedView === 'schedule')
           || (id === 'current-live-movement' && presentation.isLive);
         return [{
           id,
@@ -185,20 +239,30 @@ export function createFeatureController(): DarlingFeatureController {
       }),
     });
     const recapMode = view.commandCenter.selectedView === 'recap';
-    for (const id of ['currentWeekSelect', 'currentOwnerSelect', 'currentProjectionSelect']) {
+    for (const id of ['currentWeekSelect', 'currentOwnerSelect', 'currentProjectionSelect', 'currentScheduleOwnerLabel']) {
       const control = context.document.getElementById(id);
       const controlLabel = control?.closest('label') as HTMLElement | null;
-      if (controlLabel) controlLabel.hidden = recapMode || (id === 'currentProjectionSelect' && presentation.phase !== 'regular-season');
+      if (controlLabel) controlLabel.hidden = id === 'currentOwnerSelect'
+        ? recapMode
+        : id === 'currentScheduleOwnerLabel'
+          ? view.commandCenter.selectedView !== 'schedule'
+          : recapMode || (id === 'currentProjectionSelect' && (presentation.phase !== 'regular-season' || view.commandCenter.selectedView === 'schedule'));
     }
-    const canonicalPath = context.router.update({
+    const routeOwner = view.commandCenter.selectedView === 'schedule' ? state.selectedOwner : view.commandCenter.selectedOwner;
+    const routeOptions = {
       tab: 'current',
       selectedCurrentSeason: view.season,
       selectedCurrentWeek: view.week,
-      selectedCurrentOwner: view.commandCenter.selectedOwner,
+      selectedCurrentOwner: routeOwner,
       selectedCurrentView: view.commandCenter.selectedView,
       defaultCurrentView: defaultView,
       selectedCurrentProjection: state.selectedProjectionMode,
-    });
+      selectedCurrentScheduleOwner: state.selectedScheduleOwner !== routeOwner ? state.selectedScheduleOwner : null,
+    };
+    const canonicalPath = context.router.update(routeOptions);
+    if (`${context.window.location.pathname}${context.window.location.search}` !== canonicalPath) {
+      void context.router.runReplacing(() => context.router.update(routeOptions));
+    }
     shareActions = mountCurrentMatchupCards(
       context.document.getElementById('currentMatchups'),
       view,
@@ -222,6 +286,7 @@ export function createFeatureController(): DarlingFeatureController {
           featureLabel: 'Current Season',
         });
       }
+      context.document.getElementById('currentScheduleRoot')?.addEventListener('click', onScheduleClick);
     },
     activate(input: FeatureActivation) {
       activeSignal = input.signal;
@@ -245,6 +310,7 @@ export function createFeatureController(): DarlingFeatureController {
         selectedView: input.route.currentView ?? existing.selectedView ?? defaultView,
         defaultView,
         selectedProjectionMode: input.route.currentProjection ?? existing.selectedProjectionMode ?? 'ifScoresHold',
+        selectedScheduleOwner: input.route.currentScheduleOwner ?? existing.selectedScheduleOwner ?? input.route.currentOwner ?? existing.selectedOwner ?? '',
         onChange: (next: any) => {
           if (activeSignal?.aborted) return;
           state = { ...(state || {}), ...next };
@@ -257,6 +323,7 @@ export function createFeatureController(): DarlingFeatureController {
         selectedOwner: built.selectedOwner,
         selectedView: built.selectedView,
         selectedProjectionMode: built.selectedProjectionMode,
+        selectedScheduleOwner: built.selectedScheduleOwner || built.selectedOwner,
       };
       draw();
     },
@@ -267,6 +334,7 @@ export function createFeatureController(): DarlingFeatureController {
     dispose() {
       disposeShareActions();
       disclosure?.dispose();
+      context?.document.getElementById('currentScheduleRoot')?.removeEventListener('click', onScheduleClick);
       disclosure = null;
     },
   };

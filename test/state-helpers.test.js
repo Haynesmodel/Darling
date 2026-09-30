@@ -149,6 +149,15 @@ test('current recap and lifecycle-derived defaults round-trip without losing exp
   }), '/index.html?tab=current');
 });
 
+test('schedule donor state is scoped to schedule view and round-trips canonically', () => {
+  const parsed = parseUrlState('?tab=current&currentSeason=2026&currentView=schedule&currentOwner=Joe&currentScheduleOwner=Shap');
+  assert.equal(parsed.currentScheduleOwner, 'Shap');
+  const url = buildUrlFromState({ tab: 'current', selectedCurrentSeason: 2026, selectedCurrentView: 'schedule', selectedCurrentOwner: 'Joe', selectedCurrentScheduleOwner: 'Shap', pathname: '/Darling/' });
+  assert.equal(url, '/Darling/?tab=current&currentSeason=2026&currentOwner=Joe&currentView=schedule&currentScheduleOwner=Shap');
+  assert.doesNotMatch(buildUrlFromState({ tab: 'current', selectedCurrentView: 'command', selectedCurrentOwner: 'Joe', selectedCurrentScheduleOwner: 'Shap', pathname: '/Darling/' }), /currentScheduleOwner/);
+  assert.doesNotMatch(buildUrlFromState({ tab: 'current', selectedCurrentView: 'schedule', selectedCurrentOwner: 'Joe', selectedCurrentScheduleOwner: 'Joe', pathname: '/Darling/' }), /currentScheduleOwner/);
+});
+
 test('url helpers parse and rebuild trophy state', () => {
   const parsed = parseUrlState('?tab=trophy&trophyOwner=Joe');
   assert.equal(parsed.tab, 'trophy');

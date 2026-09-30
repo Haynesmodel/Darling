@@ -33,6 +33,7 @@ test('current-season controls populate and emit projection mode changes', () => 
     ['currentOwnerSelect', makeSelect()],
     ['currentViewSelect', makeSelect()],
     ['currentProjectionSelect', makeSelect()],
+    ['currentScheduleOwnerSelect', makeSelect()],
   ]);
   const doc = { getElementById(id) { return elements.get(id) || null; } };
   let emitted = null;
@@ -51,12 +52,20 @@ test('current-season controls populate and emit projection mode changes', () => 
   assert.equal(state.selectedProjectionMode, 'current');
   assert.match(elements.get('currentProjectionSelect').innerHTML, /Completed Only/);
   assert.equal(elements.get('currentProjectionSelect').value, 'current');
+  assert.equal(elements.get('currentScheduleOwnerSelect').value, 'Joe');
 
   elements.get('currentProjectionSelect').value = 'ifScoresHold';
   elements.get('currentProjectionSelect').listeners.change();
   assert.equal(emitted.selectedProjectionMode, 'ifScoresHold');
   assert.equal(emitted.selectedView, 'standings');
   assert.equal(emitted.selectedOwner, 'Joe');
+
+  elements.get('currentScheduleOwnerSelect').value = 'Shap';
+  elements.get('currentScheduleOwnerSelect').listeners.change({ target: elements.get('currentScheduleOwnerSelect') });
+  assert.equal(emitted.selectedScheduleOwner, 'Shap');
+  elements.get('currentOwnerSelect').value = 'Shap';
+  elements.get('currentOwnerSelect').listeners.change({ target: elements.get('currentOwnerSelect') });
+  assert.equal(emitted.selectedScheduleOwner, 'Shap');
 });
 
 test('current-season state normalizes invalid projection modes', () => {
@@ -85,4 +94,16 @@ test('current-season view normalization accepts recap and uses the lifecycle fal
   assert.equal(resolveCurrentSeasonState({ ...base, selectedView: 'recap' }).selectedView, 'recap');
   assert.equal(resolveCurrentSeasonState({ ...base, selectedView: 'not-a-view' }).selectedView, 'recap');
   assert.equal(resolveCurrentSeasonState({ ...base, selectedView: 'command' }).selectedView, 'command');
+});
+
+test('empty current schedule keeps snapshot owners and current cutoff available', () => {
+  const state = resolveCurrentSeasonState({
+    currentSeason: { season: 2026, current_week: 1, teams: [{ owner: 'Joe' }, { owner: 'Plot' }], games: [] },
+    seasonSummaries: [{ season: 2026, owner: 'StaleOwner' }],
+    selectedSeason: 2026,
+    selectedView: 'schedule',
+  });
+  assert.deepEqual(state.owners, ['Joe', 'Plot']);
+  assert.deepEqual(state.weeks, [1]);
+  assert.equal(state.selectedWeek, 1);
 });

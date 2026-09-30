@@ -84,6 +84,7 @@ function methodologyNoteHtml(command) {
 
 function selectedViewAllows(view, section) {
   const mode = view.commandCenter?.selectedView || 'command';
+  if (mode === 'schedule') return section === 'schedule';
   const phase = view.presentation?.phase || 'regular-season';
   if (mode === 'recap') return section === 'recap';
   if (section === 'recap') return false;
@@ -101,6 +102,62 @@ function selectedViewAllows(view, section) {
   }
   if (mode === 'owners') return ['needs', 'snapshots'].includes(section);
   return false;
+}
+
+function recordText(row) { return `${row?.W || 0}-${row?.L || 0}${row?.T ? `-${row.T}` : ''}`; }
+function recordAccessible(row) { return `${row?.W || 0} wins, ${row?.L || 0} losses, ${row?.T || 0} ties`; }
+
+function renderScheduleComparison(model, { season, week, owner, donor } = {}) {
+  const label = team => model.names[team] || team;
+  const weeks = model.weeks;
+  const selected = model.teams.includes(owner) ? owner : '';
+  const selectedDonor = model.teams.includes(donor) ? donor : selected;
+  const columnWins = model.teams.map(schedule => model.teams.reduce((sum, team) => sum + model.matrix[team][schedule].W, 0));
+  const easiest = Math.max(...columnWins);
+  const hardest = Math.min(...columnWins);
+  const headerMark = (index) => easiest === hardest ? '' : columnWins[index] === easiest
+    ? '<span aria-hidden="true">🧁</span><span class="visually-hidden">Easiest borrowed schedule by total wins across scoring owners</span>'
+    : columnWins[index] === hardest
+      ? '<span aria-hidden="true">💀</span><span class="visually-hidden">Hardest borrowed schedule by total wins across scoring owners</span>'
+      : '';
+  const rowCells = model.teams.map(team => `<tr><th scope="row">${escapeHtml(label(team))}</th>${model.teams.map(schedule => {
+    const record = model.matrix[team][schedule];
+    const actual = model.matrix[team][team];
+    const delta = record.W + record.T / 2 - (actual.W + actual.T / 2);
+    const impact = team === schedule ? 'actual' : delta > 0 ? 'improved' : delta < 0 ? 'regressed' : 'same';
+    const level = Math.abs(delta) >= 2 ? 'strong' : 'subtle';
+    const amount = Number.isInteger(Math.abs(delta)) ? Math.abs(delta) : Math.abs(delta).toFixed(1);
+    const relative = impact === 'actual' ? 'Actual schedule.' : impact === 'same' ? 'Same as actual schedule.'
+      : `${impact === 'improved' ? 'Better' : 'Worse'} than actual by ${amount} win-equivalent${Math.abs(delta) === 1 ? '' : 's'}.`;
+    return `<td><button type="button" data-schedule-team="${escapeHtml(team)}" data-schedule-donor="${escapeHtml(schedule)}" data-schedule-impact="${impact}" data-schedule-level="${level}" aria-pressed="${team === selected && schedule === selectedDonor}" aria-label="${escapeHtml(label(team))} under ${escapeHtml(label(schedule))}'s schedule: ${recordAccessible(record)}. ${relative}">${recordText(record)}</button></td>`;
+  }).join('')}</tr>`).join('');
+  const allPlayRows = model.teams.map(team => `<tr><th scope="row">${escapeHtml(label(team))}</th>${weeks.map(n => {
+    const tally = model.allPlay[team].weeks[n];
+    return `<td><button type="button" data-schedule-team="${escapeHtml(team)}" data-schedule-week="${n}" aria-label="${escapeHtml(label(team))}, Week ${n} all-play: ${recordAccessible(tally)}">${recordText(tally)}</button></td>`;
+  }).join('')}<td><button type="button" data-schedule-team="${escapeHtml(team)}" data-schedule-total="1" aria-label="${escapeHtml(label(team))} all-play total: ${recordAccessible(model.allPlay[team].total)}">${recordText(model.allPlay[team].total)}</button></td></tr>`).join('');
+  const detail = model.details;
+  const buckets = (rows, empty) => rows.length ? rows.map(row => `${escapeHtml(label(row.owner))} (${scoreFmt(row.score)})`).join(', ') : empty;
+  const borrowedOpponent = row => row.collision
+    ? `${escapeHtml(label(selected))} was on ${escapeHtml(label(row.donor))}'s schedule this week, so ${escapeHtml(label(row.donor))} is the opponent instead (${scoreFmt(row.alternativeScore)} · ${row.alternativeResult}).`
+    : `Opponent: ${escapeHtml(label(row.alternativeOpponent))} ${scoreFmt(row.alternativeScore)} · ${row.alternativeResult}`;
+  const detailView = !selected
+    ? '<p>Select a team or matrix cell to view its schedule detail.</p>'
+    : weeks.length
+      ? `<h3 id="currentScheduleDetailHeading" tabindex="-1">${escapeHtml(label(selected))} schedule detail · borrowing ${escapeHtml(label(donor && model.teams.includes(donor) ? donor : selected))}'s schedule</h3><p class="muted">Actual record ${recordText(model.matrix[selected][selected])} · borrowed schedule record ${recordText(model.counterfactual)}</p>${detail.map(row => `<article class="current-schedule-week" id="currentScheduleWeek${row.week}"><h4 tabindex="-1">Week ${row.week}</h4><div class="current-schedule-detail-grid"><p><strong>Actual matchup</strong><br>${escapeHtml(label(selected))} ${scoreFmt(row.score)} vs ${escapeHtml(label(row.opponent))} ${scoreFmt(row.opponentScore)} · ${row.result}</p><p><strong>Borrowed schedule</strong><br>${borrowedOpponent(row)}</p><p class="current-schedule-all-play-detail"><strong>All-play ${recordText(row.allPlay)}</strong><br>Beat: ${buckets(row.beaten, 'none')}<br>Tied: ${buckets(row.tied, 'none')}<br>Lost to: ${buckets(row.lostTo, 'none')}</p></div></article>`).join('')}`
+      : `<p>No complete final regular-season weeks through Week ${escapeHtml(week)}.</p>`;
+  return `<p class="current-schedule-legend"><span><strong>Diagonal:</strong> actual schedule</span><span><strong>Green:</strong> better than actual</span><span><strong>Red:</strong> worse than actual</span><span>Gray: same record</span><span>Stronger tint: larger difference</span><span>W-L-T; ties count as half a win</span><span>🧁 Easiest (most total wins); 💀 Hardest (fewest total wins)</span></p>
+    <div class="current-schedule-scroll" role="region" aria-label="Schedule matrix: rows are scoring owners; columns are teams whose schedules they borrow" tabindex="0"><table class="current-schedule-matrix"><caption>Scoring owner ↓ · borrowed schedule → (W-L-T)</caption><thead><tr><th scope="col">Scoring owner</th>${model.teams.map((team, index) => `<th scope="col" title="Borrowed schedule: ${escapeHtml(label(team))}">${escapeHtml(label(team))} ${headerMark(index)}</th>`).join('')}</tr></thead><tbody>${rowCells}</tbody></table></div>
+    <div class="current-schedule-scroll" role="region" aria-label="All-play weekly records" tabindex="0"><table class="current-schedule-all-play"><caption>All-play records by scoring owner and week (W-L-T)</caption><thead><tr><th scope="col">Scoring owner</th>${weeks.map(n => `<th scope="col">Week ${n}</th>`).join('')}<th scope="col">Total</th></tr></thead><tbody>${allPlayRows}</tbody></table></div>
+    ${model.excluded.length ? `<p class="current-schedule-excluded">Excluded weeks: ${model.excluded.map(row => `Week ${escapeHtml(row.week)} — ${escapeHtml(row.reason)}`).join('; ')}</p>` : ''}
+    ${detailView}`;
+}
+
+function renderCurrentSchedule(model, options = {}) {
+  const root = docOrDefault(options.doc);
+  const target = root?.getElementById('currentScheduleRoot');
+  if (!target) return;
+  if (!model) { target.innerHTML = ''; return; }
+  target.innerHTML = renderScheduleComparison(model, options);
 }
 
 function setSectionHtml(el, html) {
@@ -142,7 +199,9 @@ function viewWeekLabel(view) {
     .map(row => String(row.type || '').trim())
     .filter(Boolean));
   if (types.size === 1) {
-    return `${weekTypeLabel([...types][0])} Week ${view.week || '-'}`;
+    const type = [...types][0];
+    const prefix = weekTypeLabel(type);
+    return prefix === 'Week' ? `Week ${view.week || '-'}` : `${prefix} Week ${view.week || '-'}`;
   }
   if (types.has('Playoff') || types.has('Saunders')) {
     return `Postseason Week ${view.week || '-'}`;
@@ -320,6 +379,13 @@ function currentSeasonHeroHtml(view) {
         </div>
       </div>
     `;
+  }
+  if (command?.selectedView === 'schedule') {
+    const completed = command?.summary?.completedGameCount ?? view.summary.completedGameCount;
+    const source = view.presentation?.source === 'historical'
+      ? 'Source: validated historical snapshot'
+      : `Source: ${phase === 'regular-season' ? 'Sleeper snapshot' : 'validated CurrentSeason snapshot'}${generatedAt ? ` · Updated ${escapeHtml(generatedAt)}` : ''}`;
+    return `<div class="current-hero-inner current-schedule-hero"><div><div class="card-kicker">Current Season · Schedule</div><h3>${escapeHtml(view.season || 'Season')} Schedule Comparison</h3><p class="muted">Through ${escapeHtml(weekLabel)} · ${escapeHtml(completed)} completed regular-season games</p><p class="muted">${source}</p></div></div>`;
   }
   const historicalAnalysis = phase !== 'regular-season';
   return `
@@ -776,7 +842,7 @@ function renderCurrentCommandCenter(view, opts = {}) {
     const el = root?.getElementById(id);
     setSectionHtml(el, htmlFn(view));
   }
-  renderCurrentCommandCharts(view, { doc: root });
+  if (view.commandCenter?.selectedView !== 'schedule') renderCurrentCommandCharts(view, { doc: root });
 }
 
 function renderCurrentCommandCharts(view, opts = {}) {
@@ -811,6 +877,7 @@ export {
   renderCurrentCommandCharts,
   renderCurrentMatchups,
   renderCurrentRecap,
+  renderCurrentSchedule,
   renderCurrentSeasonHero,
   renderCurrentStandings,
   renderCurrentTeamSnapshots,

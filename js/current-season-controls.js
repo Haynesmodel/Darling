@@ -23,8 +23,11 @@ function availableSeasons(leagueGames = [], seasonSummaries = [], currentSeason 
   ].filter(Number.isFinite))].sort((a, b) => b - a);
 }
 
-function availableOwners(leagueGames = [], seasonSummaries = [], currentSeason = null, season = null) {
+function availableOwners(leagueGames = [], seasonSummaries = [], currentSeason = null, season = null, scheduleRoster = false) {
   const target = Number(season);
+  if (scheduleRoster && currentSeason && Number(currentSeason.season) === target) {
+    return [...new Set((currentSeason.teams || []).map(team => team.owner).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  }
   const owners = new Set();
   for (const row of seasonSummaries) {
     if ((!Number.isFinite(target) || Number(row.season) === target) && row.owner) owners.add(row.owner);
@@ -37,6 +40,14 @@ function availableOwners(leagueGames = [], seasonSummaries = [], currentSeason =
     if (game.teamB) owners.add(game.teamB);
   }
   return [...owners].sort((a, b) => a.localeCompare(b));
+}
+
+function availableWeeks(leagueGames, season, currentSeason, view) {
+  const weeks = currentSeasonWeeks(leagueGames, season, currentSeason);
+  const currentWeek = Number(currentSeason?.current_week);
+  return view === 'schedule' && !weeks.length && Number(currentSeason?.season) === Number(season)
+    && currentSeason?.current_week !== null && currentSeason?.current_week !== undefined && currentWeek > 0
+    ? [currentWeek] : weeks;
 }
 
 function renderOptions(values, selectedValue) {
@@ -56,6 +67,13 @@ function renderOwnerOptions(values, selectedValue) {
   ].join('');
 }
 
+function renderScheduleOwnerOptions(values, selectedValue, currentSeason, season) {
+  const names = Number(currentSeason?.season) === Number(season)
+    ? new Map((currentSeason.teams || []).map(team => [team.owner, team.sleeper_team_name || team.owner]))
+    : new Map();
+  return [`<option value=""${selectedValue ? '' : ' selected'}>Selected team</option>`, ...values.map(value => `<option value="${escapeHtml(value)}"${value === selectedValue ? ' selected' : ''}>${escapeHtml(names.get(value) || value)}</option>`)].join('');
+}
+
 function renderViewOptions(selectedValue, defaultView = 'command') {
   const labels = {
     command: 'Command Center',
@@ -63,6 +81,7 @@ function renderViewOptions(selectedValue, defaultView = 'command') {
     matchups: 'Matchups',
     standings: 'Standings',
     owners: 'Owners',
+    schedule: 'Schedule Comparison',
   };
   const selectedView = normalizeCurrentView(selectedValue, defaultView);
   return CURRENT_VIEW_MODES.map(value => {
@@ -97,12 +116,12 @@ function resolveCurrentSeasonState({
   const seasons = availableSeasons(leagueGames, seasonSummaries, currentSeason);
   const fallbackSeason = latestLeagueSeason(leagueGames, seasonSummaries, currentSeason);
   const season = seasons.includes(Number(selectedSeason)) ? Number(selectedSeason) : fallbackSeason;
-  const weeks = currentSeasonWeeks(leagueGames, season, currentSeason);
+  const view = normalizeCurrentView(selectedView, defaultView);
+  const weeks = availableWeeks(leagueGames, season, currentSeason, view);
   const fallbackWeek = latestCompletedWeek(leagueGames, season, currentSeason) ?? weeks[weeks.length - 1] ?? null;
   const week = weeks.includes(Number(selectedWeek)) ? Number(selectedWeek) : fallbackWeek;
-  const owners = availableOwners(leagueGames, seasonSummaries, currentSeason, season);
+  const owners = availableOwners(leagueGames, seasonSummaries, currentSeason, season, view === 'schedule');
   const owner = owners.includes(selectedOwner) ? selectedOwner : '';
-  const view = normalizeCurrentView(selectedView, defaultView);
   const projectionMode = normalizeProjectionMode(selectedProjectionMode);
   return { selectedSeason: season, selectedWeek: week, selectedOwner: owner, selectedView: view, selectedProjectionMode: projectionMode, seasons, weeks, owners };
 }
@@ -118,11 +137,12 @@ function buildCurrentSeasonControls({
   selectedView = 'command',
   defaultView = 'command',
   selectedProjectionMode = 'ifScoresHold',
+  selectedScheduleOwner = '',
   onChange,
 } = {}) {
   const root = docOrDefault(doc);
   if (!root) {
-    return resolveCurrentSeasonState({ leagueGames, seasonSummaries, currentSeason, selectedSeason, selectedWeek, selectedOwner, selectedView, defaultView, selectedProjectionMode });
+    return { ...resolveCurrentSeasonState({ leagueGames, seasonSummaries, currentSeason, selectedSeason, selectedWeek, selectedOwner, selectedView, defaultView, selectedProjectionMode }), selectedScheduleOwner };
   }
 
   const seasonSelect = root.getElementById('currentSeasonSelect');
@@ -130,13 +150,14 @@ function buildCurrentSeasonControls({
   const ownerSelect = root.getElementById('currentOwnerSelect');
   const viewSelect = root.getElementById('currentViewSelect');
   const projectionSelect = root.getElementById('currentProjectionSelect');
+  const scheduleOwnerSelect = root.getElementById('currentScheduleOwnerSelect');
   const state = resolveCurrentSeasonState({ leagueGames, seasonSummaries, currentSeason, selectedSeason, selectedWeek, selectedOwner, selectedView, defaultView, selectedProjectionMode });
 
-  const syncSecondaryOptions = (season, preferredWeek = null, preferredOwner = '') => {
-    const weeks = currentSeasonWeeks(leagueGames, season, currentSeason);
+  const syncSecondaryOptions = (season, preferredWeek = null, preferredOwner = '', view = state.selectedView) => {
+    const weeks = availableWeeks(leagueGames, season, currentSeason, view);
     const fallbackWeek = latestCompletedWeek(leagueGames, season, currentSeason) ?? weeks[weeks.length - 1] ?? null;
     const week = weeks.includes(Number(preferredWeek)) ? Number(preferredWeek) : fallbackWeek;
-    const owners = availableOwners(leagueGames, seasonSummaries, currentSeason, season);
+    const owners = availableOwners(leagueGames, seasonSummaries, currentSeason, season, view === 'schedule');
     const owner = owners.includes(preferredOwner) ? preferredOwner : '';
     if (weekSelect) {
       weekSelect.innerHTML = renderOptions(weeks, week);
@@ -155,7 +176,15 @@ function buildCurrentSeasonControls({
     seasonSelect.innerHTML = renderOptions(state.seasons, state.selectedSeason);
     if (Number.isFinite(state.selectedSeason)) seasonSelect.value = `${state.selectedSeason}`;
   }
-  syncSecondaryOptions(state.selectedSeason, state.selectedWeek, state.selectedOwner);
+  syncSecondaryOptions(state.selectedSeason, state.selectedWeek, state.selectedOwner, state.selectedView);
+  const setScheduleOwner = (owners, owner, season = state.selectedSeason) => {
+    if (!scheduleOwnerSelect) return owner;
+    scheduleOwnerSelect.innerHTML = renderScheduleOwnerOptions(owners, owner, currentSeason, season);
+    scheduleOwnerSelect.value = owners.includes(owner) ? owner : '';
+    scheduleOwnerSelect.disabled = owners.length === 0;
+    return scheduleOwnerSelect.value;
+  };
+  setScheduleOwner(state.owners, selectedScheduleOwner || state.selectedOwner);
   if (viewSelect) {
     viewSelect.innerHTML = renderViewOptions(state.selectedView, defaultView);
     viewSelect.value = state.selectedView;
@@ -165,13 +194,16 @@ function buildCurrentSeasonControls({
     projectionSelect.value = state.selectedProjectionMode;
   }
 
-  const emitChange = () => {
+  const emitChange = event => {
     const nextSeason = Number(seasonSelect?.value || state.selectedSeason);
-    const synced = syncSecondaryOptions(nextSeason, weekSelect?.value || state.selectedWeek, ownerSelect?.value || state.selectedOwner);
+    const nextView = normalizeCurrentView(viewSelect?.value || state.selectedView, defaultView);
+    const synced = syncSecondaryOptions(nextSeason, weekSelect?.value || state.selectedWeek, ownerSelect?.value || state.selectedOwner, nextView);
     const nextWeek = Number(weekSelect?.value || synced.week);
     const nextOwner = synced.owners.includes(ownerSelect?.value) ? ownerSelect.value : '';
-    const nextView = normalizeCurrentView(viewSelect?.value || state.selectedView, defaultView);
     const nextProjectionMode = normalizeProjectionMode(projectionSelect?.value || state.selectedProjectionMode);
+    const preferredDonor = event?.target === scheduleOwnerSelect ? scheduleOwnerSelect.value
+      : event?.target === ownerSelect ? nextOwner : scheduleOwnerSelect?.value || selectedScheduleOwner || nextOwner;
+    const nextScheduleOwner = setScheduleOwner(synced.owners, preferredDonor || nextOwner || selectedScheduleOwner, nextSeason);
     if (typeof onChange === 'function') {
       onChange({
         selectedSeason: Number.isFinite(nextSeason) ? nextSeason : null,
@@ -179,6 +211,7 @@ function buildCurrentSeasonControls({
         selectedOwner: nextOwner,
         selectedView: nextView,
         selectedProjectionMode: nextProjectionMode,
+        selectedScheduleOwner: nextScheduleOwner,
       });
     }
   };
@@ -203,6 +236,10 @@ function buildCurrentSeasonControls({
     projectionSelect.addEventListener('change', emitChange);
     projectionSelect.dataset.bound = '1';
   }
+  if (scheduleOwnerSelect && !scheduleOwnerSelect.dataset.bound) {
+    scheduleOwnerSelect.addEventListener('change', emitChange);
+    scheduleOwnerSelect.dataset.bound = '1';
+  }
 
   return {
     ...state,
@@ -211,6 +248,8 @@ function buildCurrentSeasonControls({
     ownerSelect,
     viewSelect,
     projectionSelect,
+    selectedScheduleOwner: setScheduleOwner(state.owners, selectedScheduleOwner || state.selectedOwner),
+    scheduleOwnerSelect,
   };
 }
 

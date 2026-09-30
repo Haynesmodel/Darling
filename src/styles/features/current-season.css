@@ -455,7 +455,7 @@
 .current-schedule tbody th{position:sticky;left:0;z-index:1;width:150px;max-width:150px;background:var(--surface-panel-alt);color:var(--text-primary);text-align:left;white-space:normal;overflow-wrap:anywhere}.current-schedule thead th:first-child{left:0;z-index:3;width:150px;max-width:150px}
 .current-schedule .current-schedule-matrix{width:max-content;min-width:max-content;table-layout:fixed}
 .current-schedule-matrix thead th:not(:first-child),.current-schedule-matrix tbody td{width:74px;min-width:74px;max-width:74px}
-.current-schedule-matrix thead th:not(:first-child){padding:8px 5px;white-space:normal;overflow-wrap:anywhere;line-height:1.2;text-align:center}
+.current-schedule-matrix thead th:not(:first-child){padding:8px 5px;white-space:normal;overflow-wrap:anywhere;line-height:1.2;text-align:center;font-size:14px}
 .current-schedule td{padding:0;text-align:center}.current-schedule td button{display:block;width:100%;min-width:52px;min-height:44px;padding:7px 3px;border:0;border-radius:0;background:transparent;color:var(--text-primary);font:inherit;font-weight:700;cursor:pointer}
 .current-schedule-matrix td button[data-schedule-impact="actual"]{background:color-mix(in srgb,var(--status-tie-bg) 82%,var(--surface-panel));font-weight:900}
 .current-schedule-matrix td button[data-schedule-impact="same"]{background:color-mix(in srgb,var(--status-tie-bg) 34%,var(--surface-panel))}

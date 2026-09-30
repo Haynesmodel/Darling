@@ -39,13 +39,15 @@ test('WEBKIT-01 boots the verified Pulse snapshot without overflow', async ({ pa
 
 test('WEBKIT schedule tables scroll independently and support keyboard selection', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 720 });
-  await page.goto('/?tab=current&currentSeason=2026&currentView=schedule&currentOwner=Joe');
+  await page.goto('/?tab=current&currentSeason=2026&currentWeek=3&currentView=schedule&currentOwner=Joe');
   await page.waitForLoadState('networkidle');
   const cell = page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Nuss"]');
   await expect(cell).toBeVisible();
   await cell.focus();
   await page.keyboard.press('Enter');
-  await expect(page.locator('#currentScheduleRoot')).toContainText('T-D collision');
+  const borrowedWeek = page.locator('#currentScheduleWeek3');
+  await expect(borrowedWeek).toContainText("Joe-lene was on Dr. Nuss's schedule this week, so Dr. Nuss is the opponent instead");
+  await expect(borrowedWeek).not.toContainText('T-D collision');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 

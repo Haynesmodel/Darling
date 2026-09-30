@@ -95,11 +95,19 @@ test('invalid and partial score pairs cannot produce exact qualification', () =>
   assert.match(machine.games.at(-1).scoreError, /0 to 999.99/);
 });
 
-test('malformed valid-key edits show an inline explanation and issue', () => {
+test('malformed valid-key edits are warned and ignored for standings and exactness', () => {
   const key = playoffMachineGameKey(season.games[4]);
-  const machine = buildPlayoffMachine({ currentSeason: season, season: 2026, scenario: { [key]: { outcome: 'bogus' } } });
-  assert.match(machine.games.find(row => row.key === key).editError, /saved pick is invalid/);
-  assert.match(machine.issues.join(' '), /invalid and were ignored/);
+  for (const malformed of [{ outcome: 'bogus', scoreA: '100', scoreB: '90' }, { scoreA: '100', scoreB: '90', extra: true }]) {
+    const edits = Object.fromEntries(season.games.slice(4).map(source => [playoffMachineGameKey(source), { scoreA: '100', scoreB: '90' }]));
+    edits[key] = malformed;
+    const machine = buildPlayoffMachine({ currentSeason: season, season: 2026, scenario: edits });
+    const row = machine.games.find(gameRow => gameRow.key === key);
+    assert.match(row.editError, /saved pick is invalid/);
+    assert.equal(row.edit, null);
+    assert.match(machine.issues.join(' '), /invalid and were ignored/);
+    assert.equal(machine.exact, false);
+    assert.equal(machine.standings.find(team => team.owner === 'A').pointsFor, 110);
+  }
 });
 
 test('completed schedule renders completion copy without undefined week or navigation', () => {

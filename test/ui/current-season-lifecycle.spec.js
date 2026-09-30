@@ -432,8 +432,11 @@ test('Playoff Machine deep link, provisional picks, exact score inputs, reset, a
   await firstScore.fill('0');
   await expect(firstScore).toBeFocused();
   await expect(announcement).not.toHaveText(beforeScoreAnnouncement || '');
-  await expect(announcement).toContainText('Updated score for Connor vs Singer');
+  await expect(announcement).toContainText('Updated Connor score to 0');
+  const beforeOtherScoreAnnouncement = await announcement.textContent();
   await page.locator('#currentPlayoffMachine input[data-machine-score="b"]').first().fill('0');
+  await expect(announcement).not.toHaveText(beforeOtherScoreAnnouncement || '');
+  await expect(announcement).toContainText('Updated Singer score to 0');
   await expect(page.locator('#currentPlayoffMachine')).toContainText('Winner picks are provisional; exact placement needs scores for all remaining games.');
   await page.locator('#currentPlayoffMachine button[data-machine-action="reset"]').click();
   await expect(page.locator('#currentPlayoffMachine input[data-machine-score="a"]').first()).toHaveValue('');

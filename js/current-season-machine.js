@@ -28,6 +28,13 @@ function validScenarioScore(value) {
     : null;
 }
 
+function validMachineEdit(edit) {
+  if (edit == null) return true;
+  return typeof edit === 'object' && !Array.isArray(edit)
+    && (edit.outcome == null || ['a', 'b', 'tie'].includes(edit.outcome))
+    && Object.keys(edit).every(field => ['outcome', 'scoreA', 'scoreB'].includes(field));
+}
+
 function buildPlayoffMachine({ leagueGames = [], currentSeason = null, season, scenario = {} } = {}) {
   const rules = resolveSeasonRules({ leagueGames, currentSeason, season });
   const games = regularSeasonGamesFor({ leagueGames, currentSeason, season, rules });
@@ -51,12 +58,8 @@ function buildPlayoffMachine({ leagueGames = [], currentSeason = null, season, s
   const edits = scenario && typeof scenario === 'object' ? scenario : {};
   const issues = [];
   if (Object.keys(edits).some(key => !eligibleByKey.has(key))) issues.push('Some saved scenario inputs no longer match unresolved games and were ignored.');
-  if (eligible.some(({ key }) => {
-    const edit = edits[key];
-    return edit != null && (typeof edit !== 'object' || Array.isArray(edit)
-      || edit.outcome != null && !['a', 'b', 'tie'].includes(edit.outcome)
-      || Object.keys(edit).some(field => !['outcome', 'scoreA', 'scoreB'].includes(field)));
-  })) issues.push('Some saved scenario picks are invalid and were ignored.');
+  const invalidEdits = new Set(eligible.filter(({ key }) => edits[key] != null && !validMachineEdit(edits[key])).map(({ key }) => key));
+  if (invalidEdits.size) issues.push('Some saved scenario picks are invalid and were ignored.');
   const seenByWeek = new Map();
   for (const { game, week } of gameRows) {
     if (!seenByWeek.has(week)) seenByWeek.set(week, []);
@@ -83,6 +86,7 @@ function buildPlayoffMachine({ leagueGames = [], currentSeason = null, season, s
   for (const { key, game } of eligible) {
     if (duplicateKeys.has(key)) { allScored = false; continue; }
     const edit = edits[key];
+    if (invalidEdits.has(key)) { allScored = false; continue; }
     if (!edit || typeof edit !== 'object') { allScored = false; continue; }
     const scoreA = validScenarioScore(edit.scoreA);
     const scoreB = validScenarioScore(edit.scoreB);
@@ -119,15 +123,8 @@ function buildPlayoffMachine({ leagueGames = [], currentSeason = null, season, s
     games: gameRows.filter(({ game }) => !isCompletedGame(game)).map(({ key, game, week }) => ({
       key, week, teamA: game.teamA, teamB: game.teamB, status: game.status || 'scheduled',
       sourceScoreA: validScenarioScore(game.scoreA), sourceScoreB: validScenarioScore(game.scoreB),
-      edit: edits[key] && typeof edits[key] === 'object' ? { ...edits[key] } : null,
-      editError: (() => {
-        const edit = edits[key];
-        return edit != null && (typeof edit !== 'object' || Array.isArray(edit)
-          || edit.outcome != null && !['a', 'b', 'tie'].includes(edit.outcome)
-          || Object.keys(edit).some(field => !['outcome', 'scoreA', 'scoreB'].includes(field)))
-          ? 'This saved pick is invalid and was ignored.'
-          : '';
-      })(),
+      edit: edits[key] && validMachineEdit(edits[key]) ? { ...edits[key] } : null,
+      editError: invalidEdits.has(key) ? 'This saved pick is invalid and was ignored.' : '',
       scoreError: (() => {
         const edit = edits[key];
         if (!edit || edit.scoreA === '' && edit.scoreB === '' || edit.scoreA == null && edit.scoreB == null) return '';
@@ -180,7 +177,7 @@ function currentPlayoffMachineHtml(machine, selectedWeek = null, root = docOrDef
     const warning = game.duplicate
       ? '<p class="current-machine-warning">This game has a duplicate schedule identity; scenario edits are disabled.</p>'
       : game.editError
-        ? `<p class="current-machine-warning" role="alert">${escapeHtml(game.editError)}</p>`
+        ? `<p class="current-machine-warning" id="${errorId}" role="alert">${escapeHtml(game.editError)}</p>`
       : game.scoreError
         ? `<p class="current-machine-warning" id="${errorId}" role="alert">${escapeHtml(game.scoreError)}</p>`
         : `<span class="visually-hidden" id="${errorId}">Both scores are required for an exact result.</span>`;
@@ -246,4 +243,4 @@ function drawPlayoffMachine({ leagueGames, currentSeason, season, scenario, sele
   if (announcement && announcement.textContent !== status) announcement.textContent = status;
 }
 
-export { buildPlayoffMachine, currentPlayoffMachineHtml, drawPlayoffMachine, playoffMachineGameKey };
+export { buildPlayoffMachine, currentPlayoffMachineHtml, drawPlayoffMachine, playoffMachineGameKey, validMachineEdit };

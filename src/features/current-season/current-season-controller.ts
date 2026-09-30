@@ -124,8 +124,9 @@ export function createFeatureController(): DarlingFeatureController {
     for (const item of pair) edit[item.dataset.machineScore === 'a' ? 'scoreA' : 'scoreB'] = item.value;
     edits[key] = edit;
     const selectionStart = input.selectionStart;
-    const matchup = input.closest<HTMLElement>('.current-machine-game')?.querySelector('h4')?.textContent?.trim() || 'a matchup';
-    state = { ...state, machineEdits: edits, machineAnnouncement: `Updated score for ${matchup}` };
+    const matchup = input.closest<HTMLElement>('.current-machine-game')?.querySelector('h4')?.textContent?.split(' vs ') || [];
+    const owner = matchup[side === 'a' ? 0 : 1] || 'team';
+    state = { ...state, machineEdits: edits, machineAnnouncement: `Updated ${owner} score to ${input.value || 'blank'}` };
     await drawMachine();
     const focused = [...context.document.querySelectorAll<HTMLInputElement>('#currentPlayoffMachine input[data-game-key]')]
       .find(item => item.dataset.gameKey === key && item.dataset.machineScore === side);

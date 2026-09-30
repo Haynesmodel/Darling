@@ -16,9 +16,11 @@ import {
   currentWeekNeedsHtml,
   formattedGeneratedAt,
   renderCurrentCommandCenter,
+  renderCurrentSchedule,
   renderCurrentStandings,
   viewWeekLabel,
 } from '../js/current-season-renderers.js';
+import { buildScheduleComparison } from '../js/current-season-schedule.js';
 
 const games = [
   { season: 2024, date: '2024-09-07', teamA: 'Joe', teamB: 'Shap', scoreA: 91, scoreB: 99, week: 1, type: 'Regular', round: '' },
@@ -170,12 +172,34 @@ test('current-season renderer labels postseason weeks', () => {
   });
 
   assert.equal(viewWeekLabel(view), 'Postseason Week 16');
+  assert.equal(viewWeekLabel({ week: 3, matchups: [{ type: 'Regular' }] }), 'Week 3');
+  assert.equal(viewWeekLabel({ week: 3, matchups: [{ type: 'Week 3' }] }), 'Week 3');
   const html = currentMatchupsHtml(view);
   assert.match(html, /Postseason Week 16 Matchups/);
   assert.match(html, /Playoff Week 16/);
   assert.match(html, /Saunders Week 16/);
   assert.match(html, /live/);
   assert.equal(formattedGeneratedAt('2026-06-17T14:22:30Z'), 'Jun 17, 2026, 2:22 PM UTC');
+});
+
+test('schedule matrix explains its axes and compares ties as half a win', () => {
+  const scheduleGames = [
+    { season: 2025, week: 1, teamA: 'A', teamB: 'B', scoreA: 10, scoreB: 8, type: 'Regular' },
+    { season: 2025, week: 1, teamA: 'C', teamB: 'D', scoreA: 20, scoreB: 8, type: 'Regular' },
+    { season: 2025, week: 2, teamA: 'A', teamB: 'B', scoreA: 7, scoreB: 7, type: 'Regular' },
+    { season: 2025, week: 2, teamA: 'C', teamB: 'D', scoreA: 20, scoreB: 6, type: 'Regular' },
+  ];
+  const model = buildScheduleComparison({ leagueGames: scheduleGames, season: 2025, week: 2, owner: 'A', donor: 'C' });
+  const target = { innerHTML: '' };
+  renderCurrentSchedule(model, { doc: { getElementById: id => id === 'currentScheduleRoot' ? target : null }, season: 2025, week: 2, owner: 'A', donor: 'C' });
+
+  assert.match(target.innerHTML, /rows are scoring owners; columns are teams whose schedules they borrow/);
+  assert.match(target.innerHTML, /A under C's schedule: 2 wins, 0 losses, 0 ties\. Better than actual by 0\.5 win-equivalents\./);
+  assert.match(target.innerHTML, /data-schedule-team="A" data-schedule-donor="A" data-schedule-impact="actual"/);
+  assert.match(target.innerHTML, /data-schedule-team="A" data-schedule-donor="B" data-schedule-impact="same"[^>]+Same as actual schedule/);
+  assert.match(target.innerHTML, /data-schedule-team="A" data-schedule-donor="D" data-schedule-impact="regressed"[^>]+Worse than actual by 1\.5 win-equivalents/);
+  assert.match(target.innerHTML, /ties count as half a win/);
+  assert.match(target.innerHTML, /<strong>All-play 1-1-1<\/strong>/);
 });
 
 test('current-season renderers hide containers when view mode filters sections', () => {

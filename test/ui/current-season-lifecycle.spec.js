@@ -39,11 +39,20 @@ test('schedule comparison deep link, keyboard drilldown, donor URL, history, and
   await page.waitForLoadState('networkidle');
   await expect(page.locator('#currentScheduleDisclosure')).toHaveAttribute('open', '');
   await expect(page.locator('#currentScheduleRoot table')).toHaveCount(2);
-  await expect(page.locator('#currentScheduleRoot')).toContainText('through Week 3');
   await expect(page.locator('#currentScheduleRoot')).toContainText('Week 3');
+  await expect(page.locator('#currentScheduleRoot')).toContainText('Scoring owner ↓ · borrowed schedule →');
+  await expect(page.locator('#currentHero')).toContainText('2026 Schedule Comparison');
+  await expect(page.locator('#currentHero')).toContainText('Through Week 3 · 18 completed regular-season games');
+  await expect(page.locator('#currentHero')).not.toContainText('Model:');
   await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('Plot');
   await expect(page.locator('#currentScheduleOwnerSelect option[value="Plot"]')).toHaveText('Plot VanDam');
-  const matrixRegion = page.locator('[aria-label="Team by schedule donor matrix"]');
+  const betterCell = page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Plot"]');
+  await expect(betterCell).toHaveAttribute('data-schedule-impact', 'improved');
+  await expect(betterCell).toHaveAttribute('aria-label', /Better than actual by 3 win-equivalents/);
+  await expect(page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Joe"]')).toHaveAttribute('data-schedule-impact', 'actual');
+  await expect(page.locator('button[data-schedule-team="Plot"][data-schedule-donor="Zubs"]')).toHaveAttribute('aria-label', /Worse than actual by 1 win-equivalent/);
+  await expect(page.locator('button[data-schedule-team="Plot"][data-schedule-donor="Connor"]')).toHaveAttribute('aria-label', /Same as actual schedule/);
+  const matrixRegion = page.locator('[aria-label^="Schedule matrix:"]');
   await matrixRegion.scrollIntoViewIfNeeded();
   const visibleSelectedResult = await matrixRegion.evaluate(element => {
     const region = element.getBoundingClientRect();
@@ -55,12 +64,31 @@ test('schedule comparison deep link, keyboard drilldown, donor URL, history, and
     return box.width >= 52 && box.left >= stickyRight && box.right <= region.right && box.top >= region.top && box.bottom <= region.bottom && (point === button || button.contains(point));
   });
   expect(visibleSelectedResult).toBe(true);
+  await betterCell.hover();
+  await expect(betterCell).toHaveCSS('text-decoration-line', 'underline');
   await expect(page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Plot"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Plot"]')).toHaveAttribute('aria-label', /Joe-lene under Plot.*schedule: \d+ wins, \d+ losses, \d+ ties/);
   await expectNoViolations(page, '#currentScheduleRoot');
   await page.emulateMedia({ colorScheme: 'dark' });
   await expectNoViolations(page, '#currentScheduleRoot');
   await page.emulateMedia({ colorScheme: 'light' });
+  await page.emulateMedia({ forcedColors: 'active' });
+  await expect(betterCell).toBeVisible();
+  expect(await betterCell.evaluate(button => getComputedStyle(button, '::before').content)).toContain('+');
+  await expectNoViolations(page, '#currentScheduleRoot');
+  await page.emulateMedia({ forcedColors: 'none' });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const desktopColumns = await matrixRegion.evaluate(region => ({
+    visible: [...region.querySelectorAll('thead th:not(:first-child)')].filter(cell => {
+      const box = cell.getBoundingClientRect(), clip = region.getBoundingClientRect();
+      return box.left >= clip.left && box.right <= clip.right;
+    }).length,
+    total: region.querySelectorAll('thead th:not(:first-child)').length,
+  }));
+  expect(desktopColumns.visible).toBeGreaterThanOrEqual(10);
+  expect(desktopColumns.total).toBe(12);
+  await page.setViewportSize({ width: 640, height: 720 }); // 200% zoom on a 1280px viewport.
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   expect(requests.some(url => url.includes('current-season-odds') || url.includes('plot-charts'))).toBe(false);
 
   const collision = page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Nuss"]');
@@ -73,7 +101,7 @@ test('schedule comparison deep link, keyboard drilldown, donor URL, history, and
   await expect(page.locator('#currentOwnerSelect')).toHaveValue('Joe');
   await expect(page.locator('#currentScheduleOwnerSelect')).toHaveValue('Nuss');
   await expect(page.locator('button[data-schedule-team="Joe"][data-schedule-donor="Nuss"]')).toBeFocused();
-  await expect(page.locator('#currentScheduleDetailHeading')).toContainText("Joe-lene schedule detail · Dr. Nuss's schedule");
+  await expect(page.locator('#currentScheduleDetailHeading')).toContainText("Joe-lene schedule detail · borrowing Dr. Nuss's schedule");
 
   await page.locator('#currentScheduleOwnerSelect').selectOption('Joel');
   await expect(page).toHaveURL(/currentScheduleOwner=Joel/);

@@ -149,6 +149,15 @@ test('owner needs describe exact bubble help and Saunders danger paths', () => {
   assert.match(nuss.riskSummary, /Saunders danger/);
 });
 
+test('PF-rule neutral owner need retains the selected week context', () => {
+  const season = {
+    ...currentSeason,
+    playoff_rules: { ...currentSeason.playoff_rules, playoff_slots: 6, sixth_spot_rule: 'points_for_outside_top_five' },
+  };
+  const joe = buildOwnerWeekNeeds({ currentSeason: season, season: 2026, week: 2 }).find(row => row.owner === 'Joe');
+  assert.equal(joe.mainNeed, 'Week 2: the playoff race remains open.');
+});
+
 test('owner needs cover clinched, eliminated, and no-matchup owners', () => {
   const completeSeason = {
     season: 2026,

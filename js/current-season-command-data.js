@@ -738,7 +738,7 @@ function buildOwnerWeekNeeds({
     opponent: null,
     isSelected: row.owner === selectedOwner,
     goalLabel: row.status.key === 'clinched-bye' ? 'Bye race' : 'Playoff race',
-    mainNeed: row.status.key === 'clinched-bye' ? 'A bye is mathematically secured.' : 'The playoff race remains open.',
+    mainNeed: row.status.key === 'clinched-bye' ? `Week ${week}: a bye is mathematically secured.` : `Week ${week}: the playoff race remains open.`,
     helpNeeded: 'The sixth spot depends on points for among teams outside the top five.',
     pathSummary: `Standings rank ${row.currentStandingsRank}; current points-for seed is provisional.`,
     riskSummary: 'Unplayed scores can change points for and the sixth seed.',

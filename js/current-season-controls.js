@@ -82,12 +82,12 @@ function renderViewOptions(selectedValue, defaultView = 'command') {
     standings: 'Standings',
     owners: 'Owners',
     schedule: 'Schedule Comparison',
-    machine: 'Playoff Machine',
   };
   const selectedView = normalizeCurrentView(selectedValue, defaultView);
   return CURRENT_VIEW_MODES.map(value => {
     const selected = value === selectedView ? ' selected' : '';
-    return `<option value="${escapeHtml(value)}"${selected}>${escapeHtml(labels[value] || value)}</option>`;
+    const label = value === 'machine' ? 'Playoff Machine' : labels[value] || value;
+    return `<option value="${escapeHtml(value)}"${selected}>${escapeHtml(label)}</option>`;
   }).join('');
 }
 

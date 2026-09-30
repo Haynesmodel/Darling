@@ -51,6 +51,12 @@ function buildPlayoffMachine({ leagueGames = [], currentSeason = null, season, s
   const edits = scenario && typeof scenario === 'object' ? scenario : {};
   const issues = [];
   if (Object.keys(edits).some(key => !eligibleByKey.has(key))) issues.push('Some saved scenario inputs no longer match unresolved games and were ignored.');
+  if (eligible.some(({ key }) => {
+    const edit = edits[key];
+    return edit != null && (typeof edit !== 'object' || Array.isArray(edit)
+      || edit.outcome != null && !['a', 'b', 'tie'].includes(edit.outcome)
+      || Object.keys(edit).some(field => !['outcome', 'scoreA', 'scoreB'].includes(field)));
+  })) issues.push('Some saved scenario picks are invalid and were ignored.');
   const seenByWeek = new Map();
   for (const { game, week } of gameRows) {
     if (!seenByWeek.has(week)) seenByWeek.set(week, []);
@@ -114,6 +120,14 @@ function buildPlayoffMachine({ leagueGames = [], currentSeason = null, season, s
       key, week, teamA: game.teamA, teamB: game.teamB, status: game.status || 'scheduled',
       sourceScoreA: validScenarioScore(game.scoreA), sourceScoreB: validScenarioScore(game.scoreB),
       edit: edits[key] && typeof edits[key] === 'object' ? { ...edits[key] } : null,
+      editError: (() => {
+        const edit = edits[key];
+        return edit != null && (typeof edit !== 'object' || Array.isArray(edit)
+          || edit.outcome != null && !['a', 'b', 'tie'].includes(edit.outcome)
+          || Object.keys(edit).some(field => !['outcome', 'scoreA', 'scoreB'].includes(field)))
+          ? 'This saved pick is invalid and was ignored.'
+          : '';
+      })(),
       scoreError: (() => {
         const edit = edits[key];
         if (!edit || edit.scoreA === '' && edit.scoreB === '' || edit.scoreA == null && edit.scoreB == null) return '';
@@ -149,7 +163,7 @@ function applyMachineOutcome(rows, game, outcome) {
 
 function currentPlayoffMachineHtml(machine, selectedWeek = null, root = docOrDefault()) {
   if (!machine?.available) return '<div class="section-heading"><h3>Playoff Machine</h3></div><p class="muted">The Playoff Machine is available during the active regular season.</p>';
-  const week = machine.weeks.includes(Number(selectedWeek)) ? Number(selectedWeek) : machine.weeks[0];
+  const week = machine.weeks.length ? machine.weeks.includes(Number(selectedWeek)) ? Number(selectedWeek) : machine.weeks[0] : null;
   const games = machine.games.filter(game => game.week === week);
   const edit = game => game.edit || {};
   const gameTemplate = root?.getElementById('currentMachineGameTemplate')?.innerHTML || '';
@@ -165,6 +179,8 @@ function currentPlayoffMachineHtml(machine, selectedWeek = null, root = docOrDef
     const status = `${escapeHtml(game.status)}${game.sourceScoreA !== null && game.sourceScoreB !== null ? ` · Live ${scoreFmt(game.sourceScoreA)}–${scoreFmt(game.sourceScoreB)}` : ''}`;
     const warning = game.duplicate
       ? '<p class="current-machine-warning">This game has a duplicate schedule identity; scenario edits are disabled.</p>'
+      : game.editError
+        ? `<p class="current-machine-warning" role="alert">${escapeHtml(game.editError)}</p>`
       : game.scoreError
         ? `<p class="current-machine-warning" id="${errorId}" role="alert">${escapeHtml(game.scoreError)}</p>`
         : `<span class="visually-hidden" id="${errorId}">Both scores are required for an exact result.</span>`;
@@ -198,13 +214,15 @@ function currentPlayoffMachineHtml(machine, selectedWeek = null, root = docOrDef
     __MACHINE_ISSUES__: machine.issues.map(issue => `<p class="current-machine-warning" role="status">${escapeHtml(issue)}</p>`).join(''),
     __PREVIOUS__: previous ? 'disabled' : '',
     __NEXT__: next ? 'disabled' : '',
-    __WEEK__: escapeHtml(week),
+    __WEEK__: escapeHtml(week ?? ''),
+    __WEEK_NAV__: machine.weeks.length ? `<div class="current-machine-week-nav"><button type="button" data-machine-action="week-prev" data-weeks="${escapeHtml(machine.weeks.join(','))}" aria-label="Previous unresolved week"${previous ? ' disabled' : ''}>‹</button><strong>Week ${escapeHtml(week)} of ${escapeHtml(machine.rules.regular_season_max_week)}</strong><button type="button" data-machine-action="week-next" data-weeks="${escapeHtml(machine.weeks.join(','))}" aria-label="Next unresolved week"${next ? ' disabled' : ''}>›</button></div>` : '<p class="muted">The regular season is complete. No unresolved games remain.</p>',
     __WEEKS__: escapeHtml(machine.weeks.join(',')),
     __MAX_WEEK__: escapeHtml(machine.rules.regular_season_max_week),
     __SCENARIO_LABEL__: escapeHtml(machine.exact ? 'Scenario complete' : 'Standings · actual → scenario'),
     __OWNER_COUNT__: escapeHtml(machine.standings.length),
     __SEED_BOARD__: seedBoard,
-    __MACHINE_GAMES__: games.length ? games.map(controls).join('') : '<p class="muted">No unresolved games in this week.</p>',
+    __MACHINE_GAMES__: games.length ? games.map(controls).join('') : '<p class="muted">No unresolved games remain.</p>',
+    __MACHINE_ACTIONS__: machine.weeks.length ? `<div class="current-machine-actions"><button type="button" data-machine-action="clear-week" data-week="${escapeHtml(week)}">Clear week</button><button type="button" data-machine-action="reset">Reset all</button></div>` : '',
     __LIVE_ROWS__: liveRows,
     __CANDIDATES__: candidates,
     __RACE_NOTE__: raceNote,
@@ -216,14 +234,16 @@ function currentPlayoffMachineHtml(machine, selectedWeek = null, root = docOrDef
   });
 }
 
-function drawPlayoffMachine({ leagueGames, currentSeason, season, scenario, selectedWeek, doc } = {}) {
+function drawPlayoffMachine({ leagueGames, currentSeason, season, scenario, selectedWeek, changeAnnouncement, doc } = {}) {
   const root = docOrDefault(doc);
   const host = root?.getElementById('currentPlayoffMachine');
   const machine = buildPlayoffMachine({ leagueGames, currentSeason, season, scenario });
   if (host) host.innerHTML = currentPlayoffMachineHtml(machine, selectedWeek, root);
   const announcement = root?.getElementById('currentMachineAnnouncement');
-  const status = machine.exact ? 'Exact seeds are ready for this scenario.' : 'Scenario standings are provisional.';
+  const status = changeAnnouncement
+    ? `${changeAnnouncement}. ${machine.exact ? 'Exact seeds are ready for this scenario.' : 'Scenario placement is provisional.'}`
+    : machine.exact ? 'Exact seeds are ready for this scenario.' : 'Scenario standings are provisional.';
   if (announcement && announcement.textContent !== status) announcement.textContent = status;
 }
 
-export { buildPlayoffMachine, drawPlayoffMachine, playoffMachineGameKey };
+export { buildPlayoffMachine, currentPlayoffMachineHtml, drawPlayoffMachine, playoffMachineGameKey };

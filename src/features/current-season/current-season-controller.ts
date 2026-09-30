@@ -97,7 +97,12 @@ export function createFeatureController(): DarlingFeatureController {
       }
     } else if (action === 'clear-game') delete edits[button.dataset.gameKey || ''];
     else if (action === 'outcome') edits[button.dataset.gameKey || ''] = { outcome: button.dataset.outcome || null };
-    state = { ...state, machineEdits: edits, machineWeek };
+    const change = action === 'outcome' ? `Picked ${button.textContent?.trim() || 'an outcome'}`
+      : action === 'reset' ? 'Reset all scenario picks'
+        : action === 'clear-week' ? `Cleared week ${button.dataset.week}`
+          : action === 'clear-game' ? 'Cleared a matchup pick'
+            : `Showing week ${machineWeek}`;
+    state = { ...state, machineEdits: edits, machineWeek, machineAnnouncement: change };
     await drawMachine();
     const target = [...context.document.querySelectorAll<HTMLButtonElement>('#currentPlayoffMachine button[data-machine-action]')]
       .find(item => item.dataset.machineAction === action
@@ -119,7 +124,8 @@ export function createFeatureController(): DarlingFeatureController {
     for (const item of pair) edit[item.dataset.machineScore === 'a' ? 'scoreA' : 'scoreB'] = item.value;
     edits[key] = edit;
     const selectionStart = input.selectionStart;
-    state = { ...state, machineEdits: edits };
+    const matchup = input.closest<HTMLElement>('.current-machine-game')?.querySelector('h4')?.textContent?.trim() || 'a matchup';
+    state = { ...state, machineEdits: edits, machineAnnouncement: `Updated score for ${matchup}` };
     await drawMachine();
     const focused = [...context.document.querySelectorAll<HTMLInputElement>('#currentPlayoffMachine input[data-game-key]')]
       .find(item => item.dataset.gameKey === key && item.dataset.machineScore === side);
@@ -159,7 +165,7 @@ export function createFeatureController(): DarlingFeatureController {
     machineRuntimePromise ||= import('../../../js/current-season-machine.js');
     const runtime = await machineRuntimePromise;
     if (!state || activeSignal?.aborted || state.selectedView !== 'machine' || Number(state.selectedSeason) !== Number(presentation.season)) return;
-    runtime.drawPlayoffMachine({ leagueGames: context.data.leagueGames, currentSeason: context.data.currentSeason, season: presentation.season, scenario: state.machineEdits || {}, selectedWeek: state.machineWeek, doc: context.document });
+    runtime.drawPlayoffMachine({ leagueGames: context.data.leagueGames, currentSeason: context.data.currentSeason, season: presentation.season, scenario: state.machineEdits || {}, selectedWeek: state.machineWeek, changeAnnouncement: state.machineAnnouncement, doc: context.document });
   };
 
   const draw = () => {

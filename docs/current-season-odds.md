@@ -62,6 +62,6 @@ When live scores are not declared reliable, simulations use pregame team strengt
 - Saunders probabilities sum to the configured Saunders slots.
 - Completed-season results collapse to exact 0%/100% probabilities.
 - Clinched and eliminated mathematical states override estimates in the presentation layer.
-- When sixth place depends on points for, the in-season view keeps the playoff race neutral until all games are final; only a mathematically secured bye can be stated early.
+- When sixth place depends on points for, in-season status labels stay neutral until all games are final; completed standings determine the playoff and bye labels.
 
 The engine loads only when an eligible active Current Season view is rendered. Finalized 2025 therefore reaches ready state without requesting the odds module or probability methodology.

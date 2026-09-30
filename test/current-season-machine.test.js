@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildPlayoffMachine, playoffMachineGameKey } from '../js/current-season-machine.js';
+import { buildPlayoffMachine, currentPlayoffMachineHtml, playoffMachineGameKey } from '../js/current-season-machine.js';
 import { qualifyStandings } from '../js/current-season-command-data.js';
 
 const teams = 'ABCDEFGH'.split('');
@@ -93,4 +93,24 @@ test('invalid and partial score pairs cannot produce exact qualification', () =>
   const machine = buildPlayoffMachine({ currentSeason: season, season: 2026, scenario: Object.fromEntries(entries) });
   assert.equal(machine.exact, false);
   assert.match(machine.games.at(-1).scoreError, /0 to 999.99/);
+});
+
+test('malformed valid-key edits show an inline explanation and issue', () => {
+  const key = playoffMachineGameKey(season.games[4]);
+  const machine = buildPlayoffMachine({ currentSeason: season, season: 2026, scenario: { [key]: { outcome: 'bogus' } } });
+  assert.match(machine.games.find(row => row.key === key).editError, /saved pick is invalid/);
+  assert.match(machine.issues.join(' '), /invalid and were ignored/);
+});
+
+test('completed schedule renders completion copy without undefined week or navigation', () => {
+  const completeSeason = { ...season, games: season.games.map(source => ({ ...source, status: 'final', scoreA: 100, scoreB: 90 })) };
+  const machine = buildPlayoffMachine({ currentSeason: completeSeason, season: 2026 });
+  assert.deepEqual(machine.weeks, []);
+  const root = { getElementById: id => id === 'currentPlayoffMachineTemplate'
+    ? { innerHTML: '__WEEK_NAV__ __MACHINE_ACTIONS__ __MACHINE_GAMES__' }
+    : { innerHTML: '' } };
+  const html = currentPlayoffMachineHtml(machine, null, root);
+  assert.match(html, /regular season is complete/i);
+  assert.doesNotMatch(html, /Week undefined|data-machine-action="week-(?:prev|next)"/);
+  assert.doesNotMatch(html, /data-machine-action="clear-week"/);
 });

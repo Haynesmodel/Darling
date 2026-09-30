@@ -14,9 +14,10 @@ const DEFAULT_PLAYOFF_RULES = Object.freeze({
   bye_slots: 2,
   standings_tiebreakers: ['win_pct', 'points_for', 'points_differential', 'owner'],
   saunders_slots: 6,
+  sixth_spot_rule: 'standard',
 });
 
-const CURRENT_VIEW_MODES = Object.freeze(['command', 'recap', 'matchups', 'standings', 'owners', 'schedule']);
+const CURRENT_VIEW_MODES = Object.freeze(['command', 'recap', 'matchups', 'standings', 'owners', 'schedule', 'machine']);
 const CURRENT_PROJECTION_MODES = Object.freeze(['current', 'ifScoresHold']);
 
 function numeric(value) {
@@ -77,6 +78,7 @@ function resolveCurrentSeasonRules(currentSeason = null, teamCount = 0) {
     bye_slots: byeSlots,
     standings_tiebreakers: standingsTiebreakers,
     saunders_slots: saundersSlots,
+    sixth_spot_rule: raw.sixth_spot_rule === 'points_for_outside_top_five' ? raw.sixth_spot_rule : 'standard',
   };
 }
 
@@ -158,6 +160,7 @@ function resolveSeasonRules({
     bye_slots: byeSlots,
     standings_tiebreakers: DEFAULT_PLAYOFF_RULES.standings_tiebreakers,
     saunders_slots: saundersSlots,
+    sixth_spot_rule: 'standard',
   };
 }
 
@@ -270,6 +273,40 @@ function sortAndRankStandings(rows = [], rules = DEFAULT_PLAYOFF_RULES) {
     });
   ranked.forEach((row, index) => { row.rank = index + 1; });
   return ranked;
+}
+
+function compareWildcardTie(a, b, rules) {
+  for (const key of (rules.standings_tiebreakers || DEFAULT_PLAYOFF_RULES.standings_tiebreakers).filter(item => item !== 'points_for' && item !== 'win_pct')) {
+    const result = compareTiebreakerValue(a, b, key);
+    if (result) return result;
+  }
+  return a.owner.localeCompare(b.owner);
+}
+
+function qualifyStandings(rows = [], rules = DEFAULT_PLAYOFF_RULES) {
+  const ranked = sortAndRankStandings(rows, rules);
+  const wildcard = rules?.sixth_spot_rule === 'points_for_outside_top_five' && rules.playoff_slots === 6
+    ? ranked.slice(5).slice().sort((a, b) => {
+      const pf = compareTiebreakerValue(a, b, 'points_for');
+      if (pf) return pf;
+      return compareWildcardTie(a, b, rules);
+    })[0] || null
+    : null;
+  const ordered = wildcard
+    ? [...ranked.slice(0, 5), wildcard, ...ranked.slice(5).filter(row => row.owner !== wildcard.owner)]
+    : ranked;
+  const playoffOwners = new Set(ordered.slice(0, rules.playoff_slots).map(row => row.owner));
+  const playoffSeedByOwner = new Map(ordered.slice(0, rules.playoff_slots).map((row, index) => [row.owner, index + 1]));
+  const orderedIndex = new Map(ordered.map((row, index) => [row.owner, index + 1]));
+  return ranked.map(row => ({
+    ...row,
+    standingsRank: row.rank,
+    placementSeed: orderedIndex.get(row.owner),
+    playoffSeed: playoffSeedByOwner.get(row.owner) || null,
+    qualificationReason: playoffOwners.has(row.owner)
+      ? (wildcard?.owner === row.owner ? 'points_for' : 'standings')
+      : 'out',
+  }));
 }
 
 function forceGameOutcome(game, owner, outcome) {
@@ -425,9 +462,16 @@ function classifyOwnerStatus({
   const seasonComplete = standings.length > 0 && standings.every(item => (remaining.get(item.owner)?.length || 0) === 0);
 
   if (seasonComplete) {
-    if (row.rank <= byeSlots) return { key: 'clinched-bye', label: 'Clinched bye', tone: 'clinched' };
-    if (row.rank <= playoffSlots) return { key: 'clinched-playoff', label: 'Clinched playoff', tone: 'clinched' };
+    const playoffSeed = rules.sixth_spot_rule === 'points_for_outside_top_five'
+      ? row.playoffSeed
+      : row.playoffSeed ?? row.rank;
+    if (playoffSeed && playoffSeed <= byeSlots) return { key: 'clinched-bye', label: 'Clinched bye', tone: 'clinched' };
+    if (playoffSeed && playoffSeed <= playoffSlots) return { key: 'clinched-playoff', label: 'Clinched playoff', tone: 'clinched' };
     return { key: 'eliminated', label: 'Eliminated', tone: 'eliminated' };
+  }
+
+  if (rules.sixth_spot_rule === 'points_for_outside_top_five') {
+    return { key: 'sixth-spot-race', label: 'Playoff race', tone: 'bubble' };
   }
 
   const maxWins = row.wins + ownerRemaining;
@@ -514,21 +558,26 @@ function buildPlayoffPicture({
   rules = DEFAULT_PLAYOFF_RULES,
   remaining = new Map(),
 } = {}) {
-  const projectedByOwner = new Map(projectedStandings.map(row => [row.owner, row]));
+  const projectedByOwner = new Map(qualifyStandings(projectedStandings, rules).map(row => [row.owner, row]));
+  const qualifiedCurrent = qualifyStandings(currentStandings, rules);
   const pfRanks = pointsForRanks(currentStandings);
-  return currentStandings.map(row => {
+  return qualifiedCurrent.map(row => {
     const projected = projectedByOwner.get(row.owner);
     const status = classifyOwnerStatus({ row, standings: currentStandings, rules, remaining });
     return {
       ...row,
       status,
-      currentSeed: row.rank,
-      projectedSeed: projected?.projectedRank || projected?.rank || row.rank,
+      currentSeed: row.placementSeed,
+      currentStandingsRank: row.standingsRank,
+      playoffSeed: row.playoffSeed,
+      qualificationReason: row.qualificationReason,
+      projectedSeed: projected?.placementSeed || projected?.projectedRank || projected?.rank || row.placementSeed,
+      projectedPlayoffSeed: projected?.playoffSeed || null,
       projectedRecord: projected?.projectedRecord || projected?.record || row.record,
       projectedPointsFor: projected?.projectedPointsFor ?? projected?.pointsFor ?? row.pointsFor,
-      seedChange: (row.rank || 0) - (projected?.projectedRank || projected?.rank || row.rank || 0),
+      seedChange: (row.placementSeed || row.rank || 0) - (projected?.placementSeed || projected?.projectedRank || projected?.rank || row.placementSeed || row.rank || 0),
       pointsForRank: pfRanks.get(row.owner) || null,
-      playoffGap: cutlineGap(row, currentStandings, rules.playoff_slots),
+      playoffGap: rules.sixth_spot_rule === 'points_for_outside_top_five' ? null : cutlineGap(row, currentStandings, rules.playoff_slots),
       byeGap: cutlineGap(row, currentStandings, rules.bye_slots),
       saundersGap: cutlineGap(row, currentStandings, (saundersLineSeed(rules, currentStandings.length) || 1) - 1),
       remainingGames: remaining.get(row.owner)?.length || 0,
@@ -567,9 +616,11 @@ function resultWord(game, owner) {
 }
 
 function helpTargetsForOwner(row, standings, rules) {
-  if (!row || row.rank <= rules.playoff_slots) return [];
-  return standings
-    .filter(item => item.rank <= rules.playoff_slots && item.rank >= Math.max(1, rules.playoff_slots - 2))
+  if (!row) return [];
+  const qualified = qualifyStandings(standings, rules);
+  if (qualified.find(item => item.owner === row.owner)?.playoffSeed) return [];
+  return qualified
+    .filter(item => item.playoffSeed && item.playoffSeed >= Math.max(1, rules.playoff_slots - 2))
     .map(item => item.owner);
 }
 
@@ -679,6 +730,20 @@ function buildOwnerWeekNeeds({
     : [];
   const teamCount = pictureRows.length || currentStandings.length;
   const saundersSeed = saundersLineSeed(resolvedRules, teamCount);
+  const raceUnsettled = resolvedRules.sixth_spot_rule === 'points_for_outside_top_five'
+    && regularSeasonGamesFor({ leagueGames, currentSeason, season, rules: resolvedRules }).some(game => !isCompletedGame(game));
+
+  if (raceUnsettled) return pictureRows.map(row => ({
+    ...row,
+    opponent: null,
+    isSelected: row.owner === selectedOwner,
+    goalLabel: row.status.key === 'clinched-bye' ? 'Bye race' : 'Playoff race',
+    mainNeed: row.status.key === 'clinched-bye' ? 'A bye is mathematically secured.' : 'The playoff race remains open.',
+    helpNeeded: 'The sixth spot depends on points for among teams outside the top five.',
+    pathSummary: `Standings rank ${row.currentStandingsRank}; current points-for seed is provisional.`,
+    riskSummary: 'Unplayed scores can change points for and the sixth seed.',
+    saundersSummary: saundersSummary(row, resolvedRules, teamCount),
+  }));
 
   return pictureRows.map(row => {
     const matchup = ownerMatchupForWeek(row.owner, { leagueGames, currentSeason, season, week });
@@ -1053,17 +1118,21 @@ export {
   buildPlayoffPicture,
   buildProjectedStandings,
   buildScenarioStandings,
+  compareTiebreakerValue,
+  compareWildcardTie,
   classifyOwnerStatus,
   completedRegularSeasonGames,
   liveRegularSeasonGames,
   matchupKey,
   normalizeCurrentView,
   normalizeProjectionMode,
+  qualifyStandings,
   regularSeasonGamesFor,
   remainingScheduleForOwner,
   resolveSeasonRules,
   resolveCurrentSeasonRules,
   scheduledRegularSeasonGames,
   saundersLineSeed,
+  standingsFromGames,
   sortAndRankStandings,
 };

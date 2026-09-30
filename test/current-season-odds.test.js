@@ -351,3 +351,30 @@ test('configured tiebreakers determine exact completed-season seed probabilities
   assert.equal(result.rows.find(row => row.owner === 'Nuss').seedProbabilities['1'], 1);
   assert.equal(result.rows.find(row => row.owner === 'Joe').seedProbabilities['2'], 1);
 });
+
+test('completed PF-wildcard odds award seed six outside standings top five', () => {
+  const complete = {
+    season: 2026,
+    playoff_rules: {
+      regular_season_max_week: 1,
+      playoff_slots: 6,
+      bye_slots: 2,
+      saunders_slots: 2,
+      sixth_spot_rule: 'points_for_outside_top_five',
+      standings_tiebreakers: ['win_pct', 'points_differential', 'points_for', 'owner'],
+    },
+    games: [
+      { season: 2026, date: '2026-09-06', week: 1, type: 'Regular', status: 'final', teamA: 'A', teamB: 'E', scoreA: 100, scoreB: 70 },
+      { season: 2026, date: '2026-09-06', week: 1, type: 'Regular', status: 'final', teamA: 'B', teamB: 'F', scoreA: 100, scoreB: 90 },
+      { season: 2026, date: '2026-09-06', week: 1, type: 'Regular', status: 'final', teamA: 'C', teamB: 'G', scoreA: 110, scoreB: 95 },
+      { season: 2026, date: '2026-09-06', week: 1, type: 'Regular', status: 'final', teamA: 'D', teamB: 'H', scoreA: 100, scoreB: 98 },
+    ],
+  };
+  const result = buildCurrentSeasonOdds({ currentSeason: complete, season: 2026, week: 1, dataVersion: 'pf-wildcard', simulations: 1 });
+  const sixth = result.rows.find(row => row.owner === 'F');
+  const wildcard = result.rows.find(row => row.owner === 'G');
+  assert.equal(sixth.playoffOdds, 0);
+  assert.equal(wildcard.playoffOdds, 1);
+  assert.equal(wildcard.seedProbabilities['6'], 1);
+  assert.equal(result.rows.reduce((sum, row) => sum + row.playoffOdds, 0), 6);
+});

@@ -217,6 +217,7 @@ def build_current_season_asset(args):
             "bye_slots": bye_slots,
             "standings_tiebreakers": [part.strip() for part in str(tiebreakers).split(",") if part.strip()],
             "saunders_slots": saunders_slots,
+            "sixth_spot_rule": getattr(args, "sixth_spot_rule", "standard"),
         },
         "update_context": {
             "mode": update_mode,
@@ -245,6 +246,7 @@ def main():
     parser.add_argument("--playoff-slots", type=int, default=6)
     parser.add_argument("--bye-slots", type=int, default=2)
     parser.add_argument("--saunders-slots", type=int, default=6)
+    parser.add_argument("--sixth-spot-rule", choices=["standard", "points_for_outside_top_five"], default="standard")
     parser.add_argument("--standings-tiebreakers", default="win_pct,points_for,points_differential,owner")
     parser.add_argument("--update-mode", default="manual")
     parser.add_argument("--max-week", type=int, default=17)

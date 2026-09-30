@@ -45,7 +45,7 @@
     "check:feature-boundaries": "node scripts/check_feature_boundaries.cjs",
     "test:a11y": "playwright test test/ui/accessibility.spec.js",
     "test:keyboard": "playwright test test/ui/keyboard-navigation.spec.js",
-    "test:unit:core": "npm run check:data-generated && npm run check:charts-generated && npm run typecheck && node --test test/transaction-history-model.test.cjs test/current-season-schedule.test.js && npm run test:hygiene && npm run test:data && npm run test:charts && npm run test:search && npm run test:tables && npm run test:scripts",
+    "test:unit:core": "npm run check:data-generated && npm run check:charts-generated && npm run typecheck && node --test test/transaction-history-model.test.cjs test/current-season-schedule.test.js test/current-season-command-data.test.js test/current-season-machine.test.js test/current-season-renderers.test.js && npm run test:hygiene && npm run test:data && npm run test:charts && npm run test:search && npm run test:tables && npm run test:scripts",
     "test:unit": "npm run lint:css && npm run check:css && npm run test:unit:core",
     "test:coverage": "node scripts/run_coverage.cjs",
     "test:ui": "playwright test",

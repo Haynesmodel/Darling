@@ -34,6 +34,7 @@ export function createFeatureController(): DarlingFeatureController {
   let state: any = null;
   let activeSignal: AbortSignal | null = null;
   let disclosure: SectionDisclosureController | null = null;
+  let machineRuntimePromise: Promise<any> | null = null;
   let shareActions: ShareCardActionController[] = [];
   const odds = new Map<string, any>();
 
@@ -74,6 +75,58 @@ export function createFeatureController(): DarlingFeatureController {
     });
   };
 
+  const onMachineClick = async (event: Event) => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>('#currentPlayoffMachine button[data-machine-action]');
+    if (!button || !state) return;
+    const action = button.dataset.machineAction;
+    const edits = { ...(state.machineEdits || {}) };
+    let machineWeek = state.machineWeek ?? Number(context.document.querySelector<HTMLButtonElement>('#currentPlayoffMachine [data-machine-action="clear-week"]')?.dataset.week);
+    if (action === 'reset') Object.keys(edits).forEach(key => delete edits[key]);
+    else if (['clear-week', 'week-prev', 'week-next'].includes(action)) {
+      if (action === 'week-prev' || action === 'week-next') {
+        const weeks = (button.dataset.weeks || '').split(',').map(Number);
+        const index = weeks.indexOf(Number(machineWeek));
+        machineWeek = weeks[Math.max(0, Math.min(weeks.length - 1, index + (action === 'week-prev' ? -1 : 1)))];
+      } else {
+        for (const game of context.document.querySelectorAll<HTMLElement>('#currentPlayoffMachine .current-machine-game[data-week]')) {
+          if (Number(game.dataset.week) === Number(button.dataset.week)) {
+            const key = game.querySelector<HTMLInputElement>('input[data-game-key]')?.dataset.gameKey;
+            if (key) delete edits[key];
+          }
+        }
+      }
+    } else if (action === 'clear-game') delete edits[button.dataset.gameKey || ''];
+    else if (action === 'outcome') edits[button.dataset.gameKey || ''] = { outcome: button.dataset.outcome || null };
+    state = { ...state, machineEdits: edits, machineWeek };
+    await drawMachine();
+    const target = [...context.document.querySelectorAll<HTMLButtonElement>('#currentPlayoffMachine button[data-machine-action]')]
+      .find(item => item.dataset.machineAction === action
+        && item.dataset.gameKey === button.dataset.gameKey
+        && item.dataset.outcome === button.dataset.outcome
+        && item.dataset.week === button.dataset.week);
+    target?.focus();
+  };
+
+  const onMachineInput = async (event: Event) => {
+    const input = (event.target as HTMLElement).closest<HTMLInputElement>('#currentPlayoffMachine input[data-machine-score]');
+    if (!input || !state) return;
+    const key = input.dataset.gameKey || '';
+    const side = input.dataset.machineScore;
+    const edits = { ...(state.machineEdits || {}) };
+    const edit: any = { ...(edits[key] || {}), outcome: null };
+    const pair = [...context.document.querySelectorAll<HTMLInputElement>('#currentPlayoffMachine input[data-game-key]')]
+      .filter(item => item.dataset.gameKey === key);
+    for (const item of pair) edit[item.dataset.machineScore === 'a' ? 'scoreA' : 'scoreB'] = item.value;
+    edits[key] = edit;
+    const selectionStart = input.selectionStart;
+    state = { ...state, machineEdits: edits };
+    await drawMachine();
+    const focused = [...context.document.querySelectorAll<HTMLInputElement>('#currentPlayoffMachine input[data-game-key]')]
+      .find(item => item.dataset.gameKey === key && item.dataset.machineScore === side);
+    focused?.focus();
+    if (focused && selectionStart !== null) focused.setSelectionRange(selectionStart, selectionStart);
+  };
+
   const seasonMode = (view: any) => {
     const games = [...(context.data.currentSeason?.games || []), ...context.data.leagueGames]
       .filter(game => Number(game.season) === Number(view.season) && Number(game.week) === Number(view.week));
@@ -81,6 +134,32 @@ export function createFeatureController(): DarlingFeatureController {
     if (labelled !== 'regular') return labelled;
     const maximum = Number(context.data.currentSeason?.playoff_rules?.regular_season_max_week);
     return Number.isFinite(maximum) && Number(view.week) > maximum ? 'postseason' : 'regular';
+  };
+
+  const drawMachine = async () => {
+    if (!state || activeSignal?.aborted) return;
+    const presentation = resolveSeasonPresentation({
+      selectedSeason: state.selectedSeason,
+      currentSeason: context.data.currentSeason,
+      seasonSummaries: context.data.seasonSummaries,
+      leagueGames: context.data.leagueGames,
+    });
+    const available = presentation.phase === 'regular-season'
+      && Number(presentation.season) === Number(context.data.currentSeason?.season);
+    if (state.selectedView !== 'machine') {
+      const host = context.document.getElementById('currentPlayoffMachine');
+      if (host) host.innerHTML = '';
+      return;
+    }
+    if (!available) {
+      const host = context.document.getElementById('currentPlayoffMachine');
+      if (host) host.innerHTML = '<div class="section-heading"><h3>Playoff Machine</h3></div><p class="muted">The Playoff Machine is available during the active regular season.</p>';
+      return;
+    }
+    machineRuntimePromise ||= import('../../../js/current-season-machine.js');
+    const runtime = await machineRuntimePromise;
+    if (!state || activeSignal?.aborted || state.selectedView !== 'machine' || Number(state.selectedSeason) !== Number(presentation.season)) return;
+    runtime.drawPlayoffMachine({ leagueGames: context.data.leagueGames, currentSeason: context.data.currentSeason, season: presentation.season, scenario: state.machineEdits || {}, selectedWeek: state.machineWeek, doc: context.document });
   };
 
   const draw = () => {
@@ -175,6 +254,9 @@ export function createFeatureController(): DarlingFeatureController {
       selectedProjectionMode: state.selectedProjectionMode,
       selectedScheduleOwner: state.selectedScheduleOwner,
       scheduleDetailWeek: state.scheduleDetailWeek,
+      machineEdits: state.machineEdits || {},
+      machineWeek: state.machineWeek ?? null,
+      dataVersion: state.dataVersion,
     };
     const title = view.season ? `${view.season} Current Season` : 'Current Season';
     context.header.feature(title, null, title);
@@ -211,6 +293,7 @@ export function createFeatureController(): DarlingFeatureController {
       ['current-standings', 'Standings', 'currentStandingsDisclosure', 'currentStandings'],
       ['current-owner-snapshots', 'Owner Snapshots', 'currentTeamSnapshotsDisclosure', 'currentTeamSnapshots'],
       ['current-schedule', 'Schedule Comparison', 'currentScheduleDisclosure', 'currentScheduleRoot'],
+      ['current-machine', 'Playoff Machine', 'currentPlayoffMachineDisclosure', 'currentPlayoffMachine'],
     ] as const;
     disclosure?.update({
       signature: `${view.season}|${presentation.phase}|${view.commandCenter.selectedView}`,
@@ -227,26 +310,28 @@ export function createFeatureController(): DarlingFeatureController {
           || id === 'current-playoff-picture'
           || (id === 'current-owner-needs' && Boolean(view.commandCenter.selectedOwner))
           || (id === 'current-schedule' && view.commandCenter.selectedView === 'schedule')
+          || (id === 'current-machine' && view.commandCenter.selectedView === 'machine')
           || (id === 'current-live-movement' && presentation.isLive);
         return [{
           id,
           label: resolvedLabel,
           details,
-          available: !content.hidden && Boolean(content.innerHTML.trim()),
+          available: (id === 'current-machine' && view.commandCenter.selectedView === 'machine') || (!content.hidden && Boolean(content.innerHTML.trim())),
           defaultOpen,
           onVisible: chartSection ? () => renderCurrentCommandCharts(view, { doc: context.document }) : undefined,
         }];
       }),
     });
     const recapMode = view.commandCenter.selectedView === 'recap';
+    const machineMode = view.commandCenter.selectedView === 'machine';
     for (const id of ['currentWeekSelect', 'currentOwnerSelect', 'currentProjectionSelect', 'currentScheduleOwnerLabel']) {
       const control = context.document.getElementById(id);
       const controlLabel = control?.closest('label') as HTMLElement | null;
       if (controlLabel) controlLabel.hidden = id === 'currentOwnerSelect'
-        ? recapMode
+        ? recapMode || machineMode
         : id === 'currentScheduleOwnerLabel'
           ? view.commandCenter.selectedView !== 'schedule'
-          : recapMode || (id === 'currentProjectionSelect' && (presentation.phase !== 'regular-season' || view.commandCenter.selectedView === 'schedule'));
+          : recapMode || machineMode || (id === 'currentProjectionSelect' && (presentation.phase !== 'regular-season' || view.commandCenter.selectedView === 'schedule'));
     }
     const routeOwner = view.commandCenter.selectedView === 'schedule' ? state.selectedOwner : view.commandCenter.selectedOwner;
     const routeOptions = {
@@ -260,6 +345,7 @@ export function createFeatureController(): DarlingFeatureController {
       selectedCurrentScheduleOwner: state.selectedScheduleOwner !== routeOwner ? state.selectedScheduleOwner : null,
     };
     const canonicalPath = context.router.update(routeOptions);
+    void drawMachine();
     if (`${context.window.location.pathname}${context.window.location.search}` !== canonicalPath) {
       void context.router.runReplacing(() => context.router.update(routeOptions));
     }
@@ -287,10 +373,12 @@ export function createFeatureController(): DarlingFeatureController {
         });
       }
       context.document.getElementById('currentScheduleRoot')?.addEventListener('click', onScheduleClick);
+      context.document.getElementById('currentPlayoffMachine')?.addEventListener('click', onMachineClick);
+      context.document.getElementById('currentPlayoffMachine')?.addEventListener('input', onMachineInput);
     },
     activate(input: FeatureActivation) {
       activeSignal = input.signal;
-      const existing = input.reason === 'tab' && state ? state : {};
+      const existing = input.reason === 'tab' && state && state.dataVersion === context.data.dataVersion ? state : {};
       const selectedSeason = input.route.currentSeason ?? existing.selectedSeason ?? null;
       const presentation = resolveSeasonPresentation({
         selectedSeason,
@@ -313,7 +401,8 @@ export function createFeatureController(): DarlingFeatureController {
         selectedScheduleOwner: input.route.currentScheduleOwner ?? existing.selectedScheduleOwner ?? input.route.currentOwner ?? existing.selectedOwner ?? '',
         onChange: (next: any) => {
           if (activeSignal?.aborted) return;
-          state = { ...(state || {}), ...next };
+          const previous = state || {};
+          state = { ...previous, ...next, machineEdits: next.selectedSeason === previous.selectedSeason ? previous.machineEdits || {} : {} };
           draw();
         },
       });
@@ -324,6 +413,8 @@ export function createFeatureController(): DarlingFeatureController {
         selectedView: built.selectedView,
         selectedProjectionMode: built.selectedProjectionMode,
         selectedScheduleOwner: built.selectedScheduleOwner || built.selectedOwner,
+        machineEdits: existing.selectedSeason === built.selectedSeason ? existing.machineEdits || {} : {},
+        dataVersion: context.data.dataVersion,
       };
       draw();
     },
@@ -335,6 +426,8 @@ export function createFeatureController(): DarlingFeatureController {
       disposeShareActions();
       disclosure?.dispose();
       context?.document.getElementById('currentScheduleRoot')?.removeEventListener('click', onScheduleClick);
+      context?.document.getElementById('currentPlayoffMachine')?.removeEventListener('click', onMachineClick);
+      context?.document.getElementById('currentPlayoffMachine')?.removeEventListener('input', onMachineInput);
       disclosure = null;
     },
   };

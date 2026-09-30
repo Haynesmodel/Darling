@@ -84,6 +84,7 @@ function methodologyNoteHtml(command) {
 
 function selectedViewAllows(view, section) {
   const mode = view.commandCenter?.selectedView || 'command';
+  if (mode === 'machine') return section === 'machine';
   if (mode === 'schedule') return section === 'schedule';
   const phase = view.presentation?.phase || 'regular-season';
   if (mode === 'recap') return section === 'recap';
@@ -645,16 +646,17 @@ function currentTeamSnapshotsHtml(view) {
 function currentPlayoffPictureHtml(view) {
   if (!selectedViewAllows(view, 'playoff')) return '';
   const command = view.commandCenter;
-  const rows = command?.playoffPicture || [];
+  const rows = (command?.playoffPicture || []).slice().sort((a, b) => a.currentSeed - b.currentSeed || a.owner.localeCompare(b.owner));
   if (!rows.length) return view.presentation?.phase === 'postseason'
     ? ''
     : '<h3>Playoff Picture</h3><p class="muted">No playoff picture available.</p>';
   const estimatesMeaningful = (view.presentation?.phase || 'regular-season') === 'regular-season';
+  const pointsForSixth = command.rules.sixth_spot_rule === 'points_for_outside_top_five';
   const saundersLine = command.summary?.saundersLineSeed || null;
   return `
     <div class="section-heading current-section-heading">
       <h3>Playoff Picture</h3>
-      <div class="muted">Top ${escapeHtml(command.rules.playoff_slots)} make playoffs &middot; Top ${escapeHtml(command.rules.bye_slots)} earn byes${saundersLine ? ` &middot; Saunders danger starts at seed ${escapeHtml(saundersLine)}` : ''}</div>
+      <div class="muted">${pointsForSixth ? 'Standings ranks 1–5 qualify; seed 6 goes to the highest points-for team outside the top five.' : `Top ${escapeHtml(command.rules.playoff_slots)} make playoffs`} &middot; Top ${escapeHtml(command.rules.bye_slots)} earn byes${saundersLine ? ` &middot; Saunders danger starts at seed ${escapeHtml(saundersLine)}` : ''}</div>
     </div>
     <div class="current-playoff-grid">
       ${rows.map(row => `
@@ -665,7 +667,7 @@ function currentPlayoffPictureHtml(view) {
           <div class="current-seed-badge">${escapeHtml(row.currentSeed)}</div>
           <div class="current-seed-main">
             <strong>${escapeHtml(row.owner)}</strong>
-            <span>${escapeHtml(row.record)} &middot; PF rank ${escapeHtml(row.pointsForRank || '-')}</span>
+            <span>${escapeHtml(row.record)} &middot; Standings rank ${escapeHtml(row.currentStandingsRank || row.currentSeed)}${pointsForSixth ? ` · current PF placement #${escapeHtml(row.currentSeed)}` : ''}</span>
           </div>
           <div class="current-seed-meta">
             ${row.status.tone === 'clinched' ? `<button type="button" class="${statusClass(row.status)} current-lore-status" data-lore-trigger="current-clinched" data-lore-owner="${escapeHtml(row.owner)}">${escapeHtml(row.status.label)}</button>` : row.status.tone === 'eliminated' ? `<button type="button" class="${statusClass(row.status)} current-lore-status" data-lore-trigger="current-eliminated" data-lore-owner="${escapeHtml(row.owner)}">${escapeHtml(row.status.label)}</button>` : `<span class="${statusClass(row.status)}">${escapeHtml(row.status.label)}</span>`}

@@ -82,6 +82,7 @@ function renderViewOptions(selectedValue, defaultView = 'command') {
     standings: 'Standings',
     owners: 'Owners',
     schedule: 'Schedule Comparison',
+    machine: 'Playoff Machine',
   };
   const selectedView = normalizeCurrentView(selectedValue, defaultView);
   return CURRENT_VIEW_MODES.map(value => {

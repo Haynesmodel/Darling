@@ -152,6 +152,7 @@ export interface CurrentSeasonData {
     playoff_slots: number;
     bye_slots: number;
     saunders_slots: number;
+    sixth_spot_rule?: 'standard' | 'points_for_outside_top_five';
     /**
      * @minItems 1
      */

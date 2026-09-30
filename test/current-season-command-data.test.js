@@ -204,4 +204,16 @@ test('remaining schedule and completed-season statuses are deterministic', () =>
   const remaining = new Map(finalStandings.map(row => [row.owner, []]));
   assert.equal(classifyOwnerStatus({ row: finalStandings[0], standings: finalStandings, rules: currentSeason.playoff_rules, remaining }).key, 'clinched-bye');
   assert.equal(classifyOwnerStatus({ row: finalStandings[2], standings: finalStandings, rules: currentSeason.playoff_rules, remaining }).key, 'eliminated');
+
+  const pfStandings = [
+    { owner: 'A', rank: 1, playoffSeed: 1 }, { owner: 'B', rank: 2, playoffSeed: 2 },
+    { owner: 'C', rank: 3, playoffSeed: 3 }, { owner: 'D', rank: 4, playoffSeed: 4 },
+    { owner: 'E', rank: 5, playoffSeed: 5 }, { owner: 'F', rank: 6, playoffSeed: null },
+    { owner: 'G', rank: 7, playoffSeed: 6 },
+  ];
+  const pfRemaining = new Map(pfStandings.map(row => [row.owner, []]));
+  const pfRules = { ...currentSeason.playoff_rules, playoff_slots: 6, sixth_spot_rule: 'points_for_outside_top_five' };
+  assert.equal(classifyOwnerStatus({ row: pfStandings[5], standings: pfStandings, rules: pfRules, remaining: pfRemaining }).key, 'eliminated');
+  assert.equal(classifyOwnerStatus({ row: pfStandings[6], standings: pfStandings, rules: pfRules, remaining: pfRemaining }).key, 'clinched-playoff');
+  assert.equal(classifyOwnerStatus({ row: { ...pfStandings[0], wins: 5, ties: 2 }, standings: pfStandings, rules: pfRules, remaining: new Map([['A', [{}]]]) }).key, 'sixth-spot-race');
 });

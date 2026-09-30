@@ -1,16 +1,16 @@
 import { isRegularGame, sidesForTeam } from './core-helpers.js';
 import {
   buildScenarioStandings,
+  qualifyStandings,
   regularSeasonGamesFor,
   resolveSeasonRules,
   saundersLineSeed,
-  sortAndRankStandings,
 } from './current-season-command-data.js';
 import { isCompletedGame, seasonSourceSnapshot, weekForGame } from './current-season-data.js';
 import { gaussianSample, seededRng } from './shared/simulation-math.js';
 
 const DEFAULT_SIMULATIONS = 10000;
-const MODEL_VERSION = 'team-score-monte-carlo-v1';
+const MODEL_VERSION = 'team-score-monte-carlo-v2';
 const ODDS_CACHE = new Map();
 
 function numeric(value, fallback = null) {
@@ -263,13 +263,13 @@ function simulateOddsSnapshot(options = {}) {
   const liveScoresReliable = Boolean(options.currentSeason?.update_context?.contains_live_scores);
 
   if (!unresolved.length) {
-    const rows = sortAndRankStandings(baseline, rules).map(row => ({
+    const rows = qualifyStandings(baseline, rules).map(row => ({
       owner: row.owner,
-      playoffOdds: row.rank <= rules.playoff_slots ? 1 : 0,
-      byeOdds: row.rank <= rules.bye_slots ? 1 : 0,
-      saundersOdds: saundersStart && row.rank >= saundersStart ? 1 : 0,
+      playoffOdds: row.playoffSeed ? 1 : 0,
+      byeOdds: row.playoffSeed && row.playoffSeed <= rules.bye_slots ? 1 : 0,
+      saundersOdds: saundersStart && row.placementSeed >= saundersStart ? 1 : 0,
       seedProbabilities: Object.fromEntries(
-        owners.map((_, index) => [`${index + 1}`, index + 1 === row.rank ? 1 : 0]),
+        owners.map((_, index) => [`${index + 1}`, index + 1 === row.placementSeed ? 1 : 0]),
       ),
     }));
     const result = { rows, distributions, simulations };
@@ -305,13 +305,13 @@ function simulateOddsSnapshot(options = {}) {
       if (scoreA === scoreB) scoreA += rng() < 0.5 ? 0.01 : -0.01;
       applySimulatedGame(rowsByOwner, game, scoreA, scoreB);
     }
-    const ranked = sortAndRankStandings(finalizeRows(rowsByOwner), rules);
+    const ranked = qualifyStandings(finalizeRows(rowsByOwner), rules);
     for (const row of ranked) {
       const ownerCounts = counts.get(row.owner);
-      const seed = row.rank;
+      const seed = row.placementSeed;
       ownerCounts.seeds[seed - 1] += 1;
-      if (seed <= rules.playoff_slots) ownerCounts.playoff += 1;
-      if (seed <= rules.bye_slots) ownerCounts.bye += 1;
+      if (row.playoffSeed) ownerCounts.playoff += 1;
+      if (row.playoffSeed && row.playoffSeed <= rules.bye_slots) ownerCounts.bye += 1;
       if (saundersStart && seed >= saundersStart) ownerCounts.saunders += 1;
     }
   }

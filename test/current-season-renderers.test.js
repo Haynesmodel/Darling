@@ -43,6 +43,24 @@ test('current-season renderer builds a dashboard view model', () => {
   assert.equal(view.summary.closestGame.margin, 5);
 });
 
+test('PF playoff picture orders cards by playoff placement seed', () => {
+  const card = (owner, currentSeed, currentStandingsRank) => ({
+    owner, currentSeed, currentStandingsRank, record: '1-0', playoffGap: null, projectedSeed: currentSeed,
+    seedChange: 0, odds: null, status: { tone: 'bubble', label: 'Playoff race' },
+  });
+  const html = currentPlayoffPictureHtml({
+    presentation: { phase: 'regular-season' },
+    commandCenter: {
+      selectedView: 'command', selectedOwner: '',
+      rules: { sixth_spot_rule: 'points_for_outside_top_five', playoff_slots: 6, bye_slots: 2, saunders_slots: 2 },
+      summary: {},
+      playoffPicture: [card('Standings sixth', 7, 6), card('PF seed six', 6, 8), card('Seed five', 5, 5)],
+    },
+  });
+  assert.ok(html.indexOf('Seed five') < html.indexOf('PF seed six'));
+  assert.ok(html.indexOf('PF seed six') < html.indexOf('Standings sixth'));
+});
+
 test('current-season renderer emits hero, matchup, standings, and snapshot html', () => {
   const view = buildCurrentSeasonViewModel({
     leagueGames: games,

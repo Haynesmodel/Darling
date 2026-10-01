@@ -444,6 +444,12 @@ test('Playoff Machine deep link, provisional picks, exact score inputs, reset, a
   await expect(page).toHaveURL(/currentView=machine/);
   expect(requests.some(url => url.includes('current-season-odds'))).toBe(false);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  const scoreControlHeights = await page.locator('#currentPlayoffMachine .current-machine-scores input, #currentPlayoffMachine .current-machine-scores button')
+    .evaluateAll(elements => elements.map(element => element.getBoundingClientRect().height));
+  expect(scoreControlHeights.length).toBeGreaterThan(0);
+  expect(scoreControlHeights.every(height => height >= 40)).toBe(true);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await expectNoViolations(page, '#currentPlayoffMachine');
 
   await page.locator('#currentViewSelect').selectOption('matchups');

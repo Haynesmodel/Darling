@@ -153,18 +153,20 @@ The manifest contains exactly one named `chart-runtime`. Current Season, Head to
 
 `scripts/data/bundle-budget.json` and `npm run check:bundle` enforce:
 
-- aggregate JavaScript targeting 297,868 gzip after the final migration slice and at or below the 300,000 hard ceiling throughout;
+- aggregate JavaScript targeting 297,868 gzip after the final migration slice and at or below the 313,000 hard ceiling;
 - entry targeting 48,250 gzip and at or below 190,000 raw and 56,000 gzip;
 - chart-runtime targeting 97,000 gzip and at or below 305,000 raw and 100,000 gzip;
 - every non-validator chunk at or below 320,000 raw;
 - League Pulse, Owner Hub, and History settled closures at or below 115,000 gzip;
 - Transactions settled closure at or below 120,000 gzip and its feature entry at or below 18,000 gzip;
-- every settled chart route at or below 205,000 gzip;
+- Current Season settled route at or below 207,000 gzip; other settled chart routes at or below 205,000 gzip;
 - exactly one named chart-runtime and one Plot/vendor copy;
 - Plot exclusion from the entry, League Pulse, Owner Hub, Transactions, and History;
 - a dynamic, not static, Plot dependency for Head to Head and Draft Spot;
 - one shared runtime in every chart route;
 - dynamic manifest entries for all ten feature destinations and `load-league-assets`.
+
+The Playoff Machine allowance in PR #106 was measured against clean `main` at 304,991 aggregate JavaScript gzip bytes. The final conservative tie-handling implementation measured 311,340 aggregate and 205,906 for the settled Current Season route. The aggregate ceiling is 313,000 and the Current Season ceiling is 207,000; these leave 1,660 and 1,094 bytes of headroom, respectively. All other route, target, entry, feature, and chart-runtime budgets remain unchanged. The user approved these cap increases.
 
 `node scripts/check_bundle_size.cjs --json` emits stable static and settled fields for every route. The human report prints the same route table plus chunk and runtime measurements. Synthetic graph tests cover cycles, nested dynamic lookup, shared-chunk deduplication, selected dynamics, missing/duplicate/leaked runtimes, separator normalization, and static/settled/aggregate budget diagnostics.
 

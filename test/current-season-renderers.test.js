@@ -61,6 +61,30 @@ test('PF playoff picture orders cards by playoff placement seed', () => {
   assert.ok(html.indexOf('PF seed six') < html.indexOf('Standings sixth'));
 });
 
+test('completed PF tie shows tied candidates without assigning a seed six badge', () => {
+  const row = (owner, standingsRank, wildcardTie) => ({
+    owner, currentSeed: null, currentStandingsRank: standingsRank, qualificationReason: wildcardTie ? 'points_for_tie' : 'out',
+    record: '0-0-2', playoffGap: null, projectedSeed: null, seedChange: null, odds: null,
+    status: { tone: wildcardTie ? 'bubble' : 'eliminated', label: wildcardTie ? 'Tiebreak needed' : 'Eliminated' },
+  });
+  const html = currentPlayoffPictureHtml({
+    presentation: { phase: 'regular-season' },
+    commandCenter: {
+      selectedView: 'command', selectedOwner: '',
+      rules: { sixth_spot_rule: 'points_for_outside_top_five', playoff_slots: 6, bye_slots: 2, saunders_slots: 2 },
+      summary: {},
+      odds: { status: 'ready', modelLabel: 'Model', simulations: 100, liveMode: 'scores', modelVersion: 'v', methodology: 'Estimate.', wildcardTieOdds: 0.25 },
+      playoffPicture: [row('G', 7, true), row('H', 8, false), row('E', 6, true)],
+    },
+  });
+  assert.match(html, /Equal points leave seed 6 unresolved/);
+  assert.equal((html.match(/>Tied<\/div>/g) || []).length, 2);
+  assert.match(html, />Out<\/div>/);
+  assert.match(html, /Projected seed unresolved/);
+  assert.match(html, /Equal-points wildcard candidates share seed-6 probability in 25% of draws; no official tiebreak is assumed/);
+  assert.doesNotMatch(html, /current PF placement #6/);
+});
+
 test('current-season renderer emits hero, matchup, standings, and snapshot html', () => {
   const view = buildCurrentSeasonViewModel({
     leagueGames: games,

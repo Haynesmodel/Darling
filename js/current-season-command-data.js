@@ -275,38 +275,38 @@ function sortAndRankStandings(rows = [], rules = DEFAULT_PLAYOFF_RULES) {
   return ranked;
 }
 
-function compareWildcardTie(a, b, rules) {
-  for (const key of (rules.standings_tiebreakers || DEFAULT_PLAYOFF_RULES.standings_tiebreakers).filter(item => item !== 'points_for' && item !== 'win_pct')) {
-    const result = compareTiebreakerValue(a, b, key);
-    if (result) return result;
-  }
-  return a.owner.localeCompare(b.owner);
-}
-
 function qualifyStandings(rows = [], rules = DEFAULT_PLAYOFF_RULES) {
   const ranked = sortAndRankStandings(rows, rules);
-  const wildcard = rules?.sixth_spot_rule === 'points_for_outside_top_five' && rules.playoff_slots === 6
-    ? ranked.slice(5).slice().sort((a, b) => {
-      const pf = compareTiebreakerValue(a, b, 'points_for');
-      if (pf) return pf;
-      return compareWildcardTie(a, b, rules);
-    })[0] || null
-    : null;
+  const outsiders = ranked.slice(5);
+  const highestPoints = outsiders.length ? Math.max(...outsiders.map(row => Number(row.pointsFor) || 0)) : null;
+  const wildcardCandidates = rules?.sixth_spot_rule === 'points_for_outside_top_five' && rules.playoff_slots === 6
+    ? outsiders.filter(row => Number(row.pointsFor) === highestPoints)
+    : [];
+  const wildcard = wildcardCandidates.length === 1 ? wildcardCandidates[0] : null;
+  const tiedWildcardOwners = new Set(wildcardCandidates.length > 1 ? wildcardCandidates.map(row => row.owner) : []);
   const ordered = wildcard
-    ? [...ranked.slice(0, 5), wildcard, ...ranked.slice(5).filter(row => row.owner !== wildcard.owner)]
+    ? [...ranked.slice(0, 5), wildcard, ...outsiders.filter(row => row.owner !== wildcard.owner)]
     : ranked;
-  const playoffOwners = new Set(ordered.slice(0, rules.playoff_slots).map(row => row.owner));
-  const playoffSeedByOwner = new Map(ordered.slice(0, rules.playoff_slots).map((row, index) => [row.owner, index + 1]));
+  const playoffRows = tiedWildcardOwners.size ? ranked.slice(0, 5) : ordered.slice(0, rules.playoff_slots);
+  const playoffOwners = new Set(playoffRows.map(row => row.owner));
+  const playoffSeedByOwner = new Map(playoffRows.map((row, index) => [row.owner, index + 1]));
   const orderedIndex = new Map(ordered.map((row, index) => [row.owner, index + 1]));
   return ranked.map(row => ({
     ...row,
     standingsRank: row.rank,
-    placementSeed: orderedIndex.get(row.owner),
+    placementSeed: tiedWildcardOwners.size && row.rank > 5 ? null : orderedIndex.get(row.owner),
     playoffSeed: playoffSeedByOwner.get(row.owner) || null,
     qualificationReason: playoffOwners.has(row.owner)
       ? (wildcard?.owner === row.owner ? 'points_for' : 'standings')
-      : 'out',
+      : tiedWildcardOwners.has(row.owner) ? 'points_for_tie' : 'out',
   }));
+}
+
+function qualificationOutcomes(qualified) {
+  const tied = qualified.filter(row => row.qualificationReason === 'points_for_tie');
+  if (tied.length < 2) return [qualified.slice().sort((a, b) => a.placementSeed - b.placementSeed)];
+  const outsiders = qualified.slice(5);
+  return tied.map(candidate => [...qualified.slice(0, 5), candidate, ...outsiders.filter(row => row.owner !== candidate.owner)]);
 }
 
 function forceGameOutcome(game, owner, outcome) {
@@ -462,6 +462,7 @@ function classifyOwnerStatus({
   const seasonComplete = standings.length > 0 && standings.every(item => (remaining.get(item.owner)?.length || 0) === 0);
 
   if (seasonComplete) {
+    if (row.qualificationReason === 'points_for_tie') return { key: 'wildcard-tie', label: 'Tiebreak needed', tone: 'bubble' };
     const playoffSeed = rules.sixth_spot_rule === 'points_for_outside_top_five'
       ? row.playoffSeed
       : row.playoffSeed ?? row.rank;
@@ -560,6 +561,8 @@ function buildPlayoffPicture({
 } = {}) {
   const projectedByOwner = new Map(qualifyStandings(projectedStandings, rules).map(row => [row.owner, row]));
   const qualifiedCurrent = qualifyStandings(currentStandings, rules);
+  const projectedTie = [...projectedByOwner.values()].some(row => row.qualificationReason === 'points_for_tie');
+  const currentTie = qualifiedCurrent.some(row => row.qualificationReason === 'points_for_tie');
   const pfRanks = pointsForRanks(currentStandings);
   return qualifiedCurrent.map(row => {
     const projected = projectedByOwner.get(row.owner);
@@ -567,15 +570,13 @@ function buildPlayoffPicture({
     return {
       ...row,
       status,
-      currentSeed: row.placementSeed,
+      currentSeed: currentTie && row.standingsRank > 5 ? null : row.placementSeed,
       currentStandingsRank: row.standingsRank,
-      playoffSeed: row.playoffSeed,
-      qualificationReason: row.qualificationReason,
-      projectedSeed: projected?.placementSeed || projected?.projectedRank || projected?.rank || row.placementSeed,
+      projectedSeed: projectedTie && projected?.standingsRank > 5 ? null : projected?.placementSeed || projected?.projectedRank || projected?.rank || row.placementSeed,
       projectedPlayoffSeed: projected?.playoffSeed || null,
       projectedRecord: projected?.projectedRecord || projected?.record || row.record,
       projectedPointsFor: projected?.projectedPointsFor ?? projected?.pointsFor ?? row.pointsFor,
-      seedChange: (row.placementSeed || row.rank || 0) - (projected?.placementSeed || projected?.projectedRank || projected?.rank || row.placementSeed || row.rank || 0),
+      seedChange: currentTie && row.standingsRank > 5 || projectedTie && projected?.standingsRank > 5 ? null : (row.placementSeed || row.rank || 0) - (projected?.placementSeed || projected?.projectedRank || projected?.rank || row.placementSeed || row.rank || 0),
       pointsForRank: pfRanks.get(row.owner) || null,
       playoffGap: rules.sixth_spot_rule === 'points_for_outside_top_five' ? null : cutlineGap(row, currentStandings, rules.playoff_slots),
       byeGap: cutlineGap(row, currentStandings, rules.bye_slots),
@@ -746,6 +747,17 @@ function buildOwnerWeekNeeds({
   }));
 
   return pictureRows.map(row => {
+    if (row.qualificationReason === 'points_for_tie') return {
+      ...row,
+      opponent: null,
+      isSelected: row.owner === selectedOwner,
+      goalLabel: 'Tiebreak needed',
+      mainNeed: 'Sixth spot awaits an official tiebreak rule.',
+      helpNeeded: 'Equal total points leave these wildcard candidates tied for seed 6.',
+      pathSummary: `Standings rank ${row.currentStandingsRank}; no seed 6 is chosen.`,
+      riskSummary: 'The official wildcard tiebreak has not been set.',
+      saundersSummary: saundersSummary(row, resolvedRules, teamCount),
+    };
     const matchup = ownerMatchupForWeek(row.owner, { leagueGames, currentSeason, season, week });
     const side = matchup ? sidesForTeam(matchup, row.owner) : null;
     const opponent = side?.opp || null;
@@ -1119,7 +1131,6 @@ export {
   buildProjectedStandings,
   buildScenarioStandings,
   compareTiebreakerValue,
-  compareWildcardTie,
   classifyOwnerStatus,
   completedRegularSeasonGames,
   liveRegularSeasonGames,
@@ -1127,6 +1138,7 @@ export {
   normalizeCurrentView,
   normalizeProjectionMode,
   qualifyStandings,
+  qualificationOutcomes,
   regularSeasonGamesFor,
   remainingScheduleForOwner,
   resolveSeasonRules,

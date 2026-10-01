@@ -29,7 +29,7 @@ An explicit command view for a finalized season exposes historical/final analysi
 - Default run count: 10,000.
 - Seed: data version, season, selected week, model version, and the current game-score snapshot.
 - Outputs: playoff, bye, every seed, and Saunders probabilities for each active owner.
-- The shared qualification helper is applied to every simulation and completed-season snapshot. For the 2026 `points_for_outside_top_five` rule, standings ranks 1–5 keep seeds 1–5 and the highest-PF team outside them gets seed 6. Remaining placement seeds follow standings order.
+- The shared qualification helper is applied to every simulation and completed-season snapshot. The confirmed 2026 rule gives seeds 1–5 to the top five by record (points for breaks ties), then seed 6 to the highest-total-points team among the remaining seven. Remaining placement seeds follow standings order.
 - Additional snapshots: matching pre-week baseline, if-current-scores-hold, and selected-owner win/loss scenarios.
 - Historical week selection truncates the analyzed snapshot after that week, so movement always compares post-week N with pre-week N.
 - Historical records, seeds, statuses, gaps, and probabilities share that same post-week snapshot, while playoff/byes/Saunders slots are inferred from the selected season's stored bracket.
@@ -39,7 +39,7 @@ An explicit command view for a finalized season exposes historical/final analysi
 
 The machine shows every unresolved regular-season matchup through the configured final week. Outcome picks update wins/losses/ties only; they never add synthetic points for. Exact numeric scores update both points-for totals and the result. A scenario is labeled provisional until every unresolved game has two valid scores from 0 to 999.99, with at most two decimal places. Incomplete or structurally invalid weekly schedules withhold exact seeds.
 
-Scenario edits live in controller memory for the active visit. Switching views keeps them; changing season or data version clears them; reload starts empty. The machine does not call Monte Carlo. The 2026 sixth-spot rule remains a provisional inference pending commissioner confirmation. Ties among eligible outsiders use points for, then the remaining configured standings tiebreakers. This qualification rule is separate from `SeasonSummary.wild_card`, which means a postseason wild-card-round appearance.
+Scenario edits live in controller memory for the active visit. Switching views keeps them; changing season or data version clears them; reload starts empty. The machine does not call Monte Carlo. The 2026 qualification rule is confirmed; equal-total-points ties among wildcard candidates remain unresolved until an official rule is set. The machine and completed playoff picture do not choose a qualifier for a tie. Odds split a tied simulation draw evenly among tied candidates as an estimate only, without declaring an official seed 6. This rule is separate from `SeasonSummary.wild_card`, which means a postseason wild-card-round appearance.
 
 ## Team scoring distributions
 

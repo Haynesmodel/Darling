@@ -2,6 +2,7 @@ import { isRegularGame, sidesForTeam } from './core-helpers.js';
 import {
   buildScenarioStandings,
   qualifyStandings,
+  qualificationOutcomes,
   regularSeasonGamesFor,
   resolveSeasonRules,
   saundersLineSeed,
@@ -261,18 +262,34 @@ function simulateOddsSnapshot(options = {}) {
   const rng = seededRng(options.seed);
   const saundersStart = saundersLineSeed(rules, owners.length);
   const liveScoresReliable = Boolean(options.currentSeason?.update_context?.contains_live_scores);
+  let wildcardTieDraws = 0;
 
   if (!unresolved.length) {
-    const rows = qualifyStandings(baseline, rules).map(row => ({
-      owner: row.owner,
-      playoffOdds: row.playoffSeed ? 1 : 0,
-      byeOdds: row.playoffSeed && row.playoffSeed <= rules.bye_slots ? 1 : 0,
-      saundersOdds: saundersStart && row.placementSeed >= saundersStart ? 1 : 0,
-      seedProbabilities: Object.fromEntries(
-        owners.map((_, index) => [`${index + 1}`, index + 1 === row.placementSeed ? 1 : 0]),
-      ),
-    }));
-    const result = { rows, distributions, simulations };
+    const rows = new Map(owners.map(owner => [owner, {
+      playoffOdds: 0, byeOdds: 0, saundersOdds: 0, seeds: Array.from({ length: owners.length }, () => 0),
+    }]));
+    const outcomes = qualificationOutcomes(qualifyStandings(baseline, rules));
+    const weight = 1 / outcomes.length;
+    if (outcomes.length > 1) wildcardTieDraws = 1;
+    for (const outcome of outcomes) outcome.forEach((row, index) => {
+      const seed = rows.get(row.owner);
+      const placement = index + 1;
+      seed.seeds[placement - 1] += weight;
+      if (placement <= rules.playoff_slots) seed.playoffOdds += weight;
+      if (placement <= rules.bye_slots) seed.byeOdds += weight;
+      if (saundersStart && placement >= saundersStart) seed.saundersOdds += weight;
+    });
+    const resolved = owners.map(owner => {
+      const result = rows.get(owner);
+      return {
+        owner,
+        playoffOdds: result.playoffOdds,
+        byeOdds: result.byeOdds,
+        saundersOdds: result.saundersOdds,
+        seedProbabilities: Object.fromEntries(result.seeds.map((probability, index) => [`${index + 1}`, probability])),
+      };
+    });
+    const result = { rows: resolved, distributions, simulations, wildcardTieOdds: wildcardTieDraws };
     ODDS_CACHE.set(cacheKey, result);
     return result;
   }
@@ -305,15 +322,17 @@ function simulateOddsSnapshot(options = {}) {
       if (scoreA === scoreB) scoreA += rng() < 0.5 ? 0.01 : -0.01;
       applySimulatedGame(rowsByOwner, game, scoreA, scoreB);
     }
-    const ranked = qualifyStandings(finalizeRows(rowsByOwner), rules);
-    for (const row of ranked) {
+    const outcomes = qualificationOutcomes(qualifyStandings(finalizeRows(rowsByOwner), rules));
+    const weight = 1 / outcomes.length;
+    if (outcomes.length > 1) wildcardTieDraws += 1;
+    for (const outcome of outcomes) outcome.forEach((row, index) => {
       const ownerCounts = counts.get(row.owner);
-      const seed = row.placementSeed;
-      ownerCounts.seeds[seed - 1] += 1;
-      if (row.playoffSeed) ownerCounts.playoff += 1;
-      if (row.playoffSeed && row.playoffSeed <= rules.bye_slots) ownerCounts.bye += 1;
-      if (saundersStart && seed >= saundersStart) ownerCounts.saunders += 1;
-    }
+      const seed = index + 1;
+      ownerCounts.seeds[seed - 1] += weight;
+      if (seed <= rules.playoff_slots) ownerCounts.playoff += weight;
+      if (seed <= rules.bye_slots) ownerCounts.bye += weight;
+      if (saundersStart && seed >= saundersStart) ownerCounts.saunders += weight;
+    });
   }
 
   const rows = baseline.map(row => {
@@ -328,7 +347,7 @@ function simulateOddsSnapshot(options = {}) {
       ),
     };
   });
-  const result = { rows, distributions, simulations };
+  const result = { rows, distributions, simulations, wildcardTieOdds: wildcardTieDraws / simulations };
   ODDS_CACHE.set(cacheKey, result);
   if (ODDS_CACHE.size > 24) ODDS_CACHE.delete(ODDS_CACHE.keys().next().value);
   return result;
@@ -480,7 +499,8 @@ function buildCurrentSeasonOdds({
       simulations: current.simulations,
       seed,
       liveMode: hasReliableLiveScores ? 'Score-aware; not lineup-projection-aware' : 'Pregame team-strength model',
-      methodology: 'Completed current-season scoring is blended with recency-weighted owner history and a league prior. Remaining team scores are sampled deterministically and ranked with the configured standings tiebreakers.',
+      methodology: 'Completed current-season scoring is blended with recency-weighted owner history and a league prior. Remaining scores are sampled deterministically; equal-PF wildcard ties split probability across tied candidates without choosing an official qualifier.',
+      wildcardTieOdds: current.wildcardTieOdds,
       durationMs: endedAt - startedAt,
       rows: currentRows,
       movement,

@@ -1,8 +1,6 @@
 import { escapeHtml, nfmt } from './render-helpers.js';
 import { isCompletedGame, weekForGame } from './current-season-data.js';
 import {
-  compareTiebreakerValue,
-  compareWildcardTie,
   qualifyStandings,
   regularSeasonGamesFor,
   resolveSeasonRules,
@@ -109,15 +107,18 @@ function buildPlayoffMachine({ leagueGames = [], currentSeason = null, season, s
     pointsAgainst: 0, differential: 0, pct: 0, record: '0-0', streak: '', rank: null,
   });
   for (const [game, outcome] of pickedOutcomes) applyMachineOutcome(standingsByOwner, game, outcome);
-  const ranked = sortAndRankStandings([...standingsByOwner.values()], rules);
-  const qualified = qualifyStandings(ranked, rules);
+  const qualified = qualifyStandings([...standingsByOwner.values()], rules);
   const exact = scheduleComplete && allScored;
-  const outsiderRows = qualified.filter(row => row.standingsRank > 5)
-    .sort((a, b) => compareTiebreakerValue(a, b, 'points_for') || compareWildcardTie(a, b, rules));
-  const leader = outsiderRows[0] || null;
+  const outsiderRows = qualified.filter(row => row.standingsRank > 5);
+  outsiderRows.sort((a, b) => b.pointsFor - a.pointsFor);
+  const highestPoints = outsiderRows.length ? Math.max(...outsiderRows.map(row => row.pointsFor)) : null;
+  const leaders = outsiderRows.filter(row => row.pointsFor === highestPoints);
+  const wildcardTie = leaders.length > 1;
+  const leader = leaders.length === 1 ? leaders[0] : null;
   return {
     available: true,
     exact,
+    wildcardTie,
     issues,
     scheduleComplete,
     games: gameRows.filter(({ game }) => !isCompletedGame(game)).map(({ key, game, week }) => ({
@@ -137,8 +138,9 @@ function buildPlayoffMachine({ leagueGames = [], currentSeason = null, season, s
     weeks: [...new Set(eligible.map(row => row.week))].sort((a, b) => a - b),
     standings: qualified.map(row => ({ ...row, playoffSeed: exact ? row.playoffSeed : null })),
     actualStandings,
-    candidates: outsiderRows.map(row => ({ ...row, gap: leader ? Number((leader.pointsFor - row.pointsFor).toFixed(2)) : null })),
-    qualifier: exact ? leader : null,
+    candidates: outsiderRows.map(row => ({ ...row, gap: highestPoints === null ? null : Number((highestPoints - row.pointsFor).toFixed(2)) })),
+    leader,
+    qualifier: exact && !wildcardTie ? leader : null,
     normalSixth: qualified.find(row => row.standingsRank === 6) || null,
     rules,
   };
@@ -190,24 +192,31 @@ function currentPlayoffMachineHtml(machine, selectedWeek = null, root = docOrDef
     return gameTemplate.replace(/__[A-Z_]+__/gi, key => values[key.toUpperCase()] ?? key);
   };
   const actualByOwner = new Map(machine.actualStandings.map(row => [row.owner, row]));
-  const seedBoard = machine.exact ? `<section class="current-machine-seed-board"><h3>Your six playoff seeds</h3><p>Top five by standings · seed 6 by points for outside the top five</p><div>${machine.standings.filter(row => row.playoffSeed).sort((a, b) => a.playoffSeed - b.playoffSeed).map(row => `<article><small>Seed ${escapeHtml(row.playoffSeed)}${row.qualificationReason === 'points_for' ? ' · PF' : ''}</small><strong>${escapeHtml(row.owner)}</strong></article>`).join('')}</div></section>` : '';
-  const candidates = machine.candidates.map((row, index) => `<li${index === 0 ? ' class="current-machine-leader"' : ''}><strong>${escapeHtml(row.owner)}</strong><span>${escapeHtml(row.pointsFor.toFixed(2))} PF</span><span>${index === 0 ? 'Leader' : `−${escapeHtml(row.gap.toFixed(2))}`}</span></li>`).join('');
+  const seedBoard = machine.exact ? `<section class="current-machine-seed-board"><h3>Your playoff seeds</h3><p>${machine.wildcardTie ? `Scores complete; seed 6 unresolved. ${machine.candidates.filter(row => row.qualificationReason === 'points_for_tie').map(row => escapeHtml(row.owner)).join(' and ')} are tied on total points.` : 'Top five by standings · seed 6 by points for outside the top five'}</p><div>${machine.standings.filter(row => row.playoffSeed).sort((a, b) => a.playoffSeed - b.playoffSeed).map(row => `<article><small>Seed ${escapeHtml(row.playoffSeed)}${row.qualificationReason === 'points_for' ? ' · PF' : ''}</small><strong>${escapeHtml(row.owner)}</strong></article>`).join('')}</div></section>` : '';
+  const candidates = machine.candidates.map(row => {
+    const tied = row.qualificationReason === 'points_for_tie';
+    const leader = machine.leader?.owner === row.owner;
+    return `<li${tied ? ' class="current-machine-tied"' : leader ? ' class="current-machine-leader"' : ''}><strong>${escapeHtml(row.owner)}</strong><span>${escapeHtml(row.pointsFor.toFixed(2))} PF</span><span>${tied ? 'Tied for lead' : leader ? machine.exact ? 'Qualifier' : 'PF leader' : `−${escapeHtml(row.gap.toFixed(2))}`}</span></li>`;
+  }).join('');
   const liveStandings = machine.exact
-    ? machine.standings.filter(row => row.standingsRank <= 5 || row.playoffSeed === 6 || row.standingsRank === 6)
+    ? machine.standings.filter(row => row.standingsRank <= 5 || row.playoffSeed === 6 || row.standingsRank === 6 || row.qualificationReason === 'points_for_tie')
     : machine.standings.slice(0, 7);
-  const liveRows = liveStandings.map(row => `<tr${row.standingsRank === 6 ? ' class="current-machine-sixth"' : ''}><td>${escapeHtml(row.standingsRank)}</td><th scope="row">${escapeHtml(row.owner)}</th><td>${escapeHtml(row.record)}</td><td>${machine.exact ? `#${escapeHtml(row.playoffSeed || '–')}` : row.rank <= 5 ? `#${escapeHtml(row.rank)}` : row.rank === 6 ? '—' : 'PF race'}</td></tr>`).join('');
-  const fullRows = machine.standings.map(row => { const actual = actualByOwner.get(row.owner) || row; const rankChange = (actual.rank || row.rank) - (row.rank || 0); return `<tr><th scope="row">${escapeHtml(row.owner)}</th><td>${escapeHtml(actual.record)}</td><td>${escapeHtml(row.record)}</td><td>${escapeHtml(row.pointsFor.toFixed(2))}</td><td>${escapeHtml(row.standingsRank)}</td><td>${machine.exact ? escapeHtml(row.playoffSeed || 'Out') : 'Provisional'}</td><td>${rankChange > 0 ? '+' : ''}${escapeHtml(rankChange)}</td></tr>`; }).join('');
+  const liveRows = liveStandings.map(row => `<tr${row.standingsRank === 6 ? ' class="current-machine-sixth"' : ''}><td>${escapeHtml(row.standingsRank)}</td><th scope="row">${escapeHtml(row.owner)}</th><td>${escapeHtml(row.record)}</td><td>${machine.exact ? row.qualificationReason === 'points_for_tie' ? 'Tied' : `#${escapeHtml(row.playoffSeed || '–')}` : row.rank <= 5 ? `#${escapeHtml(row.rank)}` : row.rank === 6 ? '—' : 'PF race'}</td></tr>`).join('');
+  const fullRows = machine.standings.map(row => { const actual = actualByOwner.get(row.owner) || row; const rankChange = (actual.rank || row.rank) - (row.rank || 0); return `<tr><th scope="row">${escapeHtml(row.owner)}</th><td>${escapeHtml(actual.record)}</td><td>${escapeHtml(row.record)}</td><td>${escapeHtml(row.pointsFor.toFixed(2))}</td><td>${escapeHtml(row.standingsRank)}</td><td>${machine.exact ? row.qualificationReason === 'points_for_tie' ? 'Tiebreak needed' : escapeHtml(row.playoffSeed || 'Out') : 'Provisional'}</td><td>${rankChange > 0 ? '+' : ''}${escapeHtml(rankChange)}</td></tr>`; }).join('');
   const previous = machine.weeks.indexOf(week) <= 0;
   const next = machine.weeks.indexOf(week) >= machine.weeks.length - 1;
   const scored = machine.games.filter(game => game.edit?.scoreA !== '' && game.edit?.scoreA != null && game.edit?.scoreB !== '' && game.edit?.scoreB != null && !game.scoreError).length;
   const picks = machine.games.filter(game => game.edit?.outcome).length;
   const template = root?.getElementById('currentPlayoffMachineTemplate')?.innerHTML || '';
-  const status = machine.exact ? 'Exact for this scenario' : `Provisional · ${scored}/${machine.games.length} scored · ${picks} picks`;
-  const raceNote = machine.exact
+  const status = machine.exact ? machine.wildcardTie ? 'Scores complete · sixth spot unresolved' : 'Exact for this scenario' : `Provisional · ${scored}/${machine.games.length} scored · ${picks} picks`;
+  const raceNote = machine.wildcardTie
+    ? `Tie: ${machine.candidates.filter(row => row.qualificationReason === 'points_for_tie').map(row => escapeHtml(row.owner)).join(' and ')} have equal total points; no official seed 6 is chosen.`
+    : machine.exact
     ? `Exact: ${escapeHtml(machine.qualifier?.owner || 'No qualifier')} takes seed 6.${machine.normalSixth && machine.qualifier?.owner !== machine.normalSixth.owner ? ` ${escapeHtml(machine.normalSixth.owner)} is standings sixth.` : ''}`
     : 'Unscored games can change PF and the race leader.';
   const values = {
     __MACHINE_STATUS__: escapeHtml(status),
+    __MACHINE_EXPLANATION__: machine.wildcardTie ? 'Scores are complete, but equal total points leave seed 6 unresolved until an official tiebreak is set.' : 'Winner picks are provisional; exact placement needs scores for all remaining games.',
     __MACHINE_ISSUES__: machine.issues.map(issue => `<p class="current-machine-warning" role="status">${escapeHtml(issue)}</p>`).join(''),
     __PREVIOUS__: previous ? 'disabled' : '',
     __NEXT__: next ? 'disabled' : '',
@@ -238,8 +247,8 @@ function drawPlayoffMachine({ leagueGames, currentSeason, season, scenario, sele
   if (host) host.innerHTML = currentPlayoffMachineHtml(machine, selectedWeek, root);
   const announcement = root?.getElementById('currentMachineAnnouncement');
   const status = changeAnnouncement
-    ? `${changeAnnouncement}. ${machine.exact ? 'Exact seeds are ready for this scenario.' : 'Scenario placement is provisional.'}`
-    : machine.exact ? 'Exact seeds are ready for this scenario.' : 'Scenario standings are provisional.';
+    ? `${changeAnnouncement}. ${machine.wildcardTie ? 'Scores are complete; sixth spot remains unresolved.' : machine.exact ? 'Exact seeds are ready for this scenario.' : 'Scenario placement is provisional.'}`
+    : machine.wildcardTie ? 'Scores are complete; sixth spot remains unresolved.' : machine.exact ? 'Exact seeds are ready for this scenario.' : 'Scenario standings are provisional.';
   if (announcement && announcement.textContent !== status) announcement.textContent = status;
 }
 

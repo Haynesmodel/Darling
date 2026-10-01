@@ -378,3 +378,28 @@ test('completed PF-wildcard odds award seed six outside standings top five', () 
   assert.equal(wildcard.seedProbabilities['6'], 1);
   assert.equal(result.rows.reduce((sum, row) => sum + row.playoffOdds, 0), 6);
 });
+
+test('equal-PF wildcard odds split seed-six probability without choosing an official qualifier', () => {
+  const complete = {
+    season: 2026,
+    playoff_rules: {
+      regular_season_max_week: 1, playoff_slots: 6, bye_slots: 2, saunders_slots: 2,
+      sixth_spot_rule: 'points_for_outside_top_five',
+      standings_tiebreakers: ['win_pct', 'points_for', 'points_differential', 'owner'],
+    },
+    games: [
+      ['A', 'E'], ['B', 'F'], ['C', 'G'], ['D', 'H'],
+    ].map(([teamA, teamB]) => ({ season: 2026, date: '2026-09-06', week: 1, type: 'Regular', status: 'final', teamA, teamB, scoreA: 100, scoreB: 100 })),
+  };
+  const result = buildCurrentSeasonOdds({ currentSeason: complete, season: 2026, week: 1, dataVersion: 'pf-wildcard-tie', simulations: 1 });
+  for (const owner of ['F', 'G', 'H']) {
+    const row = result.rows.find(item => item.owner === owner);
+    assert.equal(row.playoffOdds, 1 / 3);
+    assert.equal(row.seedProbabilities['6'], 1 / 3);
+  }
+  assert.ok(Math.abs(result.rows.reduce((sum, row) => sum + row.playoffOdds, 0) - 6) < 1e-9);
+  for (let seed = 1; seed <= 8; seed += 1) {
+    assert.ok(Math.abs(result.rows.reduce((sum, row) => sum + row.seedProbabilities[String(seed)], 0) - 1) < 1e-9);
+  }
+  assert.equal(result.wildcardTieOdds, 1);
+});

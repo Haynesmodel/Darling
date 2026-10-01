@@ -646,33 +646,34 @@ function currentTeamSnapshotsHtml(view) {
 function currentPlayoffPictureHtml(view) {
   if (!selectedViewAllows(view, 'playoff')) return '';
   const command = view.commandCenter;
-  const rows = (command?.playoffPicture || []).slice().sort((a, b) => a.currentSeed - b.currentSeed || a.owner.localeCompare(b.owner));
+  const rows = (command?.playoffPicture || []).slice().sort((a, b) => (a.currentSeed ?? a.currentStandingsRank) - (b.currentSeed ?? b.currentStandingsRank));
   if (!rows.length) return view.presentation?.phase === 'postseason'
     ? ''
     : '<h3>Playoff Picture</h3><p class="muted">No playoff picture available.</p>';
   const estimatesMeaningful = (view.presentation?.phase || 'regular-season') === 'regular-season';
   const pointsForSixth = command.rules.sixth_spot_rule === 'points_for_outside_top_five';
+  const tiedWildcard = rows.some(row => row.qualificationReason === 'points_for_tie');
   const saundersLine = command.summary?.saundersLineSeed || null;
   return `
     <div class="section-heading current-section-heading">
       <h3>Playoff Picture</h3>
-      <div class="muted">${pointsForSixth ? 'Standings ranks 1–5 qualify; seed 6 goes to the highest points-for team outside the top five.' : `Top ${escapeHtml(command.rules.playoff_slots)} make playoffs`} &middot; Top ${escapeHtml(command.rules.bye_slots)} earn byes${saundersLine ? ` &middot; Saunders danger starts at seed ${escapeHtml(saundersLine)}` : ''}</div>
+      <div class="muted">${pointsForSixth ? `Standings ranks 1–5 qualify; seed 6 goes to the highest points-for team outside the top five.${tiedWildcard ? ' Equal points leave seed 6 unresolved until an official tiebreak is set.' : ''}` : `Top ${escapeHtml(command.rules.playoff_slots)} make playoffs`} &middot; Top ${escapeHtml(command.rules.bye_slots)} earn byes${saundersLine ? ` &middot; Saunders danger starts at seed ${escapeHtml(saundersLine)}` : ''}</div>
     </div>
     <div class="current-playoff-grid">
       ${rows.map(row => `
         ${row.currentSeed === command.rules.bye_slots + 1 ? '<div class="current-cutline">Bye line</div>' : ''}
-        ${row.currentSeed === command.rules.playoff_slots + 1 ? '<div class="current-cutline current-cutline-playoff">Playoff line</div>' : ''}
+        ${row.currentSeed === command.rules.playoff_slots + 1 || tiedWildcard && row.currentStandingsRank === 6 ? '<div class="current-cutline current-cutline-playoff">Playoff line</div>' : ''}
         ${saundersLine && row.currentSeed === saundersLine ? '<div class="current-cutline current-cutline-saunders">Saunders danger line</div>' : ''}
         <div class="current-seed-row${row.owner === command.selectedOwner ? ' current-owner-focus' : ''}">
-          <div class="current-seed-badge">${escapeHtml(row.currentSeed)}</div>
+          <div class="current-seed-badge">${row.qualificationReason === 'points_for_tie' ? 'Tied' : tiedWildcard && row.currentStandingsRank > 5 ? 'Out' : escapeHtml(row.currentSeed)}</div>
           <div class="current-seed-main">
             <strong>${escapeHtml(row.owner)}</strong>
-            <span>${escapeHtml(row.record)} &middot; Standings rank ${escapeHtml(row.currentStandingsRank || row.currentSeed)}${pointsForSixth ? ` · current PF placement #${escapeHtml(row.currentSeed)}` : ''}</span>
+            <span>${escapeHtml(row.record)} &middot; Standings rank ${escapeHtml(row.currentStandingsRank || row.currentSeed)}${pointsForSixth ? row.qualificationReason === 'points_for_tie' ? ' · PF tied for seed 6' : tiedWildcard && row.currentStandingsRank > 5 ? ' · Seed 6 unresolved' : ` · current PF placement #${escapeHtml(row.currentSeed)}` : ''}</span>
           </div>
           <div class="current-seed-meta">
             ${row.status.tone === 'clinched' ? `<button type="button" class="${statusClass(row.status)} current-lore-status" data-lore-trigger="current-clinched" data-lore-owner="${escapeHtml(row.owner)}">${escapeHtml(row.status.label)}</button>` : row.status.tone === 'eliminated' ? `<button type="button" class="${statusClass(row.status)} current-lore-status" data-lore-trigger="current-eliminated" data-lore-owner="${escapeHtml(row.owner)}">${escapeHtml(row.status.label)}</button>` : `<span class="${statusClass(row.status)}">${escapeHtml(row.status.label)}</span>`}
             <span>${escapeHtml(gapText(row.playoffGap))}</span>
-            ${estimatesMeaningful ? `<span>Projected ${escapeHtml(row.projectedSeed)} (${escapeHtml(signedSeedChange(row.seedChange))})</span>` : '<span>Deterministic final status</span>'}
+            ${estimatesMeaningful ? `<span>${row.qualificationReason === 'points_for_tie' || row.projectedSeed == null ? 'Projected seed unresolved' : `Projected ${escapeHtml(row.projectedSeed)} (${escapeHtml(signedSeedChange(row.seedChange))})`}</span>` : '<span>Deterministic final status</span>'}
             ${estimatesMeaningful && row.odds ? `
               <span class="current-odds-chip">Playoffs ${escapeHtml(fmtOdds(row.odds.playoffOdds))}</span>
               <span class="current-odds-chip">Bye ${escapeHtml(fmtOdds(row.odds.byeOdds))}</span>
@@ -691,6 +692,7 @@ function currentPlayoffPictureHtml(view) {
         <strong>${escapeHtml(command.odds.modelLabel)}</strong>
         <span>${escapeHtml(command.odds.simulations.toLocaleString())} simulations · ${escapeHtml(command.odds.liveMode)} · model ${escapeHtml(command.odds.modelVersion)}</span>
         <span>${escapeHtml(command.odds.methodology)}</span>
+        ${command.odds.wildcardTieOdds > 0 ? `<span>Equal-points wildcard candidates share seed-6 probability in ${escapeHtml(fmtOdds(command.odds.wildcardTieOdds))} of draws; no official tiebreak is assumed.</span>` : ''}
       </div>
     ` : estimatesMeaningful && command.odds?.status === 'error' ? `
       <div class="current-odds-methodology current-odds-error">

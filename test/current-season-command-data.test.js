@@ -158,6 +158,27 @@ test('PF-rule neutral owner need retains the selected week context', () => {
   assert.equal(joe.mainNeed, 'Week 2: the playoff race remains open.');
 });
 
+test('completed equal-PF wildcard candidates remain unresolved in owner needs', () => {
+  const teams = 'ABCDEFGH'.split('');
+  const games = [
+    ['A', 'B', 100, 100], ['C', 'D', 100, 100], ['E', 'F', 100, 100], ['G', 'H', 100, 100],
+    ['A', 'C', 100, 100], ['B', 'D', 100, 100], ['E', 'G', 100, 100], ['F', 'H', 130, 70],
+  ].map(([teamA, teamB, scoreA, scoreB], index) => ({
+    season: 2026, date: '2026-09-06', teamA, teamB, scoreA, scoreB,
+    week: index < 4 ? 1 : 2, type: 'Regular', round: '', status: 'final',
+  }));
+  const completed = {
+    season: 2026, current_week: 2, teams: teams.map((owner, roster_id) => ({ owner, roster_id: roster_id + 1 })), games,
+    playoff_rules: { regular_season_max_week: 2, playoff_slots: 6, bye_slots: 2, saunders_slots: 2,
+      sixth_spot_rule: 'points_for_outside_top_five', standings_tiebreakers: ['win_pct', 'points_for', 'points_differential', 'owner'] },
+  };
+  const candidates = buildOwnerWeekNeeds({ currentSeason: completed, season: 2026, week: 2 })
+    .filter(row => row.status.key === 'wildcard-tie');
+  assert.deepEqual(candidates.map(row => row.owner).sort(), ['E', 'G']);
+  assert.equal(candidates.every(row => row.mainNeed === 'Sixth spot awaits an official tiebreak rule.'), true);
+  assert.equal(candidates.every(row => row.currentSeed === null), true);
+});
+
 test('owner needs cover clinched, eliminated, and no-matchup owners', () => {
   const completeSeason = {
     season: 2026,

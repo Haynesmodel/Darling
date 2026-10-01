@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildPlayoffMachine, currentPlayoffMachineHtml, playoffMachineGameKey } from '../js/current-season-machine.js';
+import { buildPlayoffMachine, currentPlayoffMachineHtml, drawPlayoffMachine, playoffMachineGameKey } from '../js/current-season-machine.js';
 import { qualifyStandings } from '../js/current-season-command-data.js';
 
 const teams = 'ABCDEFGH'.split('');
@@ -38,15 +38,16 @@ test('points-for qualifier keeps top five and awards seed six to the highest-PF 
   assert.deepEqual([...new Set(qualified.map(row => row.placementSeed))].sort((a, b) => a - b), [1, 2, 3, 4, 5, 6, 7, 8]);
 });
 
-test('PF ties use configured tiebreakers after points for, not standings win percentage', () => {
+test('equal-PF wildcard candidates remain tied without an official fallback tiebreak', () => {
   const rows = teams.map((owner, index) => ({
     owner, wins: 12 - index, losses: index, ties: 0, games: 12,
     pct: (12 - index) / 12, pointsFor: index < 5 ? 200 : 100,
     differential: owner === 'G' ? 10 : owner === 'F' ? -10 : 0, rank: index + 1,
   }));
   const qualified = qualifyStandings(rows, season.playoff_rules);
-  assert.equal(qualified.find(row => row.owner === 'G').playoffSeed, 6);
-  assert.equal(qualified.find(row => row.owner === 'F').playoffSeed, null);
+  assert.deepEqual(qualified.filter(row => row.qualificationReason === 'points_for_tie').map(row => row.owner).sort(), ['F', 'G', 'H']);
+  assert.equal(qualified.filter(row => row.playoffSeed).length, 5);
+  assert.equal(qualified.find(row => row.owner === 'G').playoffSeed, null);
 });
 
 test('machine keeps winner picks provisional and uses complete scores for exact PF seeds', () => {
@@ -121,4 +122,32 @@ test('completed schedule renders completion copy without undefined week or navig
   assert.match(html, /regular season is complete/i);
   assert.doesNotMatch(html, /Week undefined|data-machine-action="week-(?:prev|next)"/);
   assert.doesNotMatch(html, /data-machine-action="clear-week"/);
+});
+
+test('equal-PF wildcard leaders remain unseeded and are announced as unresolved', () => {
+  const completedSeason = { ...season, games: season.games.map((source, index) => ({
+    ...source, status: 'final', scoreA: index === 7 ? 130 : 100, scoreB: index === 7 ? 70 : 100,
+  })) };
+  const machine = buildPlayoffMachine({ currentSeason: completedSeason, season: 2026 });
+  assert.equal(machine.exact, true);
+  assert.equal(machine.wildcardTie, true);
+  assert.equal(machine.qualifier, null);
+  assert.equal(machine.standings.filter(row => row.playoffSeed).length, 5);
+  assert.deepEqual(machine.candidates.filter(row => row.qualificationReason === 'points_for_tie').map(row => row.owner).sort(), ['E', 'G']);
+  assert.deepEqual(machine.candidates.map(row => row.owner), ['E', 'G', 'H']);
+  assert.equal(machine.candidates.find(row => row.owner === 'H').gap, 30);
+
+  let html = '';
+  const notice = { textContent: '' };
+  const root = { getElementById: id => id === 'currentPlayoffMachine'
+    ? { set innerHTML(value) { html = value; } }
+    : id === 'currentMachineAnnouncement' ? notice
+      : id === 'currentPlayoffMachineTemplate'
+        ? { innerHTML: '__MACHINE_STATUS__ __MACHINE_EXPLANATION__ __SEED_BOARD__ __CANDIDATES__ __RACE_NOTE__' }
+        : { innerHTML: '' } };
+  drawPlayoffMachine({ currentSeason: completedSeason, season: 2026, doc: root });
+  assert.match(html, /Scores complete · sixth spot unresolved/);
+  assert.match(html, /no official seed 6 is chosen/);
+  assert.doesNotMatch(html, /Seed 6/);
+  assert.match(notice.textContent, /sixth spot remains unresolved/);
 });

@@ -35,12 +35,30 @@ export function createFeatureController(): DarlingFeatureController {
   let activeSignal: AbortSignal | null = null;
   let disclosure: SectionDisclosureController | null = null;
   let machineRuntimePromise: Promise<any> | null = null;
+  let bracketOpener: HTMLElement | null = null;
   let shareActions: ShareCardActionController[] = [];
   const odds = new Map<string, any>();
 
   const disposeShareActions = () => {
     shareActions.forEach(action => action.dispose());
     shareActions = [];
+  };
+  const onBracketClose = () => {
+    context.document.body.classList.remove('no-scroll');
+    const opener = bracketOpener;
+    bracketOpener = null;
+    if (opener?.isConnected && state?.selectedView === 'machine' && !activeSignal?.aborted) {
+      context.window.requestAnimationFrame(() => opener.focus({ preventScroll: true }));
+    }
+  };
+  const closeMachineBracket = () => {
+    const dialog = context?.document.getElementById('currentMachineBracketDialog') as HTMLDialogElement | null;
+    bracketOpener = null;
+    if (dialog?.open) dialog.close();
+  };
+  const onBracketNavigationClose = (event: Event) => {
+    event.preventDefault();
+    closeMachineBracket();
   };
   const onScheduleClick = (event: Event) => {
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-schedule-team]');
@@ -79,6 +97,22 @@ export function createFeatureController(): DarlingFeatureController {
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>('#currentPlayoffMachine button[data-machine-action]');
     if (!button || !state) return;
     const action = button.dataset.machineAction;
+    if (action === 'view-bracket') {
+      const dialog = context.document.getElementById('currentMachineBracketDialog') as HTMLDialogElement | null;
+      if (dialog && !dialog.open && state.selectedView === 'machine') {
+        machineRuntimePromise ||= import('../../../js/current-season-machine.js');
+        const runtime = await machineRuntimePromise;
+        if (!button.isConnected || !state || activeSignal?.aborted || state.selectedView !== 'machine') return;
+        const machine = runtime.buildPlayoffMachine({ leagueGames: context.data.leagueGames, currentSeason: context.data.currentSeason, season: state.selectedSeason, scenario: state.machineEdits || {} });
+        const content = context.document.getElementById('currentMachineBracketContent');
+        if (content) content.innerHTML = runtime.machineBracketHtml(machine);
+        bracketOpener = button;
+        context.document.body.classList.add('no-scroll');
+        dialog.showModal();
+        context.window.requestAnimationFrame(() => context.document.getElementById('currentMachineBracketTitle')?.focus());
+      }
+      return;
+    }
     const edits = { ...(state.machineEdits || {}) };
     let machineWeek = state.machineWeek ?? Number(context.document.querySelector<HTMLButtonElement>('#currentPlayoffMachine [data-machine-action="clear-week"]')?.dataset.week);
     if (action === 'reset') Object.keys(edits).forEach(key => delete edits[key]);
@@ -154,11 +188,13 @@ export function createFeatureController(): DarlingFeatureController {
     const available = presentation.phase === 'regular-season'
       && Number(presentation.season) === Number(context.data.currentSeason?.season);
     if (state.selectedView !== 'machine') {
+      closeMachineBracket();
       const host = context.document.getElementById('currentPlayoffMachine');
       if (host) host.innerHTML = '';
       return;
     }
     if (!available) {
+      closeMachineBracket();
       const host = context.document.getElementById('currentPlayoffMachine');
       if (host) host.innerHTML = '<div class="section-heading"><h3>Playoff Machine</h3></div><p class="muted">The Playoff Machine is available during the active regular season.</p>';
       return;
@@ -382,6 +418,8 @@ export function createFeatureController(): DarlingFeatureController {
       context.document.getElementById('currentScheduleRoot')?.addEventListener('click', onScheduleClick);
       context.document.getElementById('currentPlayoffMachine')?.addEventListener('click', onMachineClick);
       context.document.getElementById('currentPlayoffMachine')?.addEventListener('input', onMachineInput);
+      context.document.getElementById('currentMachineBracketDialog')?.addEventListener('close', onBracketClose);
+      context.document.getElementById('currentMachineBracketDialog')?.addEventListener('darling:dialog-navigation-close', onBracketNavigationClose);
     },
     activate(input: FeatureActivation) {
       activeSignal = input.signal;
@@ -426,15 +464,19 @@ export function createFeatureController(): DarlingFeatureController {
       draw();
     },
     deactivate() {
+      closeMachineBracket();
       activeSignal = null;
       disposeShareActions();
     },
     dispose() {
+      closeMachineBracket();
       disposeShareActions();
       disclosure?.dispose();
       context?.document.getElementById('currentScheduleRoot')?.removeEventListener('click', onScheduleClick);
       context?.document.getElementById('currentPlayoffMachine')?.removeEventListener('click', onMachineClick);
       context?.document.getElementById('currentPlayoffMachine')?.removeEventListener('input', onMachineInput);
+      context?.document.getElementById('currentMachineBracketDialog')?.removeEventListener('close', onBracketClose);
+      context?.document.getElementById('currentMachineBracketDialog')?.removeEventListener('darling:dialog-navigation-close', onBracketNavigationClose);
       disclosure = null;
     },
   };

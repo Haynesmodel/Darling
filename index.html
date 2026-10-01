@@ -338,6 +338,12 @@
         <p id="currentMachineAnnouncement" class="visually-hidden" aria-live="polite" aria-atomic="true"></p>
         <section id="currentPlayoffMachine" class="feature-section-content current-playoff-machine"></section>
       </details>
+      <dialog id="currentMachineBracketDialog" class="current-machine-bracket-dialog" aria-labelledby="currentMachineBracketTitle" aria-describedby="currentMachineBracketDescription">
+        <div class="current-machine-bracket-shell">
+          <header><h2 id="currentMachineBracketTitle" tabindex="-1">Playoff bracket</h2><form method="dialog"><button type="submit" aria-label="Close playoff bracket">Close</button></form></header>
+          <div id="currentMachineBracketContent"><p id="currentMachineBracketDescription">Open this dialog from the Live scenario panel to review score progress or the exact bracket.</p></div>
+        </div>
+      </dialog>
       <template id="currentPlayoffMachineTemplate">
         <div data-machine-seed>__SEED_BOARD__</div>
         <div class="section-heading current-section-heading"><h3>Playoff Machine</h3><div class="current-machine-status">__MACHINE_STATUS__</div></div>
@@ -351,7 +357,7 @@
             __MACHINE_ACTIONS__
           </section>
           <aside class="current-machine-race">
-            <section><h3>Live scenario</h3><p class="muted">__SCENARIO_LABEL__</p><div class="current-machine-scroll" role="region" aria-label="Live scenario standings" tabindex="0"><table><thead><tr><th>Standing</th><th>Team</th><th>Scenario</th><th>Seed</th></tr></thead><tbody><!--__LIVE_ROWS__--></tbody></table></div><a href="#currentMachineFullStandings">Full __OWNER_COUNT__-owner standings below ↓</a></section>
+            <section><div class="current-machine-live-heading"><h3>Live scenario</h3><button type="button" class="current-machine-bracket-trigger" data-machine-action="view-bracket">View bracket</button></div><p class="muted">__SCENARIO_LABEL__</p><div class="current-machine-scroll" role="region" aria-label="Live scenario standings" tabindex="0"><table><thead><tr><th>Standing</th><th>Team</th><th>Scenario</th><th>Seed</th></tr></thead><tbody><!--__LIVE_ROWS__--></tbody></table></div><a href="#currentMachineFullStandings">Full __OWNER_COUNT__-owner standings below ↓</a></section>
             <section><h3>Sixth-spot points race</h3><p class="muted">Highest PF outside standings top five</p><ol>__CANDIDATES__</ol><p class="current-machine-race-note">__RACE_NOTE__</p></section>
           </aside>
         </div>

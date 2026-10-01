@@ -246,11 +246,40 @@ function currentPlayoffMachineHtml(machine, selectedWeek = null, root = docOrDef
   });
 }
 
+function machineBracketHtml(machine) {
+  const required = machine?.games?.length || 0;
+  const scored = machine?.games?.filter(game => validScenarioScore(game.edit?.scoreA) !== null
+    && validScenarioScore(game.edit?.scoreB) !== null && !game.scoreError && !game.editError).length || 0;
+  const description = machine?.scheduleComplete
+    ? `The bracket is exact only after all ${required} remaining regular-season games have valid score pairs.`
+    : 'The schedule is incomplete, so bracket seeds cannot be calculated safely.';
+  if (!machine?.scheduleComplete) {
+    return `<p id="currentMachineBracketDescription">${escapeHtml(description)}</p><p role="status">No bracket is available until the regular-season schedule is complete.</p>`;
+  }
+  if (!machine.exact) {
+    return `<p id="currentMachineBracketDescription">${escapeHtml(description)}</p><p role="status">${scored} of ${required} remaining games have complete scenario scores.</p><p>Seeds and matchups are withheld until every score is entered.</p>`;
+  }
+  if (machine.wildcardTie || !machine.qualifier) {
+    const tied = machine.candidates.filter(row => row.qualificationReason === 'points_for_tie').map(row => escapeHtml(row.owner)).join(' and ');
+    return `<p id="currentMachineBracketDescription">Regular-season scores are complete, but the sixth seed is unresolved.</p><p role="status">${escapeHtml(tied || 'Wildcard candidates')} are tied on total points. No official points-for tiebreak has been set, so an exact bracket is not shown.</p>`;
+  }
+  const seeds = machine.standings.filter(row => row.playoffSeed).sort((a, b) => a.playoffSeed - b.playoffSeed);
+  if (seeds.length !== 6 || seeds.some((row, index) => row.playoffSeed !== index + 1)) {
+    return '<p id="currentMachineBracketDescription">The completed scenario does not produce six valid seeds.</p><p role="status">Bracket unavailable.</p>';
+  }
+  const seed = number => seeds.find(row => row.playoffSeed === number);
+  const card = (row, label = `Seed ${row.playoffSeed}`) => `<li><small>${escapeHtml(label)}</small><strong>${escapeHtml(row.owner)}</strong></li>`;
+  const matchup = (a, b) => `<section><h4>Opening round</h4><ol>${card(seed(a))}${card(seed(b))}</ol></section>`;
+  return `<p id="currentMachineBracketDescription">Exact six-seed bracket for this regular-season score scenario. Playoff-round scores are not part of this scenario.</p><div class="current-machine-bracket-grid"><section><h3>Byes</h3><ol>${card(seed(1))}${card(seed(2))}</ol></section><div class="current-machine-bracket-openers">${matchup(3, 6)}${matchup(4, 5)}</div><section><h3>Semifinals</h3><ol><li><small>Winner TBD</small><strong>${escapeHtml(seed(1).owner)} vs winner of 4/5</strong></li><li><small>Winner TBD</small><strong>${escapeHtml(seed(2).owner)} vs winner of 3/6</strong></li></ol></section><section><h3>Final</h3><ol><li><small>Winner TBD</small><strong>Semifinal winners</strong></li></ol></section></div>`;
+}
+
 function drawPlayoffMachine({ leagueGames, currentSeason, season, scenario, selectedWeek, changeAnnouncement, doc } = {}) {
   const root = docOrDefault(doc);
   const host = root?.getElementById('currentPlayoffMachine');
   const machine = buildPlayoffMachine({ leagueGames, currentSeason, season, scenario });
   if (host) host.innerHTML = currentPlayoffMachineHtml(machine, selectedWeek, root);
+  const bracket = root?.getElementById('currentMachineBracketContent');
+  if (bracket) bracket.innerHTML = machineBracketHtml(machine);
   const announcement = root?.getElementById('currentMachineAnnouncement');
   const tieAnnouncement = machine.exact
     ? 'Scores are complete; sixth spot remains unresolved.'
@@ -261,4 +290,4 @@ function drawPlayoffMachine({ leagueGames, currentSeason, season, scenario, sele
   if (announcement && announcement.textContent !== status) announcement.textContent = status;
 }
 
-export { buildPlayoffMachine, currentPlayoffMachineHtml, drawPlayoffMachine, playoffMachineGameKey, validMachineEdit };
+export { buildPlayoffMachine, currentPlayoffMachineHtml, drawPlayoffMachine, machineBracketHtml, playoffMachineGameKey, validMachineEdit };

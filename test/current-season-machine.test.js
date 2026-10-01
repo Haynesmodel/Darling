@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildPlayoffMachine, currentPlayoffMachineHtml, drawPlayoffMachine, playoffMachineGameKey } from '../js/current-season-machine.js';
+import { buildPlayoffMachine, currentPlayoffMachineHtml, drawPlayoffMachine, machineBracketHtml, playoffMachineGameKey } from '../js/current-season-machine.js';
 import { qualifyStandings } from '../js/current-season-command-data.js';
 
 const teams = 'ABCDEFGH'.split('');
@@ -78,6 +78,13 @@ test('machine keeps winner picks provisional and uses complete scores for exact 
   assert.equal(exact.normalSixth.owner, 'C');
   assert.equal(exact.standings.find(row => row.owner === 'A').pointsFor, 110.29);
   assert.equal(exact.standings.find(row => row.owner === 'D').pointsFor, 1099.99);
+  const bracket = machineBracketHtml(exact);
+  assert.match(bracket, /Exact six-seed bracket/);
+  assert.match(bracket, /Opening round/);
+  assert.match(bracket, /Winner TBD/);
+  assert.match(bracket, /Final/);
+  assert.match(bracket, /winner of 4\/5/);
+  assert.match(bracket, /winner of 3\/6/);
 });
 
 test('machine retains owners that have no completed or scored games', () => {
@@ -96,6 +103,8 @@ test('invalid and partial score pairs cannot produce exact qualification', () =>
   const machine = buildPlayoffMachine({ currentSeason: season, season: 2026, scenario: Object.fromEntries(entries) });
   assert.equal(machine.exact, false);
   assert.match(machine.games.at(-1).scoreError, /0 to 999.99/);
+  assert.match(machineBracketHtml(machine), /3 of 4 remaining games have complete scenario scores/);
+  assert.doesNotMatch(machineBracketHtml(machine), /Seed 6|Opening round/);
 });
 
 test('malformed valid-key edits are warned and ignored for standings and exactness', () => {
@@ -153,6 +162,8 @@ test('equal-PF wildcard leaders remain unseeded and are announced as unresolved'
   assert.match(html, /no official seed 6 is chosen/);
   assert.doesNotMatch(html, /Seed 6/);
   assert.match(notice.textContent, /sixth spot remains unresolved/);
+  assert.match(machineBracketHtml(machine), /no official points-for tiebreak has been set/i);
+  assert.doesNotMatch(machineBracketHtml(machine), /Opening round|Seed 6/);
 });
 
 test('provisional equal-PF leaders are not described as a completed tie', () => {

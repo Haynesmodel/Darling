@@ -497,3 +497,17 @@
     grid-template-columns:minmax(0,1fr);
   }
 }
+
+.current-machine-live-heading,.current-machine-bracket-dialog header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.current-machine-live-heading h3,.current-machine-bracket-dialog h2{margin:0}
+.current-machine-bracket-trigger,.current-machine-bracket-dialog button{min-height:44px;padding:8px 12px;border:1px solid var(--border-strong);border-radius:7px;background:var(--surface-panel);color:var(--text-primary);font:inherit;cursor:pointer}
+.current-machine-bracket-dialog{width:min(820px,calc(100vw - 24px));max-width:none;max-height:calc(100vh - 24px);padding:0;overflow:auto;border:1px solid var(--border-strong);border-radius:12px;background:var(--surface-panel);color:var(--text-primary)}
+.current-machine-bracket-dialog::backdrop{background:rgb(0 0 0 / .62)}
+.current-machine-bracket-shell{display:grid;gap:16px;padding:clamp(16px,4vw,28px)}
+.current-machine-bracket-dialog h2{font-size:22px}.current-machine-bracket-dialog h3,.current-machine-bracket-dialog h4{margin:0 0 10px}.current-machine-bracket-dialog p{line-height:1.5}
+.current-machine-bracket-grid,.current-machine-bracket-openers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.current-machine-bracket-grid>section,.current-machine-bracket-openers>section{min-width:0;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--surface-panel-alt)}
+.current-machine-bracket-dialog ol{display:grid;gap:8px;margin:0;padding:0;list-style:none}.current-machine-bracket-dialog li{padding:8px;border:1px solid var(--border);border-radius:6px}.current-machine-bracket-dialog li strong,.current-machine-bracket-dialog li small{display:block}.current-machine-bracket-dialog li small{margin-bottom:3px;color:var(--muted)}
+.current-machine-bracket-dialog :focus-visible,.current-machine-bracket-trigger:focus-visible{outline:3px solid var(--accent-ring);outline-offset:2px}
+@media (max-width:700px){.current-machine-bracket-grid,.current-machine-bracket-openers{grid-template-columns:minmax(0,1fr)}.current-machine-live-heading{align-items:flex-start;flex-wrap:wrap}}
+@media (forced-colors:active){.current-machine-bracket-dialog,.current-machine-bracket-grid>section,.current-machine-bracket-openers>section,.current-machine-bracket-dialog li{border-color:CanvasText}.current-machine-bracket-dialog button,.current-machine-bracket-trigger{background:Canvas;color:ButtonText}.current-machine-bracket-dialog :focus-visible,.current-machine-bracket-trigger:focus-visible{outline-color:Highlight}}

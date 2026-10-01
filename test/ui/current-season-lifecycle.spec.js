@@ -483,6 +483,43 @@ test('Playoff Machine disables duplicate-game controls in production DOM', async
   await expectNoViolations(page, '#currentPlayoffMachine');
 });
 
+test('Playoff Machine click controls navigate weeks and clear scoped or all edits', async ({ page }) => {
+  await createSnapshotFixture().install(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/?tab=current&currentSeason=2026&currentView=machine');
+  await page.waitForLoadState('networkidle');
+  const machine = page.locator('#currentPlayoffMachine');
+  const announcement = page.locator('#currentMachineAnnouncement');
+  const weekLabel = machine.locator('.current-machine-week-nav strong');
+  const weekNumber = async () => Number((await weekLabel.textContent()).match(/Week (\d+)/)?.[1]);
+  const startWeek = await weekNumber();
+
+  await machine.locator('button[data-machine-action="week-next"]').click();
+  await expect(weekLabel).toContainText(`Week ${startWeek + 1}`);
+  await expect(announcement).toContainText(`Showing week ${startWeek + 1}`);
+  await machine.locator('button[data-machine-action="week-prev"]').click();
+  await expect(weekLabel).toContainText(`Week ${startWeek}`);
+
+  const firstGame = machine.locator('.current-machine-game').first();
+  const pick = firstGame.locator('button[data-machine-action="outcome"]').first();
+  await pick.click();
+  await expect(pick).toHaveAttribute('aria-pressed', 'true');
+  await expect(announcement).toContainText('Picked');
+  await firstGame.locator('button[data-machine-action="clear-game"]').click();
+  await expect(firstGame.locator('button[data-machine-action="outcome"]').first()).toHaveAttribute('aria-pressed', 'false');
+  await expect(announcement).toContainText('Cleared a matchup pick');
+
+  await firstGame.locator('button[data-machine-action="outcome"]').first().click();
+  await machine.locator('button[data-machine-action="clear-week"]').click();
+  await expect(firstGame.locator('button[data-machine-action="outcome"]').first()).toHaveAttribute('aria-pressed', 'false');
+  await expect(announcement).toContainText(`Cleared week ${startWeek}`);
+
+  await firstGame.locator('button[data-machine-action="outcome"]').first().click();
+  await machine.locator('button[data-machine-action="reset"]').click();
+  await expect(machine.locator('button[data-machine-action="outcome"][aria-pressed="true"]')).toHaveCount(0);
+  await expect(announcement).toContainText('Reset all scenario picks');
+});
+
 test('Playoff Machine shows exact six-seed board when every remaining game has scores', async ({ page }) => {
   const fixture = createSnapshotFixture({ mutations: { CurrentSeason: current => {
     const unresolved = current.games.find(game => !['final', 'complete', 'completed'].includes(String(game.status).toLowerCase()));

@@ -43,10 +43,11 @@ export function createFeatureController(): DarlingFeatureController {
     shareActions.forEach(action => action.dispose());
     shareActions = [];
   };
-  const onBracketClose = () => {
+  const onBracketClose = (event: Event) => {
     context.document.body.classList.remove('no-scroll');
     const opener = bracketOpener;
     bracketOpener = null;
+    (event.currentTarget as HTMLDialogElement).remove();
     if (opener?.isConnected && state?.selectedView === 'machine' && !activeSignal?.aborted) {
       context.window.requestAnimationFrame(() => opener.focus({ preventScroll: true }));
     }
@@ -55,6 +56,7 @@ export function createFeatureController(): DarlingFeatureController {
     const dialog = context?.document.getElementById('currentMachineBracketDialog') as HTMLDialogElement | null;
     bracketOpener = null;
     if (dialog?.open) dialog.close();
+    else dialog?.remove();
   };
   const onBracketNavigationClose = (event: Event) => {
     event.preventDefault();
@@ -98,17 +100,27 @@ export function createFeatureController(): DarlingFeatureController {
     if (!button || !state) return;
     const action = button.dataset.machineAction;
     if (action === 'view-bracket') {
-      const dialog = context.document.getElementById('currentMachineBracketDialog') as HTMLDialogElement | null;
-      if (dialog && !dialog.open && state.selectedView === 'machine') {
+      if (state.selectedView === 'machine') {
         machineRuntimePromise ||= import('../../../js/current-season-machine.js');
         const runtime = await machineRuntimePromise;
         if (!button.isConnected || !state || activeSignal?.aborted || state.selectedView !== 'machine') return;
         const machine = runtime.buildPlayoffMachine({ leagueGames: context.data.leagueGames, currentSeason: context.data.currentSeason, season: state.selectedSeason, scenario: state.machineEdits || {} });
-        const content = context.document.getElementById('currentMachineBracketContent');
-        if (content) content.innerHTML = runtime.machineBracketHtml(machine);
+        context.document.getElementById('currentMachineBracketDialog')?.remove();
+        const template = context.document.getElementById('currentMachineBracketTemplate') as HTMLTemplateElement | null;
+        if (!template) return;
+        const fragment = template.content.cloneNode(true) as DocumentFragment;
+        const dialog = fragment.querySelector<HTMLDialogElement>('#currentMachineBracketDialog');
+        const content = fragment.querySelector<HTMLElement>('#currentMachineBracketContent');
+        if (!dialog || !content) return;
+        content.innerHTML = runtime.machineBracketHtml(machine);
+        dialog.addEventListener('close', onBracketClose);
+        dialog.addEventListener('darling:dialog-navigation-close', onBracketNavigationClose);
+        context.document.getElementById('page-current')?.append(fragment);
+        const mountedDialog = context.document.getElementById('currentMachineBracketDialog') as HTMLDialogElement | null;
+        if (!mountedDialog) return;
         bracketOpener = button;
         context.document.body.classList.add('no-scroll');
-        dialog.showModal();
+        mountedDialog.showModal();
         context.window.requestAnimationFrame(() => context.document.getElementById('currentMachineBracketTitle')?.focus());
       }
       return;
@@ -418,8 +430,6 @@ export function createFeatureController(): DarlingFeatureController {
       context.document.getElementById('currentScheduleRoot')?.addEventListener('click', onScheduleClick);
       context.document.getElementById('currentPlayoffMachine')?.addEventListener('click', onMachineClick);
       context.document.getElementById('currentPlayoffMachine')?.addEventListener('input', onMachineInput);
-      context.document.getElementById('currentMachineBracketDialog')?.addEventListener('close', onBracketClose);
-      context.document.getElementById('currentMachineBracketDialog')?.addEventListener('darling:dialog-navigation-close', onBracketNavigationClose);
     },
     activate(input: FeatureActivation) {
       activeSignal = input.signal;
@@ -475,8 +485,6 @@ export function createFeatureController(): DarlingFeatureController {
       context?.document.getElementById('currentScheduleRoot')?.removeEventListener('click', onScheduleClick);
       context?.document.getElementById('currentPlayoffMachine')?.removeEventListener('click', onMachineClick);
       context?.document.getElementById('currentPlayoffMachine')?.removeEventListener('input', onMachineInput);
-      context?.document.getElementById('currentMachineBracketDialog')?.removeEventListener('close', onBracketClose);
-      context?.document.getElementById('currentMachineBracketDialog')?.removeEventListener('darling:dialog-navigation-close', onBracketNavigationClose);
       disclosure = null;
     },
   };

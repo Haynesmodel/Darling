@@ -537,13 +537,14 @@ test('Playoff Machine shows exact six-seed board when every remaining game has s
   await expect(page.locator('#currentPlayoffMachine')).toContainText('Provisional');
   const bracketTrigger = page.locator('#currentPlayoffMachine button[data-machine-action="view-bracket"]');
   const bracketDialog = page.locator('#currentMachineBracketDialog');
+  await expect(bracketDialog).toHaveCount(0);
   await bracketTrigger.click();
   await expect(bracketDialog).toBeVisible();
   await expect(bracketDialog).toContainText('0 of 1 remaining games have complete scenario scores');
   await expect(bracketDialog).toContainText('Seeds and matchups are withheld');
   await expect(bracketDialog).not.toContainText('Seed 6');
   await page.keyboard.press('Escape');
-  await expect(bracketDialog).not.toBeVisible();
+  await expect(bracketDialog).toHaveCount(0);
   await expect(bracketTrigger).toBeFocused();
   await page.screenshot({ path: test.info().outputPath('playoff-machine-provisional-desktop.png'), fullPage: true });
   await page.locator('#currentPlayoffMachine input[data-machine-score="a"]').fill('100');
@@ -574,7 +575,7 @@ test('Playoff Machine shows exact six-seed board when every remaining game has s
   expect(await bracketDialog.evaluate(dialog => dialog.scrollHeight > dialog.clientHeight)).toBe(true);
   await page.screenshot({ path: test.info().outputPath('playoff-machine-exact-bracket-dialog-mobile.png') });
   await bracketDialog.getByRole('button', { name: 'Close playoff bracket' }).click();
-  await expect(bracketDialog).not.toBeVisible();
+  await expect(bracketDialog).toHaveCount(0);
   await expect(bracketTrigger).toBeFocused();
   await page.screenshot({ path: test.info().outputPath('playoff-machine-exact-seed-board.png'), fullPage: true });
   await page.emulateMedia({ forcedColors: 'active' });
@@ -584,14 +585,15 @@ test('Playoff Machine shows exact six-seed board when every remaining game has s
   await expectNoViolations(page, '#currentPlayoffMachine');
   await bracketTrigger.click();
   await page.locator('#primaryNavigation a[data-feature-id="pulse"]').evaluate(anchor => anchor.click());
-  await expect(bracketDialog).not.toBeVisible();
-  await expect(page.locator('#currentMachineBracketTitle')).toHaveText('Playoff bracket');
+  await expect(bracketDialog).toHaveCount(0);
+  await expect(page.locator('#currentMachineBracketTitle')).toHaveCount(0);
   await page.locator('#primaryNavigation a[data-feature-id="current"]').evaluate(anchor => anchor.click());
   await expect(page.locator('#currentPlayoffMachine button[data-machine-action="view-bracket"]')).toBeVisible();
   await page.locator('#currentPlayoffMachine button[data-machine-action="view-bracket"]').click();
   await expect(bracketDialog).toBeVisible();
   await expect(bracketDialog).toContainText('Exact six-seed bracket');
   await page.keyboard.press('Escape');
+  await expect(bracketDialog).toHaveCount(0);
 });
 
 test('Playoff Machine bracket stays unresolved for a completed points-for tie', async ({ page }) => {
@@ -616,4 +618,5 @@ test('Playoff Machine bracket stays unresolved for a completed points-for tie', 
   await expect(dialog).not.toContainText('Seed 6');
   await expectNoViolations(page, '#currentMachineBracketDialog');
   await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
 });

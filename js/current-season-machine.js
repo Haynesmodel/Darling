@@ -278,8 +278,6 @@ function drawPlayoffMachine({ leagueGames, currentSeason, season, scenario, sele
   const host = root?.getElementById('currentPlayoffMachine');
   const machine = buildPlayoffMachine({ leagueGames, currentSeason, season, scenario });
   if (host) host.innerHTML = currentPlayoffMachineHtml(machine, selectedWeek, root);
-  const bracket = root?.getElementById('currentMachineBracketContent');
-  if (bracket) bracket.innerHTML = machineBracketHtml(machine);
   const announcement = root?.getElementById('currentMachineAnnouncement');
   const tieAnnouncement = machine.exact
     ? 'Scores are complete; sixth spot remains unresolved.'

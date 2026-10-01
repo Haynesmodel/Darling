@@ -208,15 +208,19 @@ function currentPlayoffMachineHtml(machine, selectedWeek = null, root = docOrDef
   const scored = machine.games.filter(game => game.edit?.scoreA !== '' && game.edit?.scoreA != null && game.edit?.scoreB !== '' && game.edit?.scoreB != null && !game.scoreError).length;
   const picks = machine.games.filter(game => game.edit?.outcome).length;
   const template = root?.getElementById('currentPlayoffMachineTemplate')?.innerHTML || '';
+  const completedWildcardTie = machine.exact && machine.wildcardTie;
+  const tiedOwners = machine.candidates.filter(row => row.qualificationReason === 'points_for_tie').map(row => escapeHtml(row.owner)).join(' and ');
   const status = machine.exact ? machine.wildcardTie ? 'Scores complete · sixth spot unresolved' : 'Exact for this scenario' : `Provisional · ${scored}/${machine.games.length} scored · ${picks} picks`;
-  const raceNote = machine.wildcardTie
-    ? `Tie: ${machine.candidates.filter(row => row.qualificationReason === 'points_for_tie').map(row => escapeHtml(row.owner)).join(' and ')} have equal total points; no official seed 6 is chosen.`
+  const raceNote = completedWildcardTie
+    ? `Tie: ${tiedOwners} have equal total points; no official seed 6 is chosen.`
+    : machine.wildcardTie
+      ? `Current PF leaders ${tiedOwners} are tied; unscored games can change the seed-6 race.`
     : machine.exact
     ? `Exact: ${escapeHtml(machine.qualifier?.owner || 'No qualifier')} takes seed 6.${machine.normalSixth && machine.qualifier?.owner !== machine.normalSixth.owner ? ` ${escapeHtml(machine.normalSixth.owner)} is standings sixth.` : ''}`
     : 'Unscored games can change PF and the race leader.';
   const values = {
     __MACHINE_STATUS__: escapeHtml(status),
-    __MACHINE_EXPLANATION__: machine.wildcardTie ? 'Scores are complete, but equal total points leave seed 6 unresolved until an official tiebreak is set.' : 'Winner picks are provisional; exact placement needs scores for all remaining games.',
+    __MACHINE_EXPLANATION__: completedWildcardTie ? 'Scores are complete, but equal total points leave seed 6 unresolved until an official tiebreak is set.' : machine.wildcardTie ? 'Current PF leaders are tied; unscored games may change the seed-6 race.' : 'Winner picks are provisional; exact placement needs scores for all remaining games.',
     __MACHINE_ISSUES__: machine.issues.map(issue => `<p class="current-machine-warning" role="status">${escapeHtml(issue)}</p>`).join(''),
     __PREVIOUS__: previous ? 'disabled' : '',
     __NEXT__: next ? 'disabled' : '',
@@ -246,9 +250,12 @@ function drawPlayoffMachine({ leagueGames, currentSeason, season, scenario, sele
   const machine = buildPlayoffMachine({ leagueGames, currentSeason, season, scenario });
   if (host) host.innerHTML = currentPlayoffMachineHtml(machine, selectedWeek, root);
   const announcement = root?.getElementById('currentMachineAnnouncement');
+  const tieAnnouncement = machine.exact
+    ? 'Scores are complete; sixth spot remains unresolved.'
+    : 'Current PF leaders are tied; unscored games may change the seed-6 race.';
   const status = changeAnnouncement
-    ? `${changeAnnouncement}. ${machine.wildcardTie ? 'Scores are complete; sixth spot remains unresolved.' : machine.exact ? 'Exact seeds are ready for this scenario.' : 'Scenario placement is provisional.'}`
-    : machine.wildcardTie ? 'Scores are complete; sixth spot remains unresolved.' : machine.exact ? 'Exact seeds are ready for this scenario.' : 'Scenario standings are provisional.';
+    ? `${changeAnnouncement}. ${machine.wildcardTie ? tieAnnouncement : machine.exact ? 'Exact seeds are ready for this scenario.' : 'Scenario placement is provisional.'}`
+    : machine.wildcardTie ? tieAnnouncement : machine.exact ? 'Exact seeds are ready for this scenario.' : 'Scenario standings are provisional.';
   if (announcement && announcement.textContent !== status) announcement.textContent = status;
 }
 

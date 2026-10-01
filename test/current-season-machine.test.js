@@ -151,3 +151,28 @@ test('equal-PF wildcard leaders remain unseeded and are announced as unresolved'
   assert.doesNotMatch(html, /Seed 6/);
   assert.match(notice.textContent, /sixth spot remains unresolved/);
 });
+
+test('provisional equal-PF leaders are not described as a completed tie', () => {
+  const partialSeason = { ...season, games: season.games.map((source, index) => index < 4
+    ? { ...source, scoreA: 100, scoreB: 100 }
+    : source) };
+  const machine = buildPlayoffMachine({ currentSeason: partialSeason, season: 2026 });
+  assert.equal(machine.exact, false);
+  assert.equal(machine.wildcardTie, true);
+  assert.deepEqual(machine.candidates.filter(row => row.qualificationReason === 'points_for_tie').map(row => row.owner), ['F', 'G', 'H']);
+
+  let html = '';
+  const notice = { textContent: '' };
+  const root = { getElementById: id => id === 'currentPlayoffMachine'
+    ? { set innerHTML(value) { html = value; } }
+    : id === 'currentMachineAnnouncement' ? notice
+      : id === 'currentPlayoffMachineTemplate'
+        ? { innerHTML: '__MACHINE_EXPLANATION__ __RACE_NOTE__' }
+        : { innerHTML: '' } };
+  drawPlayoffMachine({ currentSeason: partialSeason, season: 2026, doc: root });
+  assert.match(html, /Current PF leaders are tied; unscored games may change the seed-6 race/);
+  assert.match(html, /Current PF leaders F and G and H are tied; unscored games can change the seed-6 race/);
+  assert.doesNotMatch(html, /Scores are complete|no official seed 6 is chosen/);
+  assert.match(notice.textContent, /unscored games may change the seed-6 race/);
+  assert.doesNotMatch(notice.textContent, /Scores are complete/);
+});

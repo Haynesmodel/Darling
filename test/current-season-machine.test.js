@@ -166,6 +166,22 @@ test('equal-PF wildcard leaders remain unseeded and are announced as unresolved'
   assert.doesNotMatch(machineBracketHtml(machine), /Opening round|Seed 6/);
 });
 
+test('bracket tie copy escapes special-character owners exactly once', () => {
+  const html = machineBracketHtml({
+    scheduleComplete: true,
+    exact: true,
+    wildcardTie: true,
+    qualifier: null,
+    games: [],
+    candidates: [
+      { owner: 'A&B <C>', qualificationReason: 'points_for_tie' },
+      { owner: 'D', qualificationReason: 'points_for_tie' },
+    ],
+  });
+  assert.match(html, /A&amp;B &lt;C&gt; and D are tied/);
+  assert.doesNotMatch(html, /&amp;amp;|&amp;lt;|&amp;gt;/);
+});
+
 test('provisional equal-PF leaders are not described as a completed tie', () => {
   const partialSeason = { ...season, games: season.games.map((source, index) => index < 4
     ? { ...source, scoreA: 100, scoreB: 100 }

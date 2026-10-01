@@ -260,7 +260,7 @@ function machineBracketHtml(machine) {
     return `<p id="currentMachineBracketDescription">${escapeHtml(description)}</p><p role="status">${scored} of ${required} remaining games have complete scenario scores.</p><p>Seeds and matchups are withheld until every score is entered.</p>`;
   }
   if (machine.wildcardTie || !machine.qualifier) {
-    const tied = machine.candidates.filter(row => row.qualificationReason === 'points_for_tie').map(row => escapeHtml(row.owner)).join(' and ');
+    const tied = machine.candidates.filter(row => row.qualificationReason === 'points_for_tie').map(row => row.owner).join(' and ');
     return `<p id="currentMachineBracketDescription">Regular-season scores are complete, but the sixth seed is unresolved.</p><p role="status">${escapeHtml(tied || 'Wildcard candidates')} are tied on total points. No official points-for tiebreak has been set, so an exact bracket is not shown.</p>`;
   }
   const seeds = machine.standings.filter(row => row.playoffSeed).sort((a, b) => a.playoffSeed - b.playoffSeed);

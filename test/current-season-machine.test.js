@@ -69,6 +69,8 @@ test('machine keeps winner picks provisional and uses complete scores for exact 
   }));
   const exact = buildPlayoffMachine({ currentSeason: season, season: 2026, scenario: exactPicks });
   assert.equal(exact.exact, true);
+  const explanationHtml = currentPlayoffMachineHtml(exact, null, { getElementById: () => ({ innerHTML: '__MACHINE_EXPLANATION__' }) });
+  assert.match(explanationHtml, /All remaining games have scores; these seeds are exact for this scenario/);
   assert.equal(exact.qualifier.owner, 'F');
   assert.equal(exact.qualifier.playoffSeed, 6);
   assert.equal(exact.qualifier.owner, exact.standings.find(row => row.playoffSeed === 6).owner);
@@ -147,6 +149,7 @@ test('equal-PF wildcard leaders remain unseeded and are announced as unresolved'
         : { innerHTML: '' } };
   drawPlayoffMachine({ currentSeason: completedSeason, season: 2026, doc: root });
   assert.match(html, /Scores complete · sixth spot unresolved/);
+  assert.match(html, /Scores are complete, but equal total points leave seed 6 unresolved/);
   assert.match(html, /no official seed 6 is chosen/);
   assert.doesNotMatch(html, /Seed 6/);
   assert.match(notice.textContent, /sixth spot remains unresolved/);

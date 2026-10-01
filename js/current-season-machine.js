@@ -220,7 +220,7 @@ function currentPlayoffMachineHtml(machine, selectedWeek = null, root = docOrDef
     : 'Unscored games can change PF and the race leader.';
   const values = {
     __MACHINE_STATUS__: escapeHtml(status),
-    __MACHINE_EXPLANATION__: completedWildcardTie ? 'Scores are complete, but equal total points leave seed 6 unresolved until an official tiebreak is set.' : machine.wildcardTie ? 'Current PF leaders are tied; unscored games may change the seed-6 race.' : 'Winner picks are provisional; exact placement needs scores for all remaining games.',
+    __MACHINE_EXPLANATION__: completedWildcardTie ? 'Scores are complete, but equal total points leave seed 6 unresolved until an official tiebreak is set.' : machine.exact ? 'All remaining games have scores; these seeds are exact for this scenario.' : machine.wildcardTie ? 'Current PF leaders are tied; unscored games may change the seed-6 race.' : 'Winner picks are provisional; exact placement needs scores for all remaining games.',
     __MACHINE_ISSUES__: machine.issues.map(issue => `<p class="current-machine-warning" role="status">${escapeHtml(issue)}</p>`).join(''),
     __PREVIOUS__: previous ? 'disabled' : '',
     __NEXT__: next ? 'disabled' : '',

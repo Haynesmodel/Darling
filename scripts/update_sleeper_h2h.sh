@@ -83,6 +83,9 @@ STATE_LEAGUE_SEASON="$(node -e "const x=JSON.parse(process.argv[1]||'{}'); if (x
 STATE_WEEK="$(node -e "const x=JSON.parse(process.argv[1]||'{}'); if (x.nfl_week) process.stdout.write(String(x.nfl_week));" "${STATE_JSON}")"
 
 SEASON="${REQUESTED_SEASON:-${STATE_LEAGUE_SEASON:-${STATE_SEASON:-2025}}}"
+if [[ -z "${SIXTH_SPOT_RULE+x}" ]]; then
+  if [[ "${SEASON}" == "2026" ]]; then SIXTH_SPOT_RULE="points_for_outside_top_five"; else SIXTH_SPOT_RULE="standard"; fi
+fi
 if [[ -z "${STATE_LEAGUE_SEASON}" ]]; then
   echo "ERROR: Sleeper league metadata did not report a season; refusing extraction." >&2
   exit 2
@@ -173,6 +176,7 @@ CURRENT_CMD=(
   --h2h-fallback "${OUT_H2H}"
   --completed-through-week "${COMPLETED_THROUGH_WEEK}"
   --completion-basis "${COMPLETION_BASIS}"
+  --sixth-spot-rule "${SIXTH_SPOT_RULE}"
 )
 if [[ -n "${COMPLETED_ACTIVE_WEEK}" ]]; then
 CURRENT_CMD+=(--current-week "${COMPLETED_ACTIVE_WEEK}")

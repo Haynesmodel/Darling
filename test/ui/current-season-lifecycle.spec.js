@@ -402,3 +402,233 @@ test('section jump and focus links reveal targets without adding disclosure URL 
   await expect(page.locator('#currentStandingsDisclosure')).toHaveAttribute('open', '');
   await expect(page.locator('#currentStandings')).toBeFocused();
 });
+
+test('Playoff Machine deep link, provisional picks, exact score inputs, reset, and visit lifecycle', async ({ page }) => {
+  const fixture = createSnapshotFixture({ mutations: { CurrentSeason: (current, assets) => regularSeason2026(current, true, assets) } });
+  const requests = [];
+  page.on('request', request => requests.push(request.url()));
+  await fixture.install(page);
+  await page.setViewportSize({ width: 320, height: 720 });
+  await page.goto('/?tab=current&currentSeason=2026&currentView=machine');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('#currentViewSelect')).toHaveValue('machine');
+  await expect(page.locator('#currentViewSelect option[value="machine"]')).toHaveText('Playoff Machine');
+  await expect(page.locator('#currentPlayoffMachineDisclosure')).toHaveAttribute('open', '');
+  await expect(page.locator('#currentPlayoffMachine')).toContainText('Provisional');
+  await expect(page.locator('#currentPlayoffMachine .current-machine-race tbody tr')).toHaveCount(7);
+  await expect(page.locator('#currentPlayoffMachine .current-machine-results tbody tr')).toHaveCount(12);
+  await expect(page.locator('#currentPlayoffMachine')).toContainText('schedule has missing or duplicate team appearances');
+  const pick = page.locator('#currentPlayoffMachine button[data-machine-action="outcome"]').first();
+  const announcement = page.locator('#currentMachineAnnouncement');
+  const beforePickAnnouncement = await announcement.textContent();
+  await pick.focus();
+  await page.keyboard.press('Enter');
+  await expect(pick).toHaveAttribute('aria-pressed', 'true');
+  await expect(pick).toBeFocused();
+  await expect(announcement).not.toHaveText(beforePickAnnouncement || '');
+  await expect(announcement).toContainText('Picked Connor');
+  const firstScore = page.locator('#currentPlayoffMachine input[data-machine-score="a"]').first();
+  const beforeScoreAnnouncement = await announcement.textContent();
+  await firstScore.fill('0');
+  await expect(firstScore).toBeFocused();
+  await expect(announcement).not.toHaveText(beforeScoreAnnouncement || '');
+  await expect(announcement).toContainText('Updated Connor score to 0');
+  const beforeOtherScoreAnnouncement = await announcement.textContent();
+  await page.locator('#currentPlayoffMachine input[data-machine-score="b"]').first().fill('0');
+  await expect(announcement).not.toHaveText(beforeOtherScoreAnnouncement || '');
+  await expect(announcement).toContainText('Updated Singer score to 0');
+  await expect(page.locator('#currentPlayoffMachine')).toContainText('Winner picks are provisional; exact placement needs scores for all remaining games.');
+  await page.locator('#currentPlayoffMachine button[data-machine-action="reset"]').click();
+  await expect(page.locator('#currentPlayoffMachine input[data-machine-score="a"]').first()).toHaveValue('');
+  await page.screenshot({ path: test.info().outputPath('playoff-machine-mobile.png'), fullPage: true });
+  await expect(page).toHaveURL(/currentView=machine/);
+  expect(requests.some(url => url.includes('current-season-odds'))).toBe(false);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  const scoreControlHeights = await page.locator('#currentPlayoffMachine .current-machine-scores input, #currentPlayoffMachine .current-machine-scores button')
+    .evaluateAll(elements => elements.map(element => element.getBoundingClientRect().height));
+  expect(scoreControlHeights.length).toBeGreaterThan(0);
+  expect(scoreControlHeights.every(height => height >= 40)).toBe(true);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await expectNoViolations(page, '#currentPlayoffMachine');
+
+  await page.locator('#currentViewSelect').selectOption('matchups');
+  await page.locator('#currentViewSelect').selectOption('machine');
+  await expect(page.locator('#currentPlayoffMachine input[data-machine-score="a"]').first()).toHaveValue('');
+  await page.reload();
+  await expect(page.locator('#currentViewSelect')).toHaveValue('machine');
+  await expect(page.locator('#currentPlayoffMachine input[data-machine-score="a"]').first()).toHaveValue('');
+  await page.locator('#currentSeasonSelect').selectOption('2025');
+  await expect(page.locator('#currentPlayoffMachine')).toContainText('available during the active regular season');
+});
+
+test('Playoff Machine disables duplicate-game controls in production DOM', async ({ page }) => {
+  const fixture = createSnapshotFixture({ mutations: { CurrentSeason: (current, assets) => {
+    regularSeason2026(current, false, assets);
+    const unresolved = current.games.find(game => game.week === 2);
+    current.games.push({ ...unresolved });
+  } } });
+  await fixture.install(page);
+  await page.setViewportSize({ width: 320, height: 720 });
+  await page.goto('/?tab=current&currentSeason=2026&currentView=machine');
+  await page.waitForLoadState('networkidle');
+
+  const duplicateButton = page.locator('#currentPlayoffMachine button[data-machine-action="clear-game"]').first();
+  await expect(duplicateButton).toHaveAttribute('disabled', '');
+  const duplicateKey = await duplicateButton.getAttribute('data-game-key');
+  const controls = page.locator(`#currentPlayoffMachine [data-game-key="${duplicateKey}"]`);
+  await expect(controls).toHaveCount(12);
+  expect(await controls.evaluateAll(elements => elements.every(element => element.disabled))).toBe(true);
+  expect(await page.locator('#currentPlayoffMachine').evaluate(element => element.innerHTML.includes('=""=""'))).toBe(false);
+  await expectNoViolations(page, '#currentPlayoffMachine');
+});
+
+test('Playoff Machine click controls navigate weeks and clear scoped or all edits', async ({ page }) => {
+  await createSnapshotFixture().install(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/?tab=current&currentSeason=2026&currentView=machine');
+  await page.waitForLoadState('networkidle');
+  const machine = page.locator('#currentPlayoffMachine');
+  const announcement = page.locator('#currentMachineAnnouncement');
+  const weekLabel = machine.locator('.current-machine-week-nav strong');
+  const weekNumber = async () => Number((await weekLabel.textContent()).match(/Week (\d+)/)?.[1]);
+  const startWeek = await weekNumber();
+
+  await machine.locator('button[data-machine-action="week-next"]').click();
+  await expect(weekLabel).toContainText(`Week ${startWeek + 1}`);
+  await expect(announcement).toContainText(`Showing week ${startWeek + 1}`);
+  await machine.locator('button[data-machine-action="week-prev"]').click();
+  await expect(weekLabel).toContainText(`Week ${startWeek}`);
+
+  const firstGame = machine.locator('.current-machine-game').first();
+  const pick = firstGame.locator('button[data-machine-action="outcome"]').first();
+  await pick.click();
+  await expect(pick).toHaveAttribute('aria-pressed', 'true');
+  await expect(announcement).toContainText('Picked');
+  await firstGame.locator('button[data-machine-action="clear-game"]').click();
+  await expect(firstGame.locator('button[data-machine-action="outcome"]').first()).toHaveAttribute('aria-pressed', 'false');
+  await expect(announcement).toContainText('Cleared a matchup pick');
+
+  await firstGame.locator('button[data-machine-action="outcome"]').first().click();
+  await machine.locator('button[data-machine-action="clear-week"]').click();
+  await expect(firstGame.locator('button[data-machine-action="outcome"]').first()).toHaveAttribute('aria-pressed', 'false');
+  await expect(announcement).toContainText(`Cleared week ${startWeek}`);
+
+  await firstGame.locator('button[data-machine-action="outcome"]').first().click();
+  await machine.locator('button[data-machine-action="reset"]').click();
+  await expect(machine.locator('button[data-machine-action="outcome"][aria-pressed="true"]')).toHaveCount(0);
+  await expect(announcement).toContainText('Reset all scenario picks');
+});
+
+test('Playoff Machine shows exact six-seed board when every remaining game has scores', async ({ page }) => {
+  const fixture = createSnapshotFixture({ mutations: { CurrentSeason: current => {
+    const unresolved = current.games.find(game => !['final', 'complete', 'completed'].includes(String(game.status).toLowerCase()));
+    current.current_week = 14;
+    current.games = current.games.map(game => game === unresolved
+      ? { ...game, status: 'scheduled', scoreA: null, scoreB: null }
+      : ['final', 'complete', 'completed'].includes(String(game.status).toLowerCase())
+        ? game
+        : { ...game, status: 'final', scoreA: 100, scoreB: 90 });
+  } } });
+  await fixture.install(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/?tab=current&currentSeason=2026&currentView=machine');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('#currentPlayoffMachine')).toContainText('Provisional');
+  const bracketTrigger = page.locator('#currentPlayoffMachine button[data-machine-action="view-bracket"]');
+  const bracketDialog = page.locator('#currentMachineBracketDialog');
+  await expect(bracketDialog).toHaveCount(0);
+  await bracketTrigger.click();
+  await expect(bracketDialog).toBeVisible();
+  await expect(bracketDialog).toContainText('0 of 1 remaining games have complete scenario scores');
+  await expect(bracketDialog).toContainText('Seeds and matchups are withheld');
+  await expect(bracketDialog).not.toContainText('Seed 6');
+  await page.keyboard.press('Escape');
+  await expect(bracketDialog).toHaveCount(0);
+  await expect(bracketTrigger).toBeFocused();
+  await page.screenshot({ path: test.info().outputPath('playoff-machine-provisional-desktop.png'), fullPage: true });
+  await page.locator('#currentPlayoffMachine input[data-machine-score="a"]').fill('100');
+  await page.locator('#currentPlayoffMachine input[data-machine-score="b"]').fill('90');
+
+  await expect(page.locator('#currentPlayoffMachine')).toContainText('Exact for this scenario');
+  await expect(page.locator('#currentPlayoffMachine button[data-outcome="a"]').first()).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#currentPlayoffMachine .current-machine-seed-board article')).toHaveCount(6);
+  await expect(page.locator('#currentPlayoffMachine .current-machine-race tbody tr')).toHaveCount(7);
+  const sixthSeedOwner = await page.locator('#currentPlayoffMachine .current-machine-seed-board article').last().locator('strong').textContent();
+  await expect(page.locator('#currentPlayoffMachine .current-machine-race tbody tr').filter({ hasText: sixthSeedOwner || '' })).toHaveCount(1);
+  await expect(page.locator('#currentPlayoffMachine .current-machine-game').first().locator(':scope > div')).toHaveCount(3);
+  await expect(page.locator('#currentPlayoffMachine .current-machine-results tbody tr')).toHaveCount(12);
+  await expect(page.locator('#currentPlayoffMachine .current-machine-seed-board')).toContainText('Seed 6');
+  await bracketTrigger.click();
+  await expect(bracketDialog).toBeVisible();
+  await expect(bracketDialog).toContainText('Exact six-seed bracket for this regular-season score scenario');
+  await expect(bracketDialog.locator('.current-machine-bracket-byes')).toContainText('Seed 1');
+  await expect(bracketDialog.locator('.current-machine-bracket-byes')).toContainText('Seed 2');
+  await expect(bracketDialog.locator('.current-machine-bracket-grid > .current-machine-round')).toHaveCount(3);
+  await expect(bracketDialog.locator('.current-machine-bracket-grid')).toContainText('Opening round');
+  await expect(bracketDialog.locator('.current-machine-bracket-grid')).toContainText('Semifinals');
+  await expect(bracketDialog.locator('.current-machine-bracket-grid')).toContainText('Final');
+  await expect(bracketDialog.locator('.current-machine-bracket-openers section')).toHaveCount(2);
+  await expect(bracketDialog.locator('.current-machine-bracket-openers')).toContainText('Seed 3');
+  await expect(bracketDialog.locator('.current-machine-bracket-openers .current-machine-wildcard')).toContainText('Wildcard · Seed 6');
+  const desktopRoundPositions = await bracketDialog.locator('.current-machine-round').evaluateAll(rounds => rounds.map(round => round.getBoundingClientRect().left));
+  expect(desktopRoundPositions[0]).toBeLessThan(desktopRoundPositions[1]);
+  expect(desktopRoundPositions[1]).toBeLessThan(desktopRoundPositions[2]);
+  await expect(bracketDialog).toContainText('Winner TBD');
+  await page.screenshot({ path: test.info().outputPath('playoff-machine-exact-bracket-dialog.png') });
+  await expectNoViolations(page, '#currentMachineBracketDialog');
+  await page.setViewportSize({ width: 320, height: 720 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  const mobileRoundPositions = await bracketDialog.locator('.current-machine-round').evaluateAll(rounds => rounds.map(round => ({ top: round.getBoundingClientRect().top, left: round.getBoundingClientRect().left })));
+  expect(mobileRoundPositions[0].top).toBeLessThan(mobileRoundPositions[1].top);
+  expect(mobileRoundPositions[1].top).toBeLessThan(mobileRoundPositions[2].top);
+  expect(mobileRoundPositions.every(position => Math.abs(position.left - mobileRoundPositions[0].left) < 1)).toBe(true);
+  expect(await bracketDialog.evaluate(dialog => dialog.scrollHeight > dialog.clientHeight)).toBe(true);
+  await page.screenshot({ path: test.info().outputPath('playoff-machine-exact-bracket-dialog-mobile.png') });
+  await bracketDialog.getByRole('button', { name: 'Close playoff bracket' }).click();
+  await expect(bracketDialog).toHaveCount(0);
+  await expect(bracketTrigger).toBeFocused();
+  await page.screenshot({ path: test.info().outputPath('playoff-machine-exact-seed-board.png'), fullPage: true });
+  await page.emulateMedia({ forcedColors: 'active' });
+  await expect(page.locator('#currentPlayoffMachine .current-machine-seed-board')).toBeVisible();
+  await page.setViewportSize({ width: 640, height: 900 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  await expectNoViolations(page, '#currentPlayoffMachine');
+  await bracketTrigger.click();
+  await page.locator('#primaryNavigation a[data-feature-id="pulse"]').evaluate(anchor => anchor.click());
+  await expect(bracketDialog).toHaveCount(0);
+  await expect(page.locator('#currentMachineBracketTitle')).toHaveCount(0);
+  await page.locator('#primaryNavigation a[data-feature-id="current"]').evaluate(anchor => anchor.click());
+  await expect(page.locator('#currentPlayoffMachine button[data-machine-action="view-bracket"]')).toBeVisible();
+  await page.locator('#currentPlayoffMachine button[data-machine-action="view-bracket"]').click();
+  await expect(bracketDialog).toBeVisible();
+  await expect(bracketDialog).toContainText('Exact six-seed bracket');
+  await expect(bracketDialog.locator('.current-machine-wildcard')).toContainText('Wildcard · Seed 6');
+  await page.keyboard.press('Escape');
+  await expect(bracketDialog).toHaveCount(0);
+});
+
+test('Playoff Machine bracket stays unresolved for a completed points-for tie', async ({ page }) => {
+  const fixture = createSnapshotFixture({ mutations: { CurrentSeason: current => {
+    current.current_week = 14;
+    const remaining = current.games.at(-1);
+    current.games = current.games.map(game => game === remaining
+      ? { ...game, status: 'scheduled', scoreA: null, scoreB: null }
+      : { ...game, status: 'final', scoreA: 100, scoreB: 100 });
+  } } });
+  await fixture.install(page);
+  await page.goto('/?tab=current&currentSeason=2026&currentView=machine');
+  await page.waitForLoadState('networkidle');
+  await page.locator('#currentPlayoffMachine input[data-machine-score="a"]').fill('100');
+  await page.locator('#currentPlayoffMachine input[data-machine-score="b"]').fill('100');
+  await expect(page.locator('#currentPlayoffMachine')).toContainText('Scores complete · sixth spot unresolved');
+  const dialog = page.locator('#currentMachineBracketDialog');
+  await page.locator('#currentPlayoffMachine button[data-machine-action="view-bracket"]').click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('No official points-for tiebreak has been set');
+  await expect(dialog).not.toContainText('Opening round');
+  await expect(dialog).not.toContainText('Seed 6');
+  await expectNoViolations(page, '#currentMachineBracketDialog');
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+});

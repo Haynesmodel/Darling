@@ -333,6 +333,39 @@
         <summary>Schedule Comparison</summary>
         <section id="currentScheduleRoot" class="feature-section-content current-schedule"></section>
       </details>
+      <details id="currentPlayoffMachineDisclosure" class="card feature-disclosure">
+        <summary>Playoff Machine</summary>
+        <p id="currentMachineAnnouncement" class="visually-hidden" aria-live="polite" aria-atomic="true"></p>
+        <section id="currentPlayoffMachine" class="feature-section-content current-playoff-machine"></section>
+      </details>
+      <template id="currentMachineBracketTemplate"><dialog id="currentMachineBracketDialog" class="current-machine-bracket-dialog" aria-labelledby="currentMachineBracketTitle" aria-describedby="currentMachineBracketDescription">
+        <div class="current-machine-bracket-shell">
+          <header><h2 id="currentMachineBracketTitle" tabindex="-1">Playoff bracket</h2><form method="dialog"><button type="submit" aria-label="Close playoff bracket">Close</button></form></header>
+          <div id="currentMachineBracketContent"><p id="currentMachineBracketDescription">Open this dialog from the Live scenario panel to review score progress or the exact bracket.</p></div>
+        </div>
+      </dialog></template>
+      <template id="currentPlayoffMachineTemplate">
+        <div data-machine-seed>__SEED_BOARD__</div>
+        <div class="section-heading current-section-heading"><h3>Playoff Machine</h3><div class="current-machine-status">__MACHINE_STATUS__</div></div>
+        <p>__MACHINE_EXPLANATION__</p>
+        <div>__MACHINE_ISSUES__</div>
+        <div class="current-machine-layout">
+          <section class="current-machine-week">
+            <div class="section-heading"><h3>Remaining matchups</h3>__WEEK_NAV__</div>
+            <p>Pick a winner or tie, or add both scores for an exact result.</p>
+            <div data-machine-games>__MACHINE_GAMES__</div>
+            __MACHINE_ACTIONS__
+          </section>
+          <aside class="current-machine-race">
+            <section><div class="current-machine-live-heading"><h3>Live scenario</h3><button type="button" class="current-machine-bracket-trigger" data-machine-action="view-bracket">View bracket</button></div><p class="muted">__SCENARIO_LABEL__</p><div class="current-machine-scroll" role="region" aria-label="Live scenario standings" tabindex="0"><table><thead><tr><th>Standing</th><th>Team</th><th>Scenario</th><th>Seed</th></tr></thead><tbody><!--__LIVE_ROWS__--></tbody></table></div><a href="#currentMachineFullStandings">Full __OWNER_COUNT__-owner standings below ↓</a></section>
+            <section><h3>Sixth-spot points race</h3><p class="muted">Highest PF outside standings top five</p><ol>__CANDIDATES__</ol><p class="current-machine-race-note">__RACE_NOTE__</p></section>
+          </aside>
+        </div>
+        <section id="currentMachineFullStandings" class="current-machine-results"><h3>Full __OWNER_COUNT__-owner standings</h3><div class="current-table-scroll" role="region" aria-label="Full scenario standings" tabindex="0"><table><thead><tr><th>Team</th><th>Actual</th><th>Scenario</th><th>PF</th><th>Standings rank</th><th>Playoff seed</th><th>Change</th></tr></thead><tbody><!--__FULL_ROWS__--></tbody></table></div></section>
+      </template>
+      <template id="currentMachineGameTemplate">
+        <article class="current-machine-game" data-week="__WEEK__"><div><h4>__TEAM_A__ vs __TEAM_B__</h4><p class="muted">__STATUS__</p></div><div class="current-machine-picks" role="group" aria-label="Pick outcome for Week __WEEK__, __TEAM_A__ vs __TEAM_B__">__BUTTONS__</div><div class="current-machine-scores"><span class="visually-hidden">Exact score</span><label>__TEAM_A__ <input type="number" min="0" max="999.99" step="0.01" inputmode="decimal" data-machine-score="a" data-game-key="__KEY__" aria-label="__TEAM_A__ scenario score against __TEAM_B__" aria-describedby="__ERROR_ID__" value="__SCORE_A__" data-machine-disabled="__DISABLED__"></label><span aria-hidden="true">–</span><label>__TEAM_B__ <input type="number" min="0" max="999.99" step="0.01" inputmode="decimal" data-machine-score="b" data-game-key="__KEY__" aria-label="__TEAM_B__ scenario score against __TEAM_A__" aria-describedby="__ERROR_ID__" value="__SCORE_B__" data-machine-disabled="__DISABLED__"></label><button type="button" data-machine-action="clear-game" data-game-key="__KEY__" data-machine-disabled="__DISABLED__">Clear</button></div>__WARNING__</article>
+      </template>
     </section>
 
     <section id="page-rivalry" class="page" aria-labelledby="page-rivalry-title" hidden>

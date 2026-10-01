@@ -149,6 +149,36 @@ test('owner needs describe exact bubble help and Saunders danger paths', () => {
   assert.match(nuss.riskSummary, /Saunders danger/);
 });
 
+test('PF-rule neutral owner need retains the selected week context', () => {
+  const season = {
+    ...currentSeason,
+    playoff_rules: { ...currentSeason.playoff_rules, playoff_slots: 6, sixth_spot_rule: 'points_for_outside_top_five' },
+  };
+  const joe = buildOwnerWeekNeeds({ currentSeason: season, season: 2026, week: 2 }).find(row => row.owner === 'Joe');
+  assert.equal(joe.mainNeed, 'Week 2: the playoff race remains open.');
+});
+
+test('completed equal-PF wildcard candidates remain unresolved in owner needs', () => {
+  const teams = 'ABCDEFGH'.split('');
+  const games = [
+    ['A', 'B', 100, 100], ['C', 'D', 100, 100], ['E', 'F', 100, 100], ['G', 'H', 100, 100],
+    ['A', 'C', 100, 100], ['B', 'D', 100, 100], ['E', 'G', 100, 100], ['F', 'H', 130, 70],
+  ].map(([teamA, teamB, scoreA, scoreB], index) => ({
+    season: 2026, date: '2026-09-06', teamA, teamB, scoreA, scoreB,
+    week: index < 4 ? 1 : 2, type: 'Regular', round: '', status: 'final',
+  }));
+  const completed = {
+    season: 2026, current_week: 2, teams: teams.map((owner, roster_id) => ({ owner, roster_id: roster_id + 1 })), games,
+    playoff_rules: { regular_season_max_week: 2, playoff_slots: 6, bye_slots: 2, saunders_slots: 2,
+      sixth_spot_rule: 'points_for_outside_top_five', standings_tiebreakers: ['win_pct', 'points_for', 'points_differential', 'owner'] },
+  };
+  const candidates = buildOwnerWeekNeeds({ currentSeason: completed, season: 2026, week: 2 })
+    .filter(row => row.status.key === 'wildcard-tie');
+  assert.deepEqual(candidates.map(row => row.owner).sort(), ['E', 'G']);
+  assert.equal(candidates.every(row => row.mainNeed === 'Sixth spot awaits an official tiebreak rule.'), true);
+  assert.equal(candidates.every(row => row.currentSeed === null), true);
+});
+
 test('owner needs cover clinched, eliminated, and no-matchup owners', () => {
   const completeSeason = {
     season: 2026,
@@ -204,4 +234,16 @@ test('remaining schedule and completed-season statuses are deterministic', () =>
   const remaining = new Map(finalStandings.map(row => [row.owner, []]));
   assert.equal(classifyOwnerStatus({ row: finalStandings[0], standings: finalStandings, rules: currentSeason.playoff_rules, remaining }).key, 'clinched-bye');
   assert.equal(classifyOwnerStatus({ row: finalStandings[2], standings: finalStandings, rules: currentSeason.playoff_rules, remaining }).key, 'eliminated');
+
+  const pfStandings = [
+    { owner: 'A', rank: 1, playoffSeed: 1 }, { owner: 'B', rank: 2, playoffSeed: 2 },
+    { owner: 'C', rank: 3, playoffSeed: 3 }, { owner: 'D', rank: 4, playoffSeed: 4 },
+    { owner: 'E', rank: 5, playoffSeed: 5 }, { owner: 'F', rank: 6, playoffSeed: null },
+    { owner: 'G', rank: 7, playoffSeed: 6 },
+  ];
+  const pfRemaining = new Map(pfStandings.map(row => [row.owner, []]));
+  const pfRules = { ...currentSeason.playoff_rules, playoff_slots: 6, sixth_spot_rule: 'points_for_outside_top_five' };
+  assert.equal(classifyOwnerStatus({ row: pfStandings[5], standings: pfStandings, rules: pfRules, remaining: pfRemaining }).key, 'eliminated');
+  assert.equal(classifyOwnerStatus({ row: pfStandings[6], standings: pfStandings, rules: pfRules, remaining: pfRemaining }).key, 'clinched-playoff');
+  assert.equal(classifyOwnerStatus({ row: { ...pfStandings[0], wins: 5, ties: 2 }, standings: pfStandings, rules: pfRules, remaining: new Map([['A', [{}]]]) }).key, 'sixth-spot-race');
 });

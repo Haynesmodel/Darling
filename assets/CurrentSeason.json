@@ -8,6 +8,7 @@
   "playoff_rules": {
     "regular_season_max_week": 14,
     "playoff_slots": 6,
+    "sixth_spot_rule": "points_for_outside_top_five",
     "bye_slots": 2,
     "standings_tiebreakers": [
       "win_pct",

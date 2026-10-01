@@ -515,7 +515,7 @@ function validate28(data) {
   }
   return !errors;
 }var validateCurrentSeason = validate30;
-var schema58 = {"required":["source","league_id","season","generated_at","current_week","regular_season_max_week","playoff_rules","update_context","max_week","weeks_fetched","teams","games"],"properties":{"source":{},"league_id":{},"season":{},"generated_at":{},"current_week":{},"regular_season_max_week":{},"max_week":{},"weeks_fetched":{},"playoff_rules":{"required":["regular_season_max_week","playoff_slots","bye_slots","standings_tiebreakers","saunders_slots"]},"update_context":{"required":["mode","cutoff_date","contains_live_scores","contains_projected_scores"]},"teams":{},"games":{}}};
+var schema58 = {"required":["source","league_id","season","generated_at","current_week","regular_season_max_week","playoff_rules","update_context","max_week","weeks_fetched","teams","games"],"properties":{"source":{},"league_id":{},"season":{},"generated_at":{},"current_week":{},"regular_season_max_week":{},"max_week":{},"weeks_fetched":{},"playoff_rules":{"required":["regular_season_max_week","playoff_slots","bye_slots","standings_tiebreakers","saunders_slots"],"properties":{"sixth_spot_rule":{"enum":["standard","points_for_outside_top_five"]}}},"update_context":{"required":["mode","cutoff_date","contains_live_scores","contains_projected_scores"]},"teams":{},"games":{}}};
 var pattern10 = new RegExp("^[0-9]+$", "u");
 var schema65 = {"required":["roster_id","owner","display_name","sleeper_team_name"],"properties":{"roster_id":{},"owner":{},"display_name":{},"sleeper_team_name":{}}};
 function validate31(data) {
@@ -885,7 +885,7 @@ function validate33(data) {
           }
         }
         for (const key1 in data9) {
-          if (!(key1 === "regular_season_max_week" || key1 === "playoff_slots" || key1 === "bye_slots" || key1 === "saunders_slots" || key1 === "standings_tiebreakers")) {
+          if (!(key1 === "regular_season_max_week" || key1 === "playoff_slots" || key1 === "bye_slots" || key1 === "saunders_slots" || key1 === "sixth_spot_rule" || key1 === "standings_tiebreakers")) {
             errors++;
           }
         }
@@ -936,29 +936,42 @@ function validate33(data) {
             }
           }
         }
+        if (data9.sixth_spot_rule !== void 0) {
+          let valid10;
+          valid10 = false;
+          for (const v0 of schema58.properties.playoff_rules.properties.sixth_spot_rule.enum) {
+            if (func0(data9.sixth_spot_rule, v0)) {
+              valid10 = true;
+              break;
+            }
+          }
+          if (!valid10) {
+            errors++;
+          }
+        }
         if (data9.standings_tiebreakers !== void 0) {
-          let data14 = data9.standings_tiebreakers;
-          if (Array.isArray(data14)) {
-            if (data14.length < 1) {
+          let data15 = data9.standings_tiebreakers;
+          if (Array.isArray(data15)) {
+            if (data15.length < 1) {
               errors++;
             }
-            const len1 = data14.length;
+            const len1 = data15.length;
             for (let i2 = 0; i2 < len1; i2++) {
-              let data15 = data14[i2];
-              if (typeof data15 === "string") {
-                if (func4(data15) < 1) {
+              let data16 = data15[i2];
+              if (typeof data16 === "string") {
+                if (func4(data16) < 1) {
                   errors++;
                 }
               } else {
                 errors++;
               }
             }
-            let i3 = data14.length;
+            let i3 = data15.length;
             let j1;
             if (i3 > 1) {
               const indices0 = {};
               for (; i3--; ) {
-                let item0 = data14[i3];
+                let item0 = data15[i3];
                 if (typeof item0 !== "string") {
                   continue;
                 }
@@ -979,45 +992,45 @@ function validate33(data) {
       }
     }
     if (data.update_context !== void 0) {
-      let data16 = data.update_context;
-      if (data16 && typeof data16 == "object" && !Array.isArray(data16)) {
+      let data17 = data.update_context;
+      if (data17 && typeof data17 == "object" && !Array.isArray(data17)) {
         for (const prop2 of schema58.properties.update_context.required) {
-          if (data16[prop2] === void 0) {
+          if (data17[prop2] === void 0) {
             errors++;
           }
         }
-        for (const key2 in data16) {
+        for (const key2 in data17) {
           if (!(key2 === "mode" || key2 === "cutoff_date" || key2 === "contains_live_scores" || key2 === "contains_projected_scores")) {
             errors++;
           }
         }
-        if (data16.mode !== void 0) {
-          let data17 = data16.mode;
-          if (typeof data17 === "string") {
-            if (func4(data17) < 1) {
-              errors++;
-            }
-          } else {
-            errors++;
-          }
-        }
-        if (data16.cutoff_date !== void 0) {
-          let data18 = data16.cutoff_date;
+        if (data17.mode !== void 0) {
+          let data18 = data17.mode;
           if (typeof data18 === "string") {
-            if (!formats0.validate(data18)) {
+            if (func4(data18) < 1) {
               errors++;
             }
           } else {
             errors++;
           }
         }
-        if (data16.contains_live_scores !== void 0) {
-          if (typeof data16.contains_live_scores !== "boolean") {
+        if (data17.cutoff_date !== void 0) {
+          let data19 = data17.cutoff_date;
+          if (typeof data19 === "string") {
+            if (!formats0.validate(data19)) {
+              errors++;
+            }
+          } else {
             errors++;
           }
         }
-        if (data16.contains_projected_scores !== void 0) {
-          if (typeof data16.contains_projected_scores !== "boolean") {
+        if (data17.contains_live_scores !== void 0) {
+          if (typeof data17.contains_live_scores !== "boolean") {
+            errors++;
+          }
+        }
+        if (data17.contains_projected_scores !== void 0) {
+          if (typeof data17.contains_projected_scores !== "boolean") {
             errors++;
           }
         }
@@ -1026,14 +1039,14 @@ function validate33(data) {
       }
     }
     if (data.teams !== void 0) {
-      let data21 = data.teams;
-      if (Array.isArray(data21)) {
-        if (data21.length < 2) {
+      let data22 = data.teams;
+      if (Array.isArray(data22)) {
+        if (data22.length < 2) {
           errors++;
         }
-        const len2 = data21.length;
+        const len2 = data22.length;
         for (let i4 = 0; i4 < len2; i4++) {
-          if (!validate31(data21[i4])) {
+          if (!validate31(data22[i4])) {
             errors++;
           }
         }
@@ -1042,11 +1055,11 @@ function validate33(data) {
       }
     }
     if (data.games !== void 0) {
-      let data23 = data.games;
-      if (Array.isArray(data23)) {
-        const len3 = data23.length;
+      let data24 = data.games;
+      if (Array.isArray(data24)) {
+        const len3 = data24.length;
         for (let i5 = 0; i5 < len3; i5++) {
-          if (!validate33(data23[i5])) {
+          if (!validate33(data24[i5])) {
             errors++;
           }
         }

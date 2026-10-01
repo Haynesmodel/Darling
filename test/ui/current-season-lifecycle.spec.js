@@ -456,6 +456,27 @@ test('Playoff Machine deep link, provisional picks, exact score inputs, reset, a
   await expect(page.locator('#currentPlayoffMachine')).toContainText('available during the active regular season');
 });
 
+test('Playoff Machine disables duplicate-game controls in production DOM', async ({ page }) => {
+  const fixture = createSnapshotFixture({ mutations: { CurrentSeason: (current, assets) => {
+    regularSeason2026(current, false, assets);
+    const unresolved = current.games.find(game => game.week === 2);
+    current.games.push({ ...unresolved });
+  } } });
+  await fixture.install(page);
+  await page.setViewportSize({ width: 320, height: 720 });
+  await page.goto('/?tab=current&currentSeason=2026&currentView=machine');
+  await page.waitForLoadState('networkidle');
+
+  const duplicateButton = page.locator('#currentPlayoffMachine button[data-machine-action="clear-game"]').first();
+  await expect(duplicateButton).toHaveAttribute('disabled', '');
+  const duplicateKey = await duplicateButton.getAttribute('data-game-key');
+  const controls = page.locator(`#currentPlayoffMachine [data-game-key="${duplicateKey}"]`);
+  await expect(controls).toHaveCount(12);
+  expect(await controls.evaluateAll(elements => elements.every(element => element.disabled))).toBe(true);
+  expect(await page.locator('#currentPlayoffMachine').evaluate(element => element.innerHTML.includes('=""=""'))).toBe(false);
+  await expectNoViolations(page, '#currentPlayoffMachine');
+});
+
 test('Playoff Machine shows exact six-seed board when every remaining game has scores', async ({ page }) => {
   const fixture = createSnapshotFixture({ mutations: { CurrentSeason: current => {
     const unresolved = current.games.find(game => !['final', 'complete', 'completed'].includes(String(game.status).toLowerCase()));

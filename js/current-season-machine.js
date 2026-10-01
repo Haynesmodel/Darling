@@ -189,7 +189,9 @@ function currentPlayoffMachineHtml(machine, selectedWeek = null, root = docOrDef
       __ERROR_ID__: errorId, __SCORE_A__: escapeHtml(scoreValueA), __SCORE_B__: escapeHtml(scoreValueB),
       __DISABLED__: disabled.trim(), __WARNING__: warning,
     };
-    return gameTemplate.replace(/__[A-Z_]+__/gi, key => values[key.toUpperCase()] ?? key);
+    return gameTemplate.replace(/__[A-Z_]+__/gi, key => values[key.toUpperCase()] ?? key)
+      .replace(/ data-machine-disabled="disabled"/g, ' disabled')
+      .replace(/ data-machine-disabled=""/g, '');
   };
   const actualByOwner = new Map(machine.actualStandings.map(row => [row.owner, row]));
   const seedBoard = machine.exact ? `<section class="current-machine-seed-board"><h3>Your playoff seeds</h3><p>${machine.wildcardTie ? `Scores complete; seed 6 unresolved. ${machine.candidates.filter(row => row.qualificationReason === 'points_for_tie').map(row => escapeHtml(row.owner)).join(' and ')} are tied on total points.` : 'Top five by standings · seed 6 by points for outside the top five'}</p><div>${machine.standings.filter(row => row.playoffSeed).sort((a, b) => a.playoffSeed - b.playoffSeed).map(row => `<article><small>Seed ${escapeHtml(row.playoffSeed)}${row.qualificationReason === 'points_for' ? ' · PF' : ''}</small><strong>${escapeHtml(row.owner)}</strong></article>`).join('')}</div></section>` : '';

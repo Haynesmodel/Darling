@@ -41,7 +41,9 @@ jobs:
         run: npm ci
       - name: Audit dependencies
         id: audit
-        run: npm audit --audit-level=moderate
+        run: |
+          npm audit --omit=dev --audit-level=moderate
+          npm run audit:dependencies
       - name: Run quality, unit, and data checks
         id: unit_data
         run: npm run test:unit

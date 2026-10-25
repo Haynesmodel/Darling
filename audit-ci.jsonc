@@ -1,13 +1,4 @@
 {
   "$schema": "https://github.com/IBM/audit-ci/raw/main/docs/schema.json",
-  "moderate": true,
-  "allowlist": [
-    {
-      "GHSA-vfj7-8cjw-p6xm": {
-        "active": true,
-        "expiry": "2026-11-13",
-        "notes": "Unpatched braces advisory in the development-only stylelint glob chain. Production dependencies are audited separately. Remove this exception when a patched release is available."
-      }
-    }
-  ]
+  "moderate": true
 }

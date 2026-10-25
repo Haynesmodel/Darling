@@ -248,7 +248,7 @@ test('low-score lore follows the anchored canonical H2H fixture', async ({ page 
   const fixture = createSnapshotFixture({
     mutations: {
       H2H: games => {
-        const record = games.find(game => game.season === 2019 && game.week === 12 && game.teamA === 'Joe' && game.teamB === 'Nuss');
+        const record = games.find(game => game.season === 2019 && game.week === 11 && game.teamA === 'Joe' && game.teamB === 'Nuss');
         record.scoreB = 77.77;
       },
     },
@@ -265,7 +265,7 @@ test('low-score lore follows the anchored canonical H2H fixture', async ({ page 
 });
 
 test('global search low-score incantation uses canonical mutated H2H facts', async ({ page }) => {
-  const fixture = createSnapshotFixture({ mutations: { H2H: games => { const record = games.find(game => game.season === 2019 && game.week === 12 && game.teamA === 'Joe' && game.teamB === 'Nuss'); record.scoreB = 66.66; } } });
+  const fixture = createSnapshotFixture({ mutations: { H2H: games => { const record = games.find(game => game.season === 2019 && game.week === 11 && game.teamA === 'Joe' && game.teamB === 'Nuss'); record.scoreB = 66.66; } } });
   await fixture.install(page);
   await page.goto('/?tab=history');
   await page.locator('.search-trigger').click();

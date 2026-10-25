@@ -2,7 +2,7 @@
   "source": "sleeper",
   "league_id": "1386757318678433792",
   "season": 2026,
-  "generated_at": "2026-10-25T12:13:17Z",
+  "generated_at": "2026-10-20T18:25:45Z",
   "current_week": 7,
   "regular_season_max_week": 14,
   "playoff_rules": {
@@ -19,7 +19,7 @@
   },
   "update_context": {
     "mode": "manual",
-    "cutoff_date": "2026-10-25",
+    "cutoff_date": "2026-10-20",
     "contains_live_scores": false,
     "contains_projected_scores": false
   },

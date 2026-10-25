@@ -1397,6 +1397,8 @@ test('saved views validate names, confirm replacement, rename, and delete safely
   await expect(shell.locator('.table-menu-message')).toContainText('Kept the existing “Primary audit” view.');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('darling.tableViews.v1') || '[]'))).toEqual(beforeReplace);
 
+  await shell.getByRole('button', { name: 'Wins', exact: true }).click();
+  await expect(shell.getByRole('button', { name: 'Wins', exact: true })).toHaveAttribute('aria-pressed', 'true');
   page.once('dialog', async dialog => dialog.accept());
   await shell.getByPlaceholder('View name').fill('PRIMARY AUDIT');
   await shell.getByRole('button', { name: 'Save', exact: true }).click();
@@ -1404,7 +1406,9 @@ test('saved views validate names, confirm replacement, rename, and delete safely
   const replaced = await page.evaluate(() => JSON.parse(localStorage.getItem('darling.tableViews.v1') || '[]'));
   expect(replaced).toHaveLength(1);
   expect(replaced[0].id).toBe(beforeReplace[0].id);
-  expect(replaced[0].state).toEqual(beforeReplace[0].state);
+  expect(replaced[0].state.quickFilters).toEqual(['wins']);
+  expect(replaced[0].state).not.toEqual(beforeReplace[0].state);
+  expect(replaced[0].urlState.gameResult).toBe('W');
 
   page.once('dialog', async dialog => dialog.dismiss());
   await shell.getByRole('button', { name: 'Rename PRIMARY AUDIT' }).click();
@@ -1417,6 +1421,11 @@ test('saved views validate names, confirm replacement, rename, and delete safely
   await expect(shell.locator('.table-menu-message')).toContainText('Deleted “Renamed audit”.');
   await expect(shell.getByRole('button', { name: 'Renamed audit', exact: true })).toHaveCount(0);
 
+  await shell.getByPlaceholder('View name').fill('Retained audit');
+  await shell.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(shell.locator('.table-menu-message')).toContainText('Saved “Retained audit”.');
+  const beforeFailure = await page.evaluate(() => JSON.parse(localStorage.getItem('darling.tableViews.v1') || '[]'));
+  expect(beforeFailure).toHaveLength(1);
   await shell.getByPlaceholder('View name').fill('Storage failure');
   await page.evaluate(() => {
     const originalSetItem = Storage.prototype.setItem;
@@ -1427,7 +1436,8 @@ test('saved views validate names, confirm replacement, rename, and delete safely
   });
   await shell.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(shell.locator('.table-menu-message')).toHaveText('Enter a name and try again.');
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('darling.tableViews.v1') || '[]'))).toEqual([]);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('darling.tableViews.v1') || '[]'))).toEqual(beforeFailure);
+  await expect(shell.getByRole('button', { name: 'Retained audit', exact: true })).toHaveCount(1);
   await expect(shell.getByRole('button', { name: 'Storage failure', exact: true })).toHaveCount(0);
 });
 

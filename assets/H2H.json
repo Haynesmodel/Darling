@@ -1564,12 +1564,12 @@
   },
   {
     "season": 2016,
-    "date": "2016-09-30",
+    "date": "2016-10-30",
     "teamA": "Shap",
     "teamB": "Zubs",
     "scoreA": 130.2,
     "scoreB": 110.7,
-    "week": 4,
+    "week": 8,
     "round": null,
     "type": "Regular"
   },
@@ -1580,7 +1580,7 @@
     "teamB": "Shap",
     "scoreA": 137,
     "scoreB": 114.3,
-    "week": 5,
+    "week": 4,
     "round": null,
     "type": "Regular"
   },
@@ -1591,7 +1591,7 @@
     "teamB": "Zook",
     "scoreA": 145.6,
     "scoreB": 87.8,
-    "week": 5,
+    "week": 4,
     "round": null,
     "type": "Regular"
   },
@@ -1602,7 +1602,7 @@
     "teamB": "Singer",
     "scoreA": 97.5,
     "scoreB": 114,
-    "week": 5,
+    "week": 4,
     "round": null,
     "type": "Regular"
   },
@@ -1613,7 +1613,7 @@
     "teamB": "Nuss",
     "scoreA": 95,
     "scoreB": 116,
-    "week": 5,
+    "week": 4,
     "round": null,
     "type": "Regular"
   },
@@ -1624,7 +1624,7 @@
     "teamB": "Rishi",
     "scoreA": 82.6,
     "scoreB": 79.6,
-    "week": 5,
+    "week": 4,
     "round": null,
     "type": "Regular"
   },
@@ -1635,7 +1635,7 @@
     "teamB": "Nuss",
     "scoreA": 119.5,
     "scoreB": 155.2,
-    "week": 6,
+    "week": 5,
     "round": null,
     "type": "Regular"
   },
@@ -1646,7 +1646,7 @@
     "teamB": "Zubs",
     "scoreA": 101.6,
     "scoreB": 71.1,
-    "week": 6,
+    "week": 5,
     "round": null,
     "type": "Regular"
   },
@@ -1657,7 +1657,7 @@
     "teamB": "Rishi",
     "scoreA": 99,
     "scoreB": 116.4,
-    "week": 6,
+    "week": 5,
     "round": null,
     "type": "Regular"
   },
@@ -1668,7 +1668,7 @@
     "teamB": "Singer",
     "scoreA": 115.1,
     "scoreB": 115,
-    "week": 6,
+    "week": 5,
     "round": null,
     "type": "Regular"
   },
@@ -1679,7 +1679,7 @@
     "teamB": "Plot",
     "scoreA": 124.9,
     "scoreB": 88.1,
-    "week": 6,
+    "week": 5,
     "round": null,
     "type": "Regular"
   },
@@ -1690,7 +1690,7 @@
     "teamB": "Plot",
     "scoreA": 119.9,
     "scoreB": 71.2,
-    "week": 7,
+    "week": 6,
     "round": null,
     "type": "Regular"
   },
@@ -1701,7 +1701,7 @@
     "teamB": "Zubs",
     "scoreA": 108.2,
     "scoreB": 125.3,
-    "week": 7,
+    "week": 6,
     "round": null,
     "type": "Regular"
   },
@@ -1712,7 +1712,7 @@
     "teamB": "Shap",
     "scoreA": 138.4,
     "scoreB": 73.6,
-    "week": 7,
+    "week": 6,
     "round": null,
     "type": "Regular"
   },
@@ -1723,7 +1723,7 @@
     "teamB": "Nuss",
     "scoreA": 110.2,
     "scoreB": 126.9,
-    "week": 7,
+    "week": 6,
     "round": null,
     "type": "Regular"
   },
@@ -1734,7 +1734,7 @@
     "teamB": "Connor",
     "scoreA": 105.1,
     "scoreB": 53.6,
-    "week": 7,
+    "week": 6,
     "round": null,
     "type": "Regular"
   },
@@ -1745,7 +1745,7 @@
     "teamB": "Connor",
     "scoreA": 117.6,
     "scoreB": 107.3,
-    "week": 8,
+    "week": 7,
     "round": null,
     "type": "Regular"
   },
@@ -1756,7 +1756,7 @@
     "teamB": "Shap",
     "scoreA": 69.5,
     "scoreB": 89.6,
-    "week": 8,
+    "week": 7,
     "round": null,
     "type": "Regular"
   },
@@ -1767,7 +1767,7 @@
     "teamB": "Nuss",
     "scoreA": 83.5,
     "scoreB": 103,
-    "week": 8,
+    "week": 7,
     "round": null,
     "type": "Regular"
   },
@@ -1778,18 +1778,18 @@
     "teamB": "Singer",
     "scoreA": 141.9,
     "scoreB": 111.3,
-    "week": 8,
+    "week": 7,
     "round": null,
     "type": "Regular"
   },
   {
     "season": 2016,
-    "date": "2016-10-25",
+    "date": "2016-10-23",
     "teamA": "Zubs",
     "teamB": "Plot",
     "scoreA": 106.8,
     "scoreB": 96.4,
-    "week": 9,
+    "week": 7,
     "round": null,
     "type": "Regular"
   },
@@ -1800,7 +1800,7 @@
     "teamB": "Plot",
     "scoreA": 90.2,
     "scoreB": 106.5,
-    "week": 10,
+    "week": 8,
     "round": null,
     "type": "Regular"
   },
@@ -1811,7 +1811,7 @@
     "teamB": "Singer",
     "scoreA": 81.1,
     "scoreB": 107.3,
-    "week": 10,
+    "week": 8,
     "round": null,
     "type": "Regular"
   },
@@ -1822,7 +1822,7 @@
     "teamB": "Nuss",
     "scoreA": 104.3,
     "scoreB": 74.4,
-    "week": 10,
+    "week": 8,
     "round": null,
     "type": "Regular"
   },
@@ -1833,7 +1833,7 @@
     "teamB": "Zook",
     "scoreA": 79.6,
     "scoreB": 110.5,
-    "week": 10,
+    "week": 8,
     "round": null,
     "type": "Regular"
   },
@@ -1844,7 +1844,7 @@
     "teamB": "Rishi",
     "scoreA": 110,
     "scoreB": 104.7,
-    "week": 11,
+    "week": 9,
     "round": null,
     "type": "Regular"
   },
@@ -1855,7 +1855,7 @@
     "teamB": "Zook",
     "scoreA": 126.2,
     "scoreB": 146.1,
-    "week": 11,
+    "week": 9,
     "round": null,
     "type": "Regular"
   },
@@ -1866,7 +1866,7 @@
     "teamB": "Singer",
     "scoreA": 91,
     "scoreB": 83,
-    "week": 11,
+    "week": 9,
     "round": null,
     "type": "Regular"
   },
@@ -1877,7 +1877,7 @@
     "teamB": "Nuss",
     "scoreA": 99.6,
     "scoreB": 106,
-    "week": 11,
+    "week": 9,
     "round": null,
     "type": "Regular"
   },
@@ -1888,7 +1888,7 @@
     "teamB": "Connor",
     "scoreA": 105,
     "scoreB": 111.1,
-    "week": 11,
+    "week": 9,
     "round": null,
     "type": "Regular"
   },
@@ -1899,7 +1899,7 @@
     "teamB": "Singer",
     "scoreA": 108.2,
     "scoreB": 101.6,
-    "week": 12,
+    "week": 10,
     "round": null,
     "type": "Regular"
   },
@@ -1910,7 +1910,7 @@
     "teamB": "Joel",
     "scoreA": 100.6,
     "scoreB": 119.8,
-    "week": 12,
+    "week": 10,
     "round": null,
     "type": "Regular"
   },
@@ -1921,7 +1921,7 @@
     "teamB": "Plot",
     "scoreA": 130.2,
     "scoreB": 109.5,
-    "week": 12,
+    "week": 10,
     "round": null,
     "type": "Regular"
   },
@@ -1932,7 +1932,7 @@
     "teamB": "Shap",
     "scoreA": 84.3,
     "scoreB": 85.6,
-    "week": 12,
+    "week": 10,
     "round": null,
     "type": "Regular"
   },
@@ -1943,7 +1943,7 @@
     "teamB": "Nuss",
     "scoreA": 112.7,
     "scoreB": 139.2,
-    "week": 12,
+    "week": 10,
     "round": null,
     "type": "Regular"
   },
@@ -1954,7 +1954,7 @@
     "teamB": "Shap",
     "scoreA": 102.6,
     "scoreB": 89.6,
-    "week": 13,
+    "week": 11,
     "round": null,
     "type": "Regular"
   },
@@ -1965,7 +1965,7 @@
     "teamB": "Plot",
     "scoreA": 84.7,
     "scoreB": 98.4,
-    "week": 13,
+    "week": 11,
     "round": null,
     "type": "Regular"
   },
@@ -1976,7 +1976,7 @@
     "teamB": "Connor",
     "scoreA": 115.8,
     "scoreB": 88.6,
-    "week": 13,
+    "week": 11,
     "round": null,
     "type": "Regular"
   },
@@ -1987,7 +1987,7 @@
     "teamB": "Nuss",
     "scoreA": 108,
     "scoreB": 104.4,
-    "week": 13,
+    "week": 11,
     "round": null,
     "type": "Regular"
   },
@@ -1998,7 +1998,7 @@
     "teamB": "Singer",
     "scoreA": 101.4,
     "scoreB": 111,
-    "week": 13,
+    "week": 11,
     "round": null,
     "type": "Regular"
   },
@@ -2009,7 +2009,7 @@
     "teamB": "Nuss",
     "scoreA": 82.4,
     "scoreB": 101.4,
-    "week": 13,
+    "week": 12,
     "round": null,
     "type": "Regular"
   },
@@ -2020,7 +2020,7 @@
     "teamB": "Connor",
     "scoreA": 128.9,
     "scoreB": 112.6,
-    "week": 13,
+    "week": 12,
     "round": null,
     "type": "Regular"
   },
@@ -2031,7 +2031,7 @@
     "teamB": "Shap",
     "scoreA": 109,
     "scoreB": 77,
-    "week": 13,
+    "week": 12,
     "round": null,
     "type": "Regular"
   },
@@ -2042,7 +2042,7 @@
     "teamB": "Singer",
     "scoreA": 108.4,
     "scoreB": 120.8,
-    "week": 13,
+    "week": 12,
     "round": null,
     "type": "Regular"
   },
@@ -2053,7 +2053,7 @@
     "teamB": "Zook",
     "scoreA": 88.6,
     "scoreB": 108.7,
-    "week": 13,
+    "week": 12,
     "round": null,
     "type": "Regular"
   },
@@ -2064,7 +2064,7 @@
     "teamB": "Shap",
     "scoreA": 96.9,
     "scoreB": 97.9,
-    "week": 14,
+    "week": 13,
     "round": null,
     "type": "Regular"
   },
@@ -2075,7 +2075,7 @@
     "teamB": "Zook",
     "scoreA": 106.8,
     "scoreB": 96.9,
-    "week": 14,
+    "week": 13,
     "round": null,
     "type": "Regular"
   },
@@ -2086,7 +2086,7 @@
     "teamB": "Singer",
     "scoreA": 108.6,
     "scoreB": 129.6,
-    "week": 14,
+    "week": 13,
     "round": null,
     "type": "Regular"
   },
@@ -2097,7 +2097,7 @@
     "teamB": "Nuss",
     "scoreA": 92.6,
     "scoreB": 156,
-    "week": 14,
+    "week": 13,
     "round": null,
     "type": "Regular"
   },
@@ -2108,7 +2108,7 @@
     "teamB": "Rishi",
     "scoreA": 104.2,
     "scoreB": 106.9,
-    "week": 14,
+    "week": 13,
     "round": null,
     "type": "Regular"
   },
@@ -3964,12 +3964,12 @@
   },
   {
     "season": 2019,
-    "date": "2019-09-24",
+    "date": "2019-09-22",
     "teamA": "Joe",
     "teamB": "Connor",
     "scoreA": 129.3,
     "scoreB": 74,
-    "week": 4,
+    "week": 3,
     "round": null,
     "type": "Regular"
   },
@@ -3980,7 +3980,7 @@
     "teamB": "Joel",
     "scoreA": 123.6,
     "scoreB": 124.5,
-    "week": 5,
+    "week": 4,
     "round": null,
     "type": "Regular"
   },
@@ -3991,7 +3991,7 @@
     "teamB": "Connor",
     "scoreA": 106.7,
     "scoreB": 86,
-    "week": 5,
+    "week": 4,
     "round": null,
     "type": "Regular"
   },
@@ -4002,7 +4002,7 @@
     "teamB": "Nuss",
     "scoreA": 94.2,
     "scoreB": 75.1,
-    "week": 5,
+    "week": 4,
     "round": null,
     "type": "Regular"
   },
@@ -4013,7 +4013,7 @@
     "teamB": "Plot",
     "scoreA": 87.5,
     "scoreB": 121.8,
-    "week": 5,
+    "week": 4,
     "round": null,
     "type": "Regular"
   },
@@ -4024,7 +4024,7 @@
     "teamB": "Singer",
     "scoreA": 126.3,
     "scoreB": 120.4,
-    "week": 5,
+    "week": 4,
     "round": null,
     "type": "Regular"
   },
@@ -4035,7 +4035,7 @@
     "teamB": "Nuss",
     "scoreA": 101.8,
     "scoreB": 166.8,
-    "week": 6,
+    "week": 5,
     "round": null,
     "type": "Regular"
   },
@@ -4046,7 +4046,7 @@
     "teamB": "Zubs",
     "scoreA": 122.2,
     "scoreB": 125.1,
-    "week": 6,
+    "week": 5,
     "round": null,
     "type": "Regular"
   },
@@ -4057,7 +4057,7 @@
     "teamB": "Singer",
     "scoreA": 145.8,
     "scoreB": 141.5,
-    "week": 6,
+    "week": 5,
     "round": null,
     "type": "Regular"
   },
@@ -4068,7 +4068,7 @@
     "teamB": "Plot",
     "scoreA": 113.5,
     "scoreB": 91.8,
-    "week": 6,
+    "week": 5,
     "round": null,
     "type": "Regular"
   },
@@ -4079,7 +4079,7 @@
     "teamB": "Shap",
     "scoreA": 115.9,
     "scoreB": 122.1,
-    "week": 6,
+    "week": 5,
     "round": null,
     "type": "Regular"
   },
@@ -4090,7 +4090,7 @@
     "teamB": "Singer",
     "scoreA": 89.1,
     "scoreB": 154.2,
-    "week": 7,
+    "week": 6,
     "round": null,
     "type": "Regular"
   },
@@ -4101,7 +4101,7 @@
     "teamB": "Zook",
     "scoreA": 109.6,
     "scoreB": 80.7,
-    "week": 7,
+    "week": 6,
     "round": null,
     "type": "Regular"
   },
@@ -4112,7 +4112,7 @@
     "teamB": "Plot",
     "scoreA": 105.1,
     "scoreB": 78.2,
-    "week": 7,
+    "week": 6,
     "round": null,
     "type": "Regular"
   },
@@ -4123,7 +4123,7 @@
     "teamB": "Shap",
     "scoreA": 118,
     "scoreB": 143.7,
-    "week": 7,
+    "week": 6,
     "round": null,
     "type": "Regular"
   },
@@ -4134,7 +4134,7 @@
     "teamB": "Nuss",
     "scoreA": 113.2,
     "scoreB": 65.7,
-    "week": 7,
+    "week": 6,
     "round": null,
     "type": "Regular"
   },
@@ -4145,7 +4145,7 @@
     "teamB": "Singer",
     "scoreA": 73.1,
     "scoreB": 100.4,
-    "week": 8,
+    "week": 7,
     "round": null,
     "type": "Regular"
   },
@@ -4156,7 +4156,7 @@
     "teamB": "Shap",
     "scoreA": 115.9,
     "scoreB": 123.2,
-    "week": 8,
+    "week": 7,
     "round": null,
     "type": "Regular"
   },
@@ -4167,7 +4167,7 @@
     "teamB": "Nuss",
     "scoreA": 144.7,
     "scoreB": 100.4,
-    "week": 8,
+    "week": 7,
     "round": null,
     "type": "Regular"
   },
@@ -4178,7 +4178,7 @@
     "teamB": "Zook",
     "scoreA": 82.2,
     "scoreB": 104.4,
-    "week": 8,
+    "week": 7,
     "round": null,
     "type": "Regular"
   },
@@ -4189,7 +4189,7 @@
     "teamB": "Connor",
     "scoreA": 80.3,
     "scoreB": 86.4,
-    "week": 8,
+    "week": 7,
     "round": null,
     "type": "Regular"
   },
@@ -4200,7 +4200,7 @@
     "teamB": "Plot",
     "scoreA": 112.6,
     "scoreB": 84.9,
-    "week": 9,
+    "week": 8,
     "round": null,
     "type": "Regular"
   },
@@ -4211,7 +4211,7 @@
     "teamB": "Rishi",
     "scoreA": 81.4,
     "scoreB": 138.9,
-    "week": 9,
+    "week": 8,
     "round": null,
     "type": "Regular"
   },
@@ -4222,7 +4222,7 @@
     "teamB": "Zook",
     "scoreA": 117.6,
     "scoreB": 111.5,
-    "week": 9,
+    "week": 8,
     "round": null,
     "type": "Regular"
   },
@@ -4233,7 +4233,7 @@
     "teamB": "Nuss",
     "scoreA": 117.5,
     "scoreB": 143,
-    "week": 9,
+    "week": 8,
     "round": null,
     "type": "Regular"
   },
@@ -4244,7 +4244,7 @@
     "teamB": "Shap",
     "scoreA": 151.3,
     "scoreB": 131.2,
-    "week": 9,
+    "week": 8,
     "round": null,
     "type": "Regular"
   },
@@ -4255,7 +4255,7 @@
     "teamB": "Plot",
     "scoreA": 95,
     "scoreB": 116.7,
-    "week": 10,
+    "week": 9,
     "round": null,
     "type": "Regular"
   },
@@ -4266,7 +4266,7 @@
     "teamB": "Nuss",
     "scoreA": 157.4,
     "scoreB": 84.1,
-    "week": 10,
+    "week": 9,
     "round": null,
     "type": "Regular"
   },
@@ -4277,7 +4277,7 @@
     "teamB": "Singer",
     "scoreA": 108.6,
     "scoreB": 133.1,
-    "week": 10,
+    "week": 9,
     "round": null,
     "type": "Regular"
   },
@@ -4288,7 +4288,7 @@
     "teamB": "Connor",
     "scoreA": 86.9,
     "scoreB": 89.8,
-    "week": 10,
+    "week": 9,
     "round": null,
     "type": "Regular"
   },
@@ -4299,7 +4299,7 @@
     "teamB": "Rishi",
     "scoreA": 80.2,
     "scoreB": 121.7,
-    "week": 10,
+    "week": 9,
     "round": null,
     "type": "Regular"
   },
@@ -4310,7 +4310,7 @@
     "teamB": "Shap",
     "scoreA": 81.4,
     "scoreB": 104.7,
-    "week": 11,
+    "week": 10,
     "round": null,
     "type": "Regular"
   },
@@ -4321,7 +4321,7 @@
     "teamB": "Connor",
     "scoreA": 139.5,
     "scoreB": 107,
-    "week": 11,
+    "week": 10,
     "round": null,
     "type": "Regular"
   },
@@ -4332,7 +4332,7 @@
     "teamB": "Nuss",
     "scoreA": 94.6,
     "scoreB": 121.4,
-    "week": 11,
+    "week": 10,
     "round": null,
     "type": "Regular"
   },
@@ -4343,7 +4343,7 @@
     "teamB": "Singer",
     "scoreA": 101,
     "scoreB": 121.8,
-    "week": 11,
+    "week": 10,
     "round": null,
     "type": "Regular"
   },
@@ -4354,7 +4354,7 @@
     "teamB": "Plot",
     "scoreA": 140.8,
     "scoreB": 123.7,
-    "week": 11,
+    "week": 10,
     "round": null,
     "type": "Regular"
   },
@@ -4365,7 +4365,7 @@
     "teamB": "Shap",
     "scoreA": 131.7,
     "scoreB": 130.3,
-    "week": 12,
+    "week": 11,
     "round": null,
     "type": "Regular"
   },
@@ -4376,7 +4376,7 @@
     "teamB": "Nuss",
     "scoreA": 92.2,
     "scoreB": 42,
-    "week": 12,
+    "week": 11,
     "round": null,
     "type": "Regular"
   },
@@ -4387,7 +4387,7 @@
     "teamB": "Rishi",
     "scoreA": 112,
     "scoreB": 89.9,
-    "week": 12,
+    "week": 11,
     "round": null,
     "type": "Regular"
   },
@@ -4398,7 +4398,7 @@
     "teamB": "Singer",
     "scoreA": 113.4,
     "scoreB": 100.1,
-    "week": 12,
+    "week": 11,
     "round": null,
     "type": "Regular"
   },
@@ -4409,7 +4409,7 @@
     "teamB": "Zook",
     "scoreA": 107.8,
     "scoreB": 101.8,
-    "week": 12,
+    "week": 11,
     "round": null,
     "type": "Regular"
   },
@@ -4420,7 +4420,7 @@
     "teamB": "Connor",
     "scoreA": 135.3,
     "scoreB": 119.6,
-    "week": 13,
+    "week": 12,
     "round": null,
     "type": "Regular"
   },
@@ -4431,7 +4431,7 @@
     "teamB": "Zubs",
     "scoreA": 130.2,
     "scoreB": 102.2,
-    "week": 13,
+    "week": 12,
     "round": null,
     "type": "Regular"
   },
@@ -4442,7 +4442,7 @@
     "teamB": "Shap",
     "scoreA": 129.7,
     "scoreB": 75.8,
-    "week": 13,
+    "week": 12,
     "round": null,
     "type": "Regular"
   },
@@ -4453,7 +4453,7 @@
     "teamB": "Singer",
     "scoreA": 70.4,
     "scoreB": 103.6,
-    "week": 13,
+    "week": 12,
     "round": null,
     "type": "Regular"
   },
@@ -4464,7 +4464,7 @@
     "teamB": "Nuss",
     "scoreA": 108.2,
     "scoreB": 56.1,
-    "week": 13,
+    "week": 12,
     "round": null,
     "type": "Regular"
   },

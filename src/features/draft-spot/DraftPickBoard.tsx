@@ -116,7 +116,6 @@ export default function DraftPickBoard({ model, onChange }: Props) {
                 lowSample ? 'low-sample' : '',
               ].filter(Boolean).join(' ')}
               aria-pressed={selected}
-              aria-label={`${positionLabel}: ${formatMetric(draftMetricValue(summary, model.state.metric), model.state.metric)}, sample ${summary.n}${lowSample ? ', low sample' : ''}`}
               style={{ '--draft-intensity': intensity(summary) } as Record<string, number>}
               onKeyDown={event => handleKeyDown(event, event.currentTarget)}
               onClick={() => onChange({

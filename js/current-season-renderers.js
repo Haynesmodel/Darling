@@ -129,12 +129,12 @@ function renderScheduleComparison(model, { season, week, owner, donor } = {}) {
     const amount = Number.isInteger(Math.abs(delta)) ? Math.abs(delta) : Math.abs(delta).toFixed(1);
     const relative = impact === 'actual' ? 'Actual schedule.' : impact === 'same' ? 'Same as actual schedule.'
       : `${impact === 'improved' ? 'Better' : 'Worse'} than actual by ${amount} win-equivalent${Math.abs(delta) === 1 ? '' : 's'}.`;
-    return `<td><button type="button" data-schedule-team="${escapeHtml(team)}" data-schedule-donor="${escapeHtml(schedule)}" data-schedule-impact="${impact}" data-schedule-level="${level}" aria-pressed="${team === selected && schedule === selectedDonor}" aria-label="${escapeHtml(label(team))} under ${escapeHtml(label(schedule))}'s schedule: ${recordAccessible(record)}. ${relative}">${recordText(record)}</button></td>`;
+    return `<td><button type="button" data-schedule-team="${escapeHtml(team)}" data-schedule-donor="${escapeHtml(schedule)}" data-schedule-impact="${impact}" data-schedule-level="${level}" aria-pressed="${team === selected && schedule === selectedDonor}" aria-label="${recordText(record)}: ${escapeHtml(label(team))} under ${escapeHtml(label(schedule))}'s schedule: ${recordAccessible(record)}. ${relative}">${recordText(record)}</button></td>`;
   }).join('')}</tr>`).join('');
   const allPlayRows = model.teams.map(team => `<tr><th scope="row">${escapeHtml(label(team))}</th>${weeks.map(n => {
     const tally = model.allPlay[team].weeks[n];
-    return `<td><button type="button" data-schedule-team="${escapeHtml(team)}" data-schedule-week="${n}" aria-label="${escapeHtml(label(team))}, Week ${n} all-play: ${recordAccessible(tally)}">${recordText(tally)}</button></td>`;
-  }).join('')}<td><button type="button" data-schedule-team="${escapeHtml(team)}" data-schedule-total="1" aria-label="${escapeHtml(label(team))} all-play total: ${recordAccessible(model.allPlay[team].total)}">${recordText(model.allPlay[team].total)}</button></td></tr>`).join('');
+    return `<td><button type="button" data-schedule-team="${escapeHtml(team)}" data-schedule-week="${n}" aria-label="${recordText(tally)}: ${escapeHtml(label(team))}, Week ${n} all-play: ${recordAccessible(tally)}">${recordText(tally)}</button></td>`;
+  }).join('')}<td><button type="button" data-schedule-team="${escapeHtml(team)}" data-schedule-total="1" aria-label="${recordText(model.allPlay[team].total)}: ${escapeHtml(label(team))} all-play total: ${recordAccessible(model.allPlay[team].total)}">${recordText(model.allPlay[team].total)}</button></td></tr>`).join('');
   const detail = model.details;
   const buckets = (rows, empty) => rows.length ? rows.map(row => `${escapeHtml(label(row.owner))} (${scoreFmt(row.score)})`).join(', ') : empty;
   const borrowedOpponent = row => row.collision

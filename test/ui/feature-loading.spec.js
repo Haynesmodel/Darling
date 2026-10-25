@@ -185,9 +185,10 @@ test('Command Palette keyboard movement reaches the first, last, and adjacent re
 
 test('Command Palette reports a failed import and retries without a reload', async ({ page }) => {
   let attempts = 0;
+  let failRequests = true;
   await page.route(commandPalettePattern(), async route => {
     attempts += 1;
-    if (attempts === 1) await route.abort('failed');
+    if (failRequests) await route.abort('failed');
     else await route.continue();
   });
   await page.goto('/');
@@ -196,6 +197,7 @@ test('Command Palette reports a failed import and retries without a reload', asy
   await trigger.click();
   await expect(page.getByRole('alert')).toHaveText('Search could not be loaded. Try again.');
   await expect(trigger).toBeEnabled();
+  failRequests = false;
   await trigger.click();
   await expect(page.getByRole('dialog', { name: 'Search The Darling' })).toBeVisible();
   expect(attempts).toBeGreaterThanOrEqual(2);
@@ -478,9 +480,10 @@ test('a delayed feature remains busy and cannot overwrite a newer activation', a
 
 test('a failed feature import is contained in its section and other destinations remain usable', async ({ page }) => {
   let attempts = 0;
+  let failRequests = true;
   await page.route(requestPattern('trophy'), async route => {
     attempts += 1;
-    if (attempts === 1) await route.abort('failed');
+    if (failRequests) await route.abort('failed');
     else await route.continue();
   });
   await page.goto('/?tab=history');
@@ -492,6 +495,7 @@ test('a failed feature import is contained in its section and other destinations
   await expect(panel.getByRole('alert')).toContainText('Trophy Case could not be loaded');
   await expect(panel.getByRole('button', { name: 'Retry' })).toBeVisible();
   await expect(page).toHaveURL(/tab=trophy/);
+  failRequests = false;
   await panel.getByRole('button', { name: 'Retry' }).click();
   await waitForFeature(page, 'trophy');
   expect(attempts).toBeGreaterThanOrEqual(2);

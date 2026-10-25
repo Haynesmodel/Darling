@@ -144,14 +144,14 @@ export default function DraftJourney({ locations, selectedLocation, onSelect, on
             })}
             {zoom === MIN_JOURNEY_ZOOM && callouts.map(callout => {
               const location = callout.location;
-              return <button key={location.id} type="button" class={`draft-journey-callout${location.id === selectedLocation ? ' is-selected' : ''}`} style={{ left: `${((callout.left + callout.width / 2) / layoutWidth) * 100}%`, top: `${(callout.top / JOURNEY_LAYOUT_HEIGHT) * 100}%`, width: `${callout.width}px` }} aria-pressed={location.id === selectedLocation} aria-label={`Show ${location.label}, ${formatDraftLocationYears(location)}`} onClick={() => choose(location.id)}>
-                <span>{location.label}</span><small>{formatDraftLocationYears(location)}</small>
+              return <button key={location.id} type="button" class={`draft-journey-callout${location.id === selectedLocation ? ' is-selected' : ''}`} style={{ left: `${((callout.left + callout.width / 2) / layoutWidth) * 100}%`, top: `${(callout.top / JOURNEY_LAYOUT_HEIGHT) * 100}%`, width: `${callout.width}px` }} aria-pressed={location.id === selectedLocation} aria-label={`Show ${location.label} ${formatDraftLocationYears(location)}`} onClick={() => choose(location.id)}>
+                <span>{location.label}</span>{' '}<small>{formatDraftLocationYears(location)}</small>
               </button>;
             })}
           </div>
         </div>
         <div class="draft-journey-virtual">
-          {sorted.filter(location => location.location_type === 'virtual').map(location => <button type="button" class={`draft-journey-virtual-button${location.id === selectedLocation ? ' is-selected' : ''}`} aria-pressed={location.id === selectedLocation} onClick={() => choose(location.id)} key={location.id}><span>{location.label}</span><small>{formatDraftLocationYears(location)}</small></button>)}
+          {sorted.filter(location => location.location_type === 'virtual').map(location => <button type="button" class={`draft-journey-virtual-button${location.id === selectedLocation ? ' is-selected' : ''}`} aria-pressed={location.id === selectedLocation} onClick={() => choose(location.id)} key={location.id}><span>{location.label}</span>{' '}<small>{formatDraftLocationYears(location)}</small></button>)}
         </div>
       </div>
       <div class="draft-journey-details">

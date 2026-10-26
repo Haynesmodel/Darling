@@ -325,7 +325,7 @@ test('reveal forwards canonical facts to the presentation boundary', async () =>
 test('anchored numeric lore derives facts from canonical games', async () => {
   let received;
   const service = createLazyLoreService(async () => ({ showLore: (...args) => { received = args; } }));
-  service.hydrate(lore, { leagueGames: [{ season: 2019, date: '2019-11-17', teamA: 'Joe', teamB: 'Nuss', scoreA: 1, scoreB: 2, week: 12, round: null, type: 'Regular' }], seasonSummaries: [] });
+  service.hydrate(lore, { leagueGames: [{ season: 2019, date: '2019-11-17', teamA: 'Joe', teamB: 'Nuss', scoreA: 1, scoreB: 2, week: 11, round: null, type: 'Regular' }], seasonSummaries: [] });
   await service.reveal('entry', 'record-42', { context: { facts: { score: '42.00' } } });
   assert.equal(received[3].context.facts.score, 'Nuss 2.00');
   assert.equal(received[3].context.facts.opponent, 'Joe');

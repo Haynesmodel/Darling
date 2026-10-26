@@ -112,6 +112,10 @@ function createPropertyCompactionPlugin() {
       const tableApi = filename.includes('/node_modules/@tanstack/table-core/')
         ? name.name.match(/^(?:cell|column|header|row|table)_(.+)$/)
         : null;
+      // TanStack constructs state handler names at runtime (for example onSortingChange).
+      if (filename.includes('/node_modules/@tanstack/table-core/') && /^on[A-Z].*Change$/.test(name.name)) {
+        publicProperties.add(name.name);
+      }
       if (tableApi) {
         publicProperties.add(name.name);
         publicProperties.add(tableApi[1]);

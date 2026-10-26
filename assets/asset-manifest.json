@@ -19,13 +19,13 @@
       "sha256": "sha256:eae28ae3a44e785325145c0294237adefce0a32c832864974a5a23b4d38703fb"
     },
     "H2H": {
-      "bytes": 185736,
+      "bytes": 185722,
       "path": "assets/H2H.json",
       "required": true,
       "rows": 934,
       "season_max": 2026,
       "season_min": 2014,
-      "sha256": "sha256:fd8658f78c269b6696da0c8c49f89b6fb1b8ecc23f2ccddd2b8b146f3747f8ed"
+      "sha256": "sha256:8e895b527239d4806e36a49556614ee72177ef56cf415539a7ab107ee8bd7990"
     },
     "LeagueLore": {
       "bytes": 84838,
@@ -34,7 +34,7 @@
       "rows": 0,
       "season_max": null,
       "season_min": null,
-      "sha256": "sha256:9f8cb7e3e43ba2fe8f6451fa6cf12a355dc8c79735c3f01b44d08f1d06c461c5"
+      "sha256": "sha256:513228dae07185148aacba4a991cc5fe4ae73e5b904c8d89aaa32928811b1986"
     },
     "Rivalries": {
       "bytes": 2668,
@@ -64,14 +64,14 @@
       "sha256": "sha256:1ef4535d1106cc5da54fce1dcb8da7e17aab4beb7e939642785843032c57d660"
     }
   },
-  "data_version": "sha256:70d23bb93877404084632164f2e3b68e756cde951649f0154dcfda7f97d998ef",
+  "data_version": "sha256:234a09dcd3a24a187bcd1334089444836cc0568b687d3a9e1125748597b8383f",
   "derived": {
-    "bytes": 192455,
+    "bytes": 192402,
     "path": "assets/DerivedStats.json",
     "required": false,
-    "sha256": "sha256:26af56b62459cbb909cc39d7529834180304afc3548bf192b5b0f45e893369b3",
+    "sha256": "sha256:27e096f708022de349090ac2c4bd7df20e17242b955ea8776aae73c56447e078",
     "source_hashes": {
-      "H2H": "sha256:fd8658f78c269b6696da0c8c49f89b6fb1b8ecc23f2ccddd2b8b146f3747f8ed",
+      "H2H": "sha256:8e895b527239d4806e36a49556614ee72177ef56cf415539a7ab107ee8bd7990",
       "Rivalries": "sha256:476e07f1f8d1af669854b1c4343770ca9c2539f99c6ebf3d8d5a8ae1a8cb51fa",
       "SeasonSummary": "sha256:2fac336af3e8324a1213fd34f39de5d574bcc0e5b99212ebba05ab007de8a11f"
     }

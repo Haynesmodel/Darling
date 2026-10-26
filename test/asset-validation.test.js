@@ -99,6 +99,22 @@ test('H2H has no duplicate games (canonical key)', () => {
   }
 });
 
+test('2016 and 2019 regular-season weeks contain one game per team on the scoring Sunday', () => {
+  const games = readJson(h2hPath);
+  for (const [season, openingSunday] of [[2016, '2016-09-11'], [2019, '2019-09-08']]) {
+    const regular = games.filter(g => g.season === season && g.type === 'Regular');
+    assert.equal(regular.length, 65);
+    for (let week = 1; week <= 13; week++) {
+      const weekly = regular.filter(g => g.week === week);
+      const expectedDate = new Date(`${openingSunday}T00:00:00Z`);
+      expectedDate.setUTCDate(expectedDate.getUTCDate() + 7 * (week - 1));
+      assert.equal(weekly.length, 5, `${season} week ${week}`);
+      assert.equal(new Set(weekly.flatMap(g => [g.teamA, g.teamB])).size, 10, `${season} week ${week}`);
+      for (const game of weekly) assert.equal(game.date, expectedDate.toISOString().slice(0, 10));
+    }
+  }
+});
+
 test('dedupeGames removes canonical duplicates', () => {
   const a = {
     season: 2025,

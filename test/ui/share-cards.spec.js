@@ -530,9 +530,10 @@ test('Clipboard denial selects the canonical URL and Canvas failure offers SVG',
 
 test('a preview import failure exposes the source URL and retries on the next click', async ({ page }) => {
   let attempts = 0;
+  let failRequests = true;
   await page.route(runtimePattern, async route => {
     attempts += 1;
-    if (attempts === 1) await route.abort('failed');
+    if (failRequests) await route.abort('failed');
     else await route.continue();
   });
   await page.goto('/');
@@ -542,6 +543,7 @@ test('a preview import failure exposes the source URL and retries on the next cl
   await opener.click();
   await expect(newspaper.getByText('Share card could not be loaded.', { exact: true })).toBeVisible();
   await expect(newspaper.getByRole('textbox', { name: 'Canonical story link', exact: true })).toBeFocused();
+  failRequests = false;
   await opener.click();
   await expect(page.getByRole('dialog', { name: 'Share card preview', exact: true })).toBeVisible();
   expect(attempts).toBeGreaterThanOrEqual(2);

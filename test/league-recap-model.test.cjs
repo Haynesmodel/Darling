@@ -140,28 +140,32 @@ test('tie handling is independent of source order and owner names are canonical'
   assert.equal(tiedWeek.facts.largestMargin.value, 'Tie');
 });
 
-test('all ten audited historical anomalies remain partial and unshareable', () => {
+test('uncorrected historical anomalies stay partial while repaired seasons have complete weekly recaps', () => {
   const model = recap.buildLeagueNewspaper({
     leagueGames: JSON.parse(fs.readFileSync(path.join(root, 'assets/H2H.json'), 'utf8')),
     seasonSummaries: JSON.parse(fs.readFileSync(path.join(root, 'assets/SeasonSummary.json'), 'utf8')),
     currentSeason: JSON.parse(fs.readFileSync(path.join(root, 'assets/CurrentSeason.json'), 'utf8')),
     rivalries: [], derivedStats: null, dataVersion: 'fixture',
   }, '/Darling/');
-  const anomalies = [
-    'weekly:2015:7', 'weekly:2015:8', 'weekly:2016:4', 'weekly:2016:8',
-    'weekly:2016:9', 'weekly:2016:10', 'weekly:2016:13', 'weekly:2019:3',
-    'weekly:2019:4', 'weekly:2019:13',
-  ];
+  const anomalies = ['weekly:2015:7', 'weekly:2015:8'];
   assert.deepEqual(
     anomalies.map(id => [id, model.editions.find(edition => edition.id === id)?.state]),
     anomalies.map(id => [id, 'partial']),
   );
   assert.ok(anomalies.every(id => model.editions.find(edition => edition.id === id)?.facts === null));
-  for (const id of ['weekly:2015:9', 'weekly:2015:14', 'weekly:2016:14', 'weekly:2019:12']) {
+  for (const id of ['weekly:2015:9', 'weekly:2015:14']) {
     const edition = model.editions.find(candidate => candidate.id === id);
     assert.equal(edition?.state, 'partial', id);
     assert.equal(edition?.issue?.code, 'INCOMPLETE_STANDINGS_PREFIX', id);
     assert.equal(edition?.facts, null, id);
+  }
+  for (const season of [2016, 2019]) {
+    for (let week = 1; week <= 13; week++) {
+      const id = `weekly:${season}:${week}`;
+      const edition = model.editions.find(candidate => candidate.id === id);
+      assert.equal(edition?.state, 'complete', id);
+      assert.ok(edition.facts, id);
+    }
   }
   assert.equal(model.editions.find(edition => edition.id === 'season:2025').state, 'complete');
   assert.equal(model.defaultEditionId.startsWith('weekly:2026:'), true);

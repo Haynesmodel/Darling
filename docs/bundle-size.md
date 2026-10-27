@@ -153,18 +153,20 @@ The manifest contains exactly one named `chart-runtime`. Current Season, Head to
 
 `scripts/data/bundle-budget.json` and `npm run check:bundle` enforce:
 
-- aggregate JavaScript targeting 297,868 gzip after the final migration slice and at or below the 300,000 hard ceiling throughout;
+- aggregate JavaScript targeting 297,868 gzip after the final migration slice and at or below the 314,000 hard ceiling;
 - entry targeting 48,250 gzip and at or below 190,000 raw and 56,000 gzip;
 - chart-runtime targeting 97,000 gzip and at or below 305,000 raw and 100,000 gzip;
 - every non-validator chunk at or below 320,000 raw;
 - League Pulse, Owner Hub, and History settled closures at or below 115,000 gzip;
 - Transactions settled closure at or below 120,000 gzip and its feature entry at or below 18,000 gzip;
-- every settled chart route at or below 205,000 gzip;
+- Current Season settled route at or below 208,000 gzip; other settled chart routes at or below 205,000 gzip;
 - exactly one named chart-runtime and one Plot/vendor copy;
 - Plot exclusion from the entry, League Pulse, Owner Hub, Transactions, and History;
 - a dynamic, not static, Plot dependency for Head to Head and Draft Spot;
 - one shared runtime in every chart route;
 - dynamic manifest entries for all ten feature destinations and `load-league-assets`.
+
+The original Playoff Machine allowance in PR #106 was approved at 313,000 aggregate and 207,000 Current Season gzip bytes. Rebasing onto `2cf9fba` carries forward main's separate 1,000-byte aggregate baseline increase and adds 1,000 bytes of Current Season headroom for the updated shared dependencies, giving 314,000/208,000 ceilings. The October 27 review removes duplicate completed-season odds logic and moves static bracket markup into the existing HTML template system. All other route, target, entry, feature, and chart-runtime budgets remain unchanged. Exact final measurements are recorded in the PR test evidence.
 
 `node scripts/check_bundle_size.cjs --json` emits stable static and settled fields for every route. The human report prints the same route table plus chunk and runtime measurements. Synthetic graph tests cover cycles, nested dynamic lookup, shared-chunk deduplication, selected dynamics, missing/duplicate/leaked runtimes, separator normalization, and static/settled/aggregate budget diagnostics.
 

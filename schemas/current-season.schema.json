@@ -31,6 +31,7 @@
         "playoff_slots": { "type": "integer", "minimum": 1 },
         "bye_slots": { "type": "integer", "minimum": 0 },
         "saunders_slots": { "type": "integer", "minimum": 0 },
+        "sixth_spot_rule": { "enum": ["standard", "points_for_outside_top_five"] },
         "standings_tiebreakers": {
           "type": "array",
           "minItems": 1,

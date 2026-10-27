@@ -169,6 +169,9 @@ function validateSemanticBundle(bundle, opts = {}) {
     if (rules.playoff_slots > current.teams.length || rules.bye_slots > rules.playoff_slots || rules.saunders_slots > current.teams.length) {
       report('CURRENT_IMPOSSIBLE_PLAYOFF_RULES', 'assets/CurrentSeason.json playoff_rules', `${current.season}`, 'playoff rule counts are impossible for the current league size');
     }
+    if (rules.sixth_spot_rule === 'points_for_outside_top_five' && (rules.playoff_slots !== 6 || current.teams.length < 7)) {
+      report('CURRENT_IMPOSSIBLE_SIXTH_SPOT_RULE', 'assets/CurrentSeason.json playoff_rules', `${current.season}`, 'points-for sixth spot requires six playoff slots and at least seven teams');
+    }
     if (rules.regular_season_max_week !== current.regular_season_max_week) {
       report('CURRENT_RULE_WEEK_MISMATCH', 'assets/CurrentSeason.json playoff_rules', `${current.season}`, 'regular season week metadata disagrees');
     }

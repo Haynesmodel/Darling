@@ -333,6 +333,41 @@
         <summary>Schedule Comparison</summary>
         <section id="currentScheduleRoot" class="feature-section-content current-schedule"></section>
       </details>
+      <details id="currentPlayoffMachineDisclosure" class="card feature-disclosure">
+        <summary>Playoff Machine</summary>
+        <p id="currentMachineAnnouncement" class="visually-hidden" aria-live="polite" aria-atomic="true"></p>
+        <section id="currentPlayoffMachine" class="feature-section-content current-playoff-machine"></section>
+      </details>
+      <template id="currentMachineBracketTemplate"><dialog id="currentMachineBracketDialog" class="current-machine-bracket-dialog" aria-labelledby="currentMachineBracketTitle" aria-describedby="currentMachineBracketDescription">
+        <div class="current-machine-bracket-shell">
+          <header><h2 id="currentMachineBracketTitle" tabindex="-1">Playoff bracket</h2><form method="dialog"><button type="submit" aria-label="Close playoff bracket">Close</button></form></header>
+          <div id="currentMachineBracketContent"><p id="currentMachineBracketDescription">Open this dialog from the Live scenario panel to review score progress or the exact bracket.</p></div>
+        </div>
+      </dialog></template>
+      <template id="currentMachineExactBracketTemplate"><p id="currentMachineBracketDescription">Exact six-seed bracket for this regular-season score scenario. Playoff-round scores are not part of this scenario.</p><section class="current-machine-bracket-byes" aria-label="First-round byes"><h3>First-round byes</h3><ol>__BYE_ONE____BYE_TWO__</ol></section><section class="current-machine-bracket-grid" aria-label="Playoff path"><section class="current-machine-round current-machine-round-openers"><span class="current-machine-round-step">Round 1</span><h3>Opening round</h3><div class="current-machine-bracket-openers">__OPEN_THREE_SIX____OPEN_FOUR_FIVE__</div></section><section class="current-machine-round"><span class="current-machine-round-step">Round 2</span><h3>Semifinals</h3><ol><li><small>Winner TBD</small><strong>__SEED_ONE__ vs winner of 4/5</strong></li><li><small>Winner TBD</small><strong>__SEED_TWO__ vs winner of 3/6</strong></li></ol></section><section class="current-machine-round current-machine-round-final"><span class="current-machine-round-step">Round 3</span><h3>Final</h3><ol><li><small>Winner TBD</small><strong>Semifinal winners</strong></li></ol></section></section></template>
+      <template id="currentPlayoffMachineTemplate">
+        <div data-machine-seed>__SEED_BOARD__</div>
+        <div class="section-heading current-section-heading"><h3>Your scenario</h3><div class="current-machine-status">__MACHINE_STATUS__</div></div>
+        <p>__MACHINE_EXPLANATION__</p>
+        <p class="muted">Top five by record · Seed 6 by total points among the remaining teams · Top two earn byes. Picks stay during this visit; reloading clears them.</p>
+        <div>__MACHINE_ISSUES__</div>
+        <div class="current-machine-layout">
+          <section class="current-machine-week">
+            <div class="section-heading"><h3>Remaining matchups</h3>__WEEK_NAV__</div>
+            <p>Pick a winner or tie, or add both scores for an exact result.</p>
+            <div data-machine-games>__MACHINE_GAMES__</div>
+            __MACHINE_ACTIONS__
+          </section>
+          <aside class="current-machine-race">
+            <section><div class="current-machine-live-heading"><h3>Live scenario</h3><button type="button" class="current-machine-bracket-trigger" data-machine-action="view-bracket">View bracket</button></div><p class="muted">__SCENARIO_LABEL__</p><div class="current-machine-scroll" role="region" aria-label="Live scenario standings" tabindex="0"><table><thead><tr><th>Standing</th><th>Team</th><th>Scenario</th><th>Seed</th></tr></thead><tbody><!--__LIVE_ROWS__--></tbody></table></div><a href="#currentMachineFullStandings">Full __OWNER_COUNT__-owner standings below ↓</a></section>
+            <section><h3>Sixth-spot points race</h3><p class="muted">Highest PF outside standings top five</p><ol>__CANDIDATES__</ol><p class="current-machine-race-note">__RACE_NOTE__</p></section>
+          </aside>
+        </div>
+        <section id="currentMachineFullStandings" class="current-machine-results"><h3>Full __OWNER_COUNT__-owner standings</h3><div class="current-table-scroll" role="region" aria-label="Full scenario standings" tabindex="0"><table><thead><tr><th>Team</th><th>Actual</th><th>Scenario</th><th>PF</th><th>Standings rank</th><th>Playoff seed</th><th>Change</th></tr></thead><tbody><!--__FULL_ROWS__--></tbody></table></div></section>
+      </template>
+      <template id="currentMachineGameTemplate">
+        <article class="current-machine-game" data-week="__WEEK__"><div><h4>__TEAM_A__ vs __TEAM_B__</h4><p class="muted">__STATUS__</p></div><div class="current-machine-picks" role="group" aria-label="Pick outcome for Week __WEEK__, __TEAM_A__ vs __TEAM_B__">__BUTTONS__</div><div class="current-machine-scores"><span class="visually-hidden">Exact score</span><label>__TEAM_A__ <input type="text" inputmode="decimal" pattern="[0-9]+([.][0-9]{0,2})?" aria-invalid="__INVALID__" data-machine-score="a" data-game-key="__KEY__" aria-label="__TEAM_A__ scenario score against __TEAM_B__" aria-describedby="__ERROR_ID__" value="__SCORE_A__" data-machine-disabled="__DISABLED__"></label><span aria-hidden="true">–</span><label>__TEAM_B__ <input type="text" inputmode="decimal" pattern="[0-9]+([.][0-9]{0,2})?" aria-invalid="__INVALID__" data-machine-score="b" data-game-key="__KEY__" aria-label="__TEAM_B__ scenario score against __TEAM_A__" aria-describedby="__ERROR_ID__" value="__SCORE_B__" data-machine-disabled="__DISABLED__"></label><button type="button" data-machine-action="clear-game" data-game-key="__KEY__" data-machine-disabled="__DISABLED__">Clear</button></div>__WARNING__</article>
+      </template>
     </section>
 
     <section id="page-rivalry" class="page" aria-labelledby="page-rivalry-title" hidden>

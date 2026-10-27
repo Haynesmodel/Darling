@@ -75,6 +75,7 @@ function createPropertyCompactionPlugin() {
     'darlingDataLoader', 'darlingFeatureDiagnostics', 'darlingSearch', 'darlingTables',
     'darlingTheme', 'featureId', 'featureMessage', 'featureState', 'heroMode',
     'loadedAssets', 'manifestVersion', 'optionalAssetFailures',
+    'gameKey', 'machineAction', 'machineScore', 'outcome', 'week', 'weeks',
     'player',
     // Dynasty score component keys are iterated into visible breakdown labels.
     'consistency', 'hardware', 'penalties', 'regularSeason', 'scoringDominance',

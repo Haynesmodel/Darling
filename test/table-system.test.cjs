@@ -1,21 +1,32 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const esbuild = require('esbuild');
 
+const temporaryDirectories = [];
+
 async function importTypeScript(relativePath) {
-  const result = await esbuild.build({
+  const coverageBundles = path.join(process.cwd(), 'coverage', 'test-bundles');
+  fs.mkdirSync(coverageBundles, { recursive: true });
+  const directory = fs.mkdtempSync(path.join(coverageBundles, 'table-system-'));
+  temporaryDirectories.push(directory);
+  const outfile = path.join(directory, `${path.basename(relativePath, '.ts')}.mjs`);
+  await esbuild.build({
     entryPoints: [path.join(process.cwd(), relativePath)],
+    outfile,
     bundle: true,
     format: 'esm',
     platform: 'node',
     target: 'node20',
-    write: false,
+    sourcemap: 'inline',
+    sourcesContent: true,
   });
-  const source = result.outputFiles[0].text;
-  return import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+  return import(pathToFileURL(outfile).href);
 }
+
+test.after(() => temporaryDirectories.forEach(directory => fs.rmSync(directory, { recursive: true, force: true })));
 
 const modules = Promise.all([
   importTypeScript('src/tables/table-saved-views.ts'),
@@ -24,6 +35,7 @@ const modules = Promise.all([
   importTypeScript('src/tables/rows/history-game-rows.ts'),
   importTypeScript('src/tables/table-registry.ts'),
   importTypeScript('src/tables/rows/trophy-season-rows.ts'),
+  importTypeScript('src/tables/rows/rivalry-season-rows.ts'),
 ]);
 
 class FakeStorage {
@@ -172,6 +184,20 @@ test('typed table filters cover text, enums, ranges, records, and game predicate
   assert.equal(filters.isBlowout({ margin: 31 }), true);
   assert.equal(filters.isPostseason({ type: 'Playoff' }), true);
   assert.equal(filters.isSaunders({ type: 'Saunders', round: 'Final' }), true);
+  assert.equal(filters.textFilterValue(null, '  '), true);
+  assert.equal(filters.enumFilterValue('W', []), true);
+  assert.equal(filters.enumFilterValue('W', null), true);
+  assert.equal(filters.numberRangeFilterValue('unknown', { min: 1 }), false);
+  assert.equal(filters.numberRangeFilterValue(2, { min: 3, max: 1 }), false);
+  assert.equal(filters.parseRecord('0-0'), 0);
+  assert.equal(Number.isNaN(filters.parseRecord('no record')), true);
+  assert.equal(Number.isNaN(filters.parseScore('')), true);
+  assert.equal(filters.isPostseason({ type: 'Regular' }), false);
+  assert.equal(filters.isSaunders({ round: 'Saunders Final' }), true);
+  assert.equal(filters.isCloseGame({ margin: 'not a score' }), false);
+  assert.equal(filters.isBlowout({ margin: 'not a score' }), false);
+  assert.equal(filters.isEmptyRange({ min: 0 }), false);
+  assert.equal(filters.isEmptyRange({}), true);
 });
 
 test('record columns filter their displayed record and sort by numeric performance', async () => {
@@ -183,6 +209,97 @@ test('record columns filter their displayed record and sort by numeric performan
     assert.equal(column.accessor(row), '1-0-0');
     assert.equal(typeof column.sortAccessor(row), 'number');
   }
+});
+
+test('registered table columns format and sort the fields users see', async () => {
+  const [, , , , registryModule] = await modules;
+  const row = {
+    team: 'Joe', date: '2025-09-07', opponent: 'Joel', result: 'W', score: 150, scoreLabel: '150.0',
+    margin: 5, combinedScore: 250, type: 'Regular', round: 'Final', season: 2025, week: 1,
+    xw: 0.5, record: '8-4-0', winPct: 2 / 3, ppg: 150, oppg: 120, games: 12,
+    draftPick: 5, draftPickLabel: 'Pick 5', finish: 2, finishValue: 2, pf: 1800, pfValue: 1800,
+    pa: 1700, paValue: 1700, diff: 100, diffValue: 100, notes: ['Champion'], notesLabel: 'Champion',
+    pointsFor: 1800, pointsAgainst: 1700, differential: 100, rank: 1, owner: 'Joe', streak: 'W2',
+    projectedRank: 1, projectedPointsFor: 1800, seedChange: 1, projectedRecord: '10-4', currentRecord: '8-4',
+    wins: 8, ties: 0, madePlayoffs: true, playoffGames: 2, champion: true, saunders: false,
+    playoff_wins: 2, playoff_losses: 1, pointsForRank: 1, statusKey: 'clinched', recencyIndex: 1,
+    isCrown: true, isTurd: false,
+  };
+
+  for (const entry of Object.values(registryModule.getTableRegistry())) {
+    assert.equal(registryModule.getTableRegistryEntry(entry.id), entry);
+    for (const column of entry.columns) {
+      const value = column.accessor(row);
+      assert.equal(value, row[column.id]);
+      if (column.sortAccessor) assert.equal(typeof column.sortAccessor(row), 'number');
+      if (column.render) assert.notEqual(column.render(value, row), undefined);
+    }
+    assert.ok(entry.emptyMessage);
+    assert.ok(entry.defaultPageSize > 0);
+  }
+
+  const column = (table, id) => registryModule.getTableRegistryEntry(table).columns.find(item => item.id === id);
+  assert.equal(column('history-games', 'margin').render(5, row), '+5.00');
+  assert.equal(column('history-games', 'combinedScore').render(250, row), '250.00');
+  assert.equal(column('history-games', 'score').render(150, row), '150.0');
+  assert.equal(column('history-opponents', 'winPct').render(2 / 3, row), '66.7%');
+  assert.equal(column('history-opponents', 'record').sortAccessor(row), 2 / 3);
+  assert.equal(column('history-seasons', 'record').sortAccessor(row), 2 / 3);
+  assert.equal(column('rivalry-seasons', 'record').sortAccessor(row), 8);
+  assert.equal(column('trophy-seasons', 'record').sortAccessor(row), 2 / 3);
+  assert.equal(column('trophy-seasons', 'finishValue').render(2, row), '2');
+  assert.equal(column('current-projected', 'seedChange').render(1, row), '+1');
+  assert.equal(column('history-games', 'margin').render('bad', { ...row, margin: 'bad' }), '—');
+});
+
+test('registered quick filters distinguish matching rows from counterexamples', async () => {
+  const [, , , , registryModule] = await modules;
+  const filters = table => Object.fromEntries(registryModule.getTableRegistryEntry(table).quickFilters.map(item => [item.id, item.test]));
+  const history = filters('history-games');
+  const win = { result: 'W', type: 'Regular', score: 155, margin: 4, round: '' };
+  const loss = { result: 'L', type: 'Playoff', score: 110, margin: -35, round: 'Semi Final' };
+  const saunders = { result: 'W', type: 'Regular', score: 150, margin: 2, round: 'Saunders Final' };
+  assert.equal(history.wins(win), true);
+  assert.equal(history.wins(loss), false);
+  assert.equal(history.losses(loss), true);
+  assert.equal(history.playoffs(loss), true);
+  assert.equal(history.saunders(saunders), true);
+  assert.equal(history['150-plus'](loss), false);
+  assert.equal(history.close(win), true);
+  assert.equal(history.blowouts(loss), true);
+
+  const weeks = filters('history-weeks');
+  assert.equal(weeks.crowns({ isCrown: true }), true);
+  assert.equal(weeks.lowest({ isTurd: false }), false);
+  assert.equal(weeks.playoffs(win), false);
+  assert.equal(weeks.close(loss), false);
+
+  const opponents = filters('history-opponents');
+  assert.equal(opponents.winning({ winPct: 0.6 }), true);
+  assert.equal(opponents.losing({ winPct: 0.6 }), false);
+  assert.equal(opponents['five-plus']({ games: 4 }), false);
+  assert.equal(opponents['playoff-opponents']({ playoffGames: 2 }), true);
+
+  const seasons = filters('history-seasons');
+  assert.equal(seasons.champions({ champion: true }), true);
+  assert.equal(seasons.playoffs({ playoff_wins: 0, playoff_losses: 0 }), false);
+  assert.equal(seasons.saunders({ saunders: false }), false);
+  assert.equal(seasons['last-five']({ season: 2020 }, { latestSeason: 2025 }), false);
+
+  const rivalry = filters('rivalry-games');
+  assert.equal(rivalry['last-five']({ recencyIndex: 5 }), false);
+  assert.equal(rivalry.blowouts(loss), true);
+
+  const standings = filters('current-standings');
+  assert.equal(standings.clinched({ statusKey: 'clinched' }), true);
+  assert.equal(standings.bubble({ statusKey: 'clinched' }), false);
+  assert.equal(standings.eliminated({ statusKey: 'eliminated' }), true);
+  assert.equal(standings['top-six-scoring']({ pointsForRank: 7 }), false);
+
+  const draft = filters('draft-rows');
+  assert.equal(draft.champions({ champion: true }), true);
+  assert.equal(draft.playoffs({ madePlayoffs: false }), false);
+  assert.equal(draft.saunders({ saunders: true }), true);
 });
 
 test('trophy season adapter maps structured game logs without changing generic detail values', async () => {
@@ -241,6 +358,37 @@ test('quick filters compose and replace incompatible filters within a group', as
     ], ['wins', 'high'], definitions),
     [{ result: 'W', score: 160 }],
   );
+  assert.deepEqual(quick.toggleQuickFilter(['losses'], definitions[1], definitions), []);
+  assert.deepEqual(quick.toggleQuickFilter(['unknown'], definitions[2], definitions), ['unknown', 'high']);
+  const rows = [{ result: 'W' }, { result: 'L' }];
+  assert.equal(quick.filterByQuickFilters(rows, [], definitions), rows);
+  assert.deepEqual(quick.filterByQuickFilters(rows, ['unknown'], definitions), rows);
+  assert.deepEqual(
+    quick.filterByQuickFilters([{ season: 2025 }, { season: 2020 }], ['recent'], [
+      { id: 'recent', label: 'Recent', test: (row, context) => row.season >= context.latest - 4 },
+    ], { latest: 2025 }),
+    [{ season: 2025 }],
+  );
+});
+
+test('rivalry season rows normalize sparse records and retain descriptive context', async () => {
+  const [, , , , , , rows] = await modules;
+  const adapted = rows.adaptRivalrySeasonRows([
+    { season: 2025, games: 2, diff: -11, w: 1, l: 1, t: 0, notes: ['Playoff', 'Sweep'] },
+    { season: 2024, games: 0, recordText: '0-0-0', notes: '' },
+    { season: 2023, games: 'bad', pf: 'bad', pa: null, diff: null, notes: null },
+  ], { rivalryA: 'Joe', rivalryB: 'Joel' });
+
+  assert.equal(adapted[0].id, 'Joe:Joel:2025:0');
+  assert.equal(adapted[0].record, '1-1-0');
+  assert.equal(adapted[0].notesLabel, 'Playoff • Sweep');
+  assert.equal(adapted[0].details[0].value, '5.50');
+  assert.equal(adapted[0].details[2].value, 'Playoff • Sweep');
+  assert.equal(adapted[1].details[0].value, '—');
+  assert.equal(adapted[1].record, '0-0-0');
+  assert.equal(adapted[1].details[2].value, 'No special notes');
+  assert.deepEqual([adapted[2].pf, adapted[2].pa, adapted[2].diff], [0, 0, 0]);
+  assert.equal(adapted[2].notesLabel, '—');
 });
 
 test('history game row adapter creates stable perspective IDs and useful detail context', async () => {

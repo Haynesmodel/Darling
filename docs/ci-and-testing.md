@@ -50,7 +50,7 @@ The instrumented pass omits the dedicated axe-only specs because they exercise t
 Coverage includes runtime JavaScript, TypeScript, and TSX in `js/`, `scripts/`, and `src/`. Generated schema validators, type-only declarations, tests, build output, and the generated chart vendor bundle are excluded for explicit generator/vendor reasons. Policy covers lines, statements, functions, and branches globally, per file, and for PR-authored files compared with the exact pull-request base SHA. An exception must identify its owner, reason, baseline thresholds, and expiry.
 
 Generated reports are ignored under `coverage/`. CI retains compact reports for seven days and uploads raw maps only after failures.
-After c8 converts Node's temporary V8 output to Istanbul JSON, the intermediate `node-v8` directory is removed. The merge step fails when retained raw Istanbul coverage exceeds 25,000,000 bytes and records both `rawBytes` and `rawByteLimit` in `coverage-meta.json`. The October 25 review removed 11 overrides that now meet the standard per-file thresholds. Eight narrow overrides remain and expire November 25, 2026; add behavior-focused tests or review them before that date.
+After c8 converts Node's temporary V8 output to Istanbul JSON, the intermediate `node-v8` directory is removed. The merge step fails when retained raw Istanbul coverage exceeds 25,000,000 bytes and records both `rawBytes` and `rawByteLimit` in `coverage-meta.json`. Behavior tests now cover the eight remaining temporary exceptions, leaving zero coverage overrides. Global, per-file, and changed-file thresholds remain unchanged; future exceptions still require the metadata and expiry described above.
 
 ## CI artifact graph
 

@@ -2,12 +2,14 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const esbuild = require('esbuild');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
 async function loadTsModule(entry) {
-  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'darling-theme-test-'));
+  const coverageBundles = path.join(process.cwd(), 'coverage', 'test-bundles');
+  fs.mkdirSync(coverageBundles, { recursive: true });
+  const outDir = fs.mkdtempSync(path.join(coverageBundles, 'theme-system-'));
+  temporaryDirectories.push(outDir);
   const outfile = path.join(outDir, `${path.basename(entry, path.extname(entry))}.mjs`);
   await esbuild.build({
     entryPoints: [path.join(process.cwd(), entry)],
@@ -20,6 +22,9 @@ async function loadTsModule(entry) {
   });
   return import(`${pathToFileURL(outfile).href}?v=${Date.now()}`);
 }
+
+const temporaryDirectories = [];
+test.after(() => temporaryDirectories.forEach(directory => fs.rmSync(directory, { recursive: true, force: true })));
 
 function createStorage(initial = {}) {
   const values = new Map(Object.entries(initial));
@@ -72,6 +77,47 @@ test('theme state resolves persisted, invalid, and system color schemes', async 
   assert.equal(mod.readColorSchemePreference(invalidWindow), 'system');
   assert.equal(mod.resolveColorSchemePreference('system', darkWindow), 'dark');
   assert.equal(mod.resolveColorSchemePreference('system', invalidWindow), 'light');
+});
+
+test('theme state falls back safely when storage or media preferences are unavailable', async () => {
+  const mod = await loadTsModule('src/theme/theme-state.ts');
+  const blockedStorage = Object.defineProperty({}, 'localStorage', {
+    get() { throw new Error('storage disabled'); },
+  });
+  const unreadableStorage = {
+    localStorage: {
+      getItem() { throw new Error('storage denied'); },
+      setItem() { throw new Error('storage denied'); },
+      removeItem() {},
+    },
+  };
+  const blockedMedia = { matchMedia() { throw new Error('media unavailable'); } };
+
+  assert.equal(mod.readColorSchemePreference(blockedStorage), 'system');
+  assert.equal(mod.readColorSchemePreference(unreadableStorage), 'system');
+  assert.equal(mod.resolveColorSchemePreference('system', blockedMedia), 'light');
+  assert.equal(mod.resolveColorSchemePreference('system', null), 'light');
+  assert.doesNotThrow(() => mod.writeColorSchemePreference('dark', unreadableStorage));
+  assert.doesNotThrow(() => mod.writeColorSchemePreference('light', blockedStorage));
+});
+
+test('system color scheme watcher supports legacy listeners and releases subscriptions', async () => {
+  const mod = await loadTsModule('src/theme/theme-state.ts');
+  let legacyListener;
+  let removedListener;
+  const media = {
+    matches: false,
+    addListener(listener) { legacyListener = listener; },
+    removeListener(listener) { removedListener = listener; },
+  };
+  const onChange = () => {};
+  const stop = mod.watchSystemColorScheme({ matchMedia: () => media }, onChange);
+
+  assert.equal(legacyListener, onChange);
+  stop();
+  assert.equal(removedListener, onChange);
+  assert.doesNotThrow(() => mod.watchSystemColorScheme({ matchMedia: () => ({ matches: true }) }, onChange)());
+  assert.doesNotThrow(() => mod.watchSystemColorScheme({ matchMedia: () => { throw new Error('blocked'); } }, onChange)());
 });
 
 test('theme context derives owner, rivalry, and postseason modes', async () => {

@@ -53,7 +53,7 @@ test.describe('Draft Journey', () => {
     await filter.selectOption('remote-virtual');
     await expect(page.locator('.draft-journey-virtual-button')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.locator('.draft-journey-details')).toContainText('Virtual era; no physical location assigned.');
-    await page.getByRole('button', { name: 'Show College Park, 2023–2024' }).press('Enter');
+    await page.getByRole('button', { name: 'Show College Park 2023–2024' }).press('Enter');
     await expect(page).toHaveURL(/draftLocation=college-park/);
     await expect(page.locator('.draft-journey-details')).toContainText('University of Maryland Stadium');
   });

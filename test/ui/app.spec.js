@@ -1373,6 +1373,74 @@ test('interactive history games sort, filter, expand, and persist saved views', 
   expect(restoredOpponents.every(value => value.includes('Singer'))).toBe(true);
 });
 
+test('saved views validate names, confirm replacement, rename, and delete safely', async ({ page }) => {
+  await page.addInitScript(() => localStorage.removeItem('darling.tableViews.v1'));
+  await page.goto('/?tab=history&team=Joe');
+  await page.waitForLoadState('networkidle');
+  const shell = page.locator('[data-table-id="history-games"]');
+  await shell.locator('.table-view-menu > summary').click();
+
+  await shell.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(shell.locator('.table-menu-message')).toHaveText('Enter a name and try again.');
+  await shell.getByPlaceholder('View name').fill('Primary audit');
+  await shell.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(shell.locator('.table-menu-message')).toContainText('Saved “Primary audit”.');
+  const beforeReplace = await page.evaluate(() => JSON.parse(localStorage.getItem('darling.tableViews.v1') || '[]'));
+  expect(beforeReplace).toHaveLength(1);
+
+  page.once('dialog', async dialog => {
+    expect(dialog.type()).toBe('confirm');
+    await dialog.dismiss();
+  });
+  await shell.getByPlaceholder('View name').fill('primary audit');
+  await shell.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(shell.locator('.table-menu-message')).toContainText('Kept the existing “Primary audit” view.');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('darling.tableViews.v1') || '[]'))).toEqual(beforeReplace);
+
+  await shell.getByRole('button', { name: 'Wins', exact: true }).click();
+  await expect(shell.getByRole('button', { name: 'Wins', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  page.once('dialog', async dialog => dialog.accept());
+  await shell.getByPlaceholder('View name').fill('PRIMARY AUDIT');
+  await shell.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(shell.locator('.table-menu-message')).toContainText('Saved “PRIMARY AUDIT”.');
+  const replaced = await page.evaluate(() => JSON.parse(localStorage.getItem('darling.tableViews.v1') || '[]'));
+  expect(replaced).toHaveLength(1);
+  expect(replaced[0].id).toBe(beforeReplace[0].id);
+  expect(replaced[0].state.quickFilters).toEqual(['wins']);
+  expect(replaced[0].state).not.toEqual(beforeReplace[0].state);
+  expect(replaced[0].urlState.gameResult).toBe('W');
+
+  page.once('dialog', async dialog => dialog.dismiss());
+  await shell.getByRole('button', { name: 'Rename PRIMARY AUDIT' }).click();
+  await expect(shell.locator('.table-view-row')).toContainText('PRIMARY AUDIT');
+
+  page.once('dialog', async dialog => dialog.accept('Renamed audit'));
+  await shell.getByRole('button', { name: 'Rename PRIMARY AUDIT' }).click();
+  await expect(shell.locator('.table-menu-message')).toContainText('Renamed to “Renamed audit”.');
+  await shell.getByRole('button', { name: 'Delete Renamed audit' }).click();
+  await expect(shell.locator('.table-menu-message')).toContainText('Deleted “Renamed audit”.');
+  await expect(shell.getByRole('button', { name: 'Renamed audit', exact: true })).toHaveCount(0);
+
+  await shell.getByPlaceholder('View name').fill('Retained audit');
+  await shell.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(shell.locator('.table-menu-message')).toContainText('Saved “Retained audit”.');
+  const beforeFailure = await page.evaluate(() => JSON.parse(localStorage.getItem('darling.tableViews.v1') || '[]'));
+  expect(beforeFailure).toHaveLength(1);
+  await shell.getByPlaceholder('View name').fill('Storage failure');
+  await page.evaluate(() => {
+    const originalSetItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (key === 'darling.tableViews.v1') throw new DOMException('quota', 'QuotaExceededError');
+      return originalSetItem.call(this, key, value);
+    };
+  });
+  await shell.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(shell.locator('.table-menu-message')).toHaveText('Enter a name and try again.');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('darling.tableViews.v1') || '[]'))).toEqual(beforeFailure);
+  await expect(shell.getByRole('button', { name: 'Retained audit', exact: true })).toHaveCount(1);
+  await expect(shell.getByRole('button', { name: 'Storage failure', exact: true })).toHaveCount(0);
+});
+
 test('saved history views restore canonical facets and game-query limits', async ({ page }) => {
   await page.goto('/?tab=history&team=Joe&seasons=2024&types=Playoff&rounds=Semi%20Final&gameResult=L&gameSort=marginAsc&gameLimit=1');
   await page.waitForLoadState('networkidle');
@@ -1959,6 +2027,40 @@ test('Draft Spot direct URLs restore controls, receipts, themes, and browser his
   await expect.poll(() => new URL(page.url()).searchParams.get('draftPick')).toBeNull();
   await page.goBack();
   await expect(page.locator('.draft-pick-card[aria-pressed="true"]')).toContainText('12-team slot 10');
+});
+
+test('Draft Spot controls switch owner and zone modes and toggle normalization both ways', async ({ page }) => {
+  await page.goto('/?tab=draft&draftMode=pick&draftOwner=Joe&draftPick=10');
+  await page.waitForLoadState('networkidle');
+  const owner = page.locator('#draftOwnerSelect');
+  const zone = page.locator('#draftZoneSelect');
+  const normalize = page.locator('#draftNormalizeToggle');
+
+  await owner.selectOption('__ALL__');
+  await expect.poll(() => new URL(page.url()).searchParams.get('draftMode')).toBeNull();
+  await expect(owner).toHaveValue('__ALL__');
+  await expect.poll(() => new URL(page.url()).searchParams.get('draftPick')).toBeNull();
+  await zone.selectOption('middle');
+  await expect.poll(() => new URL(page.url()).searchParams.get('draftMode')).toBe('zone');
+  await expect.poll(() => new URL(page.url()).searchParams.get('draftZone')).toBe('middle');
+  await expect(zone).toHaveValue('middle');
+  await zone.selectOption('');
+  await expect.poll(() => new URL(page.url()).searchParams.get('draftMode')).toBeNull();
+  await expect(zone).toHaveValue('');
+
+  await owner.selectOption('Joe');
+  await expect.poll(() => new URL(page.url()).searchParams.get('draftMode')).toBe('owner');
+  await expect(owner).toHaveValue('Joe');
+  await expect.poll(() => new URL(page.url()).searchParams.get('draftPick')).toBeNull();
+  await zone.selectOption('late');
+  await expect.poll(() => new URL(page.url()).searchParams.get('draftMode')).toBe('zone');
+  await zone.selectOption('');
+  await expect.poll(() => new URL(page.url()).searchParams.get('draftMode')).toBe('owner');
+
+  await normalize.check();
+  await expect.poll(() => new URL(page.url()).searchParams.get('draftNormalize')).toBe('percentile');
+  await normalize.uncheck();
+  await expect.poll(() => new URL(page.url()).searchParams.get('draftNormalize')).toBeNull();
 });
 
 test('Draft Spot normalized slots combine equivalent 10-team and 12-team positions', async ({ page }) => {

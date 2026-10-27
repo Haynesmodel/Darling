@@ -264,37 +264,8 @@ function simulateOddsSnapshot(options = {}) {
   const liveScoresReliable = Boolean(options.currentSeason?.update_context?.contains_live_scores);
   let wildcardTieDraws = 0;
 
-  if (!unresolved.length) {
-    const rows = new Map(owners.map(owner => [owner, {
-      playoffOdds: 0, byeOdds: 0, saundersOdds: 0, seeds: Array.from({ length: owners.length }, () => 0),
-    }]));
-    const outcomes = qualificationOutcomes(qualifyStandings(baseline, rules));
-    const weight = 1 / outcomes.length;
-    if (outcomes.length > 1) wildcardTieDraws = 1;
-    for (const outcome of outcomes) outcome.forEach((row, index) => {
-      const seed = rows.get(row.owner);
-      const placement = index + 1;
-      seed.seeds[placement - 1] += weight;
-      if (placement <= rules.playoff_slots) seed.playoffOdds += weight;
-      if (placement <= rules.bye_slots) seed.byeOdds += weight;
-      if (saundersStart && placement >= saundersStart) seed.saundersOdds += weight;
-    });
-    const resolved = owners.map(owner => {
-      const result = rows.get(owner);
-      return {
-        owner,
-        playoffOdds: result.playoffOdds,
-        byeOdds: result.byeOdds,
-        saundersOdds: result.saundersOdds,
-        seedProbabilities: Object.fromEntries(result.seeds.map((probability, index) => [`${index + 1}`, probability])),
-      };
-    });
-    const result = { rows: resolved, distributions, simulations, wildcardTieOdds: wildcardTieDraws };
-    ODDS_CACHE.set(cacheKey, result);
-    return result;
-  }
-
-  for (let simulation = 0; simulation < simulations; simulation += 1) {
+  const draws = unresolved.length ? simulations : 1;
+  for (let simulation = 0; simulation < draws; simulation += 1) {
     const rowsByOwner = new Map(baseline.map(row => [row.owner, cloneStanding(row)]));
     for (const game of unresolved) {
       let scoreA;
@@ -339,15 +310,15 @@ function simulateOddsSnapshot(options = {}) {
     const ownerCounts = counts.get(row.owner);
     return {
       owner: row.owner,
-      playoffOdds: ownerCounts.playoff / simulations,
-      byeOdds: ownerCounts.bye / simulations,
-      saundersOdds: ownerCounts.saunders / simulations,
+      playoffOdds: ownerCounts.playoff / draws,
+      byeOdds: ownerCounts.bye / draws,
+      saundersOdds: ownerCounts.saunders / draws,
       seedProbabilities: Object.fromEntries(
-        ownerCounts.seeds.map((count, index) => [`${index + 1}`, count / simulations]),
+        ownerCounts.seeds.map((count, index) => [`${index + 1}`, count / draws]),
       ),
     };
   });
-  const result = { rows, distributions, simulations, wildcardTieOdds: wildcardTieDraws / simulations };
+  const result = { rows, distributions, simulations, wildcardTieOdds: wildcardTieDraws / draws };
   ODDS_CACHE.set(cacheKey, result);
   if (ODDS_CACHE.size > 24) ODDS_CACHE.delete(ODDS_CACHE.keys().next().value);
   return result;

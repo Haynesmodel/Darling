@@ -413,6 +413,8 @@ test('Playoff Machine deep link, provisional picks, exact score inputs, reset, a
   await page.waitForLoadState('networkidle');
   await expect(page.locator('#currentViewSelect')).toHaveValue('machine');
   await expect(page.locator('#currentViewSelect option[value="machine"]')).toHaveText('Playoff Machine');
+  await expect(page.locator('#currentHero')).toContainText('2026 Playoff Machine');
+  await expect(page.locator('#currentHero')).not.toContainText('Model:');
   await expect(page.locator('#currentPlayoffMachineDisclosure')).toHaveAttribute('open', '');
   await expect(page.locator('#currentPlayoffMachine')).toContainText('Provisional');
   await expect(page.locator('#currentPlayoffMachine .current-machine-race tbody tr')).toHaveCount(7);
@@ -428,6 +430,8 @@ test('Playoff Machine deep link, provisional picks, exact score inputs, reset, a
   await expect(announcement).not.toHaveText(beforePickAnnouncement || '');
   await expect(announcement).toContainText('Picked Connor');
   const firstScore = page.locator('#currentPlayoffMachine input[data-machine-score="a"]').first();
+  await firstScore.pressSequentially('125.50');
+  await expect(firstScore).toHaveValue('125.50');
   const beforeScoreAnnouncement = await announcement.textContent();
   await firstScore.fill('0');
   await expect(firstScore).toBeFocused();
@@ -447,10 +451,16 @@ test('Playoff Machine deep link, provisional picks, exact score inputs, reset, a
   const scoreControlHeights = await page.locator('#currentPlayoffMachine .current-machine-scores input, #currentPlayoffMachine .current-machine-scores button')
     .evaluateAll(elements => elements.map(element => element.getBoundingClientRect().height));
   expect(scoreControlHeights.length).toBeGreaterThan(0);
-  expect(scoreControlHeights.every(height => height >= 40)).toBe(true);
+  expect(scoreControlHeights.every(height => height >= 44)).toBe(true);
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await expectNoViolations(page, '#currentPlayoffMachine');
+  await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
+  await expectNoViolations(page, '#currentPlayoffMachine');
+  for (const width of [375, 768, 1024, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  }
 
   await page.locator('#currentViewSelect').selectOption('matchups');
   await page.locator('#currentViewSelect').selectOption('machine');
@@ -497,6 +507,9 @@ test('Playoff Machine click controls navigate weeks and clear scoped or all edit
   await machine.locator('button[data-machine-action="week-next"]').click();
   await expect(weekLabel).toContainText(`Week ${startWeek + 1}`);
   await expect(announcement).toContainText(`Showing week ${startWeek + 1}`);
+  await page.locator('#primaryNavigation a[data-feature-id="pulse"]').click();
+  await page.locator('#primaryNavigation a[data-feature-id="current"]').click();
+  await expect(weekLabel).toContainText(`Week ${startWeek + 1}`);
   await machine.locator('button[data-machine-action="week-prev"]').click();
   await expect(weekLabel).toContainText(`Week ${startWeek}`);
 

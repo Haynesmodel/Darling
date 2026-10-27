@@ -263,7 +263,7 @@ function sortAndRankStandings(rows = [], rules = DEFAULT_PLAYOFF_RULES) {
     ? rules.standings_tiebreakers
     : DEFAULT_PLAYOFF_RULES.standings_tiebreakers;
   const ranked = rows
-    .map(row => ({ ...row }))
+    .map(row => ({ ...row, pointsFor: Math.round(row.pointsFor * 100) / 100 }))
     .sort((a, b) => {
       for (const key of tiebreakers) {
         const result = compareTiebreakerValue(a, b, key);

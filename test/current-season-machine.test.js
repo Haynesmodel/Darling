@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { buildPlayoffMachine, currentPlayoffMachineHtml, drawPlayoffMachine, machineBracketHtml, playoffMachineGameKey } from '../js/current-season-machine.js';
 import { qualifyStandings } from '../js/current-season-command-data.js';
@@ -50,6 +51,17 @@ test('equal-PF wildcard candidates remain tied without an official fallback tieb
   assert.equal(qualified.find(row => row.owner === 'G').playoffSeed, null);
 });
 
+test('decimal score totals do not break a tied wildcard race through floating-point noise', () => {
+  const rows = teams.map((owner, index) => ({
+    owner, wins: 12 - index, losses: index, ties: 0, games: 12,
+    pct: (12 - index) / 12, pointsFor: index < 5 ? 300 : owner === 'F' ? 100 + 100.02 : 100.01 + 100.01,
+    differential: 0,
+  }));
+  const qualified = qualifyStandings(rows, season.playoff_rules);
+  assert.deepEqual(qualified.filter(row => row.qualificationReason === 'points_for_tie').map(row => row.owner), ['F', 'G', 'H']);
+  assert.equal(qualified.filter(row => row.playoffSeed).length, 5);
+});
+
 test('machine keeps winner picks provisional and uses complete scores for exact PF seeds', () => {
   const picks = Object.fromEntries(season.games.slice(4).map(source => [playoffMachineGameKey(source), { outcome: 'a' }]));
   const provisional = buildPlayoffMachine({ currentSeason: season, season: 2026, scenario: picks });
@@ -78,13 +90,16 @@ test('machine keeps winner picks provisional and uses complete scores for exact 
   assert.equal(exact.normalSixth.owner, 'C');
   assert.equal(exact.standings.find(row => row.owner === 'A').pointsFor, 110.29);
   assert.equal(exact.standings.find(row => row.owner === 'D').pointsFor, 1099.99);
-  const bracket = machineBracketHtml(exact);
+  const template = readFileSync(new URL('../index.html', import.meta.url), 'utf8').match(/<template id="currentMachineExactBracketTemplate">([\s\S]*?)<\/template>/)[1];
+  const bracket = machineBracketHtml(exact, { getElementById: () => ({ innerHTML: template }) });
   assert.match(bracket, /Exact six-seed bracket/);
   assert.match(bracket, /Opening round/);
   assert.match(bracket, /Winner TBD/);
   assert.match(bracket, /Final/);
   assert.match(bracket, /winner of 4\/5/);
   assert.match(bracket, /winner of 3\/6/);
+  for (let seed = 1; seed <= 6; seed += 1) assert.match(bracket, new RegExp(`Seed ${seed}`));
+  assert.doesNotMatch(bracket, /__[A-Z_]+__/);
 });
 
 test('machine retains owners that have no completed or scored games', () => {
@@ -105,6 +120,12 @@ test('invalid and partial score pairs cannot produce exact qualification', () =>
   assert.match(machine.games.at(-1).scoreError, /0 to 999.99/);
   assert.match(machineBracketHtml(machine), /3 of 4 remaining games have complete scenario scores/);
   assert.doesNotMatch(machineBracketHtml(machine), /Seed 6|Opening round/);
+  for (const scoreA of [' ', '1e2', '0x10', true, [], '100.001']) {
+    entries.at(-1)[1].scoreA = scoreA;
+    const invalid = buildPlayoffMachine({ currentSeason: season, season: 2026, scenario: Object.fromEntries(entries) });
+    assert.equal(invalid.exact, false);
+    assert.match(invalid.games.at(-1).scoreError, /valid scores/);
+  }
 });
 
 test('malformed valid-key edits are warned and ignored for standings and exactness', () => {

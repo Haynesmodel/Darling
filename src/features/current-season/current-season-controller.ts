@@ -112,7 +112,7 @@ export function createFeatureController(): DarlingFeatureController {
         const dialog = fragment.querySelector<HTMLDialogElement>('#currentMachineBracketDialog');
         const content = fragment.querySelector<HTMLElement>('#currentMachineBracketContent');
         if (!dialog || !content) return;
-        content.innerHTML = runtime.machineBracketHtml(machine);
+        content.innerHTML = runtime.machineBracketHtml(machine, context.document);
         dialog.addEventListener('close', onBracketClose);
         dialog.addEventListener('darling:dialog-navigation-close', onBracketNavigationClose);
         context.document.getElementById('page-current')?.append(fragment);
@@ -469,6 +469,7 @@ export function createFeatureController(): DarlingFeatureController {
         selectedProjectionMode: built.selectedProjectionMode,
         selectedScheduleOwner: built.selectedScheduleOwner || built.selectedOwner,
         machineEdits: existing.selectedSeason === built.selectedSeason ? existing.machineEdits || {} : {},
+        machineWeek: existing.selectedSeason === built.selectedSeason ? existing.machineWeek ?? null : null,
         dataVersion: context.data.dataVersion,
       };
       draw();

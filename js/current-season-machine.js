@@ -19,7 +19,7 @@ function playoffMachineGameKey(game) {
 }
 
 function validScenarioScore(value) {
-  if (value === null || value === undefined || value === '') return null;
+  if (typeof value !== 'number' && (typeof value !== 'string' || !/^\d+(?:\.\d{0,2})?$/.test(value))) return null;
   const score = Number(value);
   return Number.isFinite(score) && score >= 0 && score <= 999.99 && Math.abs(score * 100 - Math.round(score * 100)) < 1e-8
     ? score
@@ -187,6 +187,7 @@ function currentPlayoffMachineHtml(machine, selectedWeek = null, root = docOrDef
       __TEAM_A__: escapeHtml(game.teamA), __TEAM_B__: escapeHtml(game.teamB), __STATUS__: status,
       __BUTTONS__: buttons, __WEEK__: escapeHtml(game.week), __KEY__: escapeHtml(game.key),
       __ERROR_ID__: errorId, __SCORE_A__: escapeHtml(scoreValueA), __SCORE_B__: escapeHtml(scoreValueB),
+      __INVALID__: game.scoreError ? 'true' : 'false',
       __DISABLED__: disabled.trim(), __WARNING__: warning,
     };
     return gameTemplate.replace(/__[A-Z_]+__/gi, key => values[key.toUpperCase()] ?? key)
@@ -224,12 +225,7 @@ function currentPlayoffMachineHtml(machine, selectedWeek = null, root = docOrDef
     __MACHINE_STATUS__: escapeHtml(status),
     __MACHINE_EXPLANATION__: completedWildcardTie ? 'Scores are complete, but equal total points leave seed 6 unresolved until an official tiebreak is set.' : machine.exact ? 'All remaining games have scores; these seeds are exact for this scenario.' : machine.wildcardTie ? 'Current PF leaders are tied; unscored games may change the seed-6 race.' : 'Winner picks are provisional; exact placement needs scores for all remaining games.',
     __MACHINE_ISSUES__: machine.issues.map(issue => `<p class="current-machine-warning" role="status">${escapeHtml(issue)}</p>`).join(''),
-    __PREVIOUS__: previous ? 'disabled' : '',
-    __NEXT__: next ? 'disabled' : '',
-    __WEEK__: escapeHtml(week ?? ''),
     __WEEK_NAV__: machine.weeks.length ? `<div class="current-machine-week-nav"><button type="button" data-machine-action="week-prev" data-weeks="${escapeHtml(machine.weeks.join(','))}" aria-label="Previous unresolved week"${previous ? ' disabled' : ''}>‹</button><strong>Week ${escapeHtml(week)} of ${escapeHtml(machine.rules.regular_season_max_week)}</strong><button type="button" data-machine-action="week-next" data-weeks="${escapeHtml(machine.weeks.join(','))}" aria-label="Next unresolved week"${next ? ' disabled' : ''}>›</button></div>` : '<p class="muted">The regular season is complete. No unresolved games remain.</p>',
-    __WEEKS__: escapeHtml(machine.weeks.join(',')),
-    __MAX_WEEK__: escapeHtml(machine.rules.regular_season_max_week),
     __SCENARIO_LABEL__: escapeHtml(machine.exact ? 'Scenario complete' : 'Standings · actual → scenario'),
     __OWNER_COUNT__: escapeHtml(machine.standings.length),
     __SEED_BOARD__: seedBoard,
@@ -246,7 +242,7 @@ function currentPlayoffMachineHtml(machine, selectedWeek = null, root = docOrDef
   });
 }
 
-function machineBracketHtml(machine) {
+function machineBracketHtml(machine, root = docOrDefault()) {
   const required = machine?.games?.length || 0;
   const scored = machine?.games?.filter(game => validScenarioScore(game.edit?.scoreA) !== null
     && validScenarioScore(game.edit?.scoreB) !== null && !game.scoreError && !game.editError).length || 0;
@@ -270,7 +266,16 @@ function machineBracketHtml(machine) {
   const seed = number => seeds.find(row => row.playoffSeed === number);
   const card = (row, label = `Seed ${row.playoffSeed}`) => `<li${row.playoffSeed === 6 ? ' class="current-machine-wildcard"' : ''}><small>${escapeHtml(label)}</small><strong>${escapeHtml(row.owner)}</strong></li>`;
   const matchup = (a, b) => `<section class="current-machine-matchup"><h4>${a} vs ${b}</h4><ol>${card(seed(a))}${card(seed(b), b === 6 ? 'Wildcard · Seed 6' : `Seed ${b}`)}</ol></section>`;
-  return `<p id="currentMachineBracketDescription">Exact six-seed bracket for this regular-season score scenario. Playoff-round scores are not part of this scenario.</p><section class="current-machine-bracket-byes" aria-label="First-round byes"><h3>First-round byes</h3><ol>${card(seed(1), 'Bye · Seed 1')}${card(seed(2), 'Bye · Seed 2')}</ol></section><section class="current-machine-bracket-grid" aria-label="Playoff path"><section class="current-machine-round current-machine-round-openers"><span class="current-machine-round-step">Round 1</span><h3>Opening round</h3><div class="current-machine-bracket-openers">${matchup(3, 6)}${matchup(4, 5)}</div></section><section class="current-machine-round"><span class="current-machine-round-step">Round 2</span><h3>Semifinals</h3><ol><li><small>Winner TBD</small><strong>${escapeHtml(seed(1).owner)} vs winner of 4/5</strong></li><li><small>Winner TBD</small><strong>${escapeHtml(seed(2).owner)} vs winner of 3/6</strong></li></ol></section><section class="current-machine-round current-machine-round-final"><span class="current-machine-round-step">Round 3</span><h3>Final</h3><ol><li><small>Winner TBD</small><strong>Semifinal winners</strong></li></ol></section></section>`;
+  const values = {
+    __BYE_ONE__: card(seed(1), 'Bye · Seed 1'),
+    __BYE_TWO__: card(seed(2), 'Bye · Seed 2'),
+    __OPEN_THREE_SIX__: matchup(3, 6),
+    __OPEN_FOUR_FIVE__: matchup(4, 5),
+    __SEED_ONE__: escapeHtml(seed(1).owner),
+    __SEED_TWO__: escapeHtml(seed(2).owner),
+  };
+  const template = root?.getElementById('currentMachineExactBracketTemplate')?.innerHTML || '';
+  return template.replace(/__[A-Z_]+?__/g, key => values[key] ?? key);
 }
 
 function drawPlayoffMachine({ leagueGames, currentSeason, season, scenario, selectedWeek, changeAnnouncement, doc } = {}) {

@@ -381,12 +381,13 @@ function currentSeasonHeroHtml(view) {
       </div>
     `;
   }
-  if (command?.selectedView === 'schedule') {
+  if (['schedule', 'machine'].includes(command?.selectedView)) {
+    const title = command.selectedView === 'machine' ? 'Playoff Machine' : 'Schedule Comparison';
     const completed = command?.summary?.completedGameCount ?? view.summary.completedGameCount;
     const source = view.presentation?.source === 'historical'
       ? 'Source: validated historical snapshot'
       : `Source: ${phase === 'regular-season' ? 'Sleeper snapshot' : 'validated CurrentSeason snapshot'}${generatedAt ? ` · Updated ${escapeHtml(generatedAt)}` : ''}`;
-    return `<div class="current-hero-inner current-schedule-hero"><div><div class="card-kicker">Current Season · Schedule</div><h3>${escapeHtml(view.season || 'Season')} Schedule Comparison</h3><p class="muted">Through ${escapeHtml(weekLabel)} · ${escapeHtml(completed)} completed regular-season games</p><p class="muted">${source}</p></div></div>`;
+    return `<div class="current-hero-inner current-schedule-hero"><div><div class="card-kicker">Current Season · ${title}</div><h3>${escapeHtml(view.season || 'Season')} ${title}</h3><p class="muted">Through ${escapeHtml(weekLabel)} · ${escapeHtml(completed)} completed regular-season games</p><p class="muted">${source}</p></div></div>`;
   }
   const historicalAnalysis = phase !== 'regular-season';
   return `

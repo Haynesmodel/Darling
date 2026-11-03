@@ -83,7 +83,7 @@
   "dependencies": {
     "@observablehq/plot": "^0.6.17",
     "@tanstack/preact-table": "9.3.1",
-    "preact": "^10.29.7"
+    "preact": "^11.1.1"
   },
   "overrides": {
     "test-exclude": {

@@ -32,8 +32,8 @@ function makeDoc(elements) {
   };
 }
 
-test('curse tracker builds normalized cards from the league data', () => {
-  const leagueGames = readJson(h2hPath);
+test('curse tracker builds normalized cards from completed-season league data', () => {
+  const leagueGames = readJson(h2hPath).filter(game => game.season <= 2025);
   const seasonSummaries = readJson(seasonPath);
   const model = buildCurseTrackerModel(leagueGames, seasonSummaries);
 
@@ -75,7 +75,7 @@ test('curse tracker builds normalized cards from the league data', () => {
   const unlucky = model.cards.find(card => card.id === 'chronically-unlucky:Plot');
   assert.equal(unlucky.ratingMethod, 'effect-size');
   assert.equal(unlucky.severity, null);
-  assert.equal(unlucky.status, 'Cold');
+  assert.equal(unlucky.status, 'Active');
   assert.match(unlucky.summary, /most Expected Wins/);
 
   const titleHolder = model.cards.find(card => card.id === 'regular-season-champion-curse:league');
@@ -88,7 +88,7 @@ test('curse tracker builds normalized cards from the league data', () => {
     allOwners: model.owners,
     owner: '__ALL__',
   });
-  assert.match(summary, /5 curses shown, 2 active, across 12 completed seasons/);
+  assert.match(summary, /5 curses shown, 3 active, across 12 completed seasons/);
   assert.match(summary, /Most cursed:/);
   assert.match(summary, /Most blessed:/);
 });

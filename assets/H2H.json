@@ -10488,5 +10488,203 @@
     "week": 8,
     "round": null,
     "type": "Regular"
+  },
+  {
+    "season": 2026,
+    "date": "2026-11-08",
+    "teamA": "Connor",
+    "teamB": "Nuss",
+    "scoreA": 93.24,
+    "scoreB": 90.66,
+    "week": 9,
+    "round": null,
+    "type": "Regular"
+  },
+  {
+    "season": 2026,
+    "date": "2026-11-08",
+    "teamA": "Joe",
+    "teamB": "Shemer",
+    "scoreA": 84.52,
+    "scoreB": 99.66,
+    "week": 9,
+    "round": null,
+    "type": "Regular"
+  },
+  {
+    "season": 2026,
+    "date": "2026-11-08",
+    "teamA": "Plot",
+    "teamB": "Shap",
+    "scoreA": 119.56,
+    "scoreB": 126.44,
+    "week": 9,
+    "round": null,
+    "type": "Regular"
+  },
+  {
+    "season": 2026,
+    "date": "2026-11-08",
+    "teamA": "Rishi",
+    "teamB": "Snare",
+    "scoreA": 83.26,
+    "scoreB": 99.46,
+    "week": 9,
+    "round": null,
+    "type": "Regular"
+  },
+  {
+    "season": 2026,
+    "date": "2026-11-08",
+    "teamA": "Zook",
+    "teamB": "Joel",
+    "scoreA": 130.68,
+    "scoreB": 96.4,
+    "week": 9,
+    "round": null,
+    "type": "Regular"
+  },
+  {
+    "season": 2026,
+    "date": "2026-11-08",
+    "teamA": "Zubs",
+    "teamB": "Singer",
+    "scoreA": 102.1,
+    "scoreB": 96.88,
+    "week": 9,
+    "round": null,
+    "type": "Regular"
+  },
+  {
+    "season": 2026,
+    "date": "2026-11-15",
+    "teamA": "Connor",
+    "teamB": "Snare",
+    "scoreA": 111.28,
+    "scoreB": 143.66,
+    "week": 10,
+    "round": null,
+    "type": "Regular"
+  },
+  {
+    "season": 2026,
+    "date": "2026-11-15",
+    "teamA": "Plot",
+    "teamB": "Nuss",
+    "scoreA": 99.14,
+    "scoreB": 137.66,
+    "week": 10,
+    "round": null,
+    "type": "Regular"
+  },
+  {
+    "season": 2026,
+    "date": "2026-11-15",
+    "teamA": "Rishi",
+    "teamB": "Joel",
+    "scoreA": 59.12,
+    "scoreB": 105.62,
+    "week": 10,
+    "round": null,
+    "type": "Regular"
+  },
+  {
+    "season": 2026,
+    "date": "2026-11-15",
+    "teamA": "Singer",
+    "teamB": "Joe",
+    "scoreA": 89.1,
+    "scoreB": 115.32,
+    "week": 10,
+    "round": null,
+    "type": "Regular"
+  },
+  {
+    "season": 2026,
+    "date": "2026-11-15",
+    "teamA": "Zook",
+    "teamB": "Shemer",
+    "scoreA": 83.58,
+    "scoreB": 107.6,
+    "week": 10,
+    "round": null,
+    "type": "Regular"
+  },
+  {
+    "season": 2026,
+    "date": "2026-11-15",
+    "teamA": "Zubs",
+    "teamB": "Shap",
+    "scoreA": 98.02,
+    "scoreB": 146.26,
+    "week": 10,
+    "round": null,
+    "type": "Regular"
+  },
+  {
+    "season": 2026,
+    "date": "2026-11-22",
+    "teamA": "Connor",
+    "teamB": "Zook",
+    "scoreA": 92.4,
+    "scoreB": 78.94,
+    "week": 11,
+    "round": null,
+    "type": "Regular"
+  },
+  {
+    "season": 2026,
+    "date": "2026-11-22",
+    "teamA": "Nuss",
+    "teamB": "Shemer",
+    "scoreA": 106.5,
+    "scoreB": 102.36,
+    "week": 11,
+    "round": null,
+    "type": "Regular"
+  },
+  {
+    "season": 2026,
+    "date": "2026-11-22",
+    "teamA": "Plot",
+    "teamB": "Joe",
+    "scoreA": 88.26,
+    "scoreB": 82.98,
+    "week": 11,
+    "round": null,
+    "type": "Regular"
+  },
+  {
+    "season": 2026,
+    "date": "2026-11-22",
+    "teamA": "Shap",
+    "teamB": "Snare",
+    "scoreA": 112.0,
+    "scoreB": 94.76,
+    "week": 11,
+    "round": null,
+    "type": "Regular"
+  },
+  {
+    "season": 2026,
+    "date": "2026-11-22",
+    "teamA": "Singer",
+    "teamB": "Joel",
+    "scoreA": 93.46,
+    "scoreB": 127.96,
+    "week": 11,
+    "round": null,
+    "type": "Regular"
+  },
+  {
+    "season": 2026,
+    "date": "2026-11-22",
+    "teamA": "Zubs",
+    "teamB": "Rishi",
+    "scoreA": 158.6,
+    "scoreB": 107.02,
+    "week": 11,
+    "round": null,
+    "type": "Regular"
   }
 ]
